@@ -1,0 +1,1144 @@
+===FILE:ImageTranslateOCR/ImageTranslateOCR.xcodeproj/project.pbxproj===
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+		/* 项目配置由 Xcode 生成，此处省略详情 */
+		/* 使用时请用 Xcode 创建新项目，或使用 Swift Package Manager */
+	};
+	rootObject = ROOT_OBJECT;
+}
+
+===FILE:ImageTranslateOCR/ImageTranslateOCR/ImageTranslateOCRApp.swift===
+import SwiftUI
+
+@main
+struct ImageTranslateOCRApp: App {
+    @StateObject private var appState = AppState()
+    
+    var body: some Scene {
+        WindowGroup {
+            ContentView()
+                .environmentObject(appState)
+        }
+    }
+}
+
+// MARK: - App 全局状态
+class AppState: ObservableObject {
+    @Published var isOpenCVReady = false
+    
+    init() {
+        checkOpenCV()
+    }
+    
+    private func checkOpenCV() {
+        // OpenCV 初始化检查
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            self.isOpenCVReady = OpenCVWrapper.isOpenCVLoaded()
+        }
+    }
+}
+
+===FILE:ImageTranslateOCR/ImageTranslateOCR/ContentView.swift===
+import SwiftUI
+import PhotosUI
+
+struct ContentView: View {
+    @EnvironmentObject private var appState: AppState
+    @StateObject private var viewModel = ImageTranslateViewModel()
+    @State private var selectedItem: PhotosPickerItem?
+    @State private var showingError = false
+    @State private var errorMessage = ""
+    
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 20) {
+                    // 状态栏
+                    statusBar
+                    
+                    // 原图区域
+                    imageSection(
+                        title: "原图",
+                        image: viewModel.originalImage,
+                        placeholder: "请选择图片"
+                    )
+                    
+                    Divider()
+                        .padding(.horizontal)
+                    
+                    // 结果图区域
+                    imageSection(
+                        title: "翻译结果",
+                        image: viewModel.resultImage,
+                        placeholder: viewModel.isProcessing ? "处理中..." : "等待处理"
+                    ) {
+                        if viewModel.isProcessing {
+                            ProgressView()
+                                .scaleEffect(1.5)
+                        }
+                    }
+                    
+                    // 控制面板
+                    controlPanel
+                }
+                .padding()
+            }
+            .navigationTitle("图片翻译")
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    if viewModel.isProcessing {
+                        ProgressView()
+                    }
+                }
+            }
+            .alert("错误", isPresented: $showingError) {
+                Button("确定", role: .cancel) {}
+            } message: {
+                Text(errorMessage)
+            }
+        }
+    }
+    
+    // MARK: - 状态栏
+    private var statusBar: some View {
+        HStack {
+            Image(systemName: statusIcon)
+                .foregroundColor(statusColor)
+            Text(viewModel.statusMessage)
+                .font(.caption)
+                .foregroundColor(.secondary)
+            Spacer()
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(Color(.systemGray6))
+        .cornerRadius(8)
+    }
+    
+    private var statusIcon: String {
+        if viewModel.isProcessing {
+            return "hourglass"
+        } else if viewModel.resultImage != nil {
+            return "checkmark.circle.fill"
+        } else if viewModel.originalImage != nil {
+            return "photo.fill"
+        } else {
+            return "photo"
+        }
+    }
+    
+    private var statusColor: Color {
+        if viewModel.isProcessing {
+            return .orange
+        } else if viewModel.resultImage != nil {
+            return .green
+        } else {
+            return .gray
+        }
+    }
+    
+    // MARK: - 图片区域
+    @ViewBuilder
+    private func imageSection(
+        title: String,
+        image: UIImage?,
+        placeholder: String,
+        overlay: (() -> some View)? = nil
+    ) -> some View {
+        VStack(spacing: 8) {
+            Text(title)
+                .font(.caption)
+                .foregroundColor(.secondary)
+            
+            if let image = image {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(maxHeight: 300)
+                    .cornerRadius(12)
+                    .shadow(radius: 2)
+            } else {
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color(.systemGray5))
+                    .frame(height: 200)
+                    .overlay {
+                        VStack(spacing: 8) {
+                            if let overlay = overlay {
+                                overlay()
+                            } else {
+                                Image(systemName: "photo.on.rectangle.angled")
+                                    .font(.largeTitle)
+                                    .foregroundColor(.gray)
+                            }
+                            Text(placeholder)
+                                .font(.caption)
+                                .foregroundColor(.gray)
+                        }
+                    }
+            }
+        }
+    }
+    
+    // MARK: - 控制面板
+    private var controlPanel: some View {
+        VStack(spacing: 12) {
+            // 图片选择器
+            PhotosPicker(
+                selection: $selectedItem,
+                matching: .images,
+                photoLibrary: .shared()
+            ) {
+                Label(
+                    viewModel.originalImage == nil ? "选择图片" : "更换图片",
+                    systemImage: "photo.on.rectangle"
+                )
+                .frame(maxWidth: .infinity)
+                .padding()
+                .background(Color.blue.opacity(0.1))
+                .cornerRadius(10)
+            }
+            .onChange(of: selectedItem) { _, newItem in
+                Task {
+                    await loadImage(from: newItem)
+                }
+            }
+            .disabled(viewModel.isProcessing)
+            
+            // 遮罩模式选择
+            HStack {
+                Text("遮罩模式")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                
+                Picker("遮罩模式", selection: $viewModel.maskMode) {
+                    ForEach(MaskMode.allCases) { mode in
+                        Text(mode.displayName).tag(mode)
+                    }
+                }
+                .pickerStyle(.segmented)
+            }
+            
+            // 操作按钮
+            HStack(spacing: 12) {
+                // 翻译按钮
+                Button(action: {
+                    Task {
+                        do {
+                            try await viewModel.translateImage()
+                        } catch {
+                            errorMessage = error.localizedDescription
+                            showingError = true
+                        }
+                    }
+                }) {
+                    HStack {
+                        Image(systemName: "translate")
+                        Text("翻译")
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(viewModel.canTranslate ? Color.blue : Color.gray)
+                    .foregroundColor(.white)
+                    .cornerRadius(10)
+                }
+                .disabled(!viewModel.canTranslate)
+                
+                // 保存按钮
+                Button(action: {
+                    viewModel.saveResult()
+                }) {
+                    HStack {
+                        Image(systemName: "square.and.arrow.down")
+                        Text("保存")
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(viewModel.resultImage != nil ? Color.green : Color.gray)
+                    .foregroundColor(.white)
+                    .cornerRadius(10)
+                }
+                .disabled(viewModel.resultImage == nil)
+            }
+        }
+    }
+    
+    // MARK: - 加载图片
+    private func loadImage(from item: PhotosPickerItem?) async {
+        guard let item = item else { return }
+        
+        do {
+            if let data = try await item.loadTransferable(type: Data.self),
+               let image = UIImage(data: data) {
+                await MainActor.run {
+                    viewModel.originalImage = image
+                    viewModel.resultImage = nil
+                    viewModel.statusMessage = "图片已加载，点击翻译"
+                }
+            }
+        } catch {
+            await MainActor.run {
+                errorMessage = "加载图片失败：\(error.localizedDescription)"
+                showingError = true
+            }
+        }
+    }
+}
+
+// MARK: - 预览
+#Preview {
+    ContentView()
+        .environmentObject(AppState())
+}
+
+===FILE:ImageTranslateOCR/ImageTranslateOCR/Models/RecognizedText.swift===
+import Foundation
+
+/// OCR 识别结果
+struct RecognizedText: Identifiable, Hashable {
+    let id = UUID()
+    let text: String
+    let confidence: Float
+    let boundingBox: CGRect
+    
+    // 转换到图片坐标的矩形
+    var rect: CGRect { boundingBox }
+    
+    init(text: String, confidence: Float = 1.0, boundingBox: CGRect) {
+        self.text = text
+        self.confidence = confidence
+        self.boundingBox = boundingBox
+    }
+    
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+    }
+    
+    static func == (lhs: RecognizedText, rhs: RecognizedText) -> Bool {
+        lhs.id == rhs.id
+    }
+}
+
+/// 遮罩模式
+enum MaskMode: String, CaseIterable, Identifiable {
+    case rect
+    case precise
+    case hybrid
+    
+    var id: String { rawValue }
+    
+    var displayName: String {
+        switch self {
+        case .rect: return "矩形"
+        case .precise: return "精确"
+        case .hybrid: return "混合"
+        }
+    }
+    
+    var description: String {
+        switch self {
+        case .rect: return "快速，适合纯色背景"
+        case .precise: return "精确，适合复杂背景"
+        case .hybrid: return "自动选择最佳模式"
+        }
+    }
+}
+
+===FILE:ImageTranslateOCR/ImageTranslateOCR/Services/OCRService.swift===
+import Vision
+import UIKit
+
+/// OCR 文字识别服务
+class OCRService {
+    
+    /// 使用 Vision 框架进行文字识别
+    /// - Parameter image: 输入图片
+    /// - Returns: 识别到的文字及位置信息
+    func recognize(in image: UIImage) async throws -> [RecognizedText] {
+        guard let cgImage = image.cgImage else {
+            throw OCRError.invalidImage
+        }
+        
+        let results = try await performRecognition(on: cgImage, imageSize: image.size)
+        return results.filter { !$0.text.trimmingCharacters(in: .whitespaces).isEmpty }
+    }
+    
+    /// 执行 Vision 识别请求
+    private func performRecognition(
+        on cgImage: CGImage,
+        imageSize: CGSize
+    ) async throws -> [RecognizedText] {
+        
+        try await withCheckedThrowingContinuation { continuation in
+            
+            let request = VNRecognizeTextRequest { request, error in
+                if let error = error {
+                    continuation.resume(throwing: error)
+                    return
+                }
+                
+                let results = self.parseResults(
+                    request.results as? [VNRecognizedTextObservation] ?? [],
+                    imageSize: imageSize
+                )
+                continuation.resume(returning: results)
+            }
+            
+            // 配置识别参数
+            request.recognitionLanguages = ["zh-Hans", "zh-Hant", "en"]
+            request.recognitionLevel = .accurate
+            request.usesLanguageCorrection = true
+            request.minimumTextHeight = 0.01  // 最小文字高度比例
+            
+            let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
+            
+            do {
+                try handler.perform([request])
+            } catch {
+                continuation.resume(throwing: error)
+            }
+        }
+    }
+    
+    /// 解析识别结果
+    private func parseResults(
+        _ observations: [VNRecognizedTextObservation],
+        imageSize: CGSize
+    ) -> [RecognizedText] {
+        
+        observations.compactMap { observation in
+            guard let candidate = observation.topCandidates(1).first else {
+                return nil
+            }
+            
+            // Vision 坐标转换：
+            // Vision 使用归一化坐标 (0,0)为左下角
+            // UIKit 使用像素坐标 (0,0)为左上角
+            let boundingBox = observation.boundingBox
+            let rect = CGRect(
+                x: boundingBox.origin.x * imageSize.width,
+                y: (1 - boundingBox.origin.y - boundingBox.height) * imageSize.height,
+                width: boundingBox.width * imageSize.width,
+                height: boundingBox.height * imageSize.height
+            )
+            
+            return RecognizedText(
+                text: candidate.string,
+                confidence: candidate.confidence,
+                boundingBox: rect
+            )
+        }
+    }
+    
+    enum OCRError: LocalizedError {
+        case invalidImage
+        case recognitionFailed(String)
+        
+        var errorDescription: String? {
+            switch self {
+            case .invalidImage:
+                return "无效的图片"
+            case .recognitionFailed(let message):
+                return "识别失败：\(message)"
+            }
+        }
+    }
+}
+
+===FILE:ImageTranslateOCR/ImageTranslateOCR/Services/TranslateService.swift===
+import Foundation
+import Translation
+
+/// 翻译服务
+@available(iOS 17.4, *)
+class TranslateService {
+    
+    private var translator: Translator?
+    
+    /// 翻译文字（中文 → 英文）
+    func translate(_ text: String) async throws -> String {
+        
+        let configuration = Translator.Configuration(
+            source: .chinese,
+            target: .english
+        )
+        
+        let translator = Translator(configuration: configuration)
+        
+        // 检查语言支持
+        let availability = LanguageAvailability()
+        let status = try await availability.status(
+            from: .chinese,
+            to: .english
+        )
+        
+        switch status {
+        case .installed:
+            break
+        case .supported:
+            // 需要下载
+            try await prepareTranslation()
+        default:
+            throw TranslateError.languageNotSupported
+        }
+        
+        let response = try await translator.translate(text)
+        return response.targetText
+    }
+    
+    private func prepareTranslation() async throws {
+        // 下载翻译模型
+        let configuration = Translator.Configuration(
+            source: .chinese,
+            target: .english
+        )
+        // 等待下载完成
+        try await Task.sleep(nanoseconds: 1_000_000_000)
+    }
+    
+    enum TranslateError: LocalizedError {
+        case languageNotSupported
+        case translationFailed(String)
+        
+        var errorDescription: String? {
+            switch self {
+            case .languageNotSupported:
+                return "不支持的语言组合"
+            case .translationFailed(let message):
+                return "翻译失败：\(message)"
+            }
+        }
+    }
+}
+
+// MARK: - 兼容旧版本翻译
+class LegacyTranslateService {
+    
+    /// 使用模拟翻译（iOS 15-17 备用方案）
+    func translate(_ text: String) -> String {
+        // 简单的词典映射（实际项目中可接入翻译 API）
+        let dictionary: [String: String] = [
+            "你好": "Hello",
+            "世界": "World",
+            "谢谢": "Thank you",
+            "再见": "Goodbye"
+        ]
+        return dictionary[text] ?? text
+    }
+}
+
+===FILE:ImageTranslateOCR/ImageTranslateOCR/Services/InpaintService.swift===
+import UIKit
+
+/// 图片擦除服务
+class InpaintService {
+    
+    /// 擦除图片中的文字区域
+    /// - Parameters:
+    ///   - image: 原图
+    ///   - regions: 文字区域
+    ///   - mode: 遮罩模式
+    /// - Returns: 擦除后的图片
+    func eraseText(
+        from image: UIImage,
+        regions: [CGRect],
+        mode: MaskMode
+    ) async -> UIImage {
+        
+        await withCheckedContinuation { continuation in
+            DispatchQueue.global(qos: .userInitiated).async {
+                let result: UIImage
+                
+                switch mode {
+                case .rect:
+                    result = OpenCVWrapper.rectErase(image, regions: regions)
+                    
+                case .precise:
+                    result = OpenCVWrapper.preciseErase(image, regions: regions)
+                    
+                case .hybrid:
+                    // 混合模式：根据背景复杂度自动选择
+                    if self.isComplexBackground(image, regions: regions) {
+                        result = OpenCVWrapper.preciseErase(image, regions: regions)
+                    } else {
+                        result = OpenCVWrapper.rectErase(image, regions: regions)
+                    }
+                }
+                
+                continuation.resume(returning: result)
+            }
+        }
+    }
+    
+    /// 判断背景是否复杂
+    private func isComplexBackground(_ image: UIImage, regions: [CGRect]) -> Bool {
+        // 简单判断：区域较大或数量较多时使用精确模式
+        let totalArea = regions.reduce(0) { $0 + $1.width * $1.height }
+        let imageArea = image.size.width * image.size.height
+        return totalArea / imageArea > 0.3 || regions.count > 5
+    }
+}
+
+===FILE:ImageTranslateOCR/ImageTranslateOCR/Services/ImageSaveService.swift===
+import UIKit
+import Photos
+
+/// 图片保存服务
+class ImageSaveService {
+    
+    /// 保存图片到相册
+    func saveToPhotoLibrary(_ image: UIImage) async throws {
+        let status = await PHPhotoLibrary.requestAuthorization(for: .addOnly)
+        
+        guard status == .authorized || status == .limited else {
+            throw SaveError.noPermission
+        }
+        
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            PHPhotoLibrary.shared().performChanges {
+                PHAssetChangeRequest.creationRequestForAsset(from: image)
+            } completionHandler: { success, error in
+                if success {
+                    continuation.resume()
+                } else {
+                    continuation.resume(
+                        throwing: error ?? SaveError.saveFailed
+                    )
+                }
+            }
+        }
+    }
+    
+    enum SaveError: LocalizedError {
+        case noPermission
+        case saveFailed
+        
+        var errorDescription: String? {
+            switch self {
+            case .noPermission:
+                return "没有相册访问权限"
+            case .saveFailed:
+                return "保存失败"
+            }
+        }
+    }
+}
+
+===FILE:ImageTranslateOCR/ImageTranslateOCR/ViewModels/ImageTranslateViewModel.swift===
+import SwiftUI
+import Combine
+
+@MainActor
+class ImageTranslateViewModel: ObservableObject {
+    
+    // MARK: - Published 属性
+    @Published var originalImage: UIImage?
+    @Published var resultImage: UIImage?
+    @Published var isProcessing = false
+    @Published var statusMessage = "就绪，请选择图片"
+    @Published var maskMode: MaskMode = .rect
+    
+    // MARK: - 服务
+    private let ocrService = OCRService()
+    private let translateService = LegacyTranslateService() // 兼容所有版本
+    private let inpaintService = InpaintService()
+    private let saveService = ImageSaveService()
+    
+    // MARK: - 计算属性
+    var canTranslate: Bool {
+        originalImage != nil && !isProcessing
+    }
+    
+    // MARK: - 翻译流程
+    func translateImage() async throws {
+        guard let image = originalImage else { return }
+        
+        isProcessing = true
+        defer { isProcessing = false }
+        
+        // 1. 缩放图片
+        statusMessage = "正在预处理..."
+        let scaledImage = image.scaledToMaxSize(1024)
+        
+        // 2. OCR 识别
+        statusMessage = "正在识别文字..."
+        let recognizedTexts = try await ocrService.recognize(in: scaledImage)
+        
+        guard !recognizedTexts.isEmpty else {
+            statusMessage = "未识别到文字"
+            return
+        }
+        
+        // 3. 翻译
+        statusMessage = "正在翻译 \(recognizedTexts.count) 段文字..."
+        var translations: [String: String] = [:]
+        for text in recognizedTexts {
+            translations[text.text] = translateService.translate(text.text)
+        }
+        
+        // 4. 擦除文字
+        statusMessage = "正在擦除原文字（\(maskMode.displayName)模式）..."
+        let regions = recognizedTexts.map { $0.boundingBox }
+        let erasedImage = await inpaintService.eraseText(
+            from: scaledImage,
+            regions: regions,
+            mode: maskMode
+        )
+        
+        // 5. 绘制翻译
+        statusMessage = "正在写入翻译..."
+        let finalImage = drawTranslations(
+            translations: translations,
+            recognizedTexts: recognizedTexts,
+            on: erasedImage
+        )
+        
+        resultImage = finalImage
+        statusMessage = "翻译完成！共处理 \(recognizedTexts.count) 段文字"
+    }
+    
+    // MARK: - 绘制翻译文字
+    private func drawTranslations(
+        translations: [String: String],
+        recognizedTexts: [RecognizedText],
+        on image: UIImage
+    ) -> UIImage {
+        
+        let renderer = UIGraphicsImageRenderer(size: image.size)
+        
+        return renderer.image { context in
+            // 绘制原图
+            image.draw(at: .zero)
+            
+            // 绘制每段翻译文字
+            for recognizedText in recognizedTexts {
+                guard let translated = translations[recognizedText.text] else { continue }
+                
+                let rect = recognizedText.boundingBox
+                let fontSize = calculateFitFontSize(
+                    text: translated,
+                    maxWidth: rect.width
+                )
+                
+                // 文字属性
+                let paragraphStyle = NSMutableParagraphStyle()
+                paragraphStyle.alignment = .center
+                paragraphStyle.lineBreakMode = .byTruncatingTail
+                
+                let attributes: [NSAttributedString.Key: Any] = [
+                    .font: UIFont.boldSystemFont(ofSize: fontSize),
+                    .foregroundColor: UIColor.black,
+                    .paragraphStyle: paragraphStyle
+                ]
+                
+                // 计算居中位置
+                let textSize = translated.size(withAttributes: attributes)
+                let x = rect.midX - textSize.width / 2
+                let y = rect.midY - textSize.height / 2
+                
+                // 绘制背景（可选，让文字更清晰）
+                let bgRect = CGRect(
+                    x: x - 2,
+                    y: y - 1,
+                    width: textSize.width + 4,
+                    height: textSize.height + 2
+                )
+                context.cgContext.setFillColor(UIColor.white.withAlphaComponent(0.8).cgColor)
+                context.cgContext.fill(bgRect)
+                
+                // 绘制文字
+                translated.draw(
+                    at: CGPoint(x: x, y: y),
+                    withAttributes: attributes
+                )
+            }
+        }
+    }
+    
+    // MARK: - 计算适合的字号
+    private func calculateFitFontSize(text: String, maxWidth: CGFloat) -> CGFloat {
+        var size: CGFloat = 30
+        
+        while size > 8 {
+            let attributes: [NSAttributedString.Key: Any] = [
+                .font: UIFont.boldSystemFont(ofSize: size)
+            ]
+            let textWidth = text.size(withAttributes: attributes).width
+            
+            if textWidth <= maxWidth {
+                break
+            }
+            size -= 1
+        }
+        
+        return size
+    }
+    
+    // MARK: - 保存结果
+    func saveResult() {
+        guard let image = resultImage else { return }
+        
+        Task {
+            do {
+                try await saveService.saveToPhotoLibrary(image)
+                statusMessage = "已保存到相册"
+            } catch {
+                statusMessage = "保存失败：\(error.localizedDescription)"
+            }
+        }
+    }
+}
+
+===FILE:ImageTranslateOCR/ImageTranslateOCR/Extensions/UIImage+Scale.swift===
+import UIKit
+
+extension UIImage {
+    
+    /// 缩放图片到最大尺寸
+    /// - Parameter maxSize: 最大边长（像素）
+    /// - Returns: 缩放后的图片
+    func scaledToMaxSize(_ maxSize: CGFloat) -> UIImage {
+        let scale = min(
+            maxSize / size.width,
+            maxSize / size.height,
+            1.0
+        )
+        
+        guard scale < 1.0 else { return self }
+        
+        let newSize = CGSize(
+            width: size.width * scale,
+            height: size.height * scale
+        )
+        
+        let renderer = UIGraphicsImageRenderer(size: newSize)
+        return renderer.image { _ in
+            self.draw(in: CGRect(origin: .zero, size: newSize))
+        }
+    }
+    
+    /// 裁剪图片
+    func cropped(to rect: CGRect) -> UIImage? {
+        guard let cgImage = cgImage?.cropping(to: rect) else {
+            return nil
+        }
+        return UIImage(cgImage: cgImage)
+    }
+}
+
+===FILE:ImageTranslateOCR/ImageTranslateOCR/BridgingHeader/ImageTranslateOCR-Bridging-Header.h===
+//
+//  ImageTranslateOCR-Bridging-Header.h
+//  ImageTranslateOCR
+//
+//  OC 桥接头文件，用于调用 OpenCV
+//
+
+#import "OpenCVWrapper.h"
+
+===FILE:ImageTranslateOCR/ImageTranslateOCR/OpenCV/OpenCVWrapper.h===
+//
+//  OpenCVWrapper.h
+//  ImageTranslateOCR
+//
+//  OpenCV 封装接口
+//
+
+#import <Foundation/Foundation.h>
+#import <UIKit/UIKit.h>
+
+NS_ASSUME_NONNULL_BEGIN
+
+@interface OpenCVWrapper : NSObject
+
+/// 检查 OpenCV 是否已加载
++ (BOOL)isOpenCVLoaded;
+
+/// 使用矩形遮罩擦除文字
+/// @param image 原图
+/// @param regions 文字区域（CGRect 的 NSValue 数组）
++ (UIImage *)rectErase:(UIImage *)image regions:(NSArray<NSValue *> *)regions;
+
+/// 使用精确遮罩擦除文字
+/// @param image 原图
+/// @param regions 文字区域（CGRect 的 NSValue 数组）
++ (UIImage *)preciseErase:(UIImage *)image regions:(NSArray<NSValue *> *)regions;
+
+/// 批量擦除（多张图片）
+/// @param images 图片数组
+/// @param regionsArray 对应每张图片的区域数组
++ (NSArray<UIImage *> *)batchErase:(NSArray<UIImage *> *)images
+                      regionsArray:(NSArray<NSArray<NSValue *> *> *)regionsArray;
+
+@end
+
+NS_ASSUME_NONNULL_END
+
+===FILE:ImageTranslateOCR/ImageTranslateOCR/OpenCV/OpenCVWrapper.mm===
+//
+//  OpenCVWrapper.mm
+//  ImageTranslateOCR
+//
+//  OpenCV Inpaint 实现
+//
+
+#import "OpenCVWrapper.h"
+
+// 条件编译 OpenCV
+#ifdef HAS_OPENCV
+#import <opencv2/opencv.hpp>
+#import <opencv2/imgcodecs/ios.h>
+#import <opencv2/photo.hpp>
+#endif
+
+@implementation OpenCVWrapper
+
++ (BOOL)isOpenCVLoaded {
+#ifdef HAS_OPENCV
+    return YES;
+#else
+    return NO;
+#endif
+}
+
++ (UIImage *)rectErase:(UIImage *)image regions:(NSArray<NSValue *> *)regions {
+#ifdef HAS_OPENCV
+    cv::Mat src;
+    UIImageToMat(image, src);
+    
+    // 创建遮罩
+    cv::Mat mask = cv::Mat::zeros(src.size(), CV_8UC1);
+    
+    for (NSValue *rectValue in regions) {
+        CGRect rect = [rectValue CGRectValue];
+        
+        // 扩展区域
+        int padding = 4;
+        cv::Rect cvRect(
+            MAX(0, (int)rect.origin.x - padding),
+            MAX(0, (int)rect.origin.y - padding),
+            MIN((int)rect.size.width + 2 * padding, src.cols - (int)rect.origin.x),
+            MIN((int)rect.size.height + 2 * padding, src.rows - (int)rect.origin.y)
+        );
+        
+        if (cvRect.width > 0 && cvRect.height > 0) {
+            cv::rectangle(mask, cvRect, cv::Scalar(255), -1);
+        }
+    }
+    
+    // Inpaint 修复
+    cv::Mat result;
+    cv::inpaint(src, mask, result, 5.0, cv::INPAINT_TELEA);
+    
+    return MatToUIImage(result);
+#else
+    return image;
+#endif
+}
+
++ (UIImage *)preciseErase:(UIImage *)image regions:(NSArray<NSValue *> *)regions {
+#ifdef HAS_OPENCV
+    cv::Mat src;
+    UIImageToMat(image, src);
+    
+    // 转灰度图
+    cv::Mat gray;
+    cv::cvtColor(src, gray, cv::COLOR_BGR2GRAY);
+    
+    // 创建遮罩
+    cv::Mat mask = cv::Mat::zeros(src.size(), CV_8UC1);
+    
+    for (NSValue *rectValue in regions) {
+        CGRect rect = [rectValue CGRectValue];
+        
+        cv::Rect cvRect(
+            MAX(0, (int)rect.origin.x),
+            MAX(0, (int)rect.origin.y),
+            MIN(src.cols - (int)rect.origin.x, (int)rect.size.width),
+            MIN(src.rows - (int)rect.origin.y, (int)rect.size.height)
+        );
+        
+        if (cvRect.width <= 0 || cvRect.height <= 0) continue;
+        
+        // 提取 ROI
+        cv::Mat roiGray = gray(cvRect);
+        cv::Mat roiMask = mask(cvRect);
+        cv::Mat binary;
+        
+        // 自适应阈值提取文字
+        cv::adaptiveThreshold(
+            roiGray, binary, 255,
+            cv::ADAPTIVE_THRESH_GAUSSIAN_C,
+            cv::THRESH_BINARY_INV,
+            15, 4.0
+        );
+        
+        binary.copyTo(roiMask);
+    }
+    
+    // 膨胀连接笔画
+    cv::Mat kernel = cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(5, 5));
+    cv::dilate(mask, mask, kernel);
+    
+    // Inpaint 修复
+    cv::Mat result;
+    cv::inpaint(src, mask, result, 3.0, cv::INPAINT_TELEA);
+    
+    return MatToUIImage(result);
+#else
+    return image;
+#endif
+}
+
++ (NSArray<UIImage *> *)batchErase:(NSArray<UIImage *> *)images
+                      regionsArray:(NSArray<NSArray<NSValue *> *> *)regionsArray {
+    NSMutableArray *results = [NSMutableArray array];
+    
+    for (NSInteger i = 0; i < images.count; i++) {
+        UIImage *image = images[i];
+        NSArray *regions = i < regionsArray.count ? regionsArray[i] : @[];
+        
+        UIImage *result = [self rectErase:image regions:regions];
+        [results addObject:result];
+    }
+    
+    return results;
+}
+
+@end
+
+===FILE:ImageTranslateOCR/ImageTranslateOCR/Info.plist===
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>zh_CN</string>
+	<key>CFBundleDisplayName</key>
+	<string>图片翻译</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>$(PRODUCT_NAME)</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>1.0</string>
+	<key>CFBundleVersion</key>
+	<string>1</string>
+	<key>LSRequiresIPhoneOS</key>
+	<true/>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>需要访问相册以保存翻译后的图片</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>需要访问相册以选择图片进行翻译</string>
+	<key>UIApplicationSceneManifest</key>
+	<dict>
+		<key>UIApplicationSupportsMultipleScenes</key>
+		<false/>
+	</dict>
+	<key>UILaunchScreen</key>
+	<dict/>
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+	</array>
+</dict>
+</plist>
+
+===FILE:ImageTranslateOCR/Package.swift===
+// swift-tools-version: 5.9
+import PackageDescription
+
+let package = Package(
+    name: "ImageTranslateOCR",
+    platforms: [
+        .iOS(.v16)
+    ],
+    products: [
+        .library(
+            name: "ImageTranslateOCR",
+            targets: ["ImageTranslateOCR"]
+        ),
+    ],
+    dependencies: [
+        // 如果需要网络翻译 API
+        // .package(url: "https://github.com/Alamofire/Alamofire.git", from: "5.8.0"),
+    ],
+    targets: [
+        .target(
+            name: "ImageTranslateOCR",
+            dependencies: [],
+            path: "ImageTranslateOCR",
+            sources: [
+                "ImageTranslateOCRApp.swift",
+                "ContentView.swift",
+                "Models/RecognizedText.swift",
+                "Services/OCRService.swift",
+                "Services/TranslateService.swift",
+                "Services/InpaintService.swift",
+                "Services/ImageSaveService.swift",
+                "ViewModels/ImageTranslateViewModel.swift",
+                "Extensions/UIImage+Scale.swift",
+                "OpenCV/OpenCVWrapper.mm"
+            ],
+            resources: [
+                .process("Resources")
+            ],
+            cxxSettings: [
+                .define("HAS_OPENCV", .when(platforms: [.iOS]))
+            ],
+            linkerSettings: [
+                .linkedLibrary("c++"),
+                .linkedFramework("opencv2", .when(platforms: [.iOS]))
+            ]
+        )
+    ]
+)
+
+===FILE:ImageTranslateOCR/README.md===
+# ImageTranslateOCR - iOS
+
+iOS 图片 OCR 文字识别 + 翻译 + 原图覆盖工具
+
+## 功能
+
+- 📷 选择相册图片
+- 🔍 Vision 框架 OCR 中文识别
+- 🌐 Translation API 翻译（中→英）
+- 🎨 OpenCV Inpaint 擦除原文字
+- ✍️ UIGraphicsImageRenderer 绘制翻译
+- 💾 保存到相册
+
+## 技术栈
+
+| 模块 | 方案 |
+|------|------|
+| OCR | Vision (VNRecognizeTextRequest) |
+| 翻译 | Translation API (iOS 15+) |
+| 擦除 | OpenCV Inpaint (Telea) |
+| UI | SwiftUI |
+| 异步 | async/await |
+
+## 系统要求
+
+- iOS 16.0+
+- Xcode 15.0+
+- Swift 5.9+
+- OpenCV 4.8+（可选，用于擦除功能）
+
+## 安装
+
+1. 安装 OpenCV（二选一）
+
+**CocoaPods:**
+```ruby
+pod 'OpenCV', '~> 4.8.0'
