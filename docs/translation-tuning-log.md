@@ -269,6 +269,26 @@ ML Kit 中文 OCR 模型仍使用官方 bundled `16.0.1`。官方说明输入字
 - `:app:assembleDebug`：通过。
 - 新 OCR 和遮罩效果：待使用相同样本进行真机截图对比。
 
+## 2026-07-21：Android 依赖严格锁定
+
+提交：`e658304 fix(build): strictly pin Android-compatible dependencies`
+
+### 问题
+
+依赖声明再次被升级为 AndroidX Core 1.19.0。该版本要求 compileSdk 37 和 AGP 9.1，而当前稳定构建环境为 compileSdk 35 和 AGP 8.7.3；Lifecycle 2.11.0 与 Coroutines 1.11.0 还会引入 Kotlin 2.2 元数据，与 Kotlin 插件 2.0.21 不兼容。
+
+### 处理
+
+- 使用 Gradle `strictly` 将 AndroidX Core 锁定为 1.16.0。
+- 将 Lifecycle 严格锁定为 2.9.2。
+- 将 Coroutines 严格锁定为 1.8.1。
+- 严格约束会阻止传递依赖或 IDE 升级建议将构建静默提升到不兼容版本。
+
+### 验证
+
+- `dependencyInsight` 确认 `core-ktx:{strictly 1.16.0} -> 1.16.0`。
+- 执行 `:app:clean :app:assembleDebug`，构建通过。
+
 ## 后续记录模板
 
 每次调校追加以下内容，不覆盖已有记录：
