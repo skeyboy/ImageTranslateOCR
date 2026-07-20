@@ -42,6 +42,7 @@ class TranslateManager {
         targetLanguage: String = TranslateLanguage.ENGLISH
     ): String {
         val inputText = sanitizeOcrText(text)
+        if (shouldPreserveSourceText(inputText, targetLanguage)) return inputText
         val sourceLanguage = identifySourceLanguage(inputText, targetLanguage)
         if (sourceLanguage == targetLanguage) return inputText
 
@@ -53,6 +54,22 @@ class TranslateManager {
         }
         require(isValidTranslation(result, targetLanguage)) { "翻译结果包含异常字符" }
         return result
+    }
+
+    private fun shouldPreserveSourceText(text: String, targetLanguage: String): Boolean {
+        if (targetLanguage != TranslateLanguage.ENGLISH) return false
+        val visible = text.filterNot(Char::isWhitespace)
+        if (visible.isEmpty()) return true
+
+        val hanCount = visible.count(::isHanCharacter)
+        val latinCount = visible.count { it in 'A'..'Z' || it in 'a'..'z' }
+        val digitCount = visible.count(Char::isDigit)
+        if (hanCount == 0 && latinCount > 0) return true
+
+        val meaningfulCount = hanCount + latinCount + digitCount
+        val isNumericIdentifier = digitCount >= 4 && hanCount <= 1 &&
+            meaningfulCount > 0 && digitCount.toFloat() / meaningfulCount >= 0.65f
+        return isNumericIdentifier
     }
 
     private suspend fun translateInSegments(translator: Translator, text: String): String {
