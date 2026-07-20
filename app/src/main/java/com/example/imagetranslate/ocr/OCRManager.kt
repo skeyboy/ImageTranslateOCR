@@ -12,6 +12,8 @@ import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.chinese.ChineseTextRecognizerOptions
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
+import androidx.core.graphics.createBitmap
+import androidx.core.graphics.get
 
 data class RecognizedText(
     val text: String,
@@ -19,18 +21,26 @@ data class RecognizedText(
 )
 
 class OCRManager {
+    private data class OcrCandidate(
+        val result: RecognizedText,
+        val pass: Int,
+        val reliability: Float
+    )
+
     private val recognizer = TextRecognition.getClient(
         ChineseTextRecognizerOptions.Builder().build()
     )
 
     suspend fun recognize(bitmap: Bitmap): List<RecognizedText> {
-        val primary = recognizeSingle(bitmap).filter(::isUsefulText).toMutableList()
+        val candidates = recognizeSingle(bitmap)
+            .filter(::isUsefulText)
+            .mapTo(mutableListOf()) { OcrCandidate(it, PASS_ORIGINAL, 0.25f) }
 
         val contrasted = createContrastedBitmap(bitmap)
         try {
-            recognizeSingle(contrasted).filter(::isUsefulText).forEach { candidate ->
-                mergeCandidate(primary, candidate, bitmap, darkRegionsOnly = false)
-            }
+            recognizeSingle(contrasted)
+                .filter(::isUsefulText)
+                .mapTo(candidates) { OcrCandidate(it, PASS_CONTRAST, 0.15f) }
         } catch (_: Exception) {
             // The original pass remains usable if an enhancement pass fails.
         } finally {
@@ -39,38 +49,50 @@ class OCRManager {
 
         val inverted = createInvertedBitmap(bitmap)
         try {
-            recognizeSingle(inverted).filter(::isUsefulText).forEach { candidate ->
-                mergeCandidate(primary, candidate, bitmap, darkRegionsOnly = true)
-            }
+            recognizeSingle(inverted)
+                .filter(::isUsefulText)
+                .filter { isDarkRegion(bitmap, it.bounds) }
+                .mapTo(candidates) { OcrCandidate(it, PASS_INVERTED, 0.1f) }
         } catch (_: Exception) {
             // The original and contrast passes remain usable.
         } finally {
             inverted.recycle()
         }
 
-        return primary.sortedWith(compareBy({ it.bounds.top }, { it.bounds.left }))
+        return fuseCandidates(candidates, bitmap)
+            .sortedWith(compareBy({ it.bounds.top }, { it.bounds.left }))
     }
 
-    private fun mergeCandidate(
-        results: MutableList<RecognizedText>,
-        candidate: RecognizedText,
-        bitmap: Bitmap,
-        darkRegionsOnly: Boolean
-    ) {
-        val isDark = isDarkRegion(bitmap, candidate.bounds)
-        if (darkRegionsOnly && !isDark) return
-        val overlappingIndex = results.indexOfFirst {
-            overlapRatio(it.bounds, candidate.bounds) >= 0.45f
-        }
-        if (overlappingIndex < 0) {
-            results.add(candidate)
-            return
+    private fun fuseCandidates(
+        candidates: List<OcrCandidate>,
+        bitmap: Bitmap
+    ): List<RecognizedText> {
+        val clusters = mutableListOf<MutableList<OcrCandidate>>()
+        for (candidate in candidates) {
+            val cluster = clusters.firstOrNull { existing ->
+                existing.any { overlapRatio(it.result.bounds, candidate.result.bounds) >= 0.45f }
+            }
+            if (cluster == null) {
+                clusters.add(mutableListOf(candidate))
+            } else {
+                cluster.add(candidate)
+            }
         }
 
-        val existing = results[overlappingIndex]
-        val requiredImprovement = if (darkRegionsOnly) 0.08f else 0.15f
-        if (textQuality(candidate.text) > textQuality(existing.text) + requiredImprovement) {
-            results[overlappingIndex] = candidate
+        return clusters.mapNotNull { cluster ->
+            val hasOriginal = cluster.any { it.pass == PASS_ORIGINAL }
+            val hasMultiplePasses = cluster.map { it.pass }.distinct().size >= 2
+            val isDark = cluster.any { isDarkRegion(bitmap, it.result.bounds) }
+            if (!hasOriginal && !hasMultiplePasses && !isDark) return@mapNotNull null
+
+            cluster.maxByOrNull { candidate ->
+                val agreement = cluster
+                    .filterNot { it === candidate }
+                    .sumOf { other ->
+                        textSimilarity(candidate.result.text, other.result.text).toDouble()
+                    }.toFloat()
+                textQuality(candidate.result.text) + candidate.reliability + agreement * 0.3f
+            }?.result
         }
     }
 
@@ -96,7 +118,7 @@ class OCRManager {
         }
 
     private fun createInvertedBitmap(bitmap: Bitmap): Bitmap {
-        val output = Bitmap.createBitmap(bitmap.width, bitmap.height, Bitmap.Config.ARGB_8888)
+        val output = createBitmap(bitmap.width, bitmap.height)
         val inversion = ColorMatrix(
             floatArrayOf(
                 -1f, 0f, 0f, 0f, 255f,
@@ -117,7 +139,7 @@ class OCRManager {
     }
 
     private fun createContrastedBitmap(bitmap: Bitmap): Bitmap {
-        val output = Bitmap.createBitmap(bitmap.width, bitmap.height, Bitmap.Config.ARGB_8888)
+        val output = createBitmap(bitmap.width, bitmap.height)
         val grayscale = ColorMatrix().apply { setSaturation(0f) }
         val contrast = ColorMatrix(
             floatArrayOf(
@@ -164,6 +186,36 @@ class OCRManager {
             replacementPenalty - boundaryPenalty - mixedScriptPenalty
     }
 
+    private fun textSimilarity(first: String, second: String): Float {
+        val normalizedFirst = normalizeForComparison(first)
+        val normalizedSecond = normalizeForComparison(second)
+        val maximumLength = maxOf(normalizedFirst.length, normalizedSecond.length)
+        if (maximumLength == 0) return 0f
+        return 1f - editDistance(normalizedFirst, normalizedSecond).toFloat() / maximumLength
+    }
+
+    private fun normalizeForComparison(text: String): String = text
+        .filterNot(Char::isWhitespace)
+        .trim { !it.isLetterOrDigit() && !isHanCharacter(it) }
+        .lowercase()
+
+    private fun editDistance(first: String, second: String): Int {
+        var previous = IntArray(second.length + 1) { it }
+        for (firstIndex in first.indices) {
+            val current = IntArray(second.length + 1)
+            current[0] = firstIndex + 1
+            for (secondIndex in second.indices) {
+                current[secondIndex + 1] = minOf(
+                    current[secondIndex] + 1,
+                    previous[secondIndex + 1] + 1,
+                    previous[secondIndex] + if (first[firstIndex] == second[secondIndex]) 0 else 1
+                )
+            }
+            previous = current
+        }
+        return previous[second.length]
+    }
+
     private fun isHanCharacter(character: Char): Boolean =
         Character.UnicodeScript.of(character.code) == Character.UnicodeScript.HAN
 
@@ -185,7 +237,7 @@ class OCRManager {
         var samples = 0
         for (y in top until bottom step step) {
             for (x in left until right step step) {
-                val color = bitmap.getPixel(x, y)
+                val color = bitmap[x, y]
                 luminanceTotal += (Color.red(color) * 299 + Color.green(color) * 587 +
                     Color.blue(color) * 114) / 1000
                 samples++
@@ -196,5 +248,11 @@ class OCRManager {
 
     fun close() {
         recognizer.close()
+    }
+
+    private companion object {
+        const val PASS_ORIGINAL = 0
+        const val PASS_CONTRAST = 1
+        const val PASS_INVERTED = 2
     }
 }

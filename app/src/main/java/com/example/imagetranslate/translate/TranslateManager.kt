@@ -58,7 +58,7 @@ class TranslateManager {
         text: String,
         targetLanguage: String = TranslateLanguage.ENGLISH
     ): String {
-        val normalized = text.replace(Regex("[\\s·•]+"), "")
+        val normalized = normalizeForMatching(text)
         if (targetLanguage == TranslateLanguage.ENGLISH && text.any(::isHanCharacter)) {
             translateKnownChineseUi(normalized)?.let { return it }
         }
@@ -77,6 +77,14 @@ class TranslateManager {
         ).trim()
         require(isValidTranslation(result, targetLanguage)) { "翻译结果包含异常字符" }
         return result
+    }
+
+    private fun normalizeForMatching(text: String): String {
+        val compact = text.replace(Regex("[\\s·•]+"), "")
+        if (!compact.any(::isHanCharacter) || compact.length > 10) return compact
+        return compact.trim { character ->
+            !character.isLetterOrDigit() && !isHanCharacter(character)
+        }
     }
 
     private suspend fun identifySourceLanguage(text: String, targetLanguage: String): String {
