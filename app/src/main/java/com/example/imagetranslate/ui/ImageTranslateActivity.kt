@@ -266,13 +266,31 @@ class ImageTranslateActivity : AppCompatActivity() {
         val right = bounds.right.coerceIn(left + 1, bitmap.width)
         val bottom = bounds.bottom.coerceIn(top + 1, bitmap.height)
         val histogram = IntArray(4096)
+        val backgroundPadding = maxOf(3, (bottom - top) / 3)
+        val outerLeft = (left - backgroundPadding).coerceAtLeast(0)
+        val outerTop = (top - backgroundPadding).coerceAtLeast(0)
+        val outerRight = (right + backgroundPadding).coerceAtMost(bitmap.width)
+        val outerBottom = (bottom + backgroundPadding).coerceAtMost(bitmap.height)
+        var backgroundSamples = 0
 
-        for (y in top until bottom) {
-            for (x in left until right) {
+        for (y in outerTop until outerBottom) {
+            for (x in outerLeft until outerRight) {
+                if (x in left until right && y in top until bottom) continue
                 val color = bitmap.getPixel(x, y)
                 val bucket = (Color.red(color) / 16 shl 8) or
                     (Color.green(color) / 16 shl 4) or (Color.blue(color) / 16)
                 histogram[bucket]++
+                backgroundSamples++
+            }
+        }
+        if (backgroundSamples == 0) {
+            for (y in top until bottom) {
+                for (x in left until right) {
+                    val color = bitmap.getPixel(x, y)
+                    val bucket = (Color.red(color) / 16 shl 8) or
+                        (Color.green(color) / 16 shl 4) or (Color.blue(color) / 16)
+                    histogram[bucket]++
+                }
             }
         }
 
@@ -324,7 +342,7 @@ class ImageTranslateActivity : AppCompatActivity() {
 
         val backgroundLuminance = (backgroundRed * 299 + backgroundGreen * 587 +
             backgroundBlue * 114) / 1000
-        val foreground = if (count == 0) {
+        val estimatedForeground = if (count == 0) {
             if (backgroundLuminance < 145) Color.WHITE else Color.BLACK
         } else {
             Color.rgb(
@@ -332,6 +350,13 @@ class ImageTranslateActivity : AppCompatActivity() {
                 (greenTotal / count).toInt(),
                 (blueTotal / count).toInt()
             )
+        }
+        val foregroundLuminance = (Color.red(estimatedForeground) * 299 +
+            Color.green(estimatedForeground) * 587 + Color.blue(estimatedForeground) * 114) / 1000
+        val foreground = if (kotlin.math.abs(foregroundLuminance - backgroundLuminance) < 90) {
+            if (backgroundLuminance < 145) Color.WHITE else Color.BLACK
+        } else {
+            estimatedForeground
         }
         return TextAppearance(
             foregroundColor = foreground,
