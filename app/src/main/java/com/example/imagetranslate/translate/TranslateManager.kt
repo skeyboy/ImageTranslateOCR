@@ -43,6 +43,7 @@ class TranslateManager {
     suspend fun translate(text: String): String {
         val normalized = text.replace(Regex("[\\s·•]+"), "")
         uiTranslations[normalized]?.let { return it }
+        findCloseUiTranslation(normalized)?.let { return it }
         if (normalized.length <= 8) {
             when {
                 normalized.contains("分享") -> return "Share"
@@ -55,8 +56,50 @@ class TranslateManager {
         ) {
             return "Wake on power connection"
         }
-        return translateWithModel(text)
+        val result = translateWithModel(text).trim()
+        require(isValidEnglishTranslation(result)) { "翻译结果包含异常字符" }
+        return result
     }
+
+    private fun findCloseUiTranslation(text: String): String? {
+        if (text.length !in 2..8) return null
+        return uiTranslations.entries
+            .asSequence()
+            .filter { it.key.length <= 8 }
+            .map { it to editDistance(text, it.key) }
+            .filter { (_, distance) -> distance <= 1 }
+            .minByOrNull { (_, distance) -> distance }
+            ?.first
+            ?.value
+    }
+
+    private fun editDistance(first: String, second: String): Int {
+        var previous = IntArray(second.length + 1) { it }
+        for (firstIndex in first.indices) {
+            val current = IntArray(second.length + 1)
+            current[0] = firstIndex + 1
+            for (secondIndex in second.indices) {
+                current[secondIndex + 1] = minOf(
+                    current[secondIndex] + 1,
+                    previous[secondIndex + 1] + 1,
+                    previous[secondIndex] + if (first[firstIndex] == second[secondIndex]) 0 else 1
+                )
+            }
+            previous = current
+        }
+        return previous[second.length]
+    }
+
+    private fun isValidEnglishTranslation(text: String): Boolean {
+        if (text.isBlank() || text.any(::isHanCharacter)) return false
+        val visibleCharacters = text.count { !it.isWhitespace() }
+        if (visibleCharacters == 0) return false
+        val meaningfulCharacters = text.count { it.isLetterOrDigit() }
+        return meaningfulCharacters.toFloat() / visibleCharacters >= 0.6f
+    }
+
+    private fun isHanCharacter(character: Char): Boolean =
+        Character.UnicodeScript.of(character.code) == Character.UnicodeScript.HAN
 
     private suspend fun translateWithModel(text: String): String = suspendCancellableCoroutine { cont ->
         translator.translate(text)

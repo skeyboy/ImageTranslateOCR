@@ -128,12 +128,19 @@ class ImageTranslateActivity : AppCompatActivity() {
                 }
 
                 binding.tvStatus.text = "擦除原文字..."
+                val translatedRegions = regions.filter { it.translated }
                 val usePrecise = binding.switchPreciseMask.isChecked
                 val erased = withContext(Dispatchers.Default) {
-                    if (usePrecise) {
-                        inpainter.eraseWithPreciseMask(scaled, texts.map { it.bounds })
+                    if (translatedRegions.isEmpty()) {
+                        scaled.copy(Bitmap.Config.ARGB_8888, true)
+                    } else if (usePrecise) {
+                        inpainter.eraseWithPreciseMask(
+                            scaled, translatedRegions.map { it.source.bounds }
+                        )
                     } else {
-                        inpainter.eraseWithRectMask(scaled, texts.map { it.bounds })
+                        inpainter.eraseWithRectMask(
+                            scaled, translatedRegions.map { it.source.bounds }
+                        )
                     }
                 }
 
@@ -169,7 +176,7 @@ class ImageTranslateActivity : AppCompatActivity() {
             typeface = Typeface.DEFAULT
         }
 
-        for (region in regions) {
+        for (region in regions.filter { it.translated }) {
             val bounds = region.source.bounds
             if (bounds.width() <= 0 || bounds.height() <= 0) continue
 
