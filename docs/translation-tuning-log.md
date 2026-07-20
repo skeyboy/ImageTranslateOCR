@@ -214,6 +214,61 @@ Unsupported format or combination of formats
 - 被过滤区域是否正确保留完整中文原图，而不是留下擦除痕迹。
 - OCR 阶段增加的耗时是否处于可接受范围。
 
+## 2026-07-21：动态翻译、三路 OCR 与自适应擦除
+
+提交：`e6d6b27 feat(pipeline): add adaptive OCR translation and inpainting`
+
+### 动态翻译
+
+- 新增 ML Kit Language Identification 17.0.6。
+- 每段 OCR 文本先识别 BCP-47 源语言，目标语言当前统一为英文。
+- 已经是英文的文字保持不变；其他 ML Kit 支持语言按需创建“源语言 → 英文”Translator。
+- Translator 按语言对缓存，模型只在首次使用时下载，并在 Activity 销毁时统一关闭。
+- 短文本返回 `und` 时根据是否包含汉字回退为中文或目标语言。
+- 中文 UI 术语规则只在源语言为中文、目标语言为英文时启用。
+
+### OCR 精度增强
+
+- 原图 OCR：保留颜色和正常对比度信息，作为主要结果。
+- 灰度高对比 OCR：增强低对比度正文和浅灰系统文字。
+- 反色 OCR：增强深色按钮或深色背景上的浅色文字。
+- 三路候选根据矩形重叠率、背景明暗和文本质量评分合并。
+- 反色结果只允许补充深色区域，防止浅色页面出现重复 OCR 框。
+
+ML Kit 中文 OCR 模型仍使用官方 bundled `16.0.1`。官方说明输入字符应至少约 16×16 px，超过约 24×24 px 通常不会继续提高准确率，因此本项目把改进重点放在对比度和极性预处理，而不是继续无上限放大图片。
+
+### OpenCV Inpaint 增强
+
+- 精确遮罩同时生成深色文字遮罩和浅色文字遮罩。
+- 根据前景像素占区域面积的比例选择更接近文字笔画分布的遮罩。
+- 对极小区域保留 Otsu 阈值回退。
+- 选定遮罩后继续执行形态学膨胀和 Telea Inpaint。
+- 解决旧实现只使用 `THRESH_BINARY_INV`、对白字深底擦除不完整的问题。
+
+### 构建依赖整理
+
+- `compileSdk` 调整为本机已安装且 AGP 8.7.3 支持的 API 35。
+- 新增 `com.google.mlkit:language-id:17.0.6`。
+- AndroidX Core 固定为 1.16.0，Lifecycle 固定为 2.9.2。
+- Coroutines 固定为与 Kotlin 2.0.21 元数据兼容的 1.8.1。
+- 移除源码未使用的 OkHttp 和 Gson，避免无关依赖提升 compileSdk 要求。
+
+### 取舍与限制
+
+- 三次 OCR 会明显增加识别耗时，峰值内存包含两个依次创建并释放的同尺寸临时 Bitmap。
+- ML Kit Language Identification 对非常短的词可能返回 `und`，已增加文字脚本回退，但不能完全消除误判。
+- 目标语言目前仍是英文；后续可增加 UI 选择器，将目标语言作为参数传入现有动态翻译接口。
+- ML Kit 离线翻译适合常见表达，但不具备云端大模型的完整上下文能力。
+
+### 当前验证结果
+
+- `git diff --check`：通过。
+- `:app:checkDebugAarMetadata`：通过。
+- `:app:compileDebugKotlin`：通过。
+- `:app:compileDebugJavaWithJavac`：通过。
+- `:app:assembleDebug`：通过。
+- 新 OCR 和遮罩效果：待使用相同样本进行真机截图对比。
+
 ## 后续记录模板
 
 每次调校追加以下内容，不覆盖已有记录：
