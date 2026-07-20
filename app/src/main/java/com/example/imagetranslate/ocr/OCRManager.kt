@@ -8,6 +8,7 @@ import android.graphics.ColorMatrixColorFilter
 import android.graphics.Paint
 import android.graphics.Rect
 import com.google.mlkit.vision.common.InputImage
+import com.google.mlkit.vision.text.Text
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.chinese.ChineseTextRecognizerOptions
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -25,6 +26,11 @@ class OCRManager {
         val result: RecognizedText,
         val pass: Int,
         val reliability: Float
+    )
+
+    private data class ElementCandidate(
+        val text: String,
+        val bounds: Rect
     )
 
     private val recognizer = TextRecognition.getClient(
@@ -105,9 +111,7 @@ class OCRManager {
                     val results = mutableListOf<RecognizedText>()
                     for (block in visionText.textBlocks) {
                         for (line in block.lines) {
-                            line.boundingBox?.let { bounds ->
-                                results.add(RecognizedText(line.text, bounds))
-                            }
+                            refineLine(line)?.let(results::add)
                         }
                     }
                     continuation.resume(results)
@@ -116,6 +120,80 @@ class OCRManager {
                     if (continuation.isActive) continuation.resumeWith(Result.failure(e))
                 }
         }
+
+    private fun refineLine(line: Text.Line): RecognizedText? {
+        val lineBounds = line.boundingBox ?: return null
+        val elements = line.elements.mapNotNull { element ->
+            val bounds = element.boundingBox ?: return@mapNotNull null
+            val compact = element.text.filterNot(Char::isWhitespace)
+            if (compact.isEmpty()) return@mapNotNull null
+            val meaningful = compact.count { it.isLetterOrDigit() || isHanCharacter(it) }
+            if (meaningful.toFloat() / compact.length < 0.5f) return@mapNotNull null
+            ElementCandidate(element.text.trim(), bounds)
+        }.sortedBy { it.bounds.left }
+
+        if (elements.size < 2) return RecognizedText(line.text, lineBounds)
+        val gapThreshold = maxOf(2, (lineBounds.height() * 0.4f).toInt())
+        val groups = mutableListOf<MutableList<ElementCandidate>>()
+        for (element in elements) {
+            val current = groups.lastOrNull()
+            if (current == null || element.bounds.left - current.last().bounds.right > gapThreshold) {
+                groups.add(mutableListOf(element))
+            } else {
+                current.add(element)
+            }
+        }
+
+        val selected = groups.maxByOrNull { group ->
+            group.sumOf { candidate ->
+                candidate.text.count { it.isLetterOrDigit() || isHanCharacter(it) }
+            }
+        }?.toMutableList() ?: return RecognizedText(line.text, lineBounds)
+        trimDetachedEdgeGlyphs(selected, lineBounds.height())
+        if (selected.isEmpty()) return null
+
+        val bounds = Rect(selected.first().bounds)
+        selected.drop(1).forEach { bounds.union(it.bounds) }
+        val text = buildString {
+            selected.forEachIndexed { index, element ->
+                if (index > 0 && needsWordSeparator(selected[index - 1], element, lineBounds.height())) {
+                    append(' ')
+                }
+                append(element.text)
+            }
+        }
+        return RecognizedText(text, bounds)
+    }
+
+    private fun trimDetachedEdgeGlyphs(
+        elements: MutableList<ElementCandidate>,
+        lineHeight: Int
+    ) {
+        val detachedGap = maxOf(2, (lineHeight * 0.16f).toInt())
+        while (elements.size > 1 && isSingleGlyph(elements.first().text) &&
+            elements[1].bounds.left - elements[0].bounds.right > detachedGap
+        ) {
+            elements.removeAt(0)
+        }
+        while (elements.size > 1 && isSingleGlyph(elements.last().text) &&
+            elements.last().bounds.left - elements[elements.lastIndex - 1].bounds.right > detachedGap
+        ) {
+            elements.removeAt(elements.lastIndex)
+        }
+    }
+
+    private fun isSingleGlyph(text: String): Boolean =
+        text.count { !it.isWhitespace() } == 1
+
+    private fun needsWordSeparator(
+        previous: ElementCandidate,
+        current: ElementCandidate,
+        lineHeight: Int
+    ): Boolean {
+        val containsLatin = previous.text.any { it.isLetterOrDigit() && !isHanCharacter(it) } ||
+            current.text.any { it.isLetterOrDigit() && !isHanCharacter(it) }
+        return containsLatin && current.bounds.left - previous.bounds.right > lineHeight * 0.08f
+    }
 
     private fun createInvertedBitmap(bitmap: Bitmap): Bitmap {
         val output = createBitmap(bitmap.width, bitmap.height)
