@@ -356,6 +356,38 @@ ML Kit 中文 OCR 模型仍使用官方 bundled `16.0.1`。官方说明输入字
 - `:app:assembleDebug`：通过。
 - 修复后 `Edit` 标签截图：待复核。
 
+## 2026-07-21：清晰短中文未替换修复
+
+提交：`44a3432 fix(translation): classify short Han labels deterministically`
+
+### 对比素材
+
+原图局部：
+
+![分享按钮原图](assets/2026-07-21-share-untranslated-source.png)
+
+异常结果：
+
+![分享保持中文而其他按钮已翻译](assets/2026-07-21-share-untranslated-result.png)
+
+### 根因
+
+`分享` 已被 OCR 正确识别，颜色和绘制也正常；未替换发生在翻译阶段。Language Identification 对两个汉字的样本可能返回 `und` 或误判为其他东亚语言，导致中文 UI 术语没有执行，后续模型失败后触发了“保留原图”保护。相邻的 `编辑`、`删除` 恰好被正确判定，所以表现不一致。
+
+### 修改内容
+
+- 目标为英文且文本包含汉字时，优先执行已知中文 UI 术语匹配。
+- 汉字脚本 OCR 直接归类为中文，不再把极短文本交给统计语言识别。
+- 拉丁文、韩文等不含汉字的内容继续使用动态 Language Identification。
+- 将中文 UI 规则提取为单一函数，避免语言识别前后存在两套不同逻辑。
+
+### 验证
+
+- `git diff --check`：通过。
+- `:app:compileDebugKotlin`：通过。
+- `:app:assembleDebug`：通过。
+- 修复后 `Share` 截图：待复核。
+
 ## 后续记录模板
 
 每次调校追加以下内容，不覆盖已有记录：
