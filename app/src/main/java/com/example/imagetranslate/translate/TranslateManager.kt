@@ -150,6 +150,7 @@ class TranslateManager {
 
     private fun isValidTranslation(text: String, targetLanguage: String): Boolean {
         if (text.isBlank()) return false
+        if (text.first() in charArrayOf('<', '>', '=', '|')) return false
         if (targetLanguage == TranslateLanguage.ENGLISH && text.any(::isHanCharacter)) return false
         val visibleCharacters = text.count { !it.isWhitespace() }
         if (visibleCharacters == 0) return false

@@ -68,9 +68,8 @@ class OCRManager {
         }
 
         val existing = results[overlappingIndex]
-        if ((darkRegionsOnly && isDark) ||
-            textQuality(candidate.text) > textQuality(existing.text) + 0.15f
-        ) {
+        val requiredImprovement = if (darkRegionsOnly) 0.08f else 0.15f
+        if (textQuality(candidate.text) > textQuality(existing.text) + requiredImprovement) {
             results[overlappingIndex] = candidate
         }
     }
@@ -152,7 +151,17 @@ class OCRManager {
         if (compact.isEmpty()) return 0f
         val meaningful = compact.count { it.isLetterOrDigit() || isHanCharacter(it) }
         val replacementPenalty = compact.count { it == '\uFFFD' || it == '?' } * 0.2f
-        return meaningful.toFloat() / compact.length + minOf(compact.length, 12) / 60f - replacementPenalty
+        val boundaryPenalty = listOf(compact.first(), compact.last())
+            .count { !it.isLetterOrDigit() && !isHanCharacter(it) } * 0.2f
+        val hanCount = compact.count(::isHanCharacter)
+        val latinCount = compact.count { it in 'A'..'Z' || it in 'a'..'z' }
+        val mixedScriptPenalty = if (hanCount > 0 && latinCount > 0) {
+            minOf(hanCount, latinCount).toFloat() / compact.length * 0.3f
+        } else {
+            0f
+        }
+        return meaningful.toFloat() / compact.length + minOf(compact.length, 12) / 60f -
+            replacementPenalty - boundaryPenalty - mixedScriptPenalty
     }
 
     private fun isHanCharacter(character: Char): Boolean =
