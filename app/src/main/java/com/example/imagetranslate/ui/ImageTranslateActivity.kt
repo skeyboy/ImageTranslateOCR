@@ -66,6 +66,7 @@ class ImageTranslateActivity : AppCompatActivity() {
     }
 
     private fun setupListeners() {
+        binding.replacementOverlay.attachTo(binding.ivResult)
         binding.btnPickImage.setOnClickListener { pickImage.launch("image/*") }
 
         binding.btnTranslate.setOnClickListener {
@@ -78,6 +79,14 @@ class ImageTranslateActivity : AppCompatActivity() {
 
         binding.btnSave.setOnClickListener {
             processedBitmap?.let { saveImage(it) }
+        }
+
+        binding.checkShowMarkers.setOnCheckedChangeListener { _, isChecked ->
+            binding.replacementOverlay.visibility = if (isChecked) {
+                android.view.View.VISIBLE
+            } else {
+                android.view.View.GONE
+            }
         }
 
         resultGestureDetector = GestureDetector(
@@ -188,6 +197,7 @@ class ImageTranslateActivity : AppCompatActivity() {
                     )
                 }
                 binding.ivResult.setImageBitmap(processedBitmap)
+                updateReplacementMarkers()
                 val failedCount = regions.count { !it.translated }
                 binding.tvStatus.text = if (failedCount == 0) {
                     "完成，共替换 ${regions.size} 段文字；点击译文可切换原文"
@@ -310,6 +320,7 @@ class ImageTranslateActivity : AppCompatActivity() {
         }
         region.showingOriginal = !region.showingOriginal
         binding.ivResult.invalidate()
+        updateReplacementMarkers()
         binding.tvStatus.text = if (region.showingOriginal) {
             "该区域已显示原文"
         } else {
@@ -321,6 +332,20 @@ class ImageTranslateActivity : AppCompatActivity() {
     private fun clearReplacementRegions() {
         replacementRegions.forEach { it.translatedPatch.recycle() }
         replacementRegions = emptyList()
+        if (::binding.isInitialized) binding.replacementOverlay.setMarkers(emptyList())
+    }
+
+    private fun updateReplacementMarkers() {
+        binding.replacementOverlay.setMarkers(
+            replacementRegions.mapIndexed { index, region ->
+                ReplacementOverlayView.Marker(
+                    number = index + 1,
+                    bounds = region.bounds,
+                    showingOriginal = region.showingOriginal
+                )
+            }
+        )
+        binding.replacementOverlay.postInvalidate()
     }
 
     private fun createBitmapPatch(bitmap: Bitmap, bounds: Rect): Bitmap {

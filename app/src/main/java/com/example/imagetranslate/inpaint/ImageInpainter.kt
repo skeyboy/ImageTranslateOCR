@@ -38,16 +38,11 @@ class ImageInpainter {
             )
         }
 
-        val result = Mat()
-        Photo.inpaint(rgb, mask, result, 5.0, Photo.INPAINT_TELEA)
-
-        val outBitmap = Bitmap.createBitmap(bitmap.width, bitmap.height, Bitmap.Config.ARGB_8888)
-        Utils.matToBitmap(result, outBitmap)
+        val outBitmap = inpaintOntoOriginal(src, rgb, mask, 4.0, bitmap.width, bitmap.height)
 
         src.release()
         rgb.release()
         mask.release()
-        result.release()
 
         return outBitmap
     }
@@ -63,10 +58,10 @@ class ImageInpainter {
 
         val mask = Mat.zeros(src.size(), CvType.CV_8UC1)
         for (region in textRegions) {
-            val left = maxOf(0, region.left - 3)
-            val top = maxOf(0, region.top - 3)
-            val right = minOf(src.cols(), region.right + 3)
-            val bottom = minOf(src.rows(), region.bottom + 3)
+            val left = maxOf(0, region.left - 2)
+            val top = maxOf(0, region.top - 2)
+            val right = minOf(src.cols(), region.right + 2)
+            val bottom = minOf(src.rows(), region.bottom + 2)
             val validRect = CvRect(left, top, right - left, bottom - top)
             if (validRect.width <= 0 || validRect.height <= 0) continue
 
@@ -99,39 +94,62 @@ class ImageInpainter {
             val area = validRect.area()
             val darkRatio = Core.countNonZero(darkTextMask) / area
             val lightRatio = Core.countNonZero(lightTextMask) / area
-            val selectedMask = if (maskScore(lightRatio) < maskScore(darkRatio)) {
+            val lightScore = maskScore(lightRatio)
+            val darkScore = maskScore(darkRatio)
+            val selectedMask = if (lightScore < darkScore) {
                 lightTextMask
             } else {
                 darkTextMask
             }
-            selectedMask.copyTo(roiMask)
+            if (minOf(lightScore, darkScore) != Double.MAX_VALUE) {
+                selectedMask.copyTo(roiMask)
+            }
             darkTextMask.release()
             lightTextMask.release()
             roiGray.release()
             roiMask.release()
         }
 
-        val kernel = Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE, Size(5.0, 5.0))
+        val kernel = Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE, Size(3.0, 3.0))
         Imgproc.dilate(mask, mask, kernel)
         kernel.release()
         gray.release()
 
-        val result = Mat()
-        Photo.inpaint(rgb, mask, result, 3.0, Photo.INPAINT_TELEA)
-
-        val outBitmap = Bitmap.createBitmap(bitmap.width, bitmap.height, Bitmap.Config.ARGB_8888)
-        Utils.matToBitmap(result, outBitmap)
+        val outBitmap = inpaintOntoOriginal(src, rgb, mask, 2.0, bitmap.width, bitmap.height)
 
         src.release()
         rgb.release()
         mask.release()
-        result.release()
 
         return outBitmap
     }
 
     private fun maskScore(foregroundRatio: Double): Double {
-        if (foregroundRatio !in 0.01..0.55) return Double.MAX_VALUE
+        if (foregroundRatio !in 0.015..0.42) return Double.MAX_VALUE
         return kotlin.math.abs(foregroundRatio - 0.18)
+    }
+
+    private fun inpaintOntoOriginal(
+        sourceRgba: Mat,
+        sourceRgb: Mat,
+        mask: Mat,
+        radius: Double,
+        width: Int,
+        height: Int
+    ): Bitmap {
+        val repairedRgb = Mat()
+        Photo.inpaint(sourceRgb, mask, repairedRgb, radius, Photo.INPAINT_TELEA)
+        val repairedRgba = Mat()
+        Imgproc.cvtColor(repairedRgb, repairedRgba, Imgproc.COLOR_RGB2RGBA)
+        val composed = sourceRgba.clone()
+        repairedRgba.copyTo(composed, mask)
+
+        val output = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        Utils.matToBitmap(composed, output)
+
+        repairedRgb.release()
+        repairedRgba.release()
+        composed.release()
+        return output
     }
 }
