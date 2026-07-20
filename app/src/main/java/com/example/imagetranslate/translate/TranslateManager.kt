@@ -59,26 +59,16 @@ class TranslateManager {
         targetLanguage: String = TranslateLanguage.ENGLISH
     ): String {
         val normalized = text.replace(Regex("[\\s·•]+"), "")
+        if (targetLanguage == TranslateLanguage.ENGLISH && text.any(::isHanCharacter)) {
+            translateKnownChineseUi(normalized)?.let { return it }
+        }
         val sourceLanguage = identifySourceLanguage(text, targetLanguage)
         if (sourceLanguage == targetLanguage) return text
 
         if (sourceLanguage == TranslateLanguage.CHINESE &&
             targetLanguage == TranslateLanguage.ENGLISH
         ) {
-            uiTranslations[normalized]?.let { return it }
-            findCloseUiTranslation(normalized)?.let { return it }
-            if (normalized.length <= 8) {
-                when {
-                    normalized.contains("分享") -> return "Share"
-                    normalized.contains("编辑") -> return "Edit"
-                    normalized.contains("删除") -> return "Delete"
-                }
-            }
-            if (normalized.contains("连接") && normalized.contains("电源") &&
-                normalized.contains("唤醒")
-            ) {
-                return "Wake on power connection"
-            }
+            translateKnownChineseUi(normalized)?.let { return it }
         }
 
         ensureModel(sourceLanguage, targetLanguage)
@@ -90,6 +80,7 @@ class TranslateManager {
     }
 
     private suspend fun identifySourceLanguage(text: String, targetLanguage: String): String {
+        if (text.any(::isHanCharacter)) return TranslateLanguage.CHINESE
         val detected = suspendCancellableCoroutine { cont ->
             languageIdentifier.identifyLanguage(text)
                 .addOnSuccessListener { language -> if (cont.isActive) cont.resume(language) }
@@ -105,6 +96,24 @@ class TranslateManager {
         } else {
             targetLanguage
         }
+    }
+
+    private fun translateKnownChineseUi(normalized: String): String? {
+        uiTranslations[normalized]?.let { return it }
+        findCloseUiTranslation(normalized)?.let { return it }
+        if (normalized.length <= 8) {
+            when {
+                normalized.contains("分享") -> return "Share"
+                normalized.contains("编辑") -> return "Edit"
+                normalized.contains("删除") -> return "Delete"
+            }
+        }
+        if (normalized.contains("连接") && normalized.contains("电源") &&
+            normalized.contains("唤醒")
+        ) {
+            return "Wake on power connection"
+        }
+        return null
     }
 
     private fun translatorFor(sourceLanguage: String, targetLanguage: String): Translator {
