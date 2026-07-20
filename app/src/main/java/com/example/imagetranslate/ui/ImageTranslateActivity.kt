@@ -134,7 +134,7 @@ class ImageTranslateActivity : AppCompatActivity() {
 
                 binding.tvStatus.text = "写入翻译..."
                 withContext(Dispatchers.Default) {
-                    drawTexts(Canvas(erased), regions)
+                    drawTexts(Canvas(erased), scaled, regions)
                 }
 
                 processedBitmap = erased
@@ -157,41 +157,134 @@ class ImageTranslateActivity : AppCompatActivity() {
 
     private fun drawTexts(
         canvas: Canvas,
+        sourceBitmap: Bitmap,
         regions: List<TranslatedRegion>
     ) {
         val paint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.BLACK
-            typeface = Typeface.DEFAULT_BOLD
+            typeface = Typeface.DEFAULT
         }
 
         for (region in regions) {
             val bounds = region.source.bounds
             if (bounds.width() <= 0 || bounds.height() <= 0) continue
 
-            val horizontalPadding = maxOf(2, bounds.width() / 30)
-            val layoutWidth = maxOf(1, bounds.width() - horizontalPadding * 2)
-            var low = 6f
-            var high = maxOf(8f, bounds.height() * 1.1f)
+            val layoutBounds = findAvailableBounds(canvas, bounds, regions)
+            val horizontalPadding = maxOf(2, bounds.height() / 8)
+            val layoutWidth = maxOf(1, layoutBounds.width() - horizontalPadding * 2)
+            val preferredSize = maxOf(8f, bounds.height() * 0.9f)
+            val minimumSize = maxOf(8f, bounds.height() * 0.62f)
+            paint.color = estimateTextColor(sourceBitmap, bounds)
+
+            var low = minimumSize
+            var high = preferredSize
             var best = createTextLayout(region.translation, paint, layoutWidth, low)
-            repeat(10) {
-                val size = (low + high) / 2f
-                val candidate = createTextLayout(region.translation, paint, layoutWidth, size)
-                if (candidate.height <= bounds.height()) {
-                    low = size
+            repeat(8) {
+                val candidateSize = (low + high) / 2f
+                val candidate = createTextLayout(region.translation, paint, layoutWidth, candidateSize)
+                if (candidate.height <= layoutBounds.height()) {
+                    low = candidateSize
                     best = candidate
                 } else {
-                    high = size
+                    high = candidateSize
                 }
             }
 
-            val x = bounds.left + horizontalPadding.toFloat()
-            val y = bounds.top + (bounds.height() - best.height) / 2f
+            val x = layoutBounds.left + horizontalPadding.toFloat()
+            val y = bounds.top + maxOf(0f, (bounds.height() - best.getLineBottom(0)) / 2f)
             canvas.save()
-            canvas.clipRect(bounds)
+            canvas.clipRect(layoutBounds)
             canvas.translate(x, y)
             best.draw(canvas)
             canvas.restore()
         }
+    }
+
+    private fun findAvailableBounds(
+        canvas: Canvas,
+        bounds: Rect,
+        regions: List<TranslatedRegion>
+    ): Rect {
+        val gap = maxOf(3, bounds.height() / 6)
+        var right = canvas.width - gap
+        var bottom = minOf(canvas.height, bounds.bottom + bounds.height() * 3)
+
+        for (other in regions) {
+            val candidate = other.source.bounds
+            if (candidate === bounds) continue
+
+            val verticalOverlap = minOf(bounds.bottom, candidate.bottom) -
+                maxOf(bounds.top, candidate.top)
+            if (verticalOverlap > minOf(bounds.height(), candidate.height()) / 3 &&
+                candidate.left >= bounds.right
+            ) {
+                right = minOf(right, candidate.left - gap)
+            }
+
+            val horizontalOverlap = minOf(bounds.right, candidate.right) -
+                maxOf(bounds.left, candidate.left)
+            if (horizontalOverlap > minOf(bounds.width(), candidate.width()) / 3 &&
+                candidate.top >= bounds.bottom
+            ) {
+                bottom = minOf(bottom, candidate.top - gap)
+            }
+        }
+
+        right = maxOf(bounds.right, right)
+        bottom = maxOf(bounds.bottom, bottom)
+        return Rect(bounds.left, bounds.top, right, bottom)
+    }
+
+    private fun estimateTextColor(bitmap: Bitmap, bounds: Rect): Int {
+        val left = bounds.left.coerceIn(0, bitmap.width - 1)
+        val top = bounds.top.coerceIn(0, bitmap.height - 1)
+        val right = bounds.right.coerceIn(left + 1, bitmap.width)
+        val bottom = bounds.bottom.coerceIn(top + 1, bitmap.height)
+        val histogram = IntArray(4096)
+
+        for (y in top until bottom) {
+            for (x in left until right) {
+                val color = bitmap.getPixel(x, y)
+                val bucket = (Color.red(color) / 16 shl 8) or
+                    (Color.green(color) / 16 shl 4) or (Color.blue(color) / 16)
+                histogram[bucket]++
+            }
+        }
+
+        val backgroundBucket = histogram.indices.maxByOrNull { histogram[it] } ?: return Color.BLACK
+        val backgroundRed = ((backgroundBucket shr 8) and 0xF) * 16 + 8
+        val backgroundGreen = ((backgroundBucket shr 4) and 0xF) * 16 + 8
+        val backgroundBlue = (backgroundBucket and 0xF) * 16 + 8
+        var redTotal = 0L
+        var greenTotal = 0L
+        var blueTotal = 0L
+        var count = 0
+
+        for (y in top until bottom) {
+            for (x in left until right) {
+                val color = bitmap.getPixel(x, y)
+                val red = Color.red(color)
+                val green = Color.green(color)
+                val blue = Color.blue(color)
+                val redDifference = red - backgroundRed
+                val greenDifference = green - backgroundGreen
+                val blueDifference = blue - backgroundBlue
+                val distanceSquared = redDifference * redDifference +
+                    greenDifference * greenDifference + blueDifference * blueDifference
+                if (distanceSquared > 1600) {
+                    redTotal += red
+                    greenTotal += green
+                    blueTotal += blue
+                    count++
+                }
+            }
+        }
+
+        if (count == 0) return Color.BLACK
+        return Color.rgb(
+            (redTotal / count).toInt(),
+            (greenTotal / count).toInt(),
+            (blueTotal / count).toInt()
+        )
     }
 
     private fun createTextLayout(
@@ -202,9 +295,9 @@ class ImageTranslateActivity : AppCompatActivity() {
     ): StaticLayout {
         paint.textSize = textSize
         return StaticLayout.Builder.obtain(text, 0, text.length, paint, width)
-            .setAlignment(Layout.Alignment.ALIGN_CENTER)
+            .setAlignment(Layout.Alignment.ALIGN_NORMAL)
             .setIncludePad(false)
-            .setLineSpacing(0f, 0.92f)
+            .setLineSpacing(0f, 1f)
             .build()
     }
 
