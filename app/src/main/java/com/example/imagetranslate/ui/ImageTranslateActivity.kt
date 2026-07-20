@@ -4,6 +4,9 @@ import android.graphics.*
 import android.net.Uri
 import android.os.Bundle
 import android.provider.MediaStore
+import android.text.Layout
+import android.text.StaticLayout
+import android.text.TextPaint
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -12,6 +15,7 @@ import com.example.imagetranslate.App
 import com.example.imagetranslate.databinding.ActivityImageTranslateBinding
 import com.example.imagetranslate.inpaint.ImageInpainter
 import com.example.imagetranslate.ocr.OCRManager
+import com.example.imagetranslate.ocr.RecognizedText
 import com.example.imagetranslate.translate.TranslateManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -26,6 +30,12 @@ class ImageTranslateActivity : AppCompatActivity() {
 
     private var originalBitmap: Bitmap? = null
     private var processedBitmap: Bitmap? = null
+
+    private data class TranslatedRegion(
+        val source: RecognizedText,
+        val translation: String,
+        val translated: Boolean
+    )
 
     private val pickImage = registerForActivityResult(
         ActivityResultContracts.GetContent()
@@ -69,14 +79,21 @@ class ImageTranslateActivity : AppCompatActivity() {
     }
 
     private fun loadImage(uri: Uri) {
-        try {
-            originalBitmap = MediaStore.Images.Media.getBitmap(contentResolver, uri)
-            binding.ivOriginal.setImageBitmap(originalBitmap)
-            binding.ivResult.setImageBitmap(null)
-            processedBitmap = null
-            binding.tvStatus.text = "图片已加载"
-        } catch (e: Exception) {
-            Toast.makeText(this, "加载失败：${e.message}", Toast.LENGTH_SHORT).show()
+        lifecycleScope.launch {
+            try {
+                binding.tvStatus.text = "加载图片中..."
+                val bitmap = withContext(Dispatchers.IO) {
+                    MediaStore.Images.Media.getBitmap(contentResolver, uri)
+                }
+                originalBitmap = bitmap
+                binding.ivOriginal.setImageBitmap(bitmap)
+                binding.ivResult.setImageBitmap(null)
+                processedBitmap = null
+                binding.tvStatus.text = "图片已加载"
+            } catch (e: Exception) {
+                binding.tvStatus.text = "图片加载失败"
+                Toast.makeText(this@ImageTranslateActivity, "加载失败：${e.message}", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
@@ -87,7 +104,7 @@ class ImageTranslateActivity : AppCompatActivity() {
             binding.btnTranslate.isEnabled = false
 
             try {
-                val scaled = scaleBitmap(bitmap, 1024)
+                val scaled = withContext(Dispatchers.Default) { scaleBitmap(bitmap, 2048) }
                 val texts = ocrManager.recognize(scaled)
 
                 if (texts.isEmpty()) {
@@ -96,30 +113,38 @@ class ImageTranslateActivity : AppCompatActivity() {
                 }
 
                 binding.tvStatus.text = "翻译 ${texts.size} 段文字..."
-                val translations = mutableMapOf<String, String>()
-                for (item in texts) {
-                    translations[item.text] = try {
-                        translateManager.translate(item.text)
+                val regions = texts.mapIndexed { index, item ->
+                    binding.tvStatus.text = "翻译 ${index + 1}/${texts.size}..."
+                    try {
+                        TranslatedRegion(item, translateManager.translate(item.text), true)
                     } catch (e: Exception) {
-                        item.text
+                        TranslatedRegion(item, item.text, false)
                     }
                 }
 
                 binding.tvStatus.text = "擦除原文字..."
                 val usePrecise = binding.switchPreciseMask.isChecked
-                val erased = if (usePrecise) {
-                    inpainter.eraseWithPreciseMask(scaled, texts.map { it.bounds })
-                } else {
-                    inpainter.eraseWithRectMask(scaled, texts.map { it.bounds })
+                val erased = withContext(Dispatchers.Default) {
+                    if (usePrecise) {
+                        inpainter.eraseWithPreciseMask(scaled, texts.map { it.bounds })
+                    } else {
+                        inpainter.eraseWithRectMask(scaled, texts.map { it.bounds })
+                    }
                 }
 
                 binding.tvStatus.text = "写入翻译..."
-                val canvas = Canvas(erased)
-                drawTexts(canvas, texts, translations)
+                withContext(Dispatchers.Default) {
+                    drawTexts(Canvas(erased), regions)
+                }
 
                 processedBitmap = erased
                 binding.ivResult.setImageBitmap(processedBitmap)
-                binding.tvStatus.text = "完成！"
+                val failedCount = regions.count { !it.translated }
+                binding.tvStatus.text = if (failedCount == 0) {
+                    "完成，共替换 ${regions.size} 段文字"
+                } else {
+                    "完成，$failedCount 段翻译失败并保留原文"
+                }
             } catch (e: Exception) {
                 binding.tvStatus.text = "失败：${e.message}"
                 Toast.makeText(this@ImageTranslateActivity, e.message, Toast.LENGTH_LONG).show()
@@ -132,31 +157,55 @@ class ImageTranslateActivity : AppCompatActivity() {
 
     private fun drawTexts(
         canvas: Canvas,
-        texts: List<com.example.imagetranslate.ocr.RecognizedText>,
-        translations: Map<String, String>
+        regions: List<TranslatedRegion>
     ) {
-        val paint = Paint().apply {
+        val paint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.BLACK
-            isAntiAlias = true
             typeface = Typeface.DEFAULT_BOLD
-            textAlign = Paint.Align.CENTER
         }
 
-        for (item in texts) {
-            val translated = translations[item.text] ?: continue
-            val bounds = item.bounds
+        for (region in regions) {
+            val bounds = region.source.bounds
+            if (bounds.width() <= 0 || bounds.height() <= 0) continue
 
-            var size = 30f
-            paint.textSize = size
-            while (paint.measureText(translated) > bounds.width() && size > 8f) {
-                size -= 1f
-                paint.textSize = size
+            val horizontalPadding = maxOf(2, bounds.width() / 30)
+            val layoutWidth = maxOf(1, bounds.width() - horizontalPadding * 2)
+            var low = 6f
+            var high = maxOf(8f, bounds.height() * 1.1f)
+            var best = createTextLayout(region.translation, paint, layoutWidth, low)
+            repeat(10) {
+                val size = (low + high) / 2f
+                val candidate = createTextLayout(region.translation, paint, layoutWidth, size)
+                if (candidate.height <= bounds.height()) {
+                    low = size
+                    best = candidate
+                } else {
+                    high = size
+                }
             }
 
-            val x = bounds.centerX().toFloat()
-            val y = bounds.centerY().toFloat() - (paint.descent() + paint.ascent()) / 2
-            canvas.drawText(translated, x, y, paint)
+            val x = bounds.left + horizontalPadding.toFloat()
+            val y = bounds.top + (bounds.height() - best.height) / 2f
+            canvas.save()
+            canvas.clipRect(bounds)
+            canvas.translate(x, y)
+            best.draw(canvas)
+            canvas.restore()
         }
+    }
+
+    private fun createTextLayout(
+        text: String,
+        paint: TextPaint,
+        width: Int,
+        textSize: Float
+    ): StaticLayout {
+        paint.textSize = textSize
+        return StaticLayout.Builder.obtain(text, 0, text.length, paint, width)
+            .setAlignment(Layout.Alignment.ALIGN_CENTER)
+            .setIncludePad(false)
+            .setLineSpacing(0f, 0.92f)
+            .build()
     }
 
     private fun scaleBitmap(bitmap: Bitmap, maxSize: Int): Bitmap {
@@ -187,4 +236,3 @@ class ImageTranslateActivity : AppCompatActivity() {
         translateManager.close()
     }
 }
-

@@ -1,6 +1,8 @@
 package com.example.imagetranslate
 
 import android.app.Application
+import org.opencv.android.BaseLoaderCallback
+import org.opencv.android.LoaderCallbackInterface
 import org.opencv.android.OpenCVLoader
 
 class App : Application() {
@@ -18,10 +20,16 @@ class App : Application() {
         if (OpenCVLoader.initDebug()) {
             isOpenCVReady = true
         } else {
-            OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION, this) { _, _ ->
-                isOpenCVReady = true
+            val callback = object : BaseLoaderCallback(this) {
+                override fun onManagerConnected(status: Int) {
+                    if (status == LoaderCallbackInterface.SUCCESS) {
+                        isOpenCVReady = true
+                    } else {
+                        super.onManagerConnected(status)
+                    }
+                }
             }
+            OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION, this, callback)
         }
     }
 }
-

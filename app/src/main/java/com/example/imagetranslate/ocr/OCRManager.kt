@@ -23,6 +23,7 @@ class OCRManager {
             val image = InputImage.fromBitmap(bitmap, 0)
             recognizer.process(image)
                 .addOnSuccessListener { visionText ->
+                    if (!continuation.isActive) return@addOnSuccessListener
                     val results = mutableListOf<RecognizedText>()
                     for (block in visionText.textBlocks) {
                         for (line in block.lines) {
@@ -34,7 +35,7 @@ class OCRManager {
                     continuation.resume(results)
                 }
                 .addOnFailureListener { e ->
-                    continuation.resumeWith(Result.failure(e))
+                    if (continuation.isActive) continuation.resumeWith(Result.failure(e))
                 }
         }
 
@@ -42,4 +43,3 @@ class OCRManager {
         recognizer.close()
     }
 }
-

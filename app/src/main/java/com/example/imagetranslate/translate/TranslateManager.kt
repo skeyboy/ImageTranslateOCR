@@ -19,18 +19,17 @@ class TranslateManager {
     suspend fun downloadModelIfNeeded(): Boolean = suspendCancellableCoroutine { cont ->
         val conditions = DownloadConditions.Builder().requireWifi().build()
         translator.downloadModelIfNeeded(conditions)
-            .addOnSuccessListener { cont.resume(true) }
-            .addOnFailureListener { cont.resumeWithException(it) }
+            .addOnSuccessListener { if (cont.isActive) cont.resume(true) }
+            .addOnFailureListener { if (cont.isActive) cont.resumeWithException(it) }
     }
 
     suspend fun translate(text: String): String = suspendCancellableCoroutine { cont ->
         translator.translate(text)
-            .addOnSuccessListener { result -> cont.resume(result) }
-            .addOnFailureListener { e -> cont.resumeWithException(e) }
+            .addOnSuccessListener { result -> if (cont.isActive) cont.resume(result) }
+            .addOnFailureListener { e -> if (cont.isActive) cont.resumeWithException(e) }
     }
 
     fun close() {
         translator.close()
     }
 }
-
