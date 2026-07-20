@@ -164,6 +164,7 @@ class OCRManager {
     private fun isUsefulText(item: RecognizedText): Boolean {
         val compact = item.text.filterNot(Char::isWhitespace)
         if (compact.isEmpty() || item.bounds.width() < 2 || item.bounds.height() < 2) return false
+        if (compact.length == 1 && !isHanCharacter(compact.first())) return false
         val meaningful = compact.count { it.isLetterOrDigit() || isHanCharacter(it) }
         return meaningful.toFloat() / compact.length >= 0.6f
     }

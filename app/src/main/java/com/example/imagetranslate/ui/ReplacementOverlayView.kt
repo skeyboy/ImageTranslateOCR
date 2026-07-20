@@ -50,15 +50,15 @@ class ReplacementOverlayView @JvmOverloads constructor(
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         val target = imageView ?: return
-        val radius = 10f * density
+        val radius = 8f * density
         val point = FloatArray(2)
 
         for (marker in markers) {
-            point[0] = marker.bounds.left.toFloat()
-            point[1] = marker.bounds.top.toFloat()
+            point[0] = 0f
+            point[1] = marker.bounds.centerY().toFloat()
             target.imageMatrix.mapPoints(point)
-            point[0] += target.paddingLeft + radius
-            point[1] += target.paddingTop + radius
+            point[0] += target.paddingLeft + radius + 3f * density
+            point[1] += target.paddingTop
 
             circlePaint.color = if (marker.showingOriginal) 0xFF2E7D32.toInt() else 0xFFD32F2F.toInt()
             circlePaint.style = Paint.Style.FILL

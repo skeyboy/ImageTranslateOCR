@@ -38,7 +38,8 @@ class ImageTranslateActivity : AppCompatActivity() {
     private data class TranslatedRegion(
         val source: RecognizedText,
         val translation: String,
-        val translated: Boolean
+        val translated: Boolean,
+        val translationFailed: Boolean = false
     )
 
     private data class TextAppearance(
@@ -160,9 +161,11 @@ class ImageTranslateActivity : AppCompatActivity() {
                 val regions = texts.mapIndexed { index, item ->
                     binding.tvStatus.text = "翻译 ${index + 1}/${texts.size}..."
                     try {
-                        TranslatedRegion(item, translateManager.translate(item.text), true)
+                        val translatedText = translateManager.translate(item.text)
+                        val changed = translatedText.trim() != item.text.trim()
+                        TranslatedRegion(item, translatedText, changed)
                     } catch (e: Exception) {
-                        TranslatedRegion(item, item.text, false)
+                        TranslatedRegion(item, item.text, false, translationFailed = true)
                     }
                 }
 
@@ -198,9 +201,10 @@ class ImageTranslateActivity : AppCompatActivity() {
                 }
                 binding.ivResult.setImageBitmap(processedBitmap)
                 updateReplacementMarkers()
-                val failedCount = regions.count { !it.translated }
+                val failedCount = regions.count { it.translationFailed }
+                val replacedCount = regions.count { it.translated }
                 binding.tvStatus.text = if (failedCount == 0) {
-                    "完成，共替换 ${regions.size} 段文字；点击译文可切换原文"
+                    "完成，共替换 $replacedCount 段文字；点击译文可切换原文"
                 } else {
                     "完成，$failedCount 段翻译失败并保留原文；点击译文可切换"
                 }
