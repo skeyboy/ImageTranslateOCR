@@ -33,6 +33,11 @@ class OCRManager {
         val bounds: Rect
     )
 
+    private data class InkGroup(
+        val left: Int,
+        val right: Int
+    )
+
     private val recognizer = TextRecognition.getClient(
         ChineseTextRecognizerOptions.Builder().build()
     )
@@ -66,7 +71,111 @@ class OCRManager {
         }
 
         return fuseCandidates(candidates, bitmap)
+            .map { refineShortLabelByInk(bitmap, it) }
             .sortedWith(compareBy({ it.bounds.top }, { it.bounds.left }))
+    }
+
+    private fun refineShortLabelByInk(bitmap: Bitmap, item: RecognizedText): RecognizedText {
+        val compact = item.text.filterNot(Char::isWhitespace)
+        if (compact.length !in 2..10 || compact.none(::isHanCharacter)) return item
+        val bounds = item.bounds
+        if (bounds.width() < 4 || bounds.height() < 4) return item
+
+        val background = estimateBackgroundColor(bitmap, bounds)
+        val minimumInkPixels = maxOf(1, (bounds.height() * 0.08f).toInt())
+        val activeColumns = mutableListOf<Int>()
+        for (x in bounds.left.coerceAtLeast(0) until bounds.right.coerceAtMost(bitmap.width)) {
+            var inkPixels = 0
+            for (y in bounds.top.coerceAtLeast(0) until bounds.bottom.coerceAtMost(bitmap.height)) {
+                if (colorDistanceSquared(bitmap[x, y], background) >= 1600) inkPixels++
+            }
+            if (inkPixels >= minimumInkPixels) activeColumns.add(x)
+        }
+        if (activeColumns.size < 2) return item
+
+        val gapTolerance = maxOf(2, (bounds.height() * 0.18f).toInt())
+        val groups = mutableListOf<InkGroup>()
+        var groupStart = activeColumns.first()
+        var previous = groupStart
+        for (column in activeColumns.drop(1)) {
+            if (column - previous > gapTolerance + 1) {
+                groups.add(InkGroup(groupStart, previous + 1))
+                groupStart = column
+            }
+            previous = column
+        }
+        groups.add(InkGroup(groupStart, previous + 1))
+        if (groups.size < 2) return item
+
+        val selectedIndex = groups.indices.maxByOrNull { groups[it].right - groups[it].left }
+            ?: return item
+        val selected = groups[selectedIndex]
+        val selectedWidth = selected.right - selected.left
+        val nextWidest = groups.indices
+            .filter { it != selectedIndex }
+            .maxOfOrNull { groups[it].right - groups[it].left } ?: 0
+        if (selectedWidth < nextWidest * 1.2f) return item
+
+        val detectedLeadingGlyphs = groups.take(selectedIndex).sumOf {
+            estimateGlyphCount(it.right - it.left, bounds.height())
+        }
+        val detectedTrailingGlyphs = groups.drop(selectedIndex + 1).sumOf {
+            estimateGlyphCount(it.right - it.left, bounds.height())
+        }
+        val selectedGlyphCapacity = estimateGlyphCount(selectedWidth, bounds.height())
+        val removableGlyphs = maxOf(0, compact.length - selectedGlyphCapacity)
+        val leadingGlyphs = minOf(detectedLeadingGlyphs, removableGlyphs)
+        val trailingGlyphs = minOf(
+            detectedTrailingGlyphs,
+            removableGlyphs - leadingGlyphs
+        )
+        if (leadingGlyphs + trailingGlyphs >= compact.length) return item
+        val cleanedText = compact.drop(leadingGlyphs).dropLast(trailingGlyphs)
+        if (cleanedText.isEmpty()) return item
+        val padding = maxOf(1, bounds.height() / 12)
+        return RecognizedText(
+            text = cleanedText,
+            bounds = Rect(
+                (selected.left - padding).coerceAtLeast(0),
+                bounds.top,
+                (selected.right + padding).coerceAtMost(bitmap.width),
+                bounds.bottom
+            )
+        )
+    }
+
+    private fun estimateGlyphCount(width: Int, height: Int): Int =
+        maxOf(1, kotlin.math.round(width / maxOf(1f, height * 0.8f)).toInt())
+
+    private fun estimateBackgroundColor(bitmap: Bitmap, bounds: Rect): Int {
+        val padding = maxOf(2, bounds.height() / 4)
+        val left = (bounds.left - padding).coerceAtLeast(0)
+        val top = (bounds.top - padding).coerceAtLeast(0)
+        val right = (bounds.right + padding).coerceAtMost(bitmap.width)
+        val bottom = (bounds.bottom + padding).coerceAtMost(bitmap.height)
+        val histogram = IntArray(4096)
+        for (y in top until bottom) {
+            for (x in left until right) {
+                if (x in bounds.left until bounds.right && y in bounds.top until bounds.bottom) continue
+                val color = bitmap[x, y]
+                val bucket = (Color.red(color) / 16 shl 8) or
+                    (Color.green(color) / 16 shl 4) or (Color.blue(color) / 16)
+                histogram[bucket]++
+            }
+        }
+        val bucket = histogram.indices.maxByOrNull { histogram[it] } ?: return Color.WHITE
+        return Color.rgb(
+            ((bucket shr 8) and 0xF) * 16 + 8,
+            ((bucket shr 4) and 0xF) * 16 + 8,
+            (bucket and 0xF) * 16 + 8
+        )
+    }
+
+    private fun colorDistanceSquared(first: Int, second: Int): Int {
+        val red = Color.red(first) - Color.red(second)
+        val green = Color.green(first) - Color.green(second)
+        val blue = Color.blue(first) - Color.blue(second)
+        return red * red + green * green + blue * blue
     }
 
     private fun fuseCandidates(
