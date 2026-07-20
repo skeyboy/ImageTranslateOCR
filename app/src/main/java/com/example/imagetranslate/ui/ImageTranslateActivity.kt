@@ -7,6 +7,8 @@ import android.provider.MediaStore
 import android.text.Layout
 import android.text.StaticLayout
 import android.text.TextPaint
+import android.view.GestureDetector
+import android.view.MotionEvent
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -30,6 +32,8 @@ class ImageTranslateActivity : AppCompatActivity() {
 
     private var originalBitmap: Bitmap? = null
     private var processedBitmap: Bitmap? = null
+    private var replacementRegions = emptyList<ReplacementRegion>()
+    private lateinit var resultGestureDetector: GestureDetector
 
     private data class TranslatedRegion(
         val source: RecognizedText,
@@ -40,6 +44,12 @@ class ImageTranslateActivity : AppCompatActivity() {
     private data class TextAppearance(
         val foregroundColor: Int,
         val isDarkBackground: Boolean
+    )
+
+    private data class ReplacementRegion(
+        val bounds: Rect,
+        val translatedPatch: Bitmap,
+        var showingOriginal: Boolean = false
     )
 
     private val pickImage = registerForActivityResult(
@@ -69,6 +79,20 @@ class ImageTranslateActivity : AppCompatActivity() {
         binding.btnSave.setOnClickListener {
             processedBitmap?.let { saveImage(it) }
         }
+
+        resultGestureDetector = GestureDetector(
+            this,
+            object : GestureDetector.SimpleOnGestureListener() {
+                override fun onDown(event: MotionEvent): Boolean = true
+
+                override fun onSingleTapConfirmed(event: MotionEvent): Boolean {
+                    return toggleReplacementAt(event.x, event.y)
+                }
+            }
+        )
+        binding.ivResult.setOnTouchListener { _, event ->
+            resultGestureDetector.onTouchEvent(event)
+        }
     }
 
     private fun downloadModel() {
@@ -94,6 +118,7 @@ class ImageTranslateActivity : AppCompatActivity() {
                 binding.ivOriginal.setImageBitmap(bitmap)
                 binding.ivResult.setImageBitmap(null)
                 processedBitmap = null
+                clearReplacementRegions()
                 binding.tvStatus.text = "图片已加载"
             } catch (e: Exception) {
                 binding.tvStatus.text = "图片加载失败"
@@ -109,13 +134,12 @@ class ImageTranslateActivity : AppCompatActivity() {
             binding.btnTranslate.isEnabled = false
 
             try {
-                val scaled = withContext(Dispatchers.Default) { scaleBitmap(bitmap, 2048) }
-                val ocrBitmap = withContext(Dispatchers.Default) { createOcrBitmap(scaled) }
+                val ocrBitmap = withContext(Dispatchers.Default) { createOcrBitmap(bitmap) }
                 val texts = try {
                     val recognized = ocrManager.recognize(ocrBitmap)
-                    mapRecognizedBounds(recognized, ocrBitmap, scaled)
+                    mapRecognizedBounds(recognized, ocrBitmap, bitmap)
                 } finally {
-                    if (ocrBitmap !== scaled) ocrBitmap.recycle()
+                    if (ocrBitmap !== bitmap) ocrBitmap.recycle()
                 }
 
                 if (texts.isEmpty()) {
@@ -138,30 +162,37 @@ class ImageTranslateActivity : AppCompatActivity() {
                 val usePrecise = binding.switchPreciseMask.isChecked
                 val erased = withContext(Dispatchers.Default) {
                     if (translatedRegions.isEmpty()) {
-                        scaled.copy(Bitmap.Config.ARGB_8888, true)
+                        bitmap.copy(Bitmap.Config.ARGB_8888, true)
                     } else if (usePrecise) {
                         inpainter.eraseWithPreciseMask(
-                            scaled, translatedRegions.map { it.source.bounds }
+                            bitmap, translatedRegions.map { it.source.bounds }
                         )
                     } else {
                         inpainter.eraseWithRectMask(
-                            scaled, translatedRegions.map { it.source.bounds }
+                            bitmap, translatedRegions.map { it.source.bounds }
                         )
                     }
                 }
 
                 binding.tvStatus.text = "写入翻译..."
-                withContext(Dispatchers.Default) {
-                    drawTexts(Canvas(erased), scaled, regions)
+                val renderedRegions = withContext(Dispatchers.Default) {
+                    drawTexts(Canvas(erased), bitmap, regions)
                 }
 
                 processedBitmap = erased
+                clearReplacementRegions()
+                replacementRegions = renderedRegions.map { bounds ->
+                    ReplacementRegion(
+                        bounds = bounds,
+                        translatedPatch = createBitmapPatch(erased, bounds)
+                    )
+                }
                 binding.ivResult.setImageBitmap(processedBitmap)
                 val failedCount = regions.count { !it.translated }
                 binding.tvStatus.text = if (failedCount == 0) {
-                    "完成，共替换 ${regions.size} 段文字"
+                    "完成，共替换 ${regions.size} 段文字；点击译文可切换原文"
                 } else {
-                    "完成，$failedCount 段翻译失败并保留原文"
+                    "完成，$failedCount 段翻译失败并保留原文；点击译文可切换"
                 }
             } catch (e: Exception) {
                 binding.tvStatus.text = "失败：${e.message}"
@@ -177,10 +208,11 @@ class ImageTranslateActivity : AppCompatActivity() {
         canvas: Canvas,
         sourceBitmap: Bitmap,
         regions: List<TranslatedRegion>
-    ) {
+    ): List<Rect> {
         val paint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
             typeface = Typeface.DEFAULT
         }
+        val renderedRegions = mutableListOf<Rect>()
 
         for (region in regions.filter { it.translated }) {
             val bounds = region.source.bounds
@@ -228,7 +260,73 @@ class ImageTranslateActivity : AppCompatActivity() {
             canvas.translate(x, y)
             best.draw(canvas)
             canvas.restore()
+
+            val widestLine = (0 until best.lineCount)
+                .maxOfOrNull { best.getLineWidth(it) } ?: 0f
+            val textLeft = if (alignment == Layout.Alignment.ALIGN_CENTER) {
+                x + (layoutWidth - widestLine) / 2f
+            } else {
+                x
+            }
+            val restorePadding = maxOf(4, bounds.height() / 5)
+            renderedRegions.add(
+                Rect(
+                    minOf(bounds.left - restorePadding, textLeft.toInt()).coerceAtLeast(0),
+                    (bounds.top - restorePadding).coerceAtLeast(0),
+                    maxOf(bounds.right + restorePadding, (textLeft + widestLine).toInt())
+                        .coerceAtMost(canvas.width),
+                    maxOf(bounds.bottom + restorePadding, (y + best.height).toInt())
+                        .coerceAtMost(canvas.height)
+                )
+            )
         }
+        return renderedRegions
+    }
+
+    private fun toggleReplacementAt(viewX: Float, viewY: Float): Boolean {
+        val current = processedBitmap ?: return false
+        val original = originalBitmap ?: return false
+        if (current.width != original.width || current.height != original.height) return false
+
+        val inverse = Matrix()
+        if (!binding.ivResult.imageMatrix.invert(inverse)) return false
+        val imagePoint = floatArrayOf(
+            viewX - binding.ivResult.paddingLeft,
+            viewY - binding.ivResult.paddingTop
+        )
+        inverse.mapPoints(imagePoint)
+        val imageX = imagePoint[0].toInt()
+        val imageY = imagePoint[1].toInt()
+        val region = replacementRegions
+            .filter { it.bounds.contains(imageX, imageY) }
+            .minByOrNull { it.bounds.width().toLong() * it.bounds.height() }
+            ?: return false
+
+        val canvas = Canvas(current)
+        if (region.showingOriginal) {
+            canvas.drawBitmap(region.translatedPatch, null, region.bounds, null)
+        } else {
+            canvas.drawBitmap(original, region.bounds, region.bounds, null)
+        }
+        region.showingOriginal = !region.showingOriginal
+        binding.ivResult.invalidate()
+        binding.tvStatus.text = if (region.showingOriginal) {
+            "该区域已显示原文"
+        } else {
+            "该区域已恢复译文"
+        }
+        return true
+    }
+
+    private fun clearReplacementRegions() {
+        replacementRegions.forEach { it.translatedPatch.recycle() }
+        replacementRegions = emptyList()
+    }
+
+    private fun createBitmapPatch(bitmap: Bitmap, bounds: Rect): Bitmap {
+        val patch = Bitmap.createBitmap(bounds.width(), bounds.height(), Bitmap.Config.ARGB_8888)
+        Canvas(patch).drawBitmap(bitmap, -bounds.left.toFloat(), -bounds.top.toFloat(), null)
+        return patch
     }
 
     private fun findAvailableBounds(
@@ -443,6 +541,7 @@ class ImageTranslateActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
+        clearReplacementRegions()
         ocrManager.close()
         translateManager.close()
     }
