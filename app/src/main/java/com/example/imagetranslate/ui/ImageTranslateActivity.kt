@@ -37,6 +37,11 @@ class ImageTranslateActivity : AppCompatActivity() {
         val translated: Boolean
     )
 
+    private data class TextAppearance(
+        val foregroundColor: Int,
+        val isDarkBackground: Boolean
+    )
+
     private val pickImage = registerForActivityResult(
         ActivityResultContracts.GetContent()
     ) { uri: Uri? -> uri?.let { loadImage(it) } }
@@ -168,19 +173,33 @@ class ImageTranslateActivity : AppCompatActivity() {
             val bounds = region.source.bounds
             if (bounds.width() <= 0 || bounds.height() <= 0) continue
 
-            val layoutBounds = findAvailableBounds(canvas, bounds, regions)
-            val horizontalPadding = maxOf(2, bounds.height() / 8)
+            val appearance = estimateTextAppearance(sourceBitmap, bounds)
+            val isControlLabel = appearance.isDarkBackground &&
+                bounds.height() < canvas.height / 10
+            val layoutBounds = if (isControlLabel) {
+                Rect(bounds)
+            } else {
+                findAvailableBounds(canvas, bounds, regions)
+            }
+            val horizontalPadding = if (isControlLabel) 0 else maxOf(2, bounds.height() / 8)
             val layoutWidth = maxOf(1, layoutBounds.width() - horizontalPadding * 2)
             val preferredSize = maxOf(8f, bounds.height() * 0.9f)
             val minimumSize = maxOf(8f, bounds.height() * 0.62f)
-            paint.color = estimateTextColor(sourceBitmap, bounds)
+            paint.color = appearance.foregroundColor
 
             var low = minimumSize
             var high = preferredSize
-            var best = createTextLayout(region.translation, paint, layoutWidth, low)
+            val alignment = if (isControlLabel) {
+                Layout.Alignment.ALIGN_CENTER
+            } else {
+                Layout.Alignment.ALIGN_NORMAL
+            }
+            var best = createTextLayout(region.translation, paint, layoutWidth, low, alignment)
             repeat(8) {
                 val candidateSize = (low + high) / 2f
-                val candidate = createTextLayout(region.translation, paint, layoutWidth, candidateSize)
+                val candidate = createTextLayout(
+                    region.translation, paint, layoutWidth, candidateSize, alignment
+                )
                 if (candidate.height <= layoutBounds.height()) {
                     low = candidateSize
                     best = candidate
@@ -234,7 +253,7 @@ class ImageTranslateActivity : AppCompatActivity() {
         return Rect(bounds.left, bounds.top, right, bottom)
     }
 
-    private fun estimateTextColor(bitmap: Bitmap, bounds: Rect): Int {
+    private fun estimateTextAppearance(bitmap: Bitmap, bounds: Rect): TextAppearance {
         val left = bounds.left.coerceIn(0, bitmap.width - 1)
         val top = bounds.top.coerceIn(0, bitmap.height - 1)
         val right = bounds.right.coerceIn(left + 1, bitmap.width)
@@ -250,14 +269,31 @@ class ImageTranslateActivity : AppCompatActivity() {
             }
         }
 
-        val backgroundBucket = histogram.indices.maxByOrNull { histogram[it] } ?: return Color.BLACK
+        val backgroundBucket = histogram.indices.maxByOrNull { histogram[it] }
+            ?: return TextAppearance(Color.BLACK, false)
         val backgroundRed = ((backgroundBucket shr 8) and 0xF) * 16 + 8
         val backgroundGreen = ((backgroundBucket shr 4) and 0xF) * 16 + 8
         val backgroundBlue = (backgroundBucket and 0xF) * 16 + 8
+        var maximumDistanceSquared = 0
+        for (y in top until bottom) {
+            for (x in left until right) {
+                val color = bitmap.getPixel(x, y)
+                val redDifference = Color.red(color) - backgroundRed
+                val greenDifference = Color.green(color) - backgroundGreen
+                val blueDifference = Color.blue(color) - backgroundBlue
+                maximumDistanceSquared = maxOf(
+                    maximumDistanceSquared,
+                    redDifference * redDifference + greenDifference * greenDifference +
+                        blueDifference * blueDifference
+                )
+            }
+        }
+
         var redTotal = 0L
         var greenTotal = 0L
         var blueTotal = 0L
         var count = 0
+        val foregroundThreshold = maxOf(1600, (maximumDistanceSquared * 0.45f).toInt())
 
         for (y in top until bottom) {
             for (x in left until right) {
@@ -270,7 +306,7 @@ class ImageTranslateActivity : AppCompatActivity() {
                 val blueDifference = blue - backgroundBlue
                 val distanceSquared = redDifference * redDifference +
                     greenDifference * greenDifference + blueDifference * blueDifference
-                if (distanceSquared > 1600) {
+                if (distanceSquared >= foregroundThreshold) {
                     redTotal += red
                     greenTotal += green
                     blueTotal += blue
@@ -279,11 +315,20 @@ class ImageTranslateActivity : AppCompatActivity() {
             }
         }
 
-        if (count == 0) return Color.BLACK
-        return Color.rgb(
-            (redTotal / count).toInt(),
-            (greenTotal / count).toInt(),
-            (blueTotal / count).toInt()
+        val backgroundLuminance = (backgroundRed * 299 + backgroundGreen * 587 +
+            backgroundBlue * 114) / 1000
+        val foreground = if (count == 0) {
+            if (backgroundLuminance < 145) Color.WHITE else Color.BLACK
+        } else {
+            Color.rgb(
+                (redTotal / count).toInt(),
+                (greenTotal / count).toInt(),
+                (blueTotal / count).toInt()
+            )
+        }
+        return TextAppearance(
+            foregroundColor = foreground,
+            isDarkBackground = backgroundLuminance < 145
         )
     }
 
@@ -291,11 +336,12 @@ class ImageTranslateActivity : AppCompatActivity() {
         text: String,
         paint: TextPaint,
         width: Int,
-        textSize: Float
+        textSize: Float,
+        alignment: Layout.Alignment
     ): StaticLayout {
         paint.textSize = textSize
         return StaticLayout.Builder.obtain(text, 0, text.length, paint, width)
-            .setAlignment(Layout.Alignment.ALIGN_NORMAL)
+            .setAlignment(alignment)
             .setIncludePad(false)
             .setLineSpacing(0f, 1f)
             .build()

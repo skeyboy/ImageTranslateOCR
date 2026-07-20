@@ -20,6 +20,7 @@ class TranslateManager {
         "其他显示控件" to "Other display controls",
         "旋转设置" to "Rotation settings",
         "启用自动旋转" to "Auto-rotate",
+        "连接或断开电源时唤醒" to "Wake on power connection",
         "分享" to "Share",
         "编辑" to "Edit",
         "删除" to "Delete"
@@ -40,7 +41,20 @@ class TranslateManager {
     }
 
     suspend fun translate(text: String): String {
-        uiTranslations[text.replace(Regex("\\s+"), "")]?.let { return it }
+        val normalized = text.replace(Regex("[\\s·•]+"), "")
+        uiTranslations[normalized]?.let { return it }
+        if (normalized.length <= 8) {
+            when {
+                normalized.contains("分享") -> return "Share"
+                normalized.contains("编辑") -> return "Edit"
+                normalized.contains("删除") -> return "Delete"
+            }
+        }
+        if (normalized.contains("连接") && normalized.contains("电源") &&
+            normalized.contains("唤醒")
+        ) {
+            return "Wake on power connection"
+        }
         return translateWithModel(text)
     }
 
