@@ -42,9 +42,11 @@ class ImageTranslateActivity : AppCompatActivity() {
         val translationFailed: Boolean = false
     )
 
-    private data class TextAppearance(
+    private data class TextStyle(
         val foregroundColor: Int,
-        val isDarkBackground: Boolean
+        val isDarkBackground: Boolean,
+        val typeface: Typeface,
+        val fontSizeMultiplier: Float
     )
 
     private data class ReplacementRegion(
@@ -223,17 +225,15 @@ class ImageTranslateActivity : AppCompatActivity() {
         sourceBitmap: Bitmap,
         regions: List<TranslatedRegion>
     ): List<Rect> {
-        val paint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
-            typeface = Typeface.DEFAULT
-        }
+        val paint = TextPaint(Paint.ANTI_ALIAS_FLAG)
         val renderedRegions = mutableListOf<Rect>()
 
         for (region in regions.filter { it.translated }) {
             val bounds = region.source.bounds
             if (bounds.width() <= 0 || bounds.height() <= 0) continue
 
-            val appearance = estimateTextAppearance(sourceBitmap, bounds)
-            val isControlLabel = appearance.isDarkBackground &&
+            val style = estimateTextStyle(sourceBitmap, bounds, region.source.text)
+            val isControlLabel = style.isDarkBackground &&
                 bounds.height() < canvas.height / 10
             val layoutBounds = if (isControlLabel) {
                 Rect(bounds)
@@ -242,9 +242,10 @@ class ImageTranslateActivity : AppCompatActivity() {
             }
             val horizontalPadding = if (isControlLabel) 0 else maxOf(2, bounds.height() / 8)
             val layoutWidth = maxOf(1, layoutBounds.width() - horizontalPadding * 2)
-            val preferredSize = maxOf(8f, bounds.height() * 0.9f)
-            val minimumSize = maxOf(8f, bounds.height() * 0.62f)
-            paint.color = appearance.foregroundColor
+            val preferredSize = maxOf(8f, bounds.height() * style.fontSizeMultiplier)
+            val minimumSize = maxOf(8f, bounds.height() * 0.68f)
+            paint.color = style.foregroundColor
+            paint.typeface = style.typeface
 
             var low = minimumSize
             var high = preferredSize
@@ -393,7 +394,7 @@ class ImageTranslateActivity : AppCompatActivity() {
         return Rect(bounds.left, bounds.top, right, bottom)
     }
 
-    private fun estimateTextAppearance(bitmap: Bitmap, bounds: Rect): TextAppearance {
+    private fun estimateTextStyle(bitmap: Bitmap, bounds: Rect, sourceText: String): TextStyle {
         val left = bounds.left.coerceIn(0, bitmap.width - 1)
         val top = bounds.top.coerceIn(0, bitmap.height - 1)
         val right = bounds.right.coerceIn(left + 1, bitmap.width)
@@ -428,7 +429,7 @@ class ImageTranslateActivity : AppCompatActivity() {
         }
 
         val backgroundBucket = histogram.indices.maxByOrNull { histogram[it] }
-            ?: return TextAppearance(Color.BLACK, false)
+            ?: return TextStyle(Color.BLACK, false, Typeface.DEFAULT, 1.1f)
         val backgroundRed = ((backgroundBucket shr 8) and 0xF) * 16 + 8
         val backgroundGreen = ((backgroundBucket shr 4) and 0xF) * 16 + 8
         val backgroundBlue = (backgroundBucket and 0xF) * 16 + 8
@@ -452,6 +453,8 @@ class ImageTranslateActivity : AppCompatActivity() {
         var blueTotal = 0L
         var count = 0
         val foregroundThreshold = maxOf(1600, (maximumDistanceSquared * 0.45f).toInt())
+        val strokeThreshold = maxOf(900, (maximumDistanceSquared * 0.12f).toInt())
+        var strokePixels = 0
 
         for (y in top until bottom) {
             for (x in left until right) {
@@ -464,6 +467,7 @@ class ImageTranslateActivity : AppCompatActivity() {
                 val blueDifference = blue - backgroundBlue
                 val distanceSquared = redDifference * redDifference +
                     greenDifference * greenDifference + blueDifference * blueDifference
+                if (distanceSquared >= strokeThreshold) strokePixels++
                 if (distanceSquared >= foregroundThreshold) {
                     redTotal += red
                     greenTotal += green
@@ -491,10 +495,38 @@ class ImageTranslateActivity : AppCompatActivity() {
         } else {
             estimatedForeground
         }
-        return TextAppearance(
-            foregroundColor = foreground,
-            isDarkBackground = backgroundLuminance < 145
+        val area = maxOf(1, (right - left) * (bottom - top))
+        val strokeCoverage = strokePixels.toFloat() / area
+        val isBold = strokeCoverage >= 0.3f
+        val baseTypeface = if (looksLikeCode(sourceText)) {
+            Typeface.MONOSPACE
+        } else {
+            Typeface.SANS_SERIF
+        }
+        val typeface = Typeface.create(
+            baseTypeface,
+            if (isBold) Typeface.BOLD else Typeface.NORMAL
         )
+        return TextStyle(
+            foregroundColor = foreground,
+            isDarkBackground = backgroundLuminance < 145,
+            typeface = typeface,
+            fontSizeMultiplier = if (isBold) 1.05f else 1.12f
+        )
+    }
+
+    private fun looksLikeCode(text: String): Boolean {
+        val compact = text.filterNot(Char::isWhitespace)
+        if (compact.isEmpty()) return false
+        if (compact.any { Character.UnicodeScript.of(it.code) == Character.UnicodeScript.HAN }) {
+            return false
+        }
+        val hasAsciiContent = compact.any { it in 'A'..'Z' || it in 'a'..'z' || it.isDigit() }
+        if (!hasAsciiContent) return false
+        return text.contains('_') || text.contains("://") ||
+            (compact.length >= 4 && compact.all {
+                it.isLetterOrDigit() || it in charArrayOf('.', '/', '-', ':')
+            })
     }
 
     private fun createTextLayout(
