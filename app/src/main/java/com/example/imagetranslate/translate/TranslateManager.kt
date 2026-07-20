@@ -46,11 +46,25 @@ class TranslateManager {
         if (sourceLanguage == targetLanguage) return inputText
 
         ensureModel(sourceLanguage, targetLanguage)
-        val result = translateWithModel(
-            translatorFor(sourceLanguage, targetLanguage), inputText
-        ).trim()
+        val translator = translatorFor(sourceLanguage, targetLanguage)
+        var result = translateWithModel(translator, inputText).trim()
+        if (!isValidTranslation(result, targetLanguage) && inputText.length >= 16) {
+            result = translateInSegments(translator, inputText)
+        }
         require(isValidTranslation(result, targetLanguage)) { "翻译结果包含异常字符" }
         return result
+    }
+
+    private suspend fun translateInSegments(translator: Translator, text: String): String {
+        val segments = text.split(Regex("(?<=[，。；;！？!?])"))
+            .map(String::trim)
+            .filter(String::isNotEmpty)
+        if (segments.size <= 1) return translateWithModel(translator, text).trim()
+        val translatedSegments = mutableListOf<String>()
+        for (segment in segments) {
+            translatedSegments.add(translateWithModel(translator, segment).trim())
+        }
+        return translatedSegments.joinToString(" ")
     }
 
     private fun sanitizeOcrText(text: String): String {
@@ -93,11 +107,15 @@ class TranslateManager {
     private fun isValidTranslation(text: String, targetLanguage: String): Boolean {
         if (text.isBlank()) return false
         if (text.first() in charArrayOf('<', '>', '=', '|')) return false
-        if (targetLanguage == TranslateLanguage.ENGLISH && text.any(::isHanCharacter)) return false
         val visibleCharacters = text.count { !it.isWhitespace() }
         if (visibleCharacters == 0) return false
         val meaningfulCharacters = text.count { it.isLetterOrDigit() }
-        return meaningfulCharacters.toFloat() / visibleCharacters >= 0.6f
+        if (meaningfulCharacters.toFloat() / visibleCharacters < 0.6f) return false
+        if (targetLanguage == TranslateLanguage.ENGLISH) {
+            val hanCharacters = text.count(::isHanCharacter)
+            if (hanCharacters.toFloat() / visibleCharacters > 0.1f) return false
+        }
+        return true
     }
 
     private fun isHanCharacter(character: Char): Boolean =

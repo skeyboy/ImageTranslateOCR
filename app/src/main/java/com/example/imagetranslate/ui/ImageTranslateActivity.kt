@@ -110,7 +110,13 @@ class ImageTranslateActivity : AppCompatActivity() {
 
             try {
                 val scaled = withContext(Dispatchers.Default) { scaleBitmap(bitmap, 2048) }
-                val texts = ocrManager.recognize(scaled)
+                val ocrBitmap = withContext(Dispatchers.Default) { createOcrBitmap(scaled) }
+                val texts = try {
+                    val recognized = ocrManager.recognize(ocrBitmap)
+                    mapRecognizedBounds(recognized, ocrBitmap, scaled)
+                } finally {
+                    if (ocrBitmap !== scaled) ocrBitmap.recycle()
+                }
 
                 if (texts.isEmpty()) {
                     binding.tvStatus.text = "未识别到文字"
@@ -383,6 +389,40 @@ class ImageTranslateActivity : AppCompatActivity() {
         val scale = minOf(maxSize.toFloat() / bitmap.width, maxSize.toFloat() / bitmap.height, 1f)
         if (scale >= 1f) return bitmap
         return Bitmap.createScaledBitmap(bitmap, (bitmap.width * scale).toInt(), (bitmap.height * scale).toInt(), true)
+    }
+
+    private fun createOcrBitmap(bitmap: Bitmap): Bitmap {
+        val longestSide = maxOf(bitmap.width, bitmap.height)
+        if (longestSide >= 1600) return bitmap
+        val scale = minOf(3f, 3072f / longestSide)
+        return Bitmap.createScaledBitmap(
+            bitmap,
+            (bitmap.width * scale).toInt(),
+            (bitmap.height * scale).toInt(),
+            true
+        )
+    }
+
+    private fun mapRecognizedBounds(
+        texts: List<RecognizedText>,
+        ocrBitmap: Bitmap,
+        processingBitmap: Bitmap
+    ): List<RecognizedText> {
+        if (ocrBitmap === processingBitmap) return texts
+        val scaleX = processingBitmap.width.toFloat() / ocrBitmap.width
+        val scaleY = processingBitmap.height.toFloat() / ocrBitmap.height
+        return texts.map { item ->
+            val source = item.bounds
+            RecognizedText(
+                text = item.text,
+                bounds = Rect(
+                    (source.left * scaleX).toInt().coerceIn(0, processingBitmap.width),
+                    (source.top * scaleY).toInt().coerceIn(0, processingBitmap.height),
+                    (source.right * scaleX).toInt().coerceIn(0, processingBitmap.width),
+                    (source.bottom * scaleY).toInt().coerceIn(0, processingBitmap.height)
+                )
+            )
+        }
     }
 
     private fun saveImage(bitmap: Bitmap) {
