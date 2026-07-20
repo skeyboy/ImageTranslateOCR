@@ -4,6 +4,7 @@ import android.graphics.Bitmap
 import android.graphics.Rect
 import org.opencv.android.Utils
 import org.opencv.core.CvType
+import org.opencv.core.Core
 import org.opencv.core.Mat
 import org.opencv.core.Point
 import org.opencv.core.Rect as CvRect
@@ -71,22 +72,41 @@ class ImageInpainter {
 
             val roiGray = Mat(gray, validRect)
             val roiMask = Mat(mask, validRect)
-            val binary = Mat()
+            val darkTextMask = Mat()
+            val lightTextMask = Mat()
 
             val smallestSide = minOf(validRect.width, validRect.height)
             var blockSize = minOf(15, smallestSide)
             if (blockSize % 2 == 0) blockSize--
             if (blockSize >= 3) {
                 Imgproc.adaptiveThreshold(
-                    roiGray, binary, 255.0,
+                    roiGray, darkTextMask, 255.0,
                     Imgproc.ADAPTIVE_THRESH_GAUSSIAN_C,
                     Imgproc.THRESH_BINARY_INV, blockSize, 4.0
                 )
+                Imgproc.adaptiveThreshold(
+                    roiGray, lightTextMask, 255.0,
+                    Imgproc.ADAPTIVE_THRESH_GAUSSIAN_C,
+                    Imgproc.THRESH_BINARY, blockSize, -4.0
+                )
             } else {
-                Imgproc.threshold(roiGray, binary, 0.0, 255.0, Imgproc.THRESH_BINARY_INV or Imgproc.THRESH_OTSU)
+                Imgproc.threshold(
+                    roiGray, darkTextMask, 0.0, 255.0,
+                    Imgproc.THRESH_BINARY_INV or Imgproc.THRESH_OTSU
+                )
+                Core.bitwise_not(darkTextMask, lightTextMask)
             }
-            binary.copyTo(roiMask)
-            binary.release()
+            val area = validRect.area()
+            val darkRatio = Core.countNonZero(darkTextMask) / area
+            val lightRatio = Core.countNonZero(lightTextMask) / area
+            val selectedMask = if (maskScore(lightRatio) < maskScore(darkRatio)) {
+                lightTextMask
+            } else {
+                darkTextMask
+            }
+            selectedMask.copyTo(roiMask)
+            darkTextMask.release()
+            lightTextMask.release()
             roiGray.release()
             roiMask.release()
         }
@@ -108,5 +128,10 @@ class ImageInpainter {
         result.release()
 
         return outBitmap
+    }
+
+    private fun maskScore(foregroundRatio: Double): Double {
+        if (foregroundRatio !in 0.01..0.55) return Double.MAX_VALUE
+        return kotlin.math.abs(foregroundRatio - 0.18)
     }
 }

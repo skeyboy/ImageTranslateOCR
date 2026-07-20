@@ -25,31 +25,54 @@ class OCRManager {
 
     suspend fun recognize(bitmap: Bitmap): List<RecognizedText> {
         val primary = recognizeSingle(bitmap).filter(::isUsefulText).toMutableList()
-        val inverted = createInvertedBitmap(bitmap)
-        val enhanced = try {
-            recognizeSingle(inverted).filter(::isUsefulText)
+
+        val contrasted = createContrastedBitmap(bitmap)
+        try {
+            recognizeSingle(contrasted).filter(::isUsefulText).forEach { candidate ->
+                mergeCandidate(primary, candidate, bitmap, darkRegionsOnly = false)
+            }
         } catch (_: Exception) {
-            emptyList()
+            // The original pass remains usable if an enhancement pass fails.
+        } finally {
+            contrasted.recycle()
+        }
+
+        val inverted = createInvertedBitmap(bitmap)
+        try {
+            recognizeSingle(inverted).filter(::isUsefulText).forEach { candidate ->
+                mergeCandidate(primary, candidate, bitmap, darkRegionsOnly = true)
+            }
+        } catch (_: Exception) {
+            // The original and contrast passes remain usable.
         } finally {
             inverted.recycle()
         }
 
-        for (candidate in enhanced) {
-            val overlappingIndex = primary.indexOfFirst {
-                overlapRatio(it.bounds, candidate.bounds) >= 0.45f
-            }
-            if (overlappingIndex < 0) {
-                if (isDarkRegion(bitmap, candidate.bounds)) primary.add(candidate)
-                continue
-            }
+        return primary.sortedWith(compareBy({ it.bounds.top }, { it.bounds.left }))
+    }
 
-            val existing = primary[overlappingIndex]
-            val preferEnhanced = isDarkRegion(bitmap, candidate.bounds) ||
-                textQuality(candidate.text) > textQuality(existing.text) + 0.15f
-            if (preferEnhanced) primary[overlappingIndex] = candidate
+    private fun mergeCandidate(
+        results: MutableList<RecognizedText>,
+        candidate: RecognizedText,
+        bitmap: Bitmap,
+        darkRegionsOnly: Boolean
+    ) {
+        val isDark = isDarkRegion(bitmap, candidate.bounds)
+        if (darkRegionsOnly && !isDark) return
+        val overlappingIndex = results.indexOfFirst {
+            overlapRatio(it.bounds, candidate.bounds) >= 0.45f
+        }
+        if (overlappingIndex < 0) {
+            results.add(candidate)
+            return
         }
 
-        return primary.sortedWith(compareBy({ it.bounds.top }, { it.bounds.left }))
+        val existing = results[overlappingIndex]
+        if ((darkRegionsOnly && isDark) ||
+            textQuality(candidate.text) > textQuality(existing.text) + 0.15f
+        ) {
+            results[overlappingIndex] = candidate
+        }
     }
 
     private suspend fun recognizeSingle(bitmap: Bitmap): List<RecognizedText> =
@@ -89,6 +112,29 @@ class OCRManager {
             0f,
             Paint(Paint.ANTI_ALIAS_FLAG).apply {
                 colorFilter = ColorMatrixColorFilter(inversion)
+            }
+        )
+        return output
+    }
+
+    private fun createContrastedBitmap(bitmap: Bitmap): Bitmap {
+        val output = Bitmap.createBitmap(bitmap.width, bitmap.height, Bitmap.Config.ARGB_8888)
+        val grayscale = ColorMatrix().apply { setSaturation(0f) }
+        val contrast = ColorMatrix(
+            floatArrayOf(
+                1.6f, 0f, 0f, 0f, -76.5f,
+                0f, 1.6f, 0f, 0f, -76.5f,
+                0f, 0f, 1.6f, 0f, -76.5f,
+                0f, 0f, 0f, 1f, 0f
+            )
+        )
+        grayscale.postConcat(contrast)
+        Canvas(output).drawBitmap(
+            bitmap,
+            0f,
+            0f,
+            Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                colorFilter = ColorMatrixColorFilter(grayscale)
             }
         )
         return output
