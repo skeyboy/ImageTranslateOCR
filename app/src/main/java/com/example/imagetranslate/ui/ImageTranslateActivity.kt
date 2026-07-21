@@ -16,6 +16,7 @@ import androidx.lifecycle.lifecycleScope
 import com.example.imagetranslate.App
 import com.example.imagetranslate.databinding.ActivityImageTranslateBinding
 import com.example.imagetranslate.inpaint.ImageInpainter
+import com.example.imagetranslate.inpaint.InpaintResult
 import com.example.imagetranslate.ocr.OCRManager
 import com.example.imagetranslate.ocr.RecognizedText
 import com.example.imagetranslate.translate.TranslateManager
@@ -54,13 +55,17 @@ class ImageTranslateActivity : AppCompatActivity() {
         val translatedPatch: Bitmap,
         val sourceText: String,
         val translatedText: String,
+        val consensusScore: Float,
+        val passCount: Int,
         var showingOriginal: Boolean = false
     )
 
     private data class RenderedRegion(
         val bounds: Rect,
         val sourceText: String,
-        val translatedText: String
+        val translatedText: String,
+        val consensusScore: Float,
+        val passCount: Int
     )
 
     private val pickImage = registerForActivityResult(
@@ -182,9 +187,12 @@ class ImageTranslateActivity : AppCompatActivity() {
                 binding.tvStatus.text = "擦除原文字..."
                 val translatedRegions = regions.filter { it.translated }
                 val usePrecise = binding.switchPreciseMask.isChecked
-                val erased = withContext(Dispatchers.Default) {
+                val inpaintResult = withContext(Dispatchers.Default) {
                     if (translatedRegions.isEmpty()) {
-                        bitmap.copy(Bitmap.Config.ARGB_8888, true)
+                        InpaintResult(
+                            bitmap.copy(Bitmap.Config.ARGB_8888, true),
+                            emptyList()
+                        )
                     } else if (usePrecise) {
                         inpainter.eraseWithPreciseMask(
                             bitmap, translatedRegions.map { it.source.bounds }
@@ -195,10 +203,12 @@ class ImageTranslateActivity : AppCompatActivity() {
                         )
                     }
                 }
+                val erased = inpaintResult.bitmap
+                val erasedBounds = inpaintResult.erasedRegions.toSet()
 
                 binding.tvStatus.text = "写入翻译..."
                 val renderedRegions = withContext(Dispatchers.Default) {
-                    drawTexts(Canvas(erased), bitmap, regions)
+                    drawTexts(Canvas(erased), bitmap, regions, erasedBounds)
                 }
 
                 processedBitmap = erased
@@ -208,17 +218,21 @@ class ImageTranslateActivity : AppCompatActivity() {
                         bounds = bounds.bounds,
                         translatedPatch = createBitmapPatch(erased, bounds.bounds),
                         sourceText = bounds.sourceText,
-                        translatedText = bounds.translatedText
+                        translatedText = bounds.translatedText,
+                        consensusScore = bounds.consensusScore,
+                        passCount = bounds.passCount
                     )
                 }
                 binding.ivResult.setImageBitmap(processedBitmap)
                 updateReplacementMarkers()
                 val failedCount = regions.count { it.translationFailed }
-                val replacedCount = regions.count { it.translated }
-                binding.tvStatus.text = if (failedCount == 0) {
-                    "完成，共替换 $replacedCount 段文字；点击译文可切换原文"
-                } else {
-                    "完成，$failedCount 段翻译失败并保留原文；点击译文可切换"
+                val replacedCount = renderedRegions.size
+                val skippedEraseCount = translatedRegions.size - erasedBounds.size
+                binding.tvStatus.text = buildString {
+                    append("完成，共替换 $replacedCount 段文字")
+                    if (failedCount > 0) append("；$failedCount 段翻译失败")
+                    if (skippedEraseCount > 0) append("；$skippedEraseCount 段因擦除风险保留原文")
+                    append("；点击译文可切换原文")
                 }
             } catch (e: Exception) {
                 binding.tvStatus.text = "失败：${e.message}"
@@ -233,12 +247,13 @@ class ImageTranslateActivity : AppCompatActivity() {
     private fun drawTexts(
         canvas: Canvas,
         sourceBitmap: Bitmap,
-        regions: List<TranslatedRegion>
+        regions: List<TranslatedRegion>,
+        erasedBounds: Set<Rect>
     ): List<RenderedRegion> {
         val paint = TextPaint(Paint.ANTI_ALIAS_FLAG)
         val renderedRegions = mutableListOf<RenderedRegion>()
 
-        for (region in regions.filter { it.translated }) {
+        for (region in regions.filter { it.translated && it.source.bounds in erasedBounds }) {
             val bounds = region.source.bounds
             if (bounds.width() <= 0 || bounds.height() <= 0) continue
 
@@ -248,7 +263,7 @@ class ImageTranslateActivity : AppCompatActivity() {
             val layoutBounds = if (isControlLabel) {
                 Rect(bounds)
             } else {
-                findAvailableBounds(canvas, bounds, regions)
+                findAvailableBounds(canvas, bounds, region.source.text, regions)
             }
             val horizontalPadding = if (isControlLabel) 0 else maxOf(2, bounds.height() / 8)
             val layoutWidth = maxOf(1, layoutBounds.width() - horizontalPadding * 2)
@@ -305,7 +320,9 @@ class ImageTranslateActivity : AppCompatActivity() {
                             .coerceAtMost(canvas.height)
                     ),
                     sourceText = region.source.text,
-                    translatedText = region.translation
+                    translatedText = region.translation,
+                    consensusScore = region.source.consensusScore,
+                    passCount = region.source.passCount
                 )
             )
         }
@@ -340,10 +357,11 @@ class ImageTranslateActivity : AppCompatActivity() {
         region.showingOriginal = !region.showingOriginal
         binding.ivResult.invalidate()
         updateReplacementMarkers()
+        val consensus = (region.consensusScore * 100).toInt()
         binding.tvStatus.text = if (region.showingOriginal) {
-            "${region.sourceText} → ${region.translatedText}（当前显示原文）"
+            "${region.sourceText} → ${region.translatedText}（当前显示原文；OCR 共识 $consensus%/${region.passCount} 次）"
         } else {
-            "${region.sourceText} → ${region.translatedText}（当前显示译文）"
+            "${region.sourceText} → ${region.translatedText}（当前显示译文；OCR 共识 $consensus%/${region.passCount} 次）"
         }
         return true
     }
@@ -376,11 +394,21 @@ class ImageTranslateActivity : AppCompatActivity() {
     private fun findAvailableBounds(
         canvas: Canvas,
         bounds: Rect,
+        sourceText: String,
         regions: List<TranslatedRegion>
     ): Rect {
         val gap = maxOf(3, bounds.height() / 6)
-        var right = canvas.width - gap
-        var bottom = minOf(canvas.height, bounds.bottom + bounds.height() * 3)
+        val isShortUiLabel = isShortUiLabel(sourceText, bounds, canvas)
+        val trailingInset = if (isShortUiLabel) {
+            maxOf(bounds.height() * 3, canvas.width / 10)
+        } else {
+            gap
+        }
+        var right = canvas.width - trailingInset
+        var bottom = minOf(
+            canvas.height,
+            bounds.bottom + bounds.height() * if (isShortUiLabel) 1 else 3
+        )
 
         for (other in regions) {
             val candidate = other.source.bounds
@@ -406,6 +434,13 @@ class ImageTranslateActivity : AppCompatActivity() {
         right = maxOf(bounds.right, right)
         bottom = maxOf(bounds.bottom, bottom)
         return Rect(bounds.left, bounds.top, right, bottom)
+    }
+
+    private fun isShortUiLabel(sourceText: String, bounds: Rect, canvas: Canvas): Boolean {
+        val compact = sourceText.filterNot(Char::isWhitespace)
+        if (compact.length !in 2..16 || bounds.height() >= canvas.height / 10) return false
+        if (compact.any { it in "。！？.!?；;" }) return false
+        return bounds.width() < canvas.width * 0.75f
     }
 
     private fun estimateTextStyle(bitmap: Bitmap, bounds: Rect, sourceText: String): TextStyle {
@@ -593,7 +628,9 @@ class ImageTranslateActivity : AppCompatActivity() {
                     (source.top * scaleY).toInt().coerceIn(0, processingBitmap.height),
                     (source.right * scaleX).toInt().coerceIn(0, processingBitmap.width),
                     (source.bottom * scaleY).toInt().coerceIn(0, processingBitmap.height)
-                )
+                ),
+                consensusScore = item.consensusScore,
+                passCount = item.passCount
             )
         }
     }

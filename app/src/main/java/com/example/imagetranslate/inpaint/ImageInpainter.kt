@@ -13,15 +13,21 @@ import org.opencv.core.Size
 import org.opencv.imgproc.Imgproc
 import org.opencv.photo.Photo
 
+data class InpaintResult(
+    val bitmap: Bitmap,
+    val erasedRegions: List<Rect>
+)
+
 class ImageInpainter {
 
-    fun eraseWithRectMask(bitmap: Bitmap, textRegions: List<Rect>): Bitmap {
+    fun eraseWithRectMask(bitmap: Bitmap, textRegions: List<Rect>): InpaintResult {
         val src = Mat()
         Utils.bitmapToMat(bitmap, src)
         val rgb = Mat()
         Imgproc.cvtColor(src, rgb, Imgproc.COLOR_RGBA2RGB)
 
         val mask = Mat.zeros(src.size(), CvType.CV_8UC1)
+        val erasedRegions = mutableListOf<Rect>()
         for (region in textRegions) {
             val expanded = Rect(
                 maxOf(0, region.left - 4),
@@ -30,6 +36,7 @@ class ImageInpainter {
                 minOf(bitmap.height, region.bottom + 4)
             )
             if (expanded.isEmpty) continue
+            erasedRegions.add(Rect(region))
             Imgproc.rectangle(
                 mask,
                 Point(expanded.left.toDouble(), expanded.top.toDouble()),
@@ -38,16 +45,20 @@ class ImageInpainter {
             )
         }
 
-        val outBitmap = inpaintOntoOriginal(src, rgb, mask, 4.0, bitmap.width, bitmap.height)
+        val outBitmap = if (erasedRegions.isEmpty()) {
+            bitmap.copy(Bitmap.Config.ARGB_8888, true)
+        } else {
+            inpaintOntoOriginal(src, rgb, mask, 4.0, bitmap.width, bitmap.height)
+        }
 
         src.release()
         rgb.release()
         mask.release()
 
-        return outBitmap
+        return InpaintResult(outBitmap, erasedRegions)
     }
 
-    fun eraseWithPreciseMask(bitmap: Bitmap, textRegions: List<Rect>): Bitmap {
+    fun eraseWithPreciseMask(bitmap: Bitmap, textRegions: List<Rect>): InpaintResult {
         val src = Mat()
         Utils.bitmapToMat(bitmap, src)
         val rgb = Mat()
@@ -57,6 +68,7 @@ class ImageInpainter {
         Imgproc.cvtColor(src, gray, Imgproc.COLOR_RGBA2GRAY)
 
         val mask = Mat.zeros(src.size(), CvType.CV_8UC1)
+        val erasedRegions = mutableListOf<Rect>()
         for (region in textRegions) {
             val left = maxOf(0, region.left - 2)
             val top = maxOf(0, region.top - 2)
@@ -103,6 +115,7 @@ class ImageInpainter {
             }
             if (minOf(lightScore, darkScore) != Double.MAX_VALUE) {
                 selectedMask.copyTo(roiMask)
+                erasedRegions.add(Rect(region))
             }
             darkTextMask.release()
             lightTextMask.release()
@@ -110,18 +123,24 @@ class ImageInpainter {
             roiMask.release()
         }
 
-        val kernel = Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE, Size(3.0, 3.0))
-        Imgproc.dilate(mask, mask, kernel)
-        kernel.release()
+        if (erasedRegions.isNotEmpty()) {
+            val kernel = Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE, Size(3.0, 3.0))
+            Imgproc.dilate(mask, mask, kernel)
+            kernel.release()
+        }
         gray.release()
 
-        val outBitmap = inpaintOntoOriginal(src, rgb, mask, 2.0, bitmap.width, bitmap.height)
+        val outBitmap = if (erasedRegions.isEmpty()) {
+            bitmap.copy(Bitmap.Config.ARGB_8888, true)
+        } else {
+            inpaintOntoOriginal(src, rgb, mask, 2.0, bitmap.width, bitmap.height)
+        }
 
         src.release()
         rgb.release()
         mask.release()
 
-        return outBitmap
+        return InpaintResult(outBitmap, erasedRegions)
     }
 
     private fun maskScore(foregroundRatio: Double): Double {

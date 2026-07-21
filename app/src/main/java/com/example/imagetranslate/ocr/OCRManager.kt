@@ -18,7 +18,9 @@ import androidx.core.graphics.get
 
 data class RecognizedText(
     val text: String,
-    val bounds: Rect
+    val bounds: Rect,
+    val consensusScore: Float = 0.5f,
+    val passCount: Int = 1
 )
 
 class OCRManager {
@@ -140,7 +142,9 @@ class OCRManager {
                 bounds.top,
                 (selected.right + padding).coerceAtMost(bitmap.width),
                 bounds.bottom
-            )
+            ),
+            consensusScore = item.consensusScore,
+            passCount = item.passCount
         )
     }
 
@@ -200,14 +204,35 @@ class OCRManager {
             val isDark = cluster.any { isDarkRegion(bitmap, it.result.bounds) }
             if (!hasOriginal && !hasMultiplePasses && !isDark) return@mapNotNull null
 
-            cluster.maxByOrNull { candidate ->
+            val selected = cluster.maxByOrNull { candidate ->
                 val agreement = cluster
                     .filterNot { it === candidate }
                     .sumOf { other ->
                         textSimilarity(candidate.result.text, other.result.text).toDouble()
                     }.toFloat()
                 textQuality(candidate.result.text) + candidate.reliability + agreement * 0.3f
-            }?.result
+            } ?: return@mapNotNull null
+            val passCount = cluster.map { it.pass }.distinct().size
+            val otherCandidates = cluster.filterNot { it === selected }
+            val averageAgreement = if (otherCandidates.isEmpty()) {
+                0f
+            } else {
+                otherCandidates.map {
+                    textSimilarity(selected.result.text, it.result.text)
+                }.average().toFloat()
+            }
+            val evidence = when {
+                passCount >= 3 -> 0.78f
+                passCount == 2 -> 0.66f
+                hasOriginal -> 0.56f
+                else -> 0.46f
+            }
+            val quality = textQuality(selected.result.text).coerceIn(0f, 1f)
+            selected.result.copy(
+                consensusScore = (evidence + averageAgreement * 0.16f + quality * 0.08f)
+                    .coerceIn(0f, 1f),
+                passCount = passCount
+            )
         }
     }
 
