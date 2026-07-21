@@ -745,6 +745,46 @@ ML Kit Text Recognition 不返回字体名称、字号、字重、字距或斜�
 - `:app:assembleDebug`：通过。
 - 标号 7 图标保留和 `Download record` 起始位置：待同图复核。
 
+## 2026-07-21：短中文部分翻译与上下文重试
+
+提交：`b3482e3 fix(translation): retry partial short UI translations`
+
+### 对比素材
+
+点击还原后的原文：
+
+![自然色与启用自动旋转原文](assets/2026-07-21-partial-short-label-original-toggle.png)
+
+部分翻译结果：
+
+![自Although与启用Automatic rotation](assets/2026-07-21-partial-short-label-output.png)
+
+### 根因
+
+标号 4 和 9 已被 OCR 检测并进入翻译流程，并非完全漏识别。ML Kit 对缺少上下文的短 UI 词只翻译了部分内容，产生 `自Although` 和 `启用Automatic rotation`。旧规则允许英文长结果保留最多 10% 汉字，边界值使这类短文本可能被接受并写回。
+
+### 修改内容
+
+- 中文到英文且输入不超过 12 个字符时，译文必须包含零个汉字。
+- 首次结果残留汉字时，以通用 `界面设置选项：<原文>` 上下文重新调用 ML Kit。
+- 重试结果从最后一个中英文冒号后提取，去掉通用上下文部分。
+- 上下文仅提供文本类型，不包含任何中文词语到英文结果的写死映射。
+- 长技术句继续允许最多 10% 汉字，兼容专名或模型保留内容。
+- 若上下文重试仍包含汉字，则判定失败并保留原图，不执行 OpenCV 擦除。
+
+### 诊断增强
+
+- 每个可还原区域保存 OCR 原文和最终译文。
+- 点击编号切换原文/译文时，状态栏显示 `OCR 原文 → 最终译文`。
+- 后续可直接判断异常来自 OCR 源文本还是翻译模型输出。
+
+### 验证
+
+- `git diff --check`：通过。
+- `:app:compileDebugKotlin`：通过。
+- `:app:assembleDebug`：通过。
+- `自然色`、`启用自动旋转` 的上下文重试结果：待同图复核。
+
 ## 后续记录模板
 
 每次调校追加以下内容，不覆盖已有记录：
