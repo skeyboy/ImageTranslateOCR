@@ -52,7 +52,15 @@ class ImageTranslateActivity : AppCompatActivity() {
     private data class ReplacementRegion(
         val bounds: Rect,
         val translatedPatch: Bitmap,
+        val sourceText: String,
+        val translatedText: String,
         var showingOriginal: Boolean = false
+    )
+
+    private data class RenderedRegion(
+        val bounds: Rect,
+        val sourceText: String,
+        val translatedText: String
     )
 
     private val pickImage = registerForActivityResult(
@@ -197,8 +205,10 @@ class ImageTranslateActivity : AppCompatActivity() {
                 clearReplacementRegions()
                 replacementRegions = renderedRegions.map { bounds ->
                     ReplacementRegion(
-                        bounds = bounds,
-                        translatedPatch = createBitmapPatch(erased, bounds)
+                        bounds = bounds.bounds,
+                        translatedPatch = createBitmapPatch(erased, bounds.bounds),
+                        sourceText = bounds.sourceText,
+                        translatedText = bounds.translatedText
                     )
                 }
                 binding.ivResult.setImageBitmap(processedBitmap)
@@ -224,9 +234,9 @@ class ImageTranslateActivity : AppCompatActivity() {
         canvas: Canvas,
         sourceBitmap: Bitmap,
         regions: List<TranslatedRegion>
-    ): List<Rect> {
+    ): List<RenderedRegion> {
         val paint = TextPaint(Paint.ANTI_ALIAS_FLAG)
-        val renderedRegions = mutableListOf<Rect>()
+        val renderedRegions = mutableListOf<RenderedRegion>()
 
         for (region in regions.filter { it.translated }) {
             val bounds = region.source.bounds
@@ -285,13 +295,17 @@ class ImageTranslateActivity : AppCompatActivity() {
             }
             val restorePadding = maxOf(4, bounds.height() / 5)
             renderedRegions.add(
-                Rect(
-                    minOf(bounds.left - restorePadding, textLeft.toInt()).coerceAtLeast(0),
-                    (bounds.top - restorePadding).coerceAtLeast(0),
-                    maxOf(bounds.right + restorePadding, (textLeft + widestLine).toInt())
-                        .coerceAtMost(canvas.width),
-                    maxOf(bounds.bottom + restorePadding, (y + best.height).toInt())
-                        .coerceAtMost(canvas.height)
+                RenderedRegion(
+                    bounds = Rect(
+                        minOf(bounds.left - restorePadding, textLeft.toInt()).coerceAtLeast(0),
+                        (bounds.top - restorePadding).coerceAtLeast(0),
+                        maxOf(bounds.right + restorePadding, (textLeft + widestLine).toInt())
+                            .coerceAtMost(canvas.width),
+                        maxOf(bounds.bottom + restorePadding, (y + best.height).toInt())
+                            .coerceAtMost(canvas.height)
+                    ),
+                    sourceText = region.source.text,
+                    translatedText = region.translation
                 )
             )
         }
@@ -327,9 +341,9 @@ class ImageTranslateActivity : AppCompatActivity() {
         binding.ivResult.invalidate()
         updateReplacementMarkers()
         binding.tvStatus.text = if (region.showingOriginal) {
-            "该区域已显示原文"
+            "${region.sourceText} → ${region.translatedText}（当前显示原文）"
         } else {
-            "该区域已恢复译文"
+            "${region.sourceText} → ${region.translatedText}（当前显示译文）"
         }
         return true
     }

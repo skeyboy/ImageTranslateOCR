@@ -49,11 +49,32 @@ class TranslateManager {
         ensureModel(sourceLanguage, targetLanguage)
         val translator = translatorFor(sourceLanguage, targetLanguage)
         var result = translateWithModel(translator, inputText).trim()
-        if (!isValidTranslation(result, targetLanguage) && inputText.length >= 16) {
+        val requiresCompleteEnglish = sourceLanguage == TranslateLanguage.CHINESE &&
+            targetLanguage == TranslateLanguage.ENGLISH && inputText.length <= 12
+        if (!isValidTranslation(result, targetLanguage, requiresCompleteEnglish) &&
+            requiresCompleteEnglish
+        ) {
+            result = translateShortUiTextWithContext(translator, inputText)
+        } else if (!isValidTranslation(result, targetLanguage) && inputText.length >= 16) {
             result = translateInSegments(translator, inputText)
         }
-        require(isValidTranslation(result, targetLanguage)) { "翻译结果包含异常字符" }
+        require(isValidTranslation(result, targetLanguage, requiresCompleteEnglish)) {
+            "翻译结果包含异常字符"
+        }
         return result
+    }
+
+    private suspend fun translateShortUiTextWithContext(
+        translator: Translator,
+        text: String
+    ): String {
+        val translated = translateWithModel(translator, "界面设置选项：$text").trim()
+        val separatorIndex = maxOf(translated.lastIndexOf(':'), translated.lastIndexOf('：'))
+        return if (separatorIndex >= 0 && separatorIndex < translated.lastIndex) {
+            translated.substring(separatorIndex + 1).trim()
+        } else {
+            translated
+        }
     }
 
     private fun shouldPreserveSourceText(text: String, targetLanguage: String): Boolean {
@@ -121,7 +142,11 @@ class TranslateManager {
         }
     }
 
-    private fun isValidTranslation(text: String, targetLanguage: String): Boolean {
+    private fun isValidTranslation(
+        text: String,
+        targetLanguage: String,
+        requireNoHanCharacters: Boolean = false
+    ): Boolean {
         if (text.isBlank()) return false
         if (text.first() in charArrayOf('<', '>', '=', '|')) return false
         val visibleCharacters = text.count { !it.isWhitespace() }
@@ -130,6 +155,7 @@ class TranslateManager {
         if (meaningfulCharacters.toFloat() / visibleCharacters < 0.6f) return false
         if (targetLanguage == TranslateLanguage.ENGLISH) {
             val hanCharacters = text.count(::isHanCharacter)
+            if (requireNoHanCharacters && hanCharacters > 0) return false
             if (hanCharacters.toFloat() / visibleCharacters > 0.1f) return false
         }
         return true
