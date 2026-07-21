@@ -1,4 +1,4 @@
 <resources>
     <string name="app_name">图片翻译</string>
+    <string name="ocr_consensus_format">OCR 共识 %1$d%% · %2$d 次识别</string>
 </resources>
-

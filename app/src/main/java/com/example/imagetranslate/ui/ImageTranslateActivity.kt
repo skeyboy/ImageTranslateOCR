@@ -1,6 +1,7 @@
 package com.example.imagetranslate.ui
 
 import android.graphics.*
+import android.graphics.drawable.ColorDrawable
 import android.net.Uri
 import android.os.Bundle
 import android.provider.MediaStore
@@ -8,13 +9,17 @@ import android.text.Layout
 import android.text.StaticLayout
 import android.text.TextPaint
 import android.view.GestureDetector
+import android.view.Gravity
 import android.view.MotionEvent
+import android.view.View
+import android.widget.PopupWindow
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.example.imagetranslate.App
 import com.example.imagetranslate.databinding.ActivityImageTranslateBinding
+import com.example.imagetranslate.databinding.PopupReplacementInfoBinding
 import com.example.imagetranslate.inpaint.ImageInpainter
 import com.example.imagetranslate.inpaint.InpaintResult
 import com.example.imagetranslate.ocr.OCRManager
@@ -36,6 +41,7 @@ class ImageTranslateActivity : AppCompatActivity() {
     private var originalBitmap: Bitmap? = null
     private var processedBitmap: Bitmap? = null
     private var replacementRegions = emptyList<ReplacementRegion>()
+    private var replacementInfoPopup: PopupWindow? = null
     private lateinit var resultGestureDetector: GestureDetector
 
     private data class TranslatedRegion(
@@ -85,6 +91,9 @@ class ImageTranslateActivity : AppCompatActivity() {
 
     private fun setupListeners() {
         binding.replacementOverlay.attachTo(binding.ivResult)
+        binding.replacementOverlay.setOnMarkerClickListener { index, x, y ->
+            showReplacementInfo(index, x, y)
+        }
         binding.btnPickImage.setOnClickListener { pickImage.launch("image/*") }
 
         binding.translationModeGroup.addOnButtonCheckedListener { _, checkedId, isChecked ->
@@ -109,10 +118,11 @@ class ImageTranslateActivity : AppCompatActivity() {
         }
 
         binding.checkShowMarkers.setOnCheckedChangeListener { _, isChecked ->
+            if (!isChecked) dismissReplacementInfo()
             binding.replacementOverlay.visibility = if (isChecked) {
-                android.view.View.VISIBLE
+                View.VISIBLE
             } else {
-                android.view.View.GONE
+                View.GONE
             }
         }
 
@@ -378,16 +388,69 @@ class ImageTranslateActivity : AppCompatActivity() {
         region.showingOriginal = !region.showingOriginal
         binding.ivResult.invalidate()
         updateReplacementMarkers()
-        val consensus = (region.consensusScore * 100).toInt()
-        binding.tvStatus.text = if (region.showingOriginal) {
-            "${region.sourceText} → ${region.translatedText}（当前显示原文；OCR 共识 $consensus%/${region.passCount} 次）"
-        } else {
-            "${region.sourceText} → ${region.translatedText}（当前显示译文；OCR 共识 $consensus%/${region.passCount} 次）"
-        }
         return true
     }
 
+    private fun showReplacementInfo(index: Int, markerX: Float, markerY: Float) {
+        val region = replacementRegions.getOrNull(index) ?: return
+        dismissReplacementInfo()
+
+        val popupBinding = PopupReplacementInfoBinding.inflate(layoutInflater)
+        popupBinding.tvReplacementNumber.text = "#${index + 1}"
+        popupBinding.tvOcrSource.text = region.sourceText
+        popupBinding.tvTranslation.text = region.translatedText
+        popupBinding.tvOcrConsensus.text = getString(
+            com.example.imagetranslate.R.string.ocr_consensus_format,
+            (region.consensusScore * 100).toInt(),
+            region.passCount
+        )
+
+        val density = resources.displayMetrics.density
+        val screenWidth = resources.displayMetrics.widthPixels
+        val screenHeight = resources.displayMetrics.heightPixels
+        val horizontalMargin = (16 * density).toInt()
+        val popupWidth = minOf((300 * density).toInt(), screenWidth - horizontalMargin * 2)
+        val popupHeight = minOf((250 * density).toInt(), screenHeight - horizontalMargin * 2)
+        val popup = PopupWindow(
+            popupBinding.root,
+            popupWidth,
+            popupHeight,
+            true
+        ).apply {
+            setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+            isOutsideTouchable = true
+            elevation = 8 * density
+            setOnDismissListener { replacementInfoPopup = null }
+        }
+        popupBinding.btnCloseReplacementInfo.setOnClickListener { popup.dismiss() }
+
+        popupBinding.root.measure(
+            View.MeasureSpec.makeMeasureSpec(popupWidth, View.MeasureSpec.EXACTLY),
+            View.MeasureSpec.makeMeasureSpec(popupHeight, View.MeasureSpec.EXACTLY)
+        )
+        val overlayLocation = IntArray(2)
+        binding.replacementOverlay.getLocationOnScreen(overlayLocation)
+        val markerScreenX = overlayLocation[0] + markerX.toInt()
+        val markerScreenY = overlayLocation[1] + markerY.toInt()
+        val popupX = (markerScreenX + (12 * density).toInt())
+            .coerceIn(horizontalMargin, screenWidth - popupWidth - horizontalMargin)
+        val preferredY = markerScreenY - popupHeight / 2
+        val popupY = preferredY.coerceIn(
+            horizontalMargin,
+            screenHeight - popupHeight - horizontalMargin
+        )
+
+        replacementInfoPopup = popup
+        popup.showAtLocation(binding.root, Gravity.TOP or Gravity.START, popupX, popupY)
+    }
+
+    private fun dismissReplacementInfo() {
+        replacementInfoPopup?.dismiss()
+        replacementInfoPopup = null
+    }
+
     private fun clearReplacementRegions() {
+        dismissReplacementInfo()
         replacementRegions.forEach { it.translatedPatch.recycle() }
         replacementRegions = emptyList()
         if (::binding.isInitialized) binding.replacementOverlay.setMarkers(emptyList())
@@ -673,9 +736,9 @@ class ImageTranslateActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
-        super.onDestroy()
         clearReplacementRegions()
         ocrManager.close()
         translateManager.close()
+        super.onDestroy()
     }
 }
