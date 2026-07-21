@@ -18,12 +18,15 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.example.imagetranslate.App
+import com.example.imagetranslate.R
 import com.example.imagetranslate.databinding.ActivityImageTranslateBinding
+import com.example.imagetranslate.databinding.PopupOcrReviewBinding
 import com.example.imagetranslate.databinding.PopupReplacementInfoBinding
 import com.example.imagetranslate.inpaint.ImageInpainter
 import com.example.imagetranslate.inpaint.InpaintResult
 import com.example.imagetranslate.ocr.OCRManager
 import com.example.imagetranslate.ocr.RecognizedText
+import com.example.imagetranslate.ocr.RecognizerScript
 import com.example.imagetranslate.translate.TranslateManager
 import com.example.imagetranslate.translate.TranslationMode
 import kotlinx.coroutines.Dispatchers
@@ -40,6 +43,7 @@ class ImageTranslateActivity : AppCompatActivity() {
 
     private var originalBitmap: Bitmap? = null
     private var processedBitmap: Bitmap? = null
+    private var ocrReviewRegions: MutableList<OcrReviewRegion>? = null
     private var replacementRegions = emptyList<ReplacementRegion>()
     private var replacementInfoPopup: PopupWindow? = null
     private lateinit var resultGestureDetector: GestureDetector
@@ -49,6 +53,11 @@ class ImageTranslateActivity : AppCompatActivity() {
         val translation: String,
         val translated: Boolean,
         val translationFailed: Boolean = false
+    )
+
+    private data class OcrReviewRegion(
+        var source: RecognizedText,
+        var included: Boolean = true
     )
 
     private data class TextStyle(
@@ -92,7 +101,11 @@ class ImageTranslateActivity : AppCompatActivity() {
     private fun setupListeners() {
         binding.replacementOverlay.attachTo(binding.ivResult)
         binding.replacementOverlay.setOnMarkerClickListener { index, x, y ->
-            showReplacementInfo(index, x, y)
+            if (ocrReviewRegions != null) {
+                showOcrReview(index, x, y)
+            } else {
+                showReplacementInfo(index, x, y)
+            }
         }
         binding.btnPickImage.setOnClickListener { pickImage.launch("image/*") }
 
@@ -106,11 +119,16 @@ class ImageTranslateActivity : AppCompatActivity() {
         }
 
         binding.btnTranslate.setOnClickListener {
+            val bitmap = originalBitmap ?: return@setOnClickListener
+            if (ocrReviewRegions == null) {
+                beginOcrReview(bitmap)
+                return@setOnClickListener
+            }
             if (!App.isOpenCVReady) {
                 Toast.makeText(this, "OpenCV 未就绪，请稍后", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
-            originalBitmap?.let { translateImage(it) }
+            translateReviewedImage(bitmap)
         }
 
         binding.btnSave.setOnClickListener {
@@ -165,6 +183,8 @@ class ImageTranslateActivity : AppCompatActivity() {
                 binding.ivResult.setImageBitmap(null)
                 processedBitmap = null
                 clearReplacementRegions()
+                clearOcrReview()
+                binding.btnSave.isEnabled = false
                 binding.tvStatus.text = "图片已加载"
             } catch (e: Exception) {
                 binding.tvStatus.text = "图片加载失败"
@@ -173,11 +193,10 @@ class ImageTranslateActivity : AppCompatActivity() {
         }
     }
 
-    private fun translateImage(bitmap: Bitmap) {
+    private fun beginOcrReview(bitmap: Bitmap) {
         lifecycleScope.launch {
-            val activeMode = translationMode
             binding.tvStatus.text = "识别中..."
-            binding.progressBar.visibility = android.view.View.VISIBLE
+            binding.progressBar.visibility = View.VISIBLE
             binding.btnTranslate.isEnabled = false
             setTranslationModeEnabled(false)
 
@@ -194,6 +213,41 @@ class ImageTranslateActivity : AppCompatActivity() {
                     binding.tvStatus.text = "未识别到文字"
                     return@launch
                 }
+
+                clearReplacementRegions()
+                ocrReviewRegions = texts.map { OcrReviewRegion(it) }.toMutableList()
+                processedBitmap = bitmap.copy(Bitmap.Config.ARGB_8888, true)
+                binding.ivResult.setImageBitmap(processedBitmap)
+                binding.btnTranslate.setText(R.string.action_confirm_translation)
+                binding.btnSave.isEnabled = false
+                updateReplacementMarkers()
+                updateOcrReviewStatus()
+            } catch (e: Exception) {
+                binding.tvStatus.text = "识别失败：${e.message}"
+                Toast.makeText(this@ImageTranslateActivity, e.message, Toast.LENGTH_LONG).show()
+            } finally {
+                binding.progressBar.visibility = View.GONE
+                binding.btnTranslate.isEnabled = true
+                setTranslationModeEnabled(true)
+            }
+        }
+    }
+
+    private fun translateReviewedImage(bitmap: Bitmap) {
+        val reviewRegions = ocrReviewRegions ?: return
+        val texts = reviewRegions.filter { it.included }.map { it.source }
+        if (texts.isEmpty()) {
+            binding.tvStatus.text = "没有参与翻译的文字"
+            return
+        }
+
+        lifecycleScope.launch {
+            val activeMode = translationMode
+            binding.progressBar.visibility = View.VISIBLE
+            binding.btnTranslate.isEnabled = false
+            setTranslationModeEnabled(false)
+
+            try {
 
                 binding.tvStatus.text = "翻译 ${texts.size} 段文字..."
                 val regions = texts.mapIndexed { index, item ->
@@ -235,6 +289,7 @@ class ImageTranslateActivity : AppCompatActivity() {
                 }
 
                 processedBitmap = erased
+                ocrReviewRegions = null
                 clearReplacementRegions()
                 replacementRegions = renderedRegions.map { bounds ->
                     ReplacementRegion(
@@ -248,6 +303,8 @@ class ImageTranslateActivity : AppCompatActivity() {
                 }
                 binding.ivResult.setImageBitmap(processedBitmap)
                 updateReplacementMarkers()
+                binding.btnTranslate.setText(R.string.action_recognize_again)
+                binding.btnSave.isEnabled = true
                 val failedCount = regions.count { it.translationFailed }
                 val replacedCount = renderedRegions.size
                 val skippedEraseCount = translatedRegions.size - erasedBounds.size
@@ -255,13 +312,12 @@ class ImageTranslateActivity : AppCompatActivity() {
                     append("完成，共替换 $replacedCount 段文字")
                     if (failedCount > 0) append("；$failedCount 段翻译失败")
                     if (skippedEraseCount > 0) append("；$skippedEraseCount 段因擦除风险保留原文")
-                    append("；点击译文可切换原文")
                 }
             } catch (e: Exception) {
                 binding.tvStatus.text = "失败：${e.message}"
                 Toast.makeText(this@ImageTranslateActivity, e.message, Toast.LENGTH_LONG).show()
             } finally {
-                binding.progressBar.visibility = android.view.View.GONE
+                binding.progressBar.visibility = View.GONE
                 binding.btnTranslate.isEnabled = true
                 setTranslationModeEnabled(true)
             }
@@ -393,26 +449,77 @@ class ImageTranslateActivity : AppCompatActivity() {
 
     private fun showReplacementInfo(index: Int, markerX: Float, markerY: Float) {
         val region = replacementRegions.getOrNull(index) ?: return
-        dismissReplacementInfo()
 
         val popupBinding = PopupReplacementInfoBinding.inflate(layoutInflater)
         popupBinding.tvReplacementNumber.text = "#${index + 1}"
         popupBinding.tvOcrSource.text = region.sourceText
         popupBinding.tvTranslation.text = region.translatedText
         popupBinding.tvOcrConsensus.text = getString(
-            com.example.imagetranslate.R.string.ocr_consensus_format,
+            R.string.ocr_consensus_format,
             (region.consensusScore * 100).toInt(),
             region.passCount
         )
+        val popup = showMarkerPopup(popupBinding.root, markerX, markerY, 250)
+        popupBinding.btnCloseReplacementInfo.setOnClickListener { popup.dismiss() }
+    }
+
+    private fun showOcrReview(index: Int, markerX: Float, markerY: Float) {
+        val regions = ocrReviewRegions ?: return
+        val region = regions.getOrNull(index) ?: return
+        val popupBinding = PopupOcrReviewBinding.inflate(layoutInflater)
+        popupBinding.tvOcrReviewNumber.text = "#${index + 1}"
+        popupBinding.editOcrSource.setText(region.source.text)
+        popupBinding.checkIncludeTranslation.isChecked = region.included
+        popupBinding.tvOcrReviewMeta.text = getString(
+            R.string.ocr_review_meta_format,
+            (region.source.modelConfidence * 100).toInt(),
+            (region.source.consensusScore * 100).toInt(),
+            region.source.recognizerScript.displayName
+        )
+
+        val popup = showMarkerPopup(popupBinding.root, markerX, markerY, 286)
+        popupBinding.btnCloseOcrReview.setOnClickListener { popup.dismiss() }
+        popupBinding.btnSaveOcrReview.setOnClickListener {
+            val correctedText = popupBinding.editOcrSource.text?.toString()?.trim().orEmpty()
+            val included = popupBinding.checkIncludeTranslation.isChecked
+            if (included && correctedText.isEmpty()) {
+                popupBinding.editOcrSource.error = getString(R.string.ocr_review_empty_error)
+                return@setOnClickListener
+            }
+            region.source = region.source.copy(text = correctedText)
+            region.included = included
+            updateReplacementMarkers()
+            updateOcrReviewStatus()
+            popup.dismiss()
+        }
+    }
+
+    private val RecognizerScript.displayName: String
+        get() = when (this) {
+            RecognizerScript.CHINESE -> "中文"
+            RecognizerScript.LATIN -> "拉丁"
+            RecognizerScript.FUSED -> "融合"
+        }
+
+    private fun showMarkerPopup(
+        content: View,
+        markerX: Float,
+        markerY: Float,
+        preferredHeightDp: Int
+    ): PopupWindow {
+        dismissReplacementInfo()
 
         val density = resources.displayMetrics.density
         val screenWidth = resources.displayMetrics.widthPixels
         val screenHeight = resources.displayMetrics.heightPixels
         val horizontalMargin = (16 * density).toInt()
         val popupWidth = minOf((300 * density).toInt(), screenWidth - horizontalMargin * 2)
-        val popupHeight = minOf((250 * density).toInt(), screenHeight - horizontalMargin * 2)
+        val popupHeight = minOf(
+            (preferredHeightDp * density).toInt(),
+            screenHeight - horizontalMargin * 2
+        )
         val popup = PopupWindow(
-            popupBinding.root,
+            content,
             popupWidth,
             popupHeight,
             true
@@ -422,9 +529,8 @@ class ImageTranslateActivity : AppCompatActivity() {
             elevation = 8 * density
             setOnDismissListener { replacementInfoPopup = null }
         }
-        popupBinding.btnCloseReplacementInfo.setOnClickListener { popup.dismiss() }
 
-        popupBinding.root.measure(
+        content.measure(
             View.MeasureSpec.makeMeasureSpec(popupWidth, View.MeasureSpec.EXACTLY),
             View.MeasureSpec.makeMeasureSpec(popupHeight, View.MeasureSpec.EXACTLY)
         )
@@ -442,6 +548,7 @@ class ImageTranslateActivity : AppCompatActivity() {
 
         replacementInfoPopup = popup
         popup.showAtLocation(binding.root, Gravity.TOP or Gravity.START, popupX, popupY)
+        return popup
     }
 
     private fun dismissReplacementInfo() {
@@ -456,14 +563,44 @@ class ImageTranslateActivity : AppCompatActivity() {
         if (::binding.isInitialized) binding.replacementOverlay.setMarkers(emptyList())
     }
 
+    private fun clearOcrReview() {
+        dismissReplacementInfo()
+        ocrReviewRegions = null
+        if (::binding.isInitialized) {
+            binding.btnTranslate.setText(R.string.action_recognize_text)
+            binding.replacementOverlay.setMarkers(emptyList())
+        }
+    }
+
+    private fun updateOcrReviewStatus() {
+        val regions = ocrReviewRegions ?: return
+        val includedCount = regions.count { it.included }
+        binding.tvStatus.text = getString(
+            R.string.ocr_review_status_format,
+            regions.size,
+            includedCount
+        )
+    }
+
     private fun updateReplacementMarkers() {
+        val reviewRegions = ocrReviewRegions
         binding.replacementOverlay.setMarkers(
-            replacementRegions.mapIndexed { index, region ->
-                ReplacementOverlayView.Marker(
-                    number = index + 1,
-                    bounds = region.bounds,
-                    showingOriginal = region.showingOriginal
-                )
+            if (reviewRegions != null) {
+                reviewRegions.mapIndexed { index, region ->
+                    ReplacementOverlayView.Marker(
+                        number = index + 1,
+                        bounds = region.source.bounds,
+                        showingOriginal = !region.included
+                    )
+                }
+            } else {
+                replacementRegions.mapIndexed { index, region ->
+                    ReplacementOverlayView.Marker(
+                        number = index + 1,
+                        bounds = region.bounds,
+                        showingOriginal = region.showingOriginal
+                    )
+                }
             }
         )
         binding.replacementOverlay.postInvalidate()
@@ -714,7 +851,9 @@ class ImageTranslateActivity : AppCompatActivity() {
                     (source.bottom * scaleY).toInt().coerceIn(0, processingBitmap.height)
                 ),
                 consensusScore = item.consensusScore,
-                passCount = item.passCount
+                passCount = item.passCount,
+                modelConfidence = item.modelConfidence,
+                recognizerScript = item.recognizerScript
             )
         }
     }
@@ -736,6 +875,7 @@ class ImageTranslateActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        clearOcrReview()
         clearReplacementRegions()
         ocrManager.close()
         translateManager.close()

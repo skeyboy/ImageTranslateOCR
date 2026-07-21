@@ -10,23 +10,34 @@ import android.graphics.Rect
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.Text
 import com.google.mlkit.vision.text.TextRecognition
+import com.google.mlkit.vision.text.TextRecognizer
 import com.google.mlkit.vision.text.chinese.ChineseTextRecognizerOptions
+import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 import androidx.core.graphics.createBitmap
 import androidx.core.graphics.get
 
+enum class RecognizerScript {
+    CHINESE,
+    LATIN,
+    FUSED
+}
+
 data class RecognizedText(
     val text: String,
     val bounds: Rect,
     val consensusScore: Float = 0.5f,
-    val passCount: Int = 1
+    val passCount: Int = 1,
+    val modelConfidence: Float = 0f,
+    val recognizerScript: RecognizerScript = RecognizerScript.CHINESE
 )
 
 class OCRManager {
     private data class OcrCandidate(
         val result: RecognizedText,
         val pass: Int,
+        val script: RecognizerScript,
         val reliability: Float
     )
 
@@ -40,20 +51,20 @@ class OCRManager {
         val right: Int
     )
 
-    private val recognizer = TextRecognition.getClient(
+    private val chineseRecognizer = TextRecognition.getClient(
         ChineseTextRecognizerOptions.Builder().build()
+    )
+    private val latinRecognizer = TextRecognition.getClient(
+        TextRecognizerOptions.DEFAULT_OPTIONS
     )
 
     suspend fun recognize(bitmap: Bitmap): List<RecognizedText> {
-        val candidates = recognizeSingle(bitmap)
-            .filter(::isUsefulText)
-            .mapTo(mutableListOf()) { OcrCandidate(it, PASS_ORIGINAL, 0.25f) }
+        val candidates = mutableListOf<OcrCandidate>()
+        addRecognitionPass(bitmap, PASS_ORIGINAL, 0.25f, candidates)
 
         val contrasted = createContrastedBitmap(bitmap)
         try {
-            recognizeSingle(contrasted)
-                .filter(::isUsefulText)
-                .mapTo(candidates) { OcrCandidate(it, PASS_CONTRAST, 0.15f) }
+            addRecognitionPass(contrasted, PASS_CONTRAST, 0.15f, candidates)
         } catch (_: Exception) {
             // The original pass remains usable if an enhancement pass fails.
         } finally {
@@ -62,19 +73,85 @@ class OCRManager {
 
         val inverted = createInvertedBitmap(bitmap)
         try {
-            recognizeSingle(inverted)
-                .filter(::isUsefulText)
-                .filter { isDarkRegion(bitmap, it.bounds) }
-                .mapTo(candidates) { OcrCandidate(it, PASS_INVERTED, 0.1f) }
+            addRecognitionPass(
+                inverted,
+                PASS_INVERTED,
+                0.1f,
+                candidates
+            ) { isDarkRegion(bitmap, it.bounds) }
         } catch (_: Exception) {
             // The original and contrast passes remain usable.
         } finally {
             inverted.recycle()
         }
 
-        return fuseCandidates(candidates, bitmap)
+        return mergeAdjacentLineFragments(fuseCandidates(candidates, bitmap))
             .map { refineShortLabelByInk(bitmap, it) }
             .sortedWith(compareBy({ it.bounds.top }, { it.bounds.left }))
+    }
+
+    private suspend fun addRecognitionPass(
+        bitmap: Bitmap,
+        pass: Int,
+        baseReliability: Float,
+        candidates: MutableList<OcrCandidate>,
+        extraFilter: (RecognizedText) -> Boolean = { true }
+    ) {
+        recognizeWith(
+            bitmap,
+            chineseRecognizer,
+            RecognizerScript.CHINESE,
+            pass,
+            baseReliability,
+            candidates,
+            extraFilter
+        )
+        recognizeWith(
+            bitmap,
+            latinRecognizer,
+            RecognizerScript.LATIN,
+            pass,
+            baseReliability,
+            candidates,
+            extraFilter
+        )
+    }
+
+    private suspend fun recognizeWith(
+        bitmap: Bitmap,
+        recognizer: TextRecognizer,
+        script: RecognizerScript,
+        pass: Int,
+        baseReliability: Float,
+        candidates: MutableList<OcrCandidate>,
+        extraFilter: (RecognizedText) -> Boolean
+    ) {
+        try {
+            recognizeSingle(bitmap, recognizer, script)
+                .filter(::isUsefulText)
+                .filter(extraFilter)
+                .mapTo(candidates) { result ->
+                    OcrCandidate(
+                        result = result,
+                        pass = pass,
+                        script = script,
+                        reliability = baseReliability + scriptReliability(result, script)
+                    )
+                }
+        } catch (_: Exception) {
+            // The other script recognizer and enhancement passes remain usable.
+        }
+    }
+
+    private fun scriptReliability(result: RecognizedText, script: RecognizerScript): Float {
+        val hasHan = result.text.any(::isHanCharacter)
+        val hasLatin = result.text.any { it in 'A'..'Z' || it in 'a'..'z' }
+        return when {
+            hasHan && script == RecognizerScript.CHINESE -> 0.18f
+            hasHan && script == RecognizerScript.LATIN -> -0.12f
+            hasLatin && script == RecognizerScript.LATIN -> 0.18f
+            else -> 0f
+        }
     }
 
     private fun refineShortLabelByInk(bitmap: Bitmap, item: RecognizedText): RecognizedText {
@@ -144,7 +221,9 @@ class OCRManager {
                 bounds.bottom
             ),
             consensusScore = item.consensusScore,
-            passCount = item.passCount
+            passCount = item.passCount,
+            modelConfidence = item.modelConfidence,
+            recognizerScript = item.recognizerScript
         )
     }
 
@@ -204,15 +283,24 @@ class OCRManager {
             val isDark = cluster.any { isDarkRegion(bitmap, it.result.bounds) }
             if (!hasOriginal && !hasMultiplePasses && !isDark) return@mapNotNull null
 
+            val maximumMeaningfulCharacters = cluster.maxOf {
+                meaningfulCharacterCount(it.result.text)
+            }.coerceAtLeast(1)
+            val maximumWidth = cluster.maxOf { it.result.bounds.width() }.coerceAtLeast(1)
             val selected = cluster.maxByOrNull { candidate ->
                 val agreement = cluster
                     .filterNot { it === candidate }
                     .sumOf { other ->
                         textSimilarity(candidate.result.text, other.result.text).toDouble()
                     }.toFloat()
+                val completeness = meaningfulCharacterCount(candidate.result.text).toFloat() /
+                    maximumMeaningfulCharacters
+                val widthCoverage = candidate.result.bounds.width().toFloat() / maximumWidth
                 textQuality(candidate.result.text) + candidate.reliability + agreement * 0.3f
+                    + candidate.result.modelConfidence.coerceIn(0f, 1f) * 0.25f +
+                    completeness * 0.25f + widthCoverage * 0.2f
             } ?: return@mapNotNull null
-            val passCount = cluster.map { it.pass }.distinct().size
+            val passCount = cluster.map { it.script to it.pass }.distinct().size
             val otherCandidates = cluster.filterNot { it === selected }
             val averageAgreement = if (otherCandidates.isEmpty()) {
                 0f
@@ -222,7 +310,8 @@ class OCRManager {
                 }.average().toFloat()
             }
             val evidence = when {
-                passCount >= 3 -> 0.78f
+                passCount >= 4 -> 0.82f
+                passCount == 3 -> 0.76f
                 passCount == 2 -> 0.66f
                 hasOriginal -> 0.56f
                 else -> 0.46f
@@ -231,12 +320,21 @@ class OCRManager {
             selected.result.copy(
                 consensusScore = (evidence + averageAgreement * 0.16f + quality * 0.08f)
                     .coerceIn(0f, 1f),
-                passCount = passCount
+                passCount = passCount,
+                recognizerScript = if (cluster.map { it.script }.distinct().size > 1) {
+                    RecognizerScript.FUSED
+                } else {
+                    selected.script
+                }
             )
         }
     }
 
-    private suspend fun recognizeSingle(bitmap: Bitmap): List<RecognizedText> =
+    private suspend fun recognizeSingle(
+        bitmap: Bitmap,
+        recognizer: TextRecognizer,
+        script: RecognizerScript
+    ): List<RecognizedText> =
         suspendCancellableCoroutine { continuation ->
             val image = InputImage.fromBitmap(bitmap, 0)
             recognizer.process(image)
@@ -245,7 +343,7 @@ class OCRManager {
                     val results = mutableListOf<RecognizedText>()
                     for (block in visionText.textBlocks) {
                         for (line in block.lines) {
-                            refineLine(line)?.let(results::add)
+                            refineLine(line, script)?.let(results::add)
                         }
                     }
                     continuation.resume(results)
@@ -255,8 +353,14 @@ class OCRManager {
                 }
         }
 
-    private fun refineLine(line: Text.Line): RecognizedText? {
+    private fun refineLine(line: Text.Line, script: RecognizerScript): RecognizedText? {
         val lineBounds = line.boundingBox ?: return null
+        fun result(text: String, bounds: Rect) = RecognizedText(
+            text = text,
+            bounds = bounds,
+            modelConfidence = line.confidence.coerceIn(0f, 1f),
+            recognizerScript = script
+        )
         val elements = line.elements.mapNotNull { element ->
             val bounds = element.boundingBox ?: return@mapNotNull null
             val compact = element.text.filterNot(Char::isWhitespace)
@@ -266,7 +370,7 @@ class OCRManager {
             ElementCandidate(element.text.trim(), bounds)
         }.sortedBy { it.bounds.left }
 
-        if (elements.size < 2) return RecognizedText(line.text, lineBounds)
+        if (elements.size < 2) return result(line.text, lineBounds)
         val gapThreshold = maxOf(2, (lineBounds.height() * 0.4f).toInt())
         val groups = mutableListOf<MutableList<ElementCandidate>>()
         for (element in elements) {
@@ -282,7 +386,7 @@ class OCRManager {
             group.sumOf { candidate ->
                 candidate.text.count { it.isLetterOrDigit() || isHanCharacter(it) }
             }
-        }?.toMutableList() ?: return RecognizedText(line.text, lineBounds)
+        }?.toMutableList() ?: return result(line.text, lineBounds)
         trimDetachedEdgeGlyphs(selected, lineBounds.height())
         if (selected.isEmpty()) return null
 
@@ -296,7 +400,7 @@ class OCRManager {
                 append(element.text)
             }
         }
-        return RecognizedText(text, bounds)
+        return result(text, bounds)
     }
 
     private fun trimDetachedEdgeGlyphs(
@@ -399,6 +503,83 @@ class OCRManager {
             replacementPenalty - boundaryPenalty - mixedScriptPenalty
     }
 
+    private fun meaningfulCharacterCount(text: String): Int =
+        text.count { it.isLetterOrDigit() || isHanCharacter(it) }
+
+    private fun mergeAdjacentLineFragments(items: List<RecognizedText>): List<RecognizedText> {
+        if (items.size < 2) return items
+        val remaining = items.sortedWith(compareBy({ it.bounds.top }, { it.bounds.left }))
+            .toMutableList()
+        val merged = mutableListOf<RecognizedText>()
+
+        while (remaining.isNotEmpty()) {
+            var current = remaining.removeAt(0)
+            var mergedAnother: Boolean
+            do {
+                mergedAnother = false
+                val nextIndex = remaining.indexOfFirst { canMergeOnSameLine(current, it) }
+                if (nextIndex >= 0) {
+                    current = mergeLineFragments(current, remaining.removeAt(nextIndex))
+                    mergedAnother = true
+                }
+            } while (mergedAnother)
+            merged.add(current)
+        }
+        return merged
+    }
+
+    private fun canMergeOnSameLine(first: RecognizedText, second: RecognizedText): Boolean {
+        val left = if (first.bounds.left <= second.bounds.left) first else second
+        val right = if (left === first) second else first
+        val minimumHeight = minOf(left.bounds.height(), right.bounds.height()).coerceAtLeast(1)
+        val maximumHeight = maxOf(left.bounds.height(), right.bounds.height()).coerceAtLeast(1)
+        if (minimumHeight.toFloat() / maximumHeight < 0.65f) return false
+
+        val verticalOverlap = minOf(left.bounds.bottom, right.bounds.bottom) -
+            maxOf(left.bounds.top, right.bounds.top)
+        if (verticalOverlap.toFloat() / minimumHeight < 0.65f) return false
+
+        val horizontalGap = right.bounds.left - left.bounds.right
+        val maximumGap = maxOf(2, (minimumHeight * 0.75f).toInt())
+        return horizontalGap in 0..maximumGap
+    }
+
+    private fun mergeLineFragments(
+        first: RecognizedText,
+        second: RecognizedText
+    ): RecognizedText {
+        val left = if (first.bounds.left <= second.bounds.left) first else second
+        val right = if (left === first) second else first
+        val leftWeight = meaningfulCharacterCount(left.text).coerceAtLeast(1)
+        val rightWeight = meaningfulCharacterCount(right.text).coerceAtLeast(1)
+        val totalWeight = leftWeight + rightWeight
+        val separator = if (needsFragmentSeparator(left.text, right.text)) " " else ""
+        return RecognizedText(
+            text = left.text.trimEnd() + separator + right.text.trimStart(),
+            bounds = Rect(left.bounds).apply { union(right.bounds) },
+            consensusScore = minOf(left.consensusScore, right.consensusScore),
+            passCount = minOf(left.passCount, right.passCount),
+            modelConfidence = (
+                left.modelConfidence * leftWeight + right.modelConfidence * rightWeight
+                ) / totalWeight,
+            recognizerScript = if (left.recognizerScript == right.recognizerScript) {
+                left.recognizerScript
+            } else {
+                RecognizerScript.FUSED
+            }
+        )
+    }
+
+    private fun needsFragmentSeparator(left: String, right: String): Boolean {
+        val leftCharacter = left.lastOrNull { !it.isWhitespace() } ?: return false
+        val rightCharacter = right.firstOrNull { !it.isWhitespace() } ?: return false
+        val leftIsLatinOrDigit = leftCharacter.isDigit() ||
+            leftCharacter in 'A'..'Z' || leftCharacter in 'a'..'z'
+        val rightIsLatinOrDigit = rightCharacter.isDigit() ||
+            rightCharacter in 'A'..'Z' || rightCharacter in 'a'..'z'
+        return leftIsLatinOrDigit && rightIsLatinOrDigit
+    }
+
     private fun textSimilarity(first: String, second: String): Float {
         val normalizedFirst = normalizeForComparison(first)
         val normalizedSecond = normalizeForComparison(second)
@@ -460,7 +641,8 @@ class OCRManager {
     }
 
     fun close() {
-        recognizer.close()
+        chineseRecognizer.close()
+        latinRecognizer.close()
     }
 
     private companion object {

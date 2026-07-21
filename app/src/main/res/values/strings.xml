@@ -1,4 +1,14 @@
 <resources>
     <string name="app_name">图片翻译</string>
     <string name="ocr_consensus_format">OCR 共识 %1$d%% · %2$d 次识别</string>
+    <string name="ocr_review_meta_format">模型置信度 %1$d%% · 融合共识 %2$d%% · %3$s识别</string>
+    <string name="ocr_review_status_format">OCR 复核：共 %1$d 段，参与翻译 %2$d 段</string>
+    <string name="ocr_review_empty_error">参与翻译时文字不能为空</string>
+    <string name="ocr_recognized_text">OCR 识别文字</string>
+    <string name="include_in_translation">参与翻译</string>
+    <string name="action_recognize_text">识别文字</string>
+    <string name="action_confirm_translation">确认翻译</string>
+    <string name="action_recognize_again">重新识别</string>
+    <string name="action_apply_review">应用</string>
+    <string name="action_close">关闭</string>
 </resources>
