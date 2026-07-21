@@ -76,44 +76,88 @@
         android:id="@+id/bottomPanel"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
+        android:orientation="vertical"
         android:gravity="center"
         android:paddingVertical="12dp"
         app:layout_constraintBottom_toBottomOf="parent">
 
-        <ProgressBar
-            android:id="@+id/progressBar"
-            android:layout_width="24dp"
-            android:layout_height="24dp"
-            android:visibility="gone" />
-
-        <com.google.android.material.switchmaterial.SwitchMaterial
-            android:id="@+id/switchPreciseMask"
-            android:layout_width="wrap_content"
+        <com.google.android.material.button.MaterialButtonToggleGroup
+            android:id="@+id/translationModeGroup"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="精确遮罩"
-            android:checked="true"
-            android:textSize="12sp" />
+            android:layout_marginBottom="8dp"
+            app:checkedButton="@id/btnModeBidirectional"
+            app:selectionRequired="true"
+            app:singleSelection="true">
 
-        <CheckBox
-            android:id="@+id/checkShowMarkers"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:checked="true"
-            android:text="标号"
-            android:textSize="12sp" />
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnModeChineseEnglish"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="中 → 英"
+                android:textSize="12sp" />
 
-        <Button
-            android:id="@+id/btnTranslate"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="翻译"
-            android:layout_marginHorizontal="8dp" />
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnModeEnglishChinese"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="英 → 中"
+                android:textSize="12sp" />
 
-        <Button
-            android:id="@+id/btnSave"
-            android:layout_width="wrap_content"
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnModeBidirectional"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="中 ⇄ 英"
+                android:textSize="12sp" />
+        </com.google.android.material.button.MaterialButtonToggleGroup>
+
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="保存" />
+            android:gravity="center"
+            android:orientation="horizontal">
+
+            <ProgressBar
+                android:id="@+id/progressBar"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:visibility="gone" />
+
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/switchPreciseMask"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:checked="true"
+                android:text="精确遮罩"
+                android:textSize="12sp" />
+
+            <CheckBox
+                android:id="@+id/checkShowMarkers"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:checked="true"
+                android:text="标号"
+                android:textSize="12sp" />
+
+            <Button
+                android:id="@+id/btnTranslate"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="8dp"
+                android:text="翻译" />
+
+            <Button
+                android:id="@+id/btnSave"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="保存" />
+        </LinearLayout>
     </LinearLayout>
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -20,6 +20,7 @@ import com.example.imagetranslate.inpaint.InpaintResult
 import com.example.imagetranslate.ocr.OCRManager
 import com.example.imagetranslate.ocr.RecognizedText
 import com.example.imagetranslate.translate.TranslateManager
+import com.example.imagetranslate.translate.TranslationMode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -30,6 +31,7 @@ class ImageTranslateActivity : AppCompatActivity() {
     private val ocrManager = OCRManager()
     private val translateManager = TranslateManager()
     private val inpainter = ImageInpainter()
+    private var translationMode = TranslationMode.AUTO_BIDIRECTIONAL
 
     private var originalBitmap: Bitmap? = null
     private var processedBitmap: Bitmap? = null
@@ -84,6 +86,15 @@ class ImageTranslateActivity : AppCompatActivity() {
     private fun setupListeners() {
         binding.replacementOverlay.attachTo(binding.ivResult)
         binding.btnPickImage.setOnClickListener { pickImage.launch("image/*") }
+
+        binding.translationModeGroup.addOnButtonCheckedListener { _, checkedId, isChecked ->
+            if (!isChecked) return@addOnButtonCheckedListener
+            translationMode = when (checkedId) {
+                binding.btnModeChineseEnglish.id -> TranslationMode.CHINESE_TO_ENGLISH
+                binding.btnModeEnglishChinese.id -> TranslationMode.ENGLISH_TO_CHINESE
+                else -> TranslationMode.AUTO_BIDIRECTIONAL
+            }
+        }
 
         binding.btnTranslate.setOnClickListener {
             if (!App.isOpenCVReady) {
@@ -154,9 +165,11 @@ class ImageTranslateActivity : AppCompatActivity() {
 
     private fun translateImage(bitmap: Bitmap) {
         lifecycleScope.launch {
+            val activeMode = translationMode
             binding.tvStatus.text = "识别中..."
             binding.progressBar.visibility = android.view.View.VISIBLE
             binding.btnTranslate.isEnabled = false
+            setTranslationModeEnabled(false)
 
             try {
                 val ocrBitmap = withContext(Dispatchers.Default) { createOcrBitmap(bitmap) }
@@ -176,7 +189,7 @@ class ImageTranslateActivity : AppCompatActivity() {
                 val regions = texts.mapIndexed { index, item ->
                     binding.tvStatus.text = "翻译 ${index + 1}/${texts.size}..."
                     try {
-                        val translatedText = translateManager.translate(item.text)
+                        val translatedText = translateManager.translate(item.text, activeMode)
                         val changed = translatedText.trim() != item.text.trim()
                         TranslatedRegion(item, translatedText, changed)
                     } catch (e: Exception) {
@@ -240,8 +253,16 @@ class ImageTranslateActivity : AppCompatActivity() {
             } finally {
                 binding.progressBar.visibility = android.view.View.GONE
                 binding.btnTranslate.isEnabled = true
+                setTranslationModeEnabled(true)
             }
         }
+    }
+
+    private fun setTranslationModeEnabled(enabled: Boolean) {
+        binding.translationModeGroup.isEnabled = enabled
+        binding.btnModeChineseEnglish.isEnabled = enabled
+        binding.btnModeEnglishChinese.isEnabled = enabled
+        binding.btnModeBidirectional.isEnabled = enabled
     }
 
     private fun drawTexts(
