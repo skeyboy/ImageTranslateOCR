@@ -7,7 +7,11 @@ import android.os.Bundle
 import android.util.Log
 import android.widget.ScrollView
 import android.widget.TextView
+import com.example.imagetranslate.App
+import com.example.imagetranslate.inpaint.ImageInpainter
 import com.example.imagetranslate.ocr.OCRManager
+import com.example.imagetranslate.translate.TranslateManager
+import com.example.imagetranslate.translate.TranslationMode
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
@@ -15,6 +19,8 @@ import kotlinx.coroutines.launch
 class OcrDiagnosticActivity : Activity() {
     private val scope = MainScope()
     private val ocrManager = OCRManager()
+    private val translateManager = TranslateManager()
+    private val inpainter = ImageInpainter()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -37,6 +43,35 @@ class OcrDiagnosticActivity : Activity() {
             val ocrBitmap = createOcrBitmap(bitmap, maximumScale)
             try {
                 val results = ocrManager.recognize(ocrBitmap)
+                val runPipeline = intent.getBooleanExtra(EXTRA_RUN_PIPELINE, false)
+                val translations = if (runPipeline) {
+                    translateManager.downloadModelIfNeeded()
+                    results.map { item ->
+                        runCatching {
+                            translateManager.translate(
+                                item.text,
+                                TranslationMode.CHINESE_TO_ENGLISH
+                            )
+                        }.getOrElse { item.text }
+                    }
+                } else {
+                    emptyList()
+                }
+                val translatedBounds = results.mapIndexedNotNull { index, item ->
+                    item.bounds.takeIf {
+                        runPipeline && translations[index].trim() != item.text.trim()
+                    }
+                }
+                val maskAnalyses = if (runPipeline && App.isOpenCVReady) {
+                    val inpaintResult = inpainter.eraseWithPreciseMask(
+                        ocrBitmap,
+                        translatedBounds
+                    )
+                    inpaintResult.bitmap.recycle()
+                    inpaintResult.maskAnalyses.associateBy { it.bounds }
+                } else {
+                    emptyMap()
+                }
                 val report = buildString {
                     appendLine(
                         "source=${bitmap.width}x${bitmap.height} " +
@@ -55,6 +90,19 @@ class OcrDiagnosticActivity : Activity() {
                         append("confidence=${"%.2f".format(item.modelConfidence)}")
                         append('\t')
                         append("script=${item.recognizerScript}")
+                        if (runPipeline) {
+                            append('\t')
+                            append("translation=${translations[index].replace('\n', ' ')}")
+                            append('\t')
+                            val maskAnalysis = maskAnalyses[item.bounds]
+                            append("erased=${maskAnalysis?.accepted == true}")
+                            if (maskAnalysis != null) {
+                                append('\t')
+                                append("darkRatio=${"%.3f".format(maskAnalysis.darkRatio)}")
+                                append('\t')
+                                append("lightRatio=${"%.3f".format(maskAnalysis.lightRatio)}")
+                            }
+                        }
                         append('\t')
                         appendLine(item.text.replace('\n', ' '))
                     }
@@ -86,12 +134,14 @@ class OcrDiagnosticActivity : Activity() {
     override fun onDestroy() {
         scope.cancel()
         ocrManager.close()
+        translateManager.close()
         super.onDestroy()
     }
 
     companion object {
         const val EXTRA_IMAGE_PATH = "image_path"
         const val EXTRA_MAXIMUM_SCALE = "maximum_scale"
+        const val EXTRA_RUN_PIPELINE = "run_pipeline"
         const val LOG_TAG = "OCR_DIAGNOSTIC"
     }
 }

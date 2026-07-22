@@ -22,6 +22,12 @@ class ReplacementOverlayView @JvmOverloads constructor(
         val showingOriginal: Boolean
     )
 
+    private data class PositionedMarker(
+        val index: Int,
+        val centerX: Float,
+        val centerY: Float
+    )
+
     private var imageView: ImageView? = null
     private var markers = emptyList<Marker>()
     private var markerClickListener: ((index: Int, x: Float, y: Float) -> Unit)? = null
@@ -85,19 +91,47 @@ class ReplacementOverlayView @JvmOverloads constructor(
 
     private fun findMarkerAt(x: Float, y: Float): Int {
         val hitRadius = 18f * density
-        return markers.indices.firstOrNull { index ->
-            val center = markerCenter(markers[index]) ?: return@firstOrNull false
-            hypot(x - center.first, y - center.second) <= hitRadius
+        val closest = positionedMarkers().minByOrNull { marker ->
+            hypot(x - marker.centerX, y - marker.centerY)
+        } ?: return -1
+        return closest.index.takeIf {
+            hypot(x - closest.centerX, y - closest.centerY) <= hitRadius
         } ?: -1
     }
 
-    private fun markerCenter(marker: Marker): Pair<Float, Float>? {
-        val target = imageView ?: return null
+    private fun positionedMarkers(): List<PositionedMarker> {
+        val target = imageView ?: return emptyList()
         val radius = 8f * density
-        val point = floatArrayOf(0f, marker.bounds.centerY().toFloat())
-        target.imageMatrix.mapPoints(point)
-        return (point[0] + target.paddingLeft + radius + 3f * density) to
-            (point[1] + target.paddingTop)
+        val laneSpacing = radius * 2f + 3f * density
+        val minimumVerticalDistance = radius * 2f + 2f * density
+        val anchor = floatArrayOf(0f, 0f)
+        target.imageMatrix.mapPoints(anchor)
+        val baseX = anchor[0] + target.paddingLeft + radius + 3f * density
+        val maximumX = (width - radius).coerceAtLeast(baseX)
+        val laneLastY = mutableListOf<Float>()
+        val positions = arrayOfNulls<PositionedMarker>(markers.size)
+
+        markers.indices.map { index ->
+            val point = floatArrayOf(0f, markers[index].bounds.centerY().toFloat())
+            target.imageMatrix.mapPoints(point)
+            index to (point[1] + target.paddingTop)
+        }.sortedBy { it.second }.forEach { (index, centerY) ->
+            var lane = laneLastY.indexOfFirst { lastY ->
+                centerY - lastY >= minimumVerticalDistance
+            }
+            if (lane < 0) {
+                lane = laneLastY.size
+                laneLastY.add(centerY)
+            } else {
+                laneLastY[lane] = centerY
+            }
+            positions[index] = PositionedMarker(
+                index = index,
+                centerX = (baseX + lane * laneSpacing).coerceAtMost(maximumX),
+                centerY = centerY
+            )
+        }
+        return positions.filterNotNull()
     }
 
     override fun onDraw(canvas: Canvas) {
@@ -105,10 +139,10 @@ class ReplacementOverlayView @JvmOverloads constructor(
         if (imageView == null) return
         val radius = 8f * density
 
-        for (marker in markers) {
-            val center = markerCenter(marker) ?: continue
-            val centerX = center.first
-            val centerY = center.second
+        for (positionedMarker in positionedMarkers()) {
+            val marker = markers[positionedMarker.index]
+            val centerX = positionedMarker.centerX
+            val centerY = positionedMarker.centerY
 
             circlePaint.color = if (marker.showingOriginal) 0xFF2E7D32.toInt() else 0xFFD32F2F.toInt()
             circlePaint.style = Paint.Style.FILL

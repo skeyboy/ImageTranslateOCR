@@ -15,7 +15,15 @@ import org.opencv.photo.Photo
 
 data class InpaintResult(
     val bitmap: Bitmap,
-    val erasedRegions: List<Rect>
+    val erasedRegions: List<Rect>,
+    val maskAnalyses: List<PreciseMaskAnalysis> = emptyList()
+)
+
+data class PreciseMaskAnalysis(
+    val bounds: Rect,
+    val darkRatio: Double,
+    val lightRatio: Double,
+    val accepted: Boolean
 )
 
 class ImageInpainter {
@@ -69,6 +77,7 @@ class ImageInpainter {
 
         val mask = Mat.zeros(src.size(), CvType.CV_8UC1)
         val erasedRegions = mutableListOf<Rect>()
+        val maskAnalyses = mutableListOf<PreciseMaskAnalysis>()
         for (region in textRegions) {
             val left = maxOf(0, region.left - 2)
             val top = maxOf(0, region.top - 2)
@@ -106,14 +115,23 @@ class ImageInpainter {
             val area = validRect.area()
             val darkRatio = Core.countNonZero(darkTextMask) / area
             val lightRatio = Core.countNonZero(lightTextMask) / area
-            val lightScore = maskScore(lightRatio)
-            val darkScore = maskScore(darkRatio)
+            val lightScore = maskScore(lightRatio, validRect)
+            val darkScore = maskScore(darkRatio, validRect)
             val selectedMask = if (lightScore < darkScore) {
                 lightTextMask
             } else {
                 darkTextMask
             }
-            if (minOf(lightScore, darkScore) != Double.MAX_VALUE) {
+            val accepted = minOf(lightScore, darkScore) != Double.MAX_VALUE
+            maskAnalyses.add(
+                PreciseMaskAnalysis(
+                    bounds = Rect(region),
+                    darkRatio = darkRatio,
+                    lightRatio = lightRatio,
+                    accepted = accepted
+                )
+            )
+            if (accepted) {
                 selectedMask.copyTo(roiMask)
                 erasedRegions.add(Rect(region))
             }
@@ -140,12 +158,20 @@ class ImageInpainter {
         rgb.release()
         mask.release()
 
-        return InpaintResult(outBitmap, erasedRegions)
+        return InpaintResult(outBitmap, erasedRegions, maskAnalyses)
     }
 
-    private fun maskScore(foregroundRatio: Double): Double {
-        if (foregroundRatio !in 0.015..0.42) return Double.MAX_VALUE
-        return kotlin.math.abs(foregroundRatio - 0.18)
+    private fun maskScore(foregroundRatio: Double, region: CvRect): Double {
+        val aspectRatio = region.width.toDouble() / region.height.coerceAtLeast(1)
+        val maximumRatio = if (aspectRatio >= BOLD_TEXT_MINIMUM_ASPECT_RATIO) {
+            BOLD_TEXT_MAXIMUM_FOREGROUND_RATIO
+        } else {
+            DEFAULT_MAXIMUM_FOREGROUND_RATIO
+        }
+        if (foregroundRatio !in MINIMUM_FOREGROUND_RATIO..maximumRatio) {
+            return Double.MAX_VALUE
+        }
+        return kotlin.math.abs(foregroundRatio - TARGET_FOREGROUND_RATIO)
     }
 
     private fun inpaintOntoOriginal(
@@ -170,5 +196,13 @@ class ImageInpainter {
         repairedRgba.release()
         composed.release()
         return output
+    }
+
+    private companion object {
+        const val MINIMUM_FOREGROUND_RATIO = 0.015
+        const val DEFAULT_MAXIMUM_FOREGROUND_RATIO = 0.42
+        const val BOLD_TEXT_MAXIMUM_FOREGROUND_RATIO = 0.48
+        const val BOLD_TEXT_MINIMUM_ASPECT_RATIO = 1.8
+        const val TARGET_FOREGROUND_RATIO = 0.18
     }
 }
