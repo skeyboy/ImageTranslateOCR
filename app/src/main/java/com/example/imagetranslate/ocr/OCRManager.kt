@@ -211,6 +211,27 @@ class OCRManager {
         if (leadingGlyphs + trailingGlyphs >= compact.length) return item
         val cleanedText = compact.drop(leadingGlyphs).dropLast(trailingGlyphs)
         if (cleanedText.isEmpty()) return item
+        val originalMeaningfulCount = meaningfulCharacterCount(compact).coerceAtLeast(1)
+        val retainedMeaningfulRatio = meaningfulCharacterCount(cleanedText).toFloat() /
+            originalMeaningfulCount
+        val discardedGlyphs = leadingGlyphs + trailingGlyphs
+        val leadingGap = if (selectedIndex > 0) {
+            selected.left - groups[selectedIndex - 1].right
+        } else {
+            0
+        }
+        val trailingGap = if (selectedIndex < groups.lastIndex) {
+            groups[selectedIndex + 1].left - selected.right
+        } else {
+            0
+        }
+        val hasStrongDetachedEdge = maxOf(leadingGap, trailingGap) >=
+            bounds.height() * STRONG_DETACHED_EDGE_RATIO
+        if (retainedMeaningfulRatio < MIN_RETAINED_TEXT_RATIO &&
+            !(discardedGlyphs == 1 && hasStrongDetachedEdge)
+        ) {
+            return item
+        }
         val padding = maxOf(1, bounds.height() / 12)
         return RecognizedText(
             text = cleanedText,
@@ -382,22 +403,52 @@ class OCRManager {
             }
         }
 
-        val selected = groups.maxByOrNull { group ->
-            group.sumOf { candidate ->
-                candidate.text.count { it.isLetterOrDigit() || isHanCharacter(it) }
+        val refinedGroups = groups.map { group ->
+            group.toMutableList().apply {
+                trimDetachedEdgeGlyphs(this, lineBounds.height())
             }
-        }?.toMutableList() ?: return result(line.text, lineBounds)
-        trimDetachedEdgeGlyphs(selected, lineBounds.height())
-        if (selected.isEmpty()) return null
+        }.filter { it.isNotEmpty() }
+        if (refinedGroups.isEmpty()) return result(line.text, lineBounds)
 
-        val bounds = Rect(selected.first().bounds)
-        selected.drop(1).forEach { bounds.union(it.bounds) }
-        val text = buildString {
-            selected.forEachIndexed { index, element ->
-                if (index > 0 && needsWordSeparator(selected[index - 1], element, lineBounds.height())) {
-                    append(' ')
+        val selectedGroups = refinedGroups.filter { group ->
+            meaningfulCharacterCount(group.joinToString("") { it.text }) >=
+                MIN_MEANINGFUL_GROUP_CHARACTERS
+        }.ifEmpty {
+            listOf(
+                refinedGroups.maxBy { group ->
+                    meaningfulCharacterCount(group.joinToString("") { it.text })
                 }
-                append(element.text)
+            )
+        }
+
+        val selectedElements = selectedGroups.flatten()
+        val bounds = Rect(selectedElements.first().bounds)
+        selectedElements.drop(1).forEach { bounds.union(it.bounds) }
+        val explicitSeparator = line.text.firstOrNull { it in EXPLICIT_GROUP_SEPARATORS }
+        val text = buildString {
+            selectedGroups.forEachIndexed { groupIndex, group ->
+                if (groupIndex > 0) {
+                    val previousGroup = selectedGroups[groupIndex - 1]
+                    when {
+                        explicitSeparator != null -> append(" $explicitSeparator ")
+                        needsWordSeparator(
+                            previousGroup.last(),
+                            group.first(),
+                            lineBounds.height()
+                        ) -> append(' ')
+                    }
+                }
+                group.forEachIndexed { elementIndex, element ->
+                    if (elementIndex > 0 && needsWordSeparator(
+                            group[elementIndex - 1],
+                            element,
+                            lineBounds.height()
+                        )
+                    ) {
+                        append(' ')
+                    }
+                    append(element.text)
+                }
             }
         }
         return result(text, bounds)
@@ -646,6 +697,10 @@ class OCRManager {
     }
 
     private companion object {
+        const val MIN_RETAINED_TEXT_RATIO = 0.8f
+        const val STRONG_DETACHED_EDGE_RATIO = 0.28f
+        const val MIN_MEANINGFUL_GROUP_CHARACTERS = 2
+        val EXPLICIT_GROUP_SEPARATORS = charArrayOf('/', '／', '|', '｜', '·')
         const val PASS_ORIGINAL = 0
         const val PASS_CONTRAST = 1
         const val PASS_INVERTED = 2

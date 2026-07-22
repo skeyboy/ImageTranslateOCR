@@ -8,12 +8,14 @@
 
     <TextView
         android:id="@+id/tvStatus"
-        android:layout_width="wrap_content"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
+        android:layout_marginEnd="8dp"
         android:text="初始化中..."
         android:textSize="14sp"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintStart_toStartOf="parent" />
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/btnPickImage" />
 
     <Button
         android:id="@+id/btnPickImage"
@@ -23,10 +25,18 @@
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
+    <androidx.constraintlayout.widget.Barrier
+        android:id="@+id/topControlsBottom"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:barrierDirection="bottom"
+        app:constraint_referenced_ids="tvStatus,btnPickImage" />
+
     <ScrollView
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        app:layout_constraintTop_toBottomOf="@id/tvStatus"
+        android:layout_marginTop="8dp"
+        app:layout_constraintTop_toBottomOf="@id/topControlsBottom"
         app:layout_constraintBottom_toTopOf="@+id/bottomPanel">
 
         <LinearLayout
