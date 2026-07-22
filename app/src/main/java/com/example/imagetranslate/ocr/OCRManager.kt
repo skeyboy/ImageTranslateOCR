@@ -17,6 +17,8 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 import androidx.core.graphics.createBitmap
 import androidx.core.graphics.get
+import kotlin.math.ceil
+import kotlin.math.floor
 
 enum class RecognizerScript {
     CHINESE,
@@ -59,6 +61,16 @@ class OCRManager {
     )
 
     suspend fun recognize(bitmap: Bitmap): List<RecognizedText> {
+        val initialResults = recognizeFullImage(bitmap)
+        val refinedResults = if (maxOf(bitmap.width, bitmap.height) >= LOCAL_REFINEMENT_LONG_SIDE) {
+            refineSmallHanCandidates(bitmap, initialResults)
+        } else {
+            initialResults
+        }
+        return refinedResults.sortedWith(compareBy({ it.bounds.top }, { it.bounds.left }))
+    }
+
+    private suspend fun recognizeFullImage(bitmap: Bitmap): List<RecognizedText> {
         val candidates = mutableListOf<OcrCandidate>()
         addRecognitionPass(bitmap, PASS_ORIGINAL, 0.25f, candidates)
 
@@ -87,8 +99,184 @@ class OCRManager {
 
         return mergeAdjacentLineFragments(fuseCandidates(candidates, bitmap))
             .map { refineShortLabelByInk(bitmap, it) }
-            .sortedWith(compareBy({ it.bounds.top }, { it.bounds.left }))
     }
+
+    private suspend fun refineSmallHanCandidates(
+        bitmap: Bitmap,
+        items: List<RecognizedText>
+    ): List<RecognizedText> = items.map { item ->
+        if (!shouldRunLocalRefinement(item)) return@map item
+        runCatching { recognizeCandidateCrop(bitmap, item) }
+            .getOrNull()
+            ?.takeIf { shouldPreferLocalCandidate(item, it) }
+            ?: item
+    }
+
+    private fun shouldRunLocalRefinement(item: RecognizedText): Boolean {
+        val compact = item.text.filterNot(Char::isWhitespace)
+        return item.bounds.height() in LOCAL_MINIMUM_TEXT_HEIGHT..LOCAL_MAXIMUM_TEXT_HEIGHT &&
+            compact.length in LOCAL_MINIMUM_TEXT_LENGTH..LOCAL_MAXIMUM_TEXT_LENGTH &&
+            compact.any(::isHanCharacter)
+    }
+
+    private suspend fun recognizeCandidateCrop(
+        bitmap: Bitmap,
+        item: RecognizedText
+    ): RecognizedText? {
+        val height = item.bounds.height().coerceAtLeast(1)
+        val leadingPadding = maxOf(
+            LOCAL_MINIMUM_HORIZONTAL_PADDING,
+            (height * LOCAL_LEADING_PADDING_RATIO).toInt()
+        )
+        val trailingPadding = maxOf(
+            LOCAL_MINIMUM_HORIZONTAL_PADDING,
+            (height * LOCAL_TRAILING_PADDING_RATIO).toInt()
+        )
+        val verticalPadding = maxOf(LOCAL_MINIMUM_VERTICAL_PADDING, height)
+        val cropBounds = Rect(
+            (item.bounds.left - leadingPadding).coerceAtLeast(0),
+            (item.bounds.top - verticalPadding).coerceAtLeast(0),
+            (item.bounds.right + trailingPadding).coerceAtMost(bitmap.width),
+            (item.bounds.bottom + verticalPadding).coerceAtMost(bitmap.height)
+        )
+        if (cropBounds.width() < 2 || cropBounds.height() < 2) return null
+
+        val crop = Bitmap.createBitmap(
+            bitmap,
+            cropBounds.left,
+            cropBounds.top,
+            cropBounds.width(),
+            cropBounds.height()
+        )
+        val scale = minOf(
+            LOCAL_REFINEMENT_SCALE,
+            LOCAL_REFINEMENT_MAX_SIDE.toFloat() / maxOf(crop.width, crop.height)
+        )
+        val scaled = if (scale > 1f) {
+            Bitmap.createScaledBitmap(
+                crop,
+                (crop.width * scale).toInt().coerceAtLeast(1),
+                (crop.height * scale).toInt().coerceAtLeast(1),
+                true
+            )
+        } else {
+            crop
+        }
+
+        return try {
+            val candidates = mutableListOf<OcrCandidate>()
+            recognizeWith(
+                scaled,
+                chineseRecognizer,
+                RecognizerScript.CHINESE,
+                PASS_ORIGINAL,
+                0.35f,
+                candidates,
+                extraFilter = { true }
+            )
+            val contrasted = createContrastedBitmap(scaled)
+            try {
+                recognizeWith(
+                    contrasted,
+                    chineseRecognizer,
+                    RecognizerScript.CHINESE,
+                    PASS_CONTRAST,
+                    0.25f,
+                    candidates,
+                    extraFilter = { true }
+                )
+            } finally {
+                contrasted.recycle()
+            }
+
+            mergeAdjacentLineFragments(fuseCandidates(candidates, scaled))
+                .map { refineShortLabelByInk(scaled, it) }
+                .map { mapFromCrop(it, cropBounds, scaled, crop) }
+                .filter { local -> isLocalCandidateFor(item, local) }
+                .maxByOrNull { localCandidateScore(item, it) }
+        } finally {
+            if (scaled !== crop) scaled.recycle()
+            crop.recycle()
+        }
+    }
+
+    private fun mapFromCrop(
+        item: RecognizedText,
+        cropBounds: Rect,
+        scaled: Bitmap,
+        crop: Bitmap
+    ): RecognizedText {
+        val scaleX = scaled.width.toFloat() / crop.width
+        val scaleY = scaled.height.toFloat() / crop.height
+        return item.copy(
+            bounds = Rect(
+                cropBounds.left + floor(item.bounds.left / scaleX).toInt(),
+                cropBounds.top + floor(item.bounds.top / scaleY).toInt(),
+                cropBounds.left + ceil(item.bounds.right / scaleX).toInt(),
+                cropBounds.top + ceil(item.bounds.bottom / scaleY).toInt()
+            )
+        )
+    }
+
+    private fun isLocalCandidateFor(
+        original: RecognizedText,
+        local: RecognizedText
+    ): Boolean {
+        val localCompact = local.text.filterNot(Char::isWhitespace)
+        if (localCompact.length !in LOCAL_MINIMUM_TEXT_LENGTH..LOCAL_MAXIMUM_TEXT_LENGTH ||
+            localCompact.none(::isHanCharacter)
+        ) {
+            return false
+        }
+        val minimumHeight = minOf(original.bounds.height(), local.bounds.height()).coerceAtLeast(1)
+        val verticalOverlap = minOf(original.bounds.bottom, local.bounds.bottom) -
+            maxOf(original.bounds.top, local.bounds.top)
+        if (verticalOverlap.toFloat() / minimumHeight < LOCAL_MINIMUM_VERTICAL_OVERLAP) {
+            return false
+        }
+        val originalCount = meaningfulCharacterCount(original.text).coerceAtLeast(1)
+        val localCount = meaningfulCharacterCount(local.text)
+        if (localCount < maxOf(LOCAL_MINIMUM_TEXT_LENGTH, (originalCount * 0.6f).toInt())) {
+            return false
+        }
+        return overlapRatio(original.bounds, local.bounds) >= LOCAL_MINIMUM_BOUNDS_OVERLAP
+    }
+
+    private fun shouldPreferLocalCandidate(
+        original: RecognizedText,
+        local: RecognizedText
+    ): Boolean {
+        val confidenceAcceptable = local.modelConfidence >=
+            original.modelConfidence - LOCAL_MAXIMUM_CONFIDENCE_DROP
+        if (!confidenceAcceptable) return false
+
+        val originalHan = original.text.filter(::isHanCharacter)
+        val localHan = local.text.filter(::isHanCharacter)
+        val isTruncatedOriginal = localHan.length < originalHan.length &&
+            originalHan.contains(localHan)
+        if (isTruncatedOriginal) return false
+
+        val textSimilarity = textSimilarity(original.text, local.text)
+        val originalCompact = original.text.filterNot(Char::isWhitespace)
+        val localCompact = local.text.filterNot(Char::isWhitespace)
+        val alphanumericNoiseRemoved = localCompact.all(::isHanCharacter) &&
+            originalCompact.any {
+                it.isDigit() || it in 'A'..'Z' || it in 'a'..'z'
+            }
+        val detachedLeadingInkRemoved = local.bounds.left - original.bounds.left >=
+            original.bounds.height() * LOCAL_DETACHED_EDGE_RATIO
+        val confidenceImproved = local.modelConfidence >=
+            original.modelConfidence + LOCAL_CONFIDENCE_IMPROVEMENT
+        return textSimilarity >= LOCAL_MINIMUM_TEXT_SIMILARITY &&
+            (alphanumericNoiseRemoved || detachedLeadingInkRemoved || confidenceImproved ||
+                local.text == original.text)
+    }
+
+    private fun localCandidateScore(original: RecognizedText, local: RecognizedText): Float =
+        overlapRatio(original.bounds, local.bounds) * 0.9f +
+            textSimilarity(original.text, local.text) * 0.7f +
+            local.modelConfidence.coerceIn(0f, 1f) * 0.45f +
+            local.consensusScore.coerceIn(0f, 1f) * 0.25f
 
     private suspend fun addRecognitionPass(
         bitmap: Bitmap,
@@ -697,6 +885,23 @@ class OCRManager {
     }
 
     private companion object {
+        const val LOCAL_REFINEMENT_LONG_SIDE = 1600
+        const val LOCAL_REFINEMENT_SCALE = 3f
+        const val LOCAL_REFINEMENT_MAX_SIDE = 1536
+        const val LOCAL_MINIMUM_TEXT_HEIGHT = 16
+        const val LOCAL_MAXIMUM_TEXT_HEIGHT = 72
+        const val LOCAL_MINIMUM_TEXT_LENGTH = 2
+        const val LOCAL_MAXIMUM_TEXT_LENGTH = 12
+        const val LOCAL_MINIMUM_HORIZONTAL_PADDING = 16
+        const val LOCAL_MINIMUM_VERTICAL_PADDING = 12
+        const val LOCAL_LEADING_PADDING_RATIO = 0.5f
+        const val LOCAL_TRAILING_PADDING_RATIO = 3f
+        const val LOCAL_MINIMUM_VERTICAL_OVERLAP = 0.55f
+        const val LOCAL_MINIMUM_BOUNDS_OVERLAP = 0.55f
+        const val LOCAL_MINIMUM_TEXT_SIMILARITY = 0.45f
+        const val LOCAL_MAXIMUM_CONFIDENCE_DROP = 0.18f
+        const val LOCAL_CONFIDENCE_IMPROVEMENT = 0.08f
+        const val LOCAL_DETACHED_EDGE_RATIO = 0.45f
         const val MIN_RETAINED_TEXT_RATIO = 0.8f
         const val STRONG_DETACHED_EDGE_RATIO = 0.28f
         const val MIN_MEANINGFUL_GROUP_CHARACTERS = 2
