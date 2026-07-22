@@ -6,7 +6,6 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Rect
 import android.util.AttributeSet
-import android.view.MotionEvent
 import android.view.View
 import android.widget.ImageView
 import kotlin.math.hypot
@@ -31,7 +30,6 @@ class ReplacementOverlayView @JvmOverloads constructor(
     private var imageView: ImageView? = null
     private var markers = emptyList<Marker>()
     private var markerClickListener: ((index: Int, x: Float, y: Float) -> Unit)? = null
-    private var pressedMarkerIndex = -1
     private val density = resources.displayMetrics.density
     private val circlePaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -42,7 +40,7 @@ class ReplacementOverlayView @JvmOverloads constructor(
     }
 
     init {
-        isClickable = true
+        isClickable = false
         isFocusable = false
         importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_NO
     }
@@ -61,31 +59,10 @@ class ReplacementOverlayView @JvmOverloads constructor(
         markerClickListener = listener
     }
 
-    override fun onTouchEvent(event: MotionEvent): Boolean {
-        when (event.actionMasked) {
-            MotionEvent.ACTION_DOWN -> {
-                pressedMarkerIndex = findMarkerAt(event.x, event.y)
-                return pressedMarkerIndex >= 0
-            }
-            MotionEvent.ACTION_UP -> {
-                val releasedMarkerIndex = findMarkerAt(event.x, event.y)
-                if (pressedMarkerIndex >= 0 && releasedMarkerIndex == pressedMarkerIndex) {
-                    performClick()
-                    markerClickListener?.invoke(releasedMarkerIndex, event.x, event.y)
-                }
-                pressedMarkerIndex = -1
-                return releasedMarkerIndex >= 0
-            }
-            MotionEvent.ACTION_CANCEL -> {
-                pressedMarkerIndex = -1
-                return false
-            }
-        }
-        return pressedMarkerIndex >= 0
-    }
-
-    override fun performClick(): Boolean {
-        super.performClick()
+    fun performMarkerClick(x: Float, y: Float): Boolean {
+        val markerIndex = findMarkerAt(x, y)
+        if (markerIndex < 0) return false
+        markerClickListener?.invoke(markerIndex, x, y)
         return true
     }
 

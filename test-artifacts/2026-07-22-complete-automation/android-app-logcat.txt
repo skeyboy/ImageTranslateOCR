@@ -1,0 +1,1354 @@
+--------- beginning of main
+07-22 18:23:00.680 31474 31502 E perf_hint: createSessionUsingConfig: PerformanceHint cannot create session. PowerHAL is not supported!
+07-22 18:23:00.691 31474 31474 D AutofillManager: view not autofillable - has multiline input type
+07-22 18:23:00.691 31474 31474 D AutofillManager: view not autofillable - has multiline input type
+07-22 18:23:20.972 31474 31474 W WindowOnBackDispatcher: sendCancelIfRunning: isInProgress=false callback=android.view.ViewRootImpl$$ExternalSyntheticLambda13@91f716a
+07-22 18:23:20.974 31474 31474 D AutofillManager: view not autofillable - has multiline input type
+07-22 18:23:20.974 31474 31474 D AutofillManager: view not autofillable - has multiline input type
+07-22 18:23:20.978 31474 31489 D HWUI    : endAllActiveAnimators on 0x781f245bc0 (RippleDrawable) with handle 0x79bf2be8b0
+07-22 18:23:21.021 31474 31474 D InsetsController: hide(ime(), fromIme=false)
+07-22 18:23:21.021 31474 31474 I ImeTracker: com.example.imagetranslate:21689669: onCancelled at PHASE_CLIENT_ALREADY_HIDDEN
+07-22 18:23:34.930 31474 31501 E perf_hint: createSessionUsingConfig: PerformanceHint cannot create session. PowerHAL is not supported!
+07-22 18:23:34.945 31474 31474 D AutofillManager: view not autofillable - has multiline input type
+07-22 18:23:34.946 31474 31474 D AutofillManager: view not autofillable - has multiline input type
+07-22 18:23:35.696 31474 31474 D AutofillManager: view not autofillable - has multiline input type
+07-22 18:23:35.703 31474 31474 I ImeTracker: com.example.imagetranslate:b78302f7: onRequestShow at ORIGIN_CLIENT reason SHOW_SOFT_INPUT fromUser true
+07-22 18:23:35.704 31474 31474 D InsetsController: show(ime(), fromIme=false)
+--------- beginning of system
+07-22 18:23:35.705 31474 31474 D InsetsController: Setting requestedVisibleTypes to -1 (was -9)
+07-22 18:23:35.786 31474 32204 W InteractionJankMonitor: Initializing without READ_DEVICE_CONFIG permission. enabled=true, interval=1, missedFrameThreshold=3, frameTimeThreshold=64, package=com.example.imagetranslate
+07-22 18:23:36.012 31474 31474 I ImeTracker: com.example.imagetranslate:b78302f7: onShown
+07-22 18:23:37.016 31474 31474 D InsetsController: hide(ime(), fromIme=false)
+07-22 18:23:37.017 31474 31474 W WindowOnBackDispatcher: sendCancelIfRunning: isInProgress=false callback=ImeCallback=ImeOnBackInvokedCallback@238550415 Callback=android.window.IOnBackInvokedCallback$Stub$Proxy@1e53631
+07-22 18:23:37.018 31474 31474 D InsetsController: Setting requestedVisibleTypes to -9 (was -1)
+07-22 18:23:37.018 31474 31474 D InsetsController: hide(ime(), fromIme=false)
+07-22 18:23:37.019 31474 31474 I ImeTracker: com.android.inputmethod.latin:c9dae77a: onCancelled at PHASE_CLIENT_ALREADY_HIDDEN
+07-22 18:23:47.489 31474 31474 E FrameTracker: force finish cuj, time out: J<IME_INSETS_HIDE_ANIMATION::1@0@com.example.imagetranslate>
+07-22 18:23:52.315 31474 31474 W WindowOnBackDispatcher: sendCancelIfRunning: isInProgress=false callback=android.view.ViewRootImpl$$ExternalSyntheticLambda13@833e9e2
+07-22 18:23:52.316 31474 31474 D AutofillManager: view not autofillable - has multiline input type
+07-22 18:23:52.316 31474 31474 D AutofillManager: view not autofillable - has multiline input type
+07-22 18:23:52.322 31474 31489 D HWUI    : endAllActiveAnimators on 0x781f257d70 (RippleDrawable) with handle 0x79bf2b6a50
+07-22 18:23:52.322 31474 31489 D HWUI    : endAllActiveAnimators on 0x781f2536a0 (RippleDrawable) with handle 0x79bf2b89d0
+07-22 18:23:52.331 31474 31474 D AutofillManager: view not autofillable - has multiline input type
+07-22 18:23:52.380 31474 31474 D InsetsController: hide(ime(), fromIme=false)
+07-22 18:23:52.380 31474 31474 I ImeTracker: com.example.imagetranslate:212c5a05: onCancelled at PHASE_CLIENT_ALREADY_HIDDEN
+07-22 18:23:54.465 31474 32252 D nativeloader: Load /data/app/~~GotL4wyzsL4l6puiJobTdg==/com.example.imagetranslate-XAw4VxZ96WeZJAxpyhssgA==/base.apk!/lib/arm64-v8a/liblanguage_id_l2c_jni.so using class loader ns clns-7 (caller=/data/app/~~GotL4wyzsL4l6puiJobTdg==/com.example.imagetranslate-XAw4VxZ96WeZJAxpyhssgA==/base.apk!classes9.dex): ok
+07-22 18:23:54.466 31474 32252 I tflite  : Initialized TensorFlow Lite runtime.
+07-22 18:23:54.466 31474 32252 W libc    : Access denied finding property "ro.hardware.chipname"
+07-22 18:23:54.473 31474 31492 D TransportRuntime.SQLiteEventStore: Storing event with priority=VERY_LOW, name=FIREBASE_ML_SDK for destination cct
+07-22 18:23:54.476 31474 31492 D TransportRuntime.JobInfoScheduler: Upload for context TransportContext(cct, VERY_LOW, MSRodHRwczovL2ZpcmViYXNlbG9nZ2luZy5nb29nbGVhcGlzLmNvbS92MGNjL2xvZy9iYXRjaD9mb3JtYXQ9anNvbl9wcm90bzNc) is already scheduled. Returning...
+07-22 18:23:54.477 31474 32254 D nativeloader: Load /data/app/~~GotL4wyzsL4l6puiJobTdg==/com.example.imagetranslate-XAw4VxZ96WeZJAxpyhssgA==/base.apk!/lib/arm64-v8a/libtranslate_jni.so using class loader ns clns-7 (caller=/data/app/~~GotL4wyzsL4l6puiJobTdg==/com.example.imagetranslate-XAw4VxZ96WeZJAxpyhssgA==/base.apk!classes9.dex): ok
+07-22 18:23:54.492 31474 32254 I native  : I0000 00:00:1784715834.491922   32254 package.cc:81] Load: No checksum: /data/user/0/com.example.imagetranslate/no_backup/com.google.mlkit.translate.models/en_zh/merged_dict_en_zh_25_both.bin
+07-22 18:23:54.534 31474 32254 I native  : I0000 00:00:1784715834.534835   32254 package.cc:81] Load: No checksum: /data/user/0/com.example.imagetranslate/no_backup/com.google.mlkit.translate.models/en_zh/merged_dict_en_zh_25_from_en.bin
+07-22 18:23:54.536 31474 32254 I native  : I0000 00:00:1784715834.536340   32254 package.cc:81] Load: No checksum: /data/user/0/com.example.imagetranslate/no_backup/com.google.mlkit.translate.models/en_zh/merged_dict_en_zh_25_update.bin
+07-22 18:23:54.540 31474 32254 I native  : I0000 00:00:1784715834.540695   32254 varwidtharray.h:246] mlock'ed varwidtharray data successfully.
+07-22 18:23:54.541 31474 32254 I native  : I0000 00:00:1784715834.541080   32254 varwidtharray.h:246] mlock'ed varwidtharray data successfully.
+07-22 18:23:54.541 31474 32254 I native  : I0000 00:00:1784715834.541167   32254 varwidtharray.h:246] mlock'ed varwidtharray data successfully.
+07-22 18:23:54.541 31474 32254 I native  : I0000 00:00:1784715834.541187   32254 offline_lm_approx_map.cc:47] 3508304 bytes actually loaded.
+07-22 18:23:54.546 31474 32254 W native  : W0000 00:00:1784715834.546942   32254 universal_preproc_segment_mobile.cc:39] unknown argument: 'SAFT_SLIM'
+07-22 18:23:54.547 31474 32254 W native  : W0000 00:00:1784715834.547137   32254 universal_preproc_segment_mobile.cc:39] unknown argument: 'SAFT_SLIM'
+07-22 18:23:54.547 31474 32254 W native  : W0000 00:00:1784715834.547149   32254 universal_preproc_segment_mobile.cc:39] unknown argument: 'SAFT_SLIM'
+07-22 18:23:54.547 31474 32254 W native  : W0000 00:00:1784715834.547159   32254 universal_preproc_segment_mobile.cc:39] unknown argument: 'SAFT_SLIM'
+07-22 18:23:54.560 31474 32254 I native  : I0000 00:00:1784715834.560328   32254 offline_feature_functions.cc:109] offline lm loaded for language: Chinese
+07-22 18:23:54.560 31474 32254 I native  : I0000 00:00:1784715834.560504   32254 offline_feature_functions.cc:109] offline lm loaded for language: Chinese
+07-22 18:23:54.560 31474 32254 I native  : I0000 00:00:1784715834.560589   32254 offline_feature_functions.cc:109] offline lm loaded for language: Chinese
+07-22 18:23:54.560 31474 32254 I native  : I0000 00:00:1784715834.560652   32254 offline_feature_functions.cc:109] offline lm loaded for language: Chinese
+07-22 18:23:54.569 31474 32254 I native  : I0000 00:00:1784715834.569064   32254 inference_session_encoder_util.cc:86] Creating sessions for 4 pipelines...
+07-22 18:23:54.569 31474 32254 I native  : I0000 00:00:1784715834.569181   32254 inference_session_encoder_util.cc:90] Creating session for pipeline 'encoder_embed_ids_0'...
+07-22 18:23:54.570 31474 32254 I tflite  : Initialized TensorFlow Lite runtime.
+07-22 18:23:54.570 31474 32254 W libc    : Access denied finding property "ro.hardware.chipname"
+07-22 18:23:54.571 31474 32254 I tflite  : Created TensorFlow Lite XNNPACK delegate for CPU.
+07-22 18:23:54.571 31474 32254 I native  : I0000 00:00:1784715834.571609   32254 inference_session_encoder_util.cc:90] Creating session for pipeline 'encoder_swizzled_birnn_0'...
+07-22 18:23:54.573 31474 32254 I native  : I0000 00:00:1784715834.573961   32254 inference_session_encoder_util.cc:90] Creating session for pipeline 'encoder_swizzled_birnn_1'...
+07-22 18:23:54.575 31474 32254 I native  : I0000 00:00:1784715834.575701   32254 inference_session_encoder_util.cc:90] Creating session for pipeline 'encoder_swizzled_birnn_2'...
+07-22 18:23:54.577 31474 32254 I native  : I0000 00:00:1784715834.577039   32254 decoder.cc:121] Creating decoder
+07-22 18:23:54.577 31474 32254 I native  : I0000 00:00:1784715834.577066   32254 inference_session_encoder_util.cc:86] Creating sessions for 3 pipelines...
+07-22 18:23:54.577 31474 32254 I native  : I0000 00:00:1784715834.577091   32254 inference_session_encoder_util.cc:90] Creating session for pipeline 'decoder_init_0'...
+07-22 18:23:54.577 31474 32254 I native  : I0000 00:00:1784715834.577981   32254 inference_session_encoder_util.cc:90] Creating session for pipeline 'decoder_step_embed_ids_0'...
+07-22 18:23:54.578 31474 32254 I native  : I0000 00:00:1784715834.578715   32254 inference_session_encoder_util.cc:90] Creating session for pipeline 'decoder_step_0'...
+07-22 18:23:54.586 31474 32254 W native  : W0000 00:00:1784715834.586177   32254 preproc_add_period.cc:124] Option 'skip_operation' has been renamed 'skip_in_training'
+07-22 18:23:54.629 31474 32254 W native  : W0000 00:00:1784715834.629001   32254 preproc_subsentence_splitter.cc:274] Option 'split_hierarchically' is ignored.
+07-22 18:23:54.630 31474 32254 W native  : W0000 00:00:1784715834.630003   32254 preproc_add_period.cc:124] Option 'skip_operation' has been renamed 'skip_in_training'
+07-22 18:23:54.653 31474 32254 I native  : I0000 00:00:1784715834.653166   32254 wordpiece_preprocessor.cc:48] Model loaded from pb string. Verifying symbols.
+07-22 18:23:54.655 31474 32254 I native  : I0000 00:00:1784715834.655852   32254 wordpiece_preprocessor.cc:83] Symbols=5998 chars=401
+07-22 18:23:54.656 31474 32254 I native  : I0000 00:00:1784715834.656519   32254 preproc_subsentence_splitter.cc:342] Final todo: upp_offline:b2a:lc:add_period10:subsentence_splitter_tokenizer
+07-22 18:23:54.673 31474 32254 I native  : I0000 00:00:1784715834.673820   32254 wordpiece_preprocessor.cc:48] Model loaded from pb string. Verifying symbols.
+07-22 18:23:54.676 31474 32254 I native  : I0000 00:00:1784715834.676235   32254 wordpiece_preprocessor.cc:83] Symbols=5998 chars=401
+07-22 18:23:54.695 31474 32254 I native  : I0000 00:00:1784715834.695240   32254 wordpiece_preprocessor.cc:48] Model loaded from pb string. Verifying symbols.
+07-22 18:23:54.697 31474 32254 I native  : I0000 00:00:1784715834.696952   32254 wordpiece_preprocessor.cc:83] Symbols=5998 chars=5001
+07-22 18:23:54.702 31474 32254 I native  : I0000 00:00:1784715834.701983   32254 uniform_model.cc:316] Instantiating UniformModel for language=en src_script= tgt_script= top_k=1 model_store= version=, method_type=METHOD_UNSPECIFIED service=translate_ondevice model_path= resource_to_file_handle_map.size=0 rapid_response=
+07-22 18:23:54.704 31474 32254 I native  : I0722 18:23:54.704610   32254 builtin.cc:17] Registering prefix: /memfile//
+07-22 18:23:54.701 31474 31474 W pool-5-thread-1: type=1400 audit(0.0:285): avc:  denied  { read } for  name="version" dev="proc" ino=4026532131 scontext=u:r:untrusted_app:s0:c251,c256,c512,c768 tcontext=u:object_r:proc_version:s0 tclass=file permissive=0 app=com.example.imagetranslate
+07-22 18:23:54.704 31474 32254 I native  : I0722 18:23:54.704739   32254 icutranslitruleloader.cc:52] Mounting default icu rules
+07-22 18:23:54.705 31474 32254 I native  : I0722 18:23:54.705077   32254 uniform_model.cc:66] Read the config for 85 input language-scripts from: /memfile/nlp/sweet/translit/api/config/default.binarypb
+07-22 18:23:54.705 31474 32254 I native  : I0722 18:23:54.705121   32254 uniform_model.cc:66] Read the config for 4 input language-scripts from: /memfile/nlp/sweet/translit/api/config/translate_ondevice.binarypb
+07-22 18:23:54.706 31474 32254 I native  : I0722 18:23:54.706410   32254 uniform_model.cc:316] Instantiating UniformModel for language=zh src_script= tgt_script= top_k=1 model_store= version=, method_type=METHOD_UNSPECIFIED service=translate_ondevice model_path= resource_to_file_handle_map.size=0 rapid_response=
+07-22 18:23:54.706 31474 32254 I native  : I0722 18:23:54.706472   32254 uniform_model.cc:66] Read the config for 85 input language-scripts from: /memfile/nlp/sweet/translit/api/config/default.binarypb
+07-22 18:23:54.706 31474 32254 I native  : I0722 18:23:54.706502   32254 uniform_model.cc:66] Read the config for 4 input language-scripts from: /memfile/nlp/sweet/translit/api/config/translate_ondevice.binarypb
+07-22 18:23:54.707 31474 32254 I native  : I0722 18:23:54.707666   32254 uniform_model.cc:151] Resolved Method Type: METHOD_HMM
+07-22 18:23:54.708 31474 32254 I native  : I0722 18:23:54.708676   32254 uniform_model.cc:316] Instantiating UniformModel for language=zh src_script= tgt_script= top_k=1 model_store= version=, method_type=METHOD_UNSPECIFIED service=translate_ondevice model_path= resource_to_file_handle_map.size=0 rapid_response=
+07-22 18:23:54.708 31474 32254 I native  : I0722 18:23:54.708745   32254 uniform_model.cc:66] Read the config for 85 input language-scripts from: /memfile/nlp/sweet/translit/api/config/default.binarypb
+07-22 18:23:54.708 31474 32254 I native  : I0722 18:23:54.708779   32254 uniform_model.cc:66] Read the config for 4 input language-scripts from: /memfile/nlp/sweet/translit/api/config/translate_ondevice.binarypb
+07-22 18:23:54.709 31474 32254 I native  : I0722 18:23:54.709919   32254 uniform_model.cc:151] Resolved Method Type: METHOD_HMM
+07-22 18:23:54.710 31474 32254 I native  : I0722 18:23:54.710005   32254 uniform_model.cc:316] Instantiating UniformModel for language=zh src_script= tgt_script= top_k=1 model_store=compact version=, method_type=METHOD_UNSPECIFIED service=translate_ondevice model_path=/data/user/0/com.example.imagetranslate/no_backup/com.google.mlkit.translate.models/en_zh/translit_zh resource_to_file_handle_map.size=0 rapid_response=
+07-22 18:23:54.710 31474 32254 I native  : I0722 18:23:54.710058   32254 uniform_model.cc:66] Read the config for 85 input language-scripts from: /memfile/nlp/sweet/translit/api/config/default.binarypb
+07-22 18:23:54.710 31474 32254 I native  : I0722 18:23:54.710087   32254 uniform_model.cc:66] Read the config for 4 input language-scripts from: /memfile/nlp/sweet/translit/api/config/translate_ondevice.binarypb
+07-22 18:23:54.711 31474 32254 I native  : I0722 18:23:54.711565   32254 uniform_model.cc:151] Resolved Method Type: METHOD_HMM
+07-22 18:23:54.711 31474 32254 I native  : I0722 18:23:54.711585   32254 uniform_model.cc:235] Resolved Model Path: /data/user/0/com.example.imagetranslate/no_backup/com.google.mlkit.translate.models/en_zh/translit_zh
+07-22 18:23:54.713 31474 32254 I native  : I0722 18:23:54.713254   32254 hmm_decoder_wrapper.cc:79] Successfully enrolled hmm decoder transliterator for the language pair: (zh,en).
+07-22 18:23:54.715 31474 32254 W native  : W0722 18:23:54.715622   32254 hmm_engine.cc:2082] Unable to get language model data setting
+07-22 18:23:54.716 31474 32254 I native  : I0722 18:23:54.716767   32254 dictionary.cc:274] Dictionary build date: 20191024
+07-22 18:23:54.720 31474 31492 D TransportRuntime.SQLiteEventStore: Storing event with priority=VERY_LOW, name=FIREBASE_ML_SDK for destination cct
+07-22 18:23:54.723 31474 31492 D TransportRuntime.JobInfoScheduler: Upload for context TransportContext(cct, VERY_LOW, MSRodHRwczovL2ZpcmViYXNlbG9nZ2luZy5nb29nbGVhcGlzLmNvbS92MGNjL2xvZy9iYXRjaD9mb3JtYXQ9anNvbl9wcm90bzNc) is already scheduled. Returning...
+07-22 18:23:54.755 31474 32254 D native  : I0722 18:23:54.755440   32254 mergeddicttrans.cc:1860] The current system has NMT.
+07-22 18:23:54.755 31474 32254 D native  : I0722 18:23:54.755532   32254 mergeddicttrans.cc:1866] Sentence #0: Pixel3
+07-22 18:23:54.755 31474 32254 D native  : I0722 18:23:54.755592   32254 mergeddicttrans.cc:1912] To fallback to PB.
+07-22 18:23:54.755 31474 32254 D native  : I0722 18:23:54.755606   32254 mergeddicttrans.cc:1585] Sentence #0: Pixel3
+07-22 18:23:54.756 31474 32254 D native  : I0722 18:23:54.756670   32254 mergeddicttrans.cc:1571] PBMT preproc: pixel3
+07-22 18:23:54.756 31474 32254 D native  : I0722 18:23:54.756897   32254 mergeddicttrans.cc:1588] PBMT trans: pixel3
+07-22 18:23:54.759 31474 32255 D native  : I0722 18:23:54.759231   32255 mergeddicttrans.cc:1860] The current system has NMT.
+07-22 18:23:54.759 31474 32255 D native  : I0722 18:23:54.759316   32255 mergeddicttrans.cc:1866] Sentence #0: UI setting option: Pixel3
+07-22 18:23:54.759 31474 32255 D native  : I0722 18:23:54.759405   32255 mergeddicttrans.cc:1918] To be translated by NMT.
+07-22 18:23:54.760 31474 31492 D TransportRuntime.SQLiteEventStore: Storing event with priority=VERY_LOW, name=FIREBASE_ML_SDK for destination cct
+07-22 18:23:54.763 31474 31492 D TransportRuntime.JobInfoScheduler: Upload for context TransportContext(cct, VERY_LOW, MSRodHRwczovL2ZpcmViYXNlbG9nZ2luZy5nb29nbGVhcGlzLmNvbS92MGNjL2xvZy9iYXRjaD9mb3JtYXQ9anNvbl9wcm90bzNc) is already scheduled. Returning...
+07-22 18:23:54.834 31474 32255 I native  : I0722 18:23:54.833952   32255 mergeddicttrans.cc:1827] Sentence #0: UI setting option: Pixel3
+07-22 18:23:54.834 31474 32255 I native  : I0722 18:23:54.834106   32255 mergeddicttrans.cc:1828] 
+07-22 18:23:54.834 31474 32255 I native  : Source language: en, target language: zh
+07-22 18:23:54.834 31474 32255 I native  : 
+07-22 18:23:54.834 31474 32255 I native  : Has period trick: 1
+07-22 18:23:54.834 31474 32255 I native  : 
+07-22 18:23:54.834 31474 32255 I native  : Full translation: UI设置选项：PIXEL3
+07-22 18:23:54.834 31474 32255 I native  : Translate Instance: 
+07-22 18:23:54.834 31474 32255 I native  : Query (raw): UI setting option: Pixel3
+07-22 18:23:54.834 31474 32255 I native  : Query (after preprocess): ui setting option : pixel3 .
+07-22 18:23:54.834 31474 32255 I native  : Query ids (after tokenizer): 553 44 1171 1425 19 1842 108 38 5 2
+07-22 18:23:54.834 31474 32255 I native  : Translation ids: 572 102 173 826 628 10 79 102 484 91 134 17 6 2
+07-22 18:23:54.834 31474 32255 I native  : Translation (after detokenizer): UI 设置 选项 : PIXEL3 .
+07-22 18:23:54.834 31474 32255 I native  : Alignment probability:
+07-22 18:23:54.834 31474 32255 I native  : 	UI	设置	选项	:	PIXEL3	.
+07-22 18:23:54.834 31474 32255 I native  : ui	0.937255	0.0156863	0.00196078	0.00392157	0.000653595	0.00392157
+07-22 18:23:54.834 31474 32255 I native  : setting	0.0411765	0.984314	0.00196078	0	0.000653595	0.0117647
+07-22 18:23:54.834 31474 32255 I native  : option	0.0117647	0.00392157	0.972549	0.0156863	0.00130719	0.00392157
+07-22 18:23:54.834 31474 32255 I native  : :	0.00392157	0	0.0254902	0.972549	0.00326797	0.00392157
+07-22 18:23:54.834 31474 32255 I native  : pixel3	0.00588235	0	0.00196078	0.00784314	0.96536	0.0392157
+07-22 18:23:54.834 31474 32255 I native  : .	0.00196078	0.00392157	0.00196078	0.00392157	0.00915033	0.72549
+07-22 18:23:54.834 31474 32255 I native  : Translation (before postprocess): UI 设置 选项 : PIXEL3 .
+07-22 18:23:54.837 31474 31492 D TransportRuntime.SQLiteEventStore: Storing event with priority=VERY_LOW, name=FIREBASE_ML_SDK for destination cct
+07-22 18:23:54.839 31474 31492 D TransportRuntime.JobInfoScheduler: Upload for context TransportContext(cct, VERY_LOW, MSRodHRwczovL2ZpcmViYXNlbG9nZ2luZy5nb29nbGVhcGlzLmNvbS92MGNjL2xvZy9iYXRjaD9mb3JtYXQ9anNvbl9wcm90bzNc) is already scheduled. Returning...
+07-22 18:23:54.839 31474 32256 I native  : I0722 18:23:54.839876   32256 package.cc:81] Load: No checksum: /data/user/0/com.example.imagetranslate/no_backup/com.google.mlkit.translate.models/en_zh/merged_dict_en_zh_25_both.bin
+07-22 18:23:54.887 31474 32256 I native  : I0722 18:23:54.887917   32256 package.cc:81] Load: No checksum: /data/user/0/com.example.imagetranslate/no_backup/com.google.mlkit.translate.models/en_zh/merged_dict_en_zh_25_from_zh.bin
+07-22 18:23:54.888 31474 32256 I native  : I0722 18:23:54.888156   32256 package.cc:81] Load: No checksum: /data/user/0/com.example.imagetranslate/no_backup/com.google.mlkit.translate.models/en_zh/merged_dict_en_zh_25_update.bin
+07-22 18:23:54.892 31474 32256 I native  : I0722 18:23:54.892898   32256 varwidtharray.h:246] mlock'ed varwidtharray data successfully.
+07-22 18:23:54.893 31474 32256 I native  : I0722 18:23:54.893225   32256 varwidtharray.h:246] mlock'ed varwidtharray data successfully.
+07-22 18:23:54.893 31474 32256 I native  : I0722 18:23:54.893321   32256 varwidtharray.h:246] mlock'ed varwidtharray data successfully.
+07-22 18:23:54.893 31474 32256 I native  : I0722 18:23:54.893340   32256 offline_lm_approx_map.cc:47] 3500512 bytes actually loaded.
+07-22 18:23:54.895 31474 32256 I native  : I0722 18:23:54.895034   32256 offline_feature_functions.cc:109] offline lm loaded for language: ENGLISH
+07-22 18:23:54.895 31474 32256 I native  : I0722 18:23:54.895121   32256 offline_feature_functions.cc:109] offline lm loaded for language: ENGLISH
+07-22 18:23:54.895 31474 32256 I native  : I0722 18:23:54.895181   32256 offline_feature_functions.cc:109] offline lm loaded for language: ENGLISH
+07-22 18:23:54.895 31474 32256 I native  : I0722 18:23:54.895240   32256 offline_feature_functions.cc:109] offline lm loaded for language: ENGLISH
+07-22 18:23:54.902 31474 32256 I native  : I0722 18:23:54.902344   32256 inference_session_encoder_util.cc:86] Creating sessions for 4 pipelines...
+07-22 18:23:54.902 31474 32256 I native  : I0722 18:23:54.902469   32256 inference_session_encoder_util.cc:90] Creating session for pipeline 'encoder_embed_ids_0'...
+07-22 18:23:54.903 31474 32256 I native  : I0722 18:23:54.903944   32256 inference_session_encoder_util.cc:90] Creating session for pipeline 'encoder_swizzled_birnn_0'...
+07-22 18:23:54.905 31474 32256 I native  : I0722 18:23:54.905623   32256 inference_session_encoder_util.cc:90] Creating session for pipeline 'encoder_swizzled_birnn_1'...
+07-22 18:23:54.907 31474 32256 I native  : I0722 18:23:54.907226   32256 inference_session_encoder_util.cc:90] Creating session for pipeline 'encoder_swizzled_birnn_2'...
+07-22 18:23:54.908 31474 32256 I native  : I0722 18:23:54.908061   32256 decoder.cc:121] Creating decoder
+07-22 18:23:54.908 31474 32256 I native  : I0722 18:23:54.908090   32256 inference_session_encoder_util.cc:86] Creating sessions for 3 pipelines...
+07-22 18:23:54.908 31474 32256 I native  : I0722 18:23:54.908114   32256 inference_session_encoder_util.cc:90] Creating session for pipeline 'decoder_init_0'...
+07-22 18:23:54.909 31474 32256 I native  : I0722 18:23:54.909088   32256 inference_session_encoder_util.cc:90] Creating session for pipeline 'decoder_step_embed_ids_0'...
+07-22 18:23:54.909 31474 32256 I native  : I0722 18:23:54.909889   32256 inference_session_encoder_util.cc:90] Creating session for pipeline 'decoder_step_0'...
+07-22 18:23:54.937 31474 32256 W native  : W0722 18:23:54.937203   32256 preproc_subsentence_splitter.cc:274] Option 'split_hierarchically' is ignored.
+07-22 18:23:54.955 31474 32256 I native  : I0722 18:23:54.955759   32256 wordpiece_preprocessor.cc:48] Model loaded from pb string. Verifying symbols.
+07-22 18:23:54.957 31474 32256 I native  : I0722 18:23:54.957851   32256 wordpiece_preprocessor.cc:83] Symbols=5998 chars=5000
+07-22 18:23:54.958 31474 32256 I native  : I0722 18:23:54.958402   32256 preproc_subsentence_splitter.cc:342] Final todo: upp_offline:b2a:lc:subsentence_splitter_tokenizer
+07-22 18:23:54.971 31474 32256 I native  : I0722 18:23:54.971892   32256 wordpiece_preprocessor.cc:48] Model loaded from pb string. Verifying symbols.
+07-22 18:23:54.973 31474 32256 I native  : I0722 18:23:54.973792   32256 wordpiece_preprocessor.cc:83] Symbols=5998 chars=5000
+07-22 18:23:54.991 31474 32256 I native  : I0722 18:23:54.991683   32256 wordpiece_preprocessor.cc:48] Model loaded from pb string. Verifying symbols.
+07-22 18:23:54.993 31474 32256 I native  : I0722 18:23:54.993115   32256 wordpiece_preprocessor.cc:83] Symbols=3998 chars=401
+07-22 18:23:54.996 31474 32256 I native  : I0722 18:23:54.996811   32256 uniform_model.cc:316] Instantiating UniformModel for language=zh src_script= tgt_script= top_k=1 model_store= version=, method_type=METHOD_UNSPECIFIED service=translate_ondevice model_path= resource_to_file_handle_map.size=0 rapid_response=
+07-22 18:23:54.997 31474 32256 I native  : I0722 18:23:54.996991   32256 uniform_model.cc:66] Read the config for 85 input language-scripts from: /memfile/nlp/sweet/translit/api/config/default.binarypb
+07-22 18:23:54.997 31474 32256 I native  : I0722 18:23:54.997033   32256 uniform_model.cc:66] Read the config for 4 input language-scripts from: /memfile/nlp/sweet/translit/api/config/translate_ondevice.binarypb
+07-22 18:23:54.998 31474 32256 I native  : I0722 18:23:54.998322   32256 uniform_model.cc:151] Resolved Method Type: METHOD_HMM
+07-22 18:23:54.998 31474 32256 I native  : I0722 18:23:54.998441   32256 uniform_model.cc:316] Instantiating UniformModel for language=zh src_script= tgt_script= top_k=1 model_store= version=, method_type=METHOD_UNSPECIFIED service=translate_ondevice model_path= resource_to_file_handle_map.size=0 rapid_response=
+07-22 18:23:54.998 31474 32256 I native  : I0722 18:23:54.998509   32256 uniform_model.cc:66] Read the config for 85 input language-scripts from: /memfile/nlp/sweet/translit/api/config/default.binarypb
+07-22 18:23:54.998 31474 32256 I native  : I0722 18:23:54.998541   32256 uniform_model.cc:66] Read the config for 4 input language-scripts from: /memfile/nlp/sweet/translit/api/config/translate_ondevice.binarypb
+07-22 18:23:54.999 31474 32256 I native  : I0722 18:23:54.999790   32256 uniform_model.cc:151] Resolved Method Type: METHOD_HMM
+07-22 18:23:54.999 31474 32256 I native  : I0722 18:23:54.999883   32256 uniform_model.cc:316] Instantiating UniformModel for language=zh src_script= tgt_script= top_k=1 model_store=compact version=, method_type=METHOD_UNSPECIFIED service=translate_ondevice model_path=/data/user/0/com.example.imagetranslate/no_backup/com.google.mlkit.translate.models/en_zh/translit_zh resource_to_file_handle_map.size=0 rapid_response=
+07-22 18:23:54.999 31474 32256 I native  : I0722 18:23:54.999943   32256 uniform_model.cc:66] Read the config for 85 input language-scripts from: /memfile/nlp/sweet/translit/api/config/default.binarypb
+07-22 18:23:54.999 31474 32256 I native  : I0722 18:23:54.999972   32256 uniform_model.cc:66] Read the config for 4 input language-scripts from: /memfile/nlp/sweet/translit/api/config/translate_ondevice.binarypb
+07-22 18:23:55.001 31474 32256 I native  : I0722 18:23:55.001209   32256 uniform_model.cc:151] Resolved Method Type: METHOD_HMM
+07-22 18:23:55.001 31474 32256 I native  : I0722 18:23:55.001240   32256 uniform_model.cc:235] Resolved Model Path: /data/user/0/com.example.imagetranslate/no_backup/com.google.mlkit.translate.models/en_zh/translit_zh
+07-22 18:23:55.001 31474 32256 I native  : I0722 18:23:55.001496   32256 hmm_decoder_wrapper.cc:79] Successfully enrolled hmm decoder transliterator for the language pair: (zh,en).
+07-22 18:23:55.001 31474 32256 W native  : W0722 18:23:55.001788   32256 hmm_engine.cc:2082] Unable to get language model data setting
+07-22 18:23:55.001 31474 32256 I native  : I0722 18:23:55.001951   32256 uniform_model.cc:316] Instantiating UniformModel for language=en src_script= tgt_script= top_k=1 model_store= version=, method_type=METHOD_UNSPECIFIED service=translate_ondevice model_path= resource_to_file_handle_map.size=0 rapid_response=
+07-22 18:23:55.002 31474 32256 I native  : I0722 18:23:55.002045   32256 uniform_model.cc:66] Read the config for 85 input language-scripts from: /memfile/nlp/sweet/translit/api/config/default.binarypb
+07-22 18:23:55.002 31474 32256 I native  : I0722 18:23:55.002079   32256 uniform_model.cc:66] Read the config for 4 input language-scripts from: /memfile/nlp/sweet/translit/api/config/translate_ondevice.binarypb
+07-22 18:23:55.003 31474 32256 I native  : I0722 18:23:55.003386   32256 dictionary.cc:274] Dictionary build date: 20191024
+07-22 18:23:55.003 31474 32256 I native  : I0722 18:23:55.003761   32256 punctuation_mapper.cc:319] Initialized punctuation mapper
+07-22 18:23:55.003 31474 32256 D native  : I0722 18:23:55.003798   32256 mergeddicttrans.cc:1860] The current system has NMT.
+07-22 18:23:55.003 31474 32256 D native  : I0722 18:23:55.003810   32256 mergeddicttrans.cc:1866] Sentence #0: Android系统
+07-22 18:23:55.003 31474 32256 D native  : I0722 18:23:55.003859   32256 mergeddicttrans.cc:1918] To be translated by NMT.
+07-22 18:23:55.007 31474 31492 D TransportRuntime.SQLiteEventStore: Storing event with priority=VERY_LOW, name=FIREBASE_ML_SDK for destination cct
+07-22 18:23:55.009 31474 31492 D TransportRuntime.JobInfoScheduler: Upload for context TransportContext(cct, VERY_LOW, MSRodHRwczovL2ZpcmViYXNlbG9nZ2luZy5nb29nbGVhcGlzLmNvbS92MGNjL2xvZy9iYXRjaD9mb3JtYXQ9anNvbl9wcm90bzNc) is already scheduled. Returning...
+07-22 18:23:55.041 31474 32256 I native  : I0722 18:23:55.041592   32256 mergeddicttrans.cc:1827] Sentence #0: Android系统
+07-22 18:23:55.041 31474 32256 I native  : I0722 18:23:55.041700   32256 mergeddicttrans.cc:1828] 
+07-22 18:23:55.041 31474 32256 I native  : Source language: zh, target language: en
+07-22 18:23:55.041 31474 32256 I native  : 
+07-22 18:23:55.041 31474 32256 I native  : Has period trick: 0
+07-22 18:23:55.041 31474 32256 I native  : 
+07-22 18:23:55.041 31474 32256 I native  : Full translation: Android system
+07-22 18:23:55.041 31474 32256 I native  : Translate Instance: 
+07-22 18:23:55.041 31474 32256 I native  : Query (raw): Android系统
+07-22 18:23:55.041 31474 32256 I native  : Query (after preprocess): android 系统
+07-22 18:23:55.041 31474 32256 I native  : Query ids (after tokenizer): 86 76 25 23 22 20 25 145 2
+07-22 18:23:55.041 31474 32256 I native  : Translation ids: 1054 272 136 190 2
+07-22 18:23:55.041 31474 32256 I native  : Translation (after detokenizer): Android system
+07-22 18:23:55.041 31474 32256 I native  : Alignment probability:
+07-22 18:23:55.041 31474 32256 I native  : 	Android	system
+07-22 18:23:55.041 31474 32256 I native  : android	0.932026	0.0117647
+07-22 18:23:55.041 31474 32256 I native  : 系统	0.0143791	0.909804
+07-22 18:23:55.041 31474 32256 I native  : Translation (before postprocess): Android system
+07-22 18:23:55.044 31474 31492 D TransportRuntime.SQLiteEventStore: Storing event with priority=VERY_LOW, name=FIREBASE_ML_SDK for destination cct
+07-22 18:23:55.045 31474 32257 D native  : I0722 18:23:55.045048   32257 mergeddicttrans.cc:1860] The current system has NMT.
+07-22 18:23:55.045 31474 32257 D native  : I0722 18:23:55.045128   32257 mergeddicttrans.cc:1866] Sentence #0: 已连按到USB · 调试·现在
+07-22 18:23:55.045 31474 32257 D native  : I0722 18:23:55.045215   32257 mergeddicttrans.cc:1918] To be translated by NMT.
+07-22 18:23:55.046 31474 31492 D TransportRuntime.JobInfoScheduler: Upload for context TransportContext(cct, VERY_LOW, MSRodHRwczovL2ZpcmViYXNlbG9nZ2luZy5nb29nbGVhcGlzLmNvbS92MGNjL2xvZy9iYXRjaD9mb3JtYXQ9anNvbl9wcm90bzNc) is already scheduled. Returning...
+07-22 18:23:55.100 31474 32257 I native  : I0722 18:23:55.100767   32257 mergeddicttrans.cc:1827] Sentence #0: 已连按到USB · 调试·现在
+07-22 18:23:55.100 31474 32257 I native  : I0722 18:23:55.100893   32257 mergeddicttrans.cc:1828] 
+07-22 18:23:55.100 31474 32257 I native  : Source language: zh, target language: en
+07-22 18:23:55.100 31474 32257 I native  : 
+07-22 18:23:55.100 31474 32257 I native  : Has period trick: 0
+07-22 18:23:55.100 31474 32257 I native  : 
+07-22 18:23:55.100 31474 32257 I native  : Full translation: Has press USB · Debugging · Now
+07-22 18:23:55.100 31474 32257 I native  : Translate Instance: 
+07-22 18:23:55.100 31474 32257 I native  : Query (raw): 已连按到USB · 调试·现在
+07-22 18:23:55.100 31474 32257 I native  : Query (after preprocess): 已 连 按 到 usb · 调试 · 现在
+07-22 18:23:55.100 31474 32257 I native  : Query ids (after tokenizer): 493 1125 390 106 543 24 58 1032 351 1195 1032 1244 2
+07-22 18:23:55.100 31474 32257 I native  : Translation ids: 92 160 1842 882 213 2290 572 82 711 1421 2290 1814 2
+07-22 18:23:55.100 31474 32257 I native  : Translation (after detokenizer): Has press USB · Debugging · Now
+07-22 18:23:55.100 31474 32257 I native  : Alignment probability:
+07-22 18:23:55.100 31474 32257 I native  : 	Has	press	USB	·	Debugging	·	Now
+07-22 18:23:55.100 31474 32257 I native  : 已	0.65098	0.133333	0.00784314	0	0.00392157	0.0156863	0.00784314
+07-22 18:23:55.100 31474 32257 I native  : 连	0.158824	0.301961	0.0294118	0	0.000980392	0	0.00392157
+07-22 18:23:55.100 31474 32257 I native  : 按	0.0803922	0.45098	0.0686275	0.0156863	0.00294118	0.00392157	0.00392157
+07-22 18:23:55.100 31474 32257 I native  : 到	0.00392157	0.0156863	0.15098	0.00392157	0	0	0
+07-22 18:23:55.100 31474 32257 I native  : usb	0.0176471	0.00784314	0.711765	0.0196078	0.0166667	0	0
+07-22 18:23:55.100 31474 32257 I native  : ·	0.00196078	0	0.00784314	0.933333	0.00980392	0	0
+07-22 18:23:55.100 31474 32257 I native  : 调试	0.00588235	0	0.00392157	0.0156863	0.646078	0.00392157	0.0235294
+07-22 18:23:55.100 31474 32257 I native  : ·	0.00392157	0	0	0.00392157	0.137255	0.831373	0.0352941
+07-22 18:23:55.100 31474 32257 I native  : 现在	0.00392157	0	0	0	0.0215686	0.0745098	0.858824
+07-22 18:23:55.100 31474 32257 I native  : Translation (before postprocess): Has press USB · Debugging · Now
+07-22 18:23:55.103 31474 31492 D TransportRuntime.SQLiteEventStore: Storing event with priority=VERY_LOW, name=FIREBASE_ML_SDK for destination cct
+07-22 18:23:55.103 31474 32258 D native  : I0722 18:23:55.103920   32258 mergeddicttrans.cc:1860] The current system has NMT.
+07-22 18:23:55.103 31474 32258 D native  : I0722 18:23:55.103975   32258 mergeddicttrans.cc:1866] Sentence #0: 点接即可关闭 USB调试
+07-22 18:23:55.104 31474 32258 D native  : I0722 18:23:55.104035   32258 mergeddicttrans.cc:1918] To be translated by NMT.
+07-22 18:23:55.106 31474 31492 D TransportRuntime.JobInfoScheduler: Upload for context TransportContext(cct, VERY_LOW, MSRodHRwczovL2ZpcmViYXNlbG9nZ2luZy5nb29nbGVhcGlzLmNvbS92MGNjL2xvZy9iYXRjaD9mb3JtYXQ9anNvbl9wcm90bzNc) is already scheduled. Returning...
+07-22 18:23:55.147 31474 32258 I native  : I0722 18:23:55.147841   32258 mergeddicttrans.cc:1827] Sentence #0: 点接即可关闭 USB调试
+07-22 18:23:55.147 31474 32258 I native  : I0722 18:23:55.147952   32258 mergeddicttrans.cc:1828] 
+07-22 18:23:55.147 31474 32258 I native  : Source language: zh, target language: en
+07-22 18:23:55.147 31474 32258 I native  : 
+07-22 18:23:55.147 31474 32258 I native  : Has period trick: 0
+07-22 18:23:55.147 31474 32258 I native  : 
+07-22 18:23:55.147 31474 32258 I native  : Full translation: Turn off USB debugging
+07-22 18:23:55.147 31474 32258 I native  : Translate Instance: 
+07-22 18:23:55.147 31474 32258 I native  : Query (raw): 点接即可关闭 USB调试
+07-22 18:23:55.147 31474 32258 I native  : Query (after preprocess): 点 接 即 可 关闭 usb 调试
+07-22 18:23:55.147 31474 32258 I native  : Query ids (after tokenizer): 342 153 663 57 248 1028 543 24 58 351 1195 2
+07-22 18:23:55.147 31474 32258 I native  : Translation ids: 45 1852 606 882 213 2806 711 1421 2
+07-22 18:23:55.147 31474 32258 I native  : Translation (after detokenizer): Turn off USB debugging
+07-22 18:23:55.147 31474 32258 I native  : Alignment probability:
+07-22 18:23:55.147 31474 32258 I native  : 	Turn	off	USB	debugging
+07-22 18:23:55.147 31474 32258 I native  : 点	0.356863	0.137255	0.0254902	0.0627451
+07-22 18:23:55.147 31474 32258 I native  : 接	0.0568627	0.0588235	0.00784314	0.0156863
+07-22 18:23:55.147 31474 32258 I native  : 即	0.119608	0.137255	0.0156863	0.020915
+07-22 18:23:55.147 31474 32258 I native  : 可	0.0686275	0.0196078	0.00784314	0.0117647
+07-22 18:23:55.147 31474 32258 I native  : 关闭	0.323529	0.486275	0.00980392	0.0222222
+07-22 18:23:55.147 31474 32258 I native  : usb	0.0470588	0.137255	0.892157	0.00915033
+07-22 18:23:55.147 31474 32258 I native  : 调试	0.00392157	0	0.0137255	0.648366
+07-22 18:23:55.147 31474 32258 I native  : Translation (before postprocess): Turn off USB debugging
+07-22 18:23:55.150 31474 31492 D TransportRuntime.SQLiteEventStore: Storing event with priority=VERY_LOW, name=FIREBASE_ML_SDK for destination cct
+07-22 18:23:55.151 31474 32259 D native  : I0722 18:23:55.151044   32259 mergeddicttrans.cc:1860] The current system has NMT.
+07-22 18:23:55.151 31474 32259 D native  : I0722 18:23:55.151101   32259 mergeddicttrans.cc:1866] Sentence #0: 基于当前时间和环境条件来优化您的屏幕以改善可读性
+07-22 18:23:55.151 31474 32259 D native  : I0722 18:23:55.151168   32259 mergeddicttrans.cc:1918] To be translated by NMT.
+07-22 18:23:55.153 31474 31492 D TransportRuntime.JobInfoScheduler: Upload for context TransportContext(cct, VERY_LOW, MSRodHRwczovL2ZpcmViYXNlbG9nZ2luZy5nb29nbGVhcGlzLmNvbS92MGNjL2xvZy9iYXRjaD9mb3JtYXQ9anNvbl9wcm90bzNc) is already scheduled. Returning...
+07-22 18:23:55.235 31474 32259 I native  : I0722 18:23:55.235556   32259 mergeddicttrans.cc:1827] Sentence #0: 基于当前时间和环境条件来优化您的屏幕以改善可读性
+07-22 18:23:55.235 31474 32259 I native  : I0722 18:23:55.235685   32259 mergeddicttrans.cc:1828] 
+07-22 18:23:55.235 31474 32259 I native  : Source language: zh, target language: en
+07-22 18:23:55.235 31474 32259 I native  : 
+07-22 18:23:55.235 31474 32259 I native  : Has period trick: 0
+07-22 18:23:55.235 31474 32259 I native  : 
+07-22 18:23:55.235 31474 32259 I native  : Full translation: Optimize your screen based on current time and environmental conditions to improve readability
+07-22 18:23:55.235 31474 32259 I native  : Translate Instance: 
+07-22 18:23:55.235 31474 32259 I native  : Query (raw): 基于当前时间和环境条件来优化您的屏幕以改善可读性
+07-22 18:23:55.235 31474 32259 I native  : Query (after preprocess): 基于 当前 时间 和 环境 条件 来 优化 您 的 屏幕 以 改善 可读性
+07-22 18:23:55.235 31474 32259 I native  : Query ids (after tokenizer): 128 69 193 368 374 8 803 301 98 165 259 80 195 4 3 1164 1514 81 495 1399 57 1816 53 2
+07-22 18:23:55.235 31474 32259 I native  : Translation ids: 122 353 170 952 297 978 490 18 522 187 8 896 35 1428 9 795 1311 1260 2
+07-22 18:23:55.235 31474 32259 I native  : Translation (after detokenizer): Optimize your screen based on current time and environmental conditions to improve readability
+07-22 18:23:55.235 31474 32259 I native  : Alignment probability:
+07-22 18:23:55.235 31474 32259 I native  : 	Optimize	your	screen	based	on	current	time	and	environmental	conditions	to	improve	readability
+07-22 18:23:55.235 31474 32259 I native  : 基于	0.0921569	0.0235294	0.00392157	0.54902	0.854902	0.00392157	0.00392157	0.00784314	0.00392157	0	0.0196078	0	0
+07-22 18:23:55.235 31474 32259 I native  : 当前	0.00392157	0.00784314	0.0156863	0.00784314	0.0196078	0.823529	0.0235294	0	0.00196078	0	0.00392157	0	0
+07-22 18:23:55.235 31474 32259 I native  : 时间	0.00196078	0.00784314	0.00392157	0.00392157	0.0117647	0.0705882	0.960784	0.113725	0.00392157	0.00392157	0	0	0
+07-22 18:23:55.235 31474 32259 I native  : 和	0	0	0	0.0117647	0.00392157	0	0.00392157	0.866667	0.00196078	0	0	0	0
+07-22 18:23:55.235 31474 32259 I native  : 环境	0.000980392	0	0	0.00392157	0.00392157	0.0313726	0	0.00392157	0.482353	0.00392157	0	0	0
+07-22 18:23:55.235 31474 32259 I native  : 条件	0.000980392	0	0.00392157	0	0.00392157	0.00784314	0.00392157	0.00784314	0.419608	0.964706	0.0117647	0	0
+07-22 18:23:55.235 31474 32259 I native  : 来	0.0117647	0	0	0.0117647	0.0196078	0	0	0	0.00980392	0	0.0117647	0	0
+07-22 18:23:55.235 31474 32259 I native  : 优化	0.79902	0.00784314	0.00392157	0.0235294	0.00784314	0.00392157	0	0	0.00196078	0	0.0196078	0.0117647	0
+07-22 18:23:55.235 31474 32259 I native  : 您	0.0313726	0.815686	0.0117647	0.0117647	0.00392157	0.0156863	0	0	0	0	0.00392157	0	0.00784314
+07-22 18:23:55.235 31474 32259 I native  : 的	0	0	0.0352941	0	0	0	0	0	0	0	0	0	0
+07-22 18:23:55.235 31474 32259 I native  : 屏幕	0.00588235	0.0509804	0.894118	0.0235294	0	0.00392157	0	0	0.00196078	0	0	0	0.00196078
+07-22 18:23:55.235 31474 32259 I native  : 以	0.000980392	0	0	0.254902	0.0196078	0	0	0	0.00980392	0	0.721569	0.00784314	0.00196078
+07-22 18:23:55.235 31474 32259 I native  : 改善	0.00784314	0.00784314	0.00392157	0.0745098	0.0196078	0.0196078	0	0	0	0	0.141176	0.890196	0.0137255
+07-22 18:23:55.235 31474 32259 I native  : 可读性	0.00196078	0.0705882	0.027451	0.0117647	0.00784314	0.00784314	0	0	0	0	0	0.0745098	0.917647
+07-22 18:23:55.235 31474 32259 I native  : Translation (before postprocess): Optimize your screen based on current time and environmental conditions to improve readability
+07-22 18:23:55.238 31474 31492 D TransportRuntime.SQLiteEventStore: Storing event with priority=VERY_LOW, name=FIREBASE_ML_SDK for destination cct
+07-22 18:23:55.239 31474 32260 D native  : I0722 18:23:55.239875   32260 mergeddicttrans.cc:1860] The current system has NMT.
+07-22 18:23:55.239 31474 32260 D native  : I0722 18:23:55.239950   32260 mergeddicttrans.cc:1866] Sentence #0: 和减少视疲劳
+07-22 18:23:55.240 31474 32260 D native  : I0722 18:23:55.240016   32260 mergeddicttrans.cc:1918] To be translated by NMT.
+07-22 18:23:55.241 31474 31492 D TransportRuntime.JobInfoScheduler: Upload for context TransportContext(cct, VERY_LOW, MSRodHRwczovL2ZpcmViYXNlbG9nZ2luZy5nb29nbGVhcGlzLmNvbS92MGNjL2xvZy9iYXRjaD9mb3JtYXQ9anNvbl9wcm90bzNc) is already scheduled. Returning...
+07-22 18:23:55.274 31474 32260 I native  : I0722 18:23:55.274388   32260 mergeddicttrans.cc:1827] Sentence #0: 和减少视疲劳
+07-22 18:23:55.274 31474 32260 I native  : I0722 18:23:55.274480   32260 mergeddicttrans.cc:1828] 
+07-22 18:23:55.274 31474 32260 I native  : Source language: zh, target language: en
+07-22 18:23:55.274 31474 32260 I native  : 
+07-22 18:23:55.274 31474 32260 I native  : Has period trick: 0
+07-22 18:23:55.274 31474 32260 I native  : 
+07-22 18:23:55.274 31474 32260 I native  : Full translation: And reduce the fatigue
+07-22 18:23:55.274 31474 32260 I native  : Translate Instance: 
+07-22 18:23:55.274 31474 32260 I native  : Query (raw): 和减少视疲劳
+07-22 18:23:55.274 31474 32260 I native  : Query (after preprocess): 和 减少 视 疲劳
+07-22 18:23:55.274 31474 32260 I native  : Query ids (after tokenizer): 8 701 467 918 3 2899 1904 2
+07-22 18:23:55.274 31474 32260 I native  : Translation ids: 1054 1722 3 2748 253 299 2
+07-22 18:23:55.274 31474 32260 I native  : Translation (after detokenizer): And reduce the fatigue
+07-22 18:23:55.274 31474 32260 I native  : Alignment probability:
+07-22 18:23:55.274 31474 32260 I native  : 	And	reduce	the	fatigue
+07-22 18:23:55.274 31474 32260 I native  : 和	0.364706	0.0117647	0.0196078	0
+07-22 18:23:55.274 31474 32260 I native  : 减少	0.368627	0.929412	0.0509804	0.00784314
+07-22 18:23:55.274 31474 32260 I native  : 视	0.0705882	0.0235294	0.505882	0.135948
+07-22 18:23:55.274 31474 32260 I native  : 疲劳	0.0313726	0.0156863	0.380392	0.746405
+07-22 18:23:55.274 31474 32260 I native  : Translation (before postprocess): And reduce the fatigue
+07-22 18:23:55.277 31474 32252 D native  : I0722 18:23:55.277198   32252 mergeddicttrans.cc:1860] The current system has NMT.
+07-22 18:23:55.277 31474 31492 D TransportRuntime.SQLiteEventStore: Storing event with priority=VERY_LOW, name=FIREBASE_ML_SDK for destination cct
+07-22 18:23:55.277 31474 32252 D native  : I0722 18:23:55.277280   32252 mergeddicttrans.cc:1866] Sentence #0: 颜色
+07-22 18:23:55.277 31474 32252 D native  : I0722 18:23:55.277355   32252 mergeddicttrans.cc:1522] STT before postprocess: 颜色 -> color
+07-22 18:23:55.279 31474 31492 D TransportRuntime.JobInfoScheduler: Upload for context TransportContext(cct, VERY_LOW, MSRodHRwczovL2ZpcmViYXNlbG9nZ2luZy5nb29nbGVhcGlzLmNvbS92MGNjL2xvZy9iYXRjaD9mb3JtYXQ9anNvbl9wcm90bzNc) is already scheduled. Returning...
+07-22 18:23:55.290 31474 32254 D native  : I0722 18:23:55.290945   32254 mergeddicttrans.cc:1860] The current system has NMT.
+07-22 18:23:55.291 31474 32254 D native  : I0722 18:23:55.291053   32254 mergeddicttrans.cc:1866] Sentence #0: 自然色
+07-22 18:23:55.291 31474 32254 D native  : I0722 18:23:55.291119   32254 mergeddicttrans.cc:1918] To be translated by NMT.
+07-22 18:23:55.292 31474 31492 D TransportRuntime.SQLiteEventStore: Storing event with priority=VERY_LOW, name=FIREBASE_ML_SDK for destination cct
+07-22 18:23:55.295 31474 31492 D TransportRuntime.JobInfoScheduler: Upload for context TransportContext(cct, VERY_LOW, MSRodHRwczovL2ZpcmViYXNlbG9nZ2luZy5nb29nbGVhcGlzLmNvbS92MGNjL2xvZy9iYXRjaD9mb3JtYXQ9anNvbl9wcm90bzNc) is already scheduled. Returning...
+07-22 18:23:55.307 31474 32254 I native  : I0722 18:23:55.307318   32254 mergeddicttrans.cc:1827] Sentence #0: 自然色
+07-22 18:23:55.307 31474 32254 I native  : I0722 18:23:55.307462   32254 mergeddicttrans.cc:1828] 
+07-22 18:23:55.307 31474 32254 I native  : Source language: zh, target language: en
+07-22 18:23:55.307 31474 32254 I native  : 
+07-22 18:23:55.307 31474 32254 I native  : Has period trick: 0
+07-22 18:23:55.307 31474 32254 I native  : 
+07-22 18:23:55.307 31474 32254 I native  : Full translation: Natural color
+07-22 18:23:55.307 31474 32254 I native  : Translate Instance: 
+07-22 18:23:55.307 31474 32254 I native  : Query (raw): 自然色
+07-22 18:23:55.307 31474 32254 I native  : Query (after preprocess): 自然色
+07-22 18:23:55.307 31474 32254 I native  : Query ids (after tokenizer): 268 400 82 2
+07-22 18:23:55.307 31474 32254 I native  : Translation ids: 1914 753 2
+07-22 18:23:55.307 31474 32254 I native  : Translation (after detokenizer): natural color
+07-22 18:23:55.307 31474 32254 I native  : Alignment probability:
+07-22 18:23:55.307 31474 32254 I native  : 	natural	color
+07-22 18:23:55.307 31474 32254 I native  : 自然色	0.564706	0.847059
+07-22 18:23:55.307 31474 32254 I native  : Translation (before postprocess): natural color
+07-22 18:23:55.309 31474 32255 D native  : I0722 18:23:55.309939   32255 mergeddicttrans.cc:1860] The current system has NMT.
+07-22 18:23:55.310 31474 32255 D native  : I0722 18:23:55.310022   32255 mergeddicttrans.cc:1866] Sentence #0: 颜色对比度
+07-22 18:23:55.310 31474 32255 D native  : I0722 18:23:55.310078   32255 mergeddicttrans.cc:1918] To be translated by NMT.
+07-22 18:23:55.310 31474 31492 D TransportRuntime.SQLiteEventStore: Storing event with priority=VERY_LOW, name=FIREBASE_ML_SDK for destination cct
+07-22 18:23:55.312 31474 31492 D TransportRuntime.JobInfoScheduler: Upload for context TransportContext(cct, VERY_LOW, MSRodHRwczovL2ZpcmViYXNlbG9nZ2luZy5nb29nbGVhcGlzLmNvbS92MGNjL2xvZy9iYXRjaD9mb3JtYXQ9anNvbl9wcm90bzNc) is already scheduled. Returning...
+07-22 18:23:55.337 31474 32255 I native  : I0722 18:23:55.337706   32255 mergeddicttrans.cc:1827] Sentence #0: 颜色对比度
+07-22 18:23:55.337 31474 32255 I native  : I0722 18:23:55.337806   32255 mergeddicttrans.cc:1828] 
+07-22 18:23:55.337 31474 32255 I native  : Source language: zh, target language: en
+07-22 18:23:55.337 31474 32255 I native  : 
+07-22 18:23:55.337 31474 32255 I native  : Has period trick: 0
+07-22 18:23:55.337 31474 32255 I native  : 
+07-22 18:23:55.337 31474 32255 I native  : Full translation: Color contrast
+07-22 18:23:55.337 31474 32255 I native  : Translate Instance: 
+07-22 18:23:55.337 31474 32255 I native  : Query (raw): 颜色对比度
+07-22 18:23:55.337 31474 32255 I native  : Query (after preprocess): 颜色 对比度
+07-22 18:23:55.337 31474 32255 I native  : Query ids (after tokenizer): 3 966 82 54 986 72 2
+07-22 18:23:55.337 31474 32255 I native  : Translation ids: 1258 57 919 98 125 2
+07-22 18:23:55.337 31474 32255 I native  : Translation (after detokenizer): Color contrast
+07-22 18:23:55.337 31474 32255 I native  : Alignment probability:
+07-22 18:23:55.337 31474 32255 I native  : 	Color	contrast
+07-22 18:23:55.337 31474 32255 I native  : 颜色	0.837255	0.00784314
+07-22 18:23:55.337 31474 32255 I native  : 对比度	0.101961	0.83268
+07-22 18:23:55.337 31474 32255 I native  : Translation (before postprocess): Color contrast
+07-22 18:23:55.340 31474 32256 D native  : I0722 18:23:55.340228   32256 mergeddicttrans.cc:1860] The current system has NMT.
+07-22 18:23:55.340 31474 32256 D native  : I0722 18:23:55.340287   32256 mergeddicttrans.cc:1866] Sentence #0: 默认
+07-22 18:23:55.340 31474 32256 D native  : I0722 18:23:55.340347   32256 mergeddicttrans.cc:1918] To be translated by NMT.
+07-22 18:23:55.340 31474 31492 D TransportRuntime.SQLiteEventStore: Storing event with priority=VERY_LOW, name=FIREBASE_ML_SDK for destination cct
+07-22 18:23:55.342 31474 31492 D TransportRuntime.JobInfoScheduler: Upload for context TransportContext(cct, VERY_LOW, MSRodHRwczovL2ZpcmViYXNlbG9nZ2luZy5nb29nbGVhcGlzLmNvbS92MGNjL2xvZy9iYXRjaD9mb3JtYXQ9anNvbl9wcm90bzNc) is already scheduled. Returning...
+07-22 18:23:55.358 31474 32256 I native  : I0722 18:23:55.358075   32256 mergeddicttrans.cc:1827] Sentence #0: 默认
+07-22 18:23:55.358 31474 32256 I native  : I0722 18:23:55.358155   32256 mergeddicttrans.cc:1828] 
+07-22 18:23:55.358 31474 32256 I native  : Source language: zh, target language: en
+07-22 18:23:55.358 31474 32256 I native  : 
+07-22 18:23:55.358 31474 32256 I native  : Has period trick: 0
+07-22 18:23:55.358 31474 32256 I native  : 
+07-22 18:23:55.358 31474 32256 I native  : Full translation: Default
+07-22 18:23:55.358 31474 32256 I native  : Translate Instance: 
+07-22 18:23:55.358 31474 32256 I native  : Query (raw): 默认
+07-22 18:23:55.358 31474 32256 I native  : Query (after preprocess): 默认
+07-22 18:23:55.358 31474 32256 I native  : Query ids (after tokenizer): 3 1724 1238 2
+07-22 18:23:55.358 31474 32256 I native  : Translation ids: 533 1634 2
+07-22 18:23:55.358 31474 32256 I native  : Translation (after detokenizer): default
+07-22 18:23:55.358 31474 32256 I native  : Alignment probability:
+07-22 18:23:55.358 31474 32256 I native  : 	default
+07-22 18:23:55.358 31474 32256 I native  : 默认	0.756863
+07-22 18:23:55.358 31474 32256 I native  : Translation (before postprocess): default
+07-22 18:23:55.360 31474 32257 D native  : I0722 18:23:55.360580   32257 mergeddicttrans.cc:1860] The current system has NMT.
+07-22 18:23:55.360 31474 32257 D native  : I0722 18:23:55.360657   32257 mergeddicttrans.cc:1866] Sentence #0: 其他显示控件
+07-22 18:23:55.360 31474 32257 D native  : I0722 18:23:55.360709   32257 mergeddicttrans.cc:1918] To be translated by NMT.
+07-22 18:23:55.360 31474 31492 D TransportRuntime.SQLiteEventStore: Storing event with priority=VERY_LOW, name=FIREBASE_ML_SDK for destination cct
+07-22 18:23:55.363 31474 31492 D TransportRuntime.JobInfoScheduler: Upload for context TransportContext(cct, VERY_LOW, MSRodHRwczovL2ZpcmViYXNlbG9nZ2luZy5nb29nbGVhcGlzLmNvbS92MGNjL2xvZy9iYXRjaD9mb3JtYXQ9anNvbl9wcm90bzNc) is already scheduled. Returning...
+07-22 18:23:55.386 31474 32257 I native  : I0722 18:23:55.386462   32257 mergeddicttrans.cc:1827] Sentence #0: 其他显示控件
+07-22 18:23:55.386 31474 32257 I native  : I0722 18:23:55.386567   32257 mergeddicttrans.cc:1828] 
+07-22 18:23:55.386 31474 32257 I native  : Source language: zh, target language: en
+07-22 18:23:55.386 31474 32257 I native  : 
+07-22 18:23:55.386 31474 32257 I native  : Has period trick: 0
+07-22 18:23:55.386 31474 32257 I native  : 
+07-22 18:23:55.386 31474 32257 I native  : Full translation: Other display controls
+07-22 18:23:55.386 31474 32257 I native  : Translate Instance: 
+07-22 18:23:55.386 31474 32257 I native  : Query (raw): 其他显示控件
+07-22 18:23:55.386 31474 32257 I native  : Query (after preprocess): 其他 显示 控件
+07-22 18:23:55.386 31474 32257 I native  : Query ids (after tokenizer): 512 274 2236 98 2
+07-22 18:23:55.386 31474 32257 I native  : Translation ids: 122 1701 452 223 7 2
+07-22 18:23:55.386 31474 32257 I native  : Translation (after detokenizer): Other display controls
+07-22 18:23:55.386 31474 32257 I native  : Alignment probability:
+07-22 18:23:55.386 31474 32257 I native  : 	Other	display	controls
+07-22 18:23:55.386 31474 32257 I native  : 其他	0.890196	0.0352941	0.00196078
+07-22 18:23:55.386 31474 32257 I native  : 显示	0.0352941	0.921569	0.00588235
+07-22 18:23:55.386 31474 32257 I native  : 控件	0.00392157	0.0352941	0.523529
+07-22 18:23:55.386 31474 32257 I native  : Translation (before postprocess): Other display controls
+07-22 18:23:55.389 31474 32258 D native  : I0722 18:23:55.389227   32258 mergeddicttrans.cc:1860] The current system has NMT.
+07-22 18:23:55.389 31474 32258 D native  : I0722 18:23:55.389301   32258 mergeddicttrans.cc:1866] Sentence #0: 旋转设置
+07-22 18:23:55.389 31474 31492 D TransportRuntime.SQLiteEventStore: Storing event with priority=VERY_LOW, name=FIREBASE_ML_SDK for destination cct
+07-22 18:23:55.389 31474 32258 D native  : I0722 18:23:55.389355   32258 mergeddicttrans.cc:1918] To be translated by NMT.
+07-22 18:23:55.391 31474 31492 D TransportRuntime.JobInfoScheduler: Upload for context TransportContext(cct, VERY_LOW, MSRodHRwczovL2ZpcmViYXNlbG9nZ2luZy5nb29nbGVhcGlzLmNvbS92MGNjL2xvZy9iYXRjaD9mb3JtYXQ9anNvbl9wcm90bzNc) is already scheduled. Returning...
+07-22 18:23:55.413 31474 32258 I native  : I0722 18:23:55.413588   32258 mergeddicttrans.cc:1827] Sentence #0: 旋转设置
+07-22 18:23:55.413 31474 32258 I native  : I0722 18:23:55.413691   32258 mergeddicttrans.cc:1828] 
+07-22 18:23:55.413 31474 32258 I native  : Source language: zh, target language: en
+07-22 18:23:55.413 31474 32258 I native  : 
+07-22 18:23:55.413 31474 32258 I native  : Has period trick: 0
+07-22 18:23:55.413 31474 32258 I native  : 
+07-22 18:23:55.413 31474 32258 I native  : Full translation: Rotate settings
+07-22 18:23:55.413 31474 32258 I native  : Translate Instance: 
+07-22 18:23:55.413 31474 32258 I native  : Query (raw): 旋转设置
+07-22 18:23:55.413 31474 32258 I native  : Query (after preprocess): 旋转 设置
+07-22 18:23:55.413 31474 32258 I native  : Query ids (after tokenizer): 3 1172 1135 147 2
+07-22 18:23:55.413 31474 32258 I native  : Translation ids: 87 173 155 1078 7 2
+07-22 18:23:55.413 31474 32258 I native  : Translation (after detokenizer): Rotate settings
+07-22 18:23:55.413 31474 32258 I native  : Alignment probability:
+07-22 18:23:55.413 31474 32258 I native  : 	Rotate	settings
+07-22 18:23:55.413 31474 32258 I native  : 旋转	0.760784	0.0764706
+07-22 18:23:55.413 31474 32258 I native  : 设置	0.069281	0.431373
+07-22 18:23:55.413 31474 32258 I native  : Translation (before postprocess): Rotate settings
+07-22 18:23:55.416 31474 32259 D native  : I0722 18:23:55.416120   32259 mergeddicttrans.cc:1860] The current system has NMT.
+07-22 18:23:55.416 31474 32259 D native  : I0722 18:23:55.416183   32259 mergeddicttrans.cc:1866] Sentence #0: 启用自动旋转
+07-22 18:23:55.416 31474 32259 D native  : I0722 18:23:55.416230   32259 mergeddicttrans.cc:1918] To be translated by NMT.
+07-22 18:23:55.416 31474 31492 D TransportRuntime.SQLiteEventStore: Storing event with priority=VERY_LOW, name=FIREBASE_ML_SDK for destination cct
+07-22 18:23:55.418 31474 31492 D TransportRuntime.JobInfoScheduler: Upload for context TransportContext(cct, VERY_LOW, MSRodHRwczovL2ZpcmViYXNlbG9nZ2luZy5nb29nbGVhcGlzLmNvbS92MGNjL2xvZy9iYXRjaD9mb3JtYXQ9anNvbl9wcm90bzNc) is already scheduled. Returning...
+07-22 18:23:55.448 31474 32259 I native  : I0722 18:23:55.448069   32259 mergeddicttrans.cc:1827] Sentence #0: 启用自动旋转
+07-22 18:23:55.448 31474 32259 I native  : I0722 18:23:55.448196   32259 mergeddicttrans.cc:1828] 
+07-22 18:23:55.448 31474 32259 I native  : Source language: zh, target language: en
+07-22 18:23:55.448 31474 32259 I native  : 
+07-22 18:23:55.448 31474 32259 I native  : Has period trick: 0
+07-22 18:23:55.448 31474 32259 I native  : 
+07-22 18:23:55.448 31474 32259 I native  : Full translation: Enable automatic rotation
+07-22 18:23:55.448 31474 32259 I native  : Translate Instance: 
+07-22 18:23:55.448 31474 32259 I native  : Query (raw): 启用自动旋转
+07-22 18:23:55.448 31474 32259 I native  : Query (after preprocess): 启用 自动 旋转
+07-22 18:23:55.448 31474 32259 I native  : Query ids (after tokenizer): 1016 79 977 3 1172 1135 2
+07-22 18:23:55.448 31474 32259 I native  : Translation ids: 839 177 979 731 1151 110 2
+07-22 18:23:55.448 31474 32259 I native  : Translation (after detokenizer): Enable automatic rotation
+07-22 18:23:55.448 31474 32259 I native  : Alignment probability:
+07-22 18:23:55.448 31474 32259 I native  : 	Enable	automatic	rotation
+07-22 18:23:55.448 31474 32259 I native  : 启用	0.770588	0.0509804	0.0117647
+07-22 18:23:55.448 31474 32259 I native  : 自动	0.190196	0.845098	0.0196078
+07-22 18:23:55.448 31474 32259 I native  : 旋转	0.0156863	0.0372549	0.87451
+07-22 18:23:55.448 31474 32259 I native  : Translation (before postprocess): Enable automatic rotation
+07-22 18:23:55.450 31474 32260 D native  : I0722 18:23:55.450819   32260 mergeddicttrans.cc:1860] The current system has NMT.
+07-22 18:23:55.450 31474 31492 D TransportRuntime.SQLiteEventStore: Storing event with priority=VERY_LOW, name=FIREBASE_ML_SDK for destination cct
+07-22 18:23:55.450 31474 32260 D native  : I0722 18:23:55.450911   32260 mergeddicttrans.cc:1866] Sentence #0: 目程序使用全屏长宽比
+07-22 18:23:55.451 31474 32260 D native  : I0722 18:23:55.450996   32260 mergeddicttrans.cc:1918] To be translated by NMT.
+07-22 18:23:55.453 31474 31492 D TransportRuntime.JobInfoScheduler: Upload for context TransportContext(cct, VERY_LOW, MSRodHRwczovL2ZpcmViYXNlbG9nZ2luZy5nb29nbGVhcGlzLmNvbS92MGNjL2xvZy9iYXRjaD9mb3JtYXQ9anNvbl9wcm90bzNc) is already scheduled. Returning...
+07-22 18:23:55.506 31474 32260 I native  : I0722 18:23:55.506292   32260 mergeddicttrans.cc:1827] Sentence #0: 目程序使用全屏长宽比
+07-22 18:23:55.506 31474 32260 I native  : I0722 18:23:55.506400   32260 mergeddicttrans.cc:1828] 
+07-22 18:23:55.506 31474 32260 I native  : Source language: zh, target language: en
+07-22 18:23:55.506 31474 32260 I native  : 
+07-22 18:23:55.506 31474 32260 I native  : Has period trick: 0
+07-22 18:23:55.506 31474 32260 I native  : 
+07-22 18:23:55.506 31474 32260 I native  : Full translation: Application of full-screen length
+07-22 18:23:55.506 31474 32260 I native  : Translate Instance: 
+07-22 18:23:55.506 31474 32260 I native  : Query (raw): 目程序使用全屏长宽比
+07-22 18:23:55.506 31474 32260 I native  : Query (after preprocess): 目 程序 使用 全 屏长 宽比
+07-22 18:23:55.506 31474 32260 I native  : Query ids (after tokenizer): 306 453 89 252 3 1164 471 3 1282 986 2
+07-22 18:23:55.506 31474 32260 I native  : Translation ids: 857 1616 6 1201 15 978 1849 2
+07-22 18:23:55.506 31474 32260 I native  : Translation (after detokenizer): Application of full - screen length
+07-22 18:23:55.506 31474 32260 I native  : Alignment probability:
+07-22 18:23:55.506 31474 32260 I native  : 	Application	of	full	-	screen	length
+07-22 18:23:55.506 31474 32260 I native  : 目	0.519608	0.0352941	0.192157	0.00784314	0	0.00392157
+07-22 18:23:55.506 31474 32260 I native  : 程序	0.172549	0.4	0.192157	0.0117647	0.00392157	0.0470588
+07-22 18:23:55.506 31474 32260 I native  : 使用	0.158824	0.266667	0.0392157	0.00784314	0	0.0470588
+07-22 18:23:55.506 31474 32260 I native  : 全	0.0235294	0.117647	0.435294	0.00784314	0.00784314	0.0313726
+07-22 18:23:55.506 31474 32260 I native  : 屏长	0.00196078	0.0666667	0.0509804	0.862745	0.803922	0.619608
+07-22 18:23:55.506 31474 32260 I native  : 宽比	0.00980392	0.0627451	0.054902	0.0745098	0.0784314	0.215686
+07-22 18:23:55.506 31474 32260 I native  : Translation (before postprocess): Application of full - screen length
+07-22 18:23:55.509 31474 32252 D native  : I0722 18:23:55.509179   32252 mergeddicttrans.cc:1860] The current system has NMT.
+07-22 18:23:55.509 31474 31492 D TransportRuntime.SQLiteEventStore: Storing event with priority=VERY_LOW, name=FIREBASE_ML_SDK for destination cct
+07-22 18:23:55.509 31474 32252 D native  : I0722 18:23:55.509264   32252 mergeddicttrans.cc:1866] Sentence #0: 中
+07-22 18:23:55.509 31474 32252 D native  : I0722 18:23:55.509336   32252 mergeddicttrans.cc:1918] To be translated by NMT.
+07-22 18:23:55.511 31474 31492 D TransportRuntime.JobInfoScheduler: Upload for context TransportContext(cct, VERY_LOW, MSRodHRwczovL2ZpcmViYXNlbG9nZ2luZy5nb29nbGVhcGlzLmNvbS92MGNjL2xvZy9iYXRjaD9mb3JtYXQ9anNvbl9wcm90bzNc) is already scheduled. Returning...
+07-22 18:23:55.525 31474 32252 I native  : I0722 18:23:55.525076   32252 mergeddicttrans.cc:1827] Sentence #0: 中
+07-22 18:23:55.525 31474 32252 I native  : I0722 18:23:55.525191   32252 mergeddicttrans.cc:1828] 
+07-22 18:23:55.525 31474 32252 I native  : Source language: zh, target language: en
+07-22 18:23:55.525 31474 32252 I native  : 
+07-22 18:23:55.525 31474 32252 I native  : Has period trick: 0
+07-22 18:23:55.525 31474 32252 I native  : 
+07-22 18:23:55.525 31474 32252 I native  : Full translation: In the middle
+07-22 18:23:55.525 31474 32252 I native  : Translate Instance: 
+07-22 18:23:55.525 31474 32252 I native  : Query (raw): 中
+07-22 18:23:55.525 31474 32252 I native  : Query (after preprocess): 中
+07-22 18:23:55.525 31474 32252 I native  : Query ids (after tokenizer): 12 2
+07-22 18:23:55.525 31474 32252 I native  : Translation ids: 11 3 2875 2
+07-22 18:23:55.525 31474 32252 I native  : Translation (after detokenizer): in the middle
+07-22 18:23:55.525 31474 32252 I native  : Alignment probability:
+07-22 18:23:55.525 31474 32252 I native  : 	in	the	middle
+07-22 18:23:55.525 31474 32252 I native  : 中	0.603922	0.4	0.501961
+07-22 18:23:55.525 31474 32252 I native  : Translation (before postprocess): in the middle
+07-22 18:23:55.527 31474 31492 D TransportRuntime.SQLiteEventStore: Storing event with priority=VERY_LOW, name=FIREBASE_ML_SDK for destination cct
+07-22 18:23:55.530 31474 31492 D TransportRuntime.JobInfoScheduler: Upload for context TransportContext(cct, VERY_LOW, MSRodHRwczovL2ZpcmViYXNlbG9nZ2luZy5nb29nbGVhcGlzLmNvbS92MGNjL2xvZy9iYXRjaD9mb3JtYXQ9anNvbl9wcm90bzNc) is already scheduled. Returning...
+07-22 18:23:55.536 31474 32255 D native  : I0722 18:23:55.536367   32255 mergeddicttrans.cc:1860] The current system has NMT.
+07-22 18:23:55.536 31474 32255 D native  : I0722 18:23:55.536454   32255 mergeddicttrans.cc:1866] Sentence #0: 6s
+07-22 18:23:55.536 31474 32255 D native  : I0722 18:23:55.536505   32255 mergeddicttrans.cc:1912] To fallback to PB.
+07-22 18:23:55.536 31474 32255 D native  : I0722 18:23:55.536517   32255 mergeddicttrans.cc:1585] Sentence #0: 6s
+07-22 18:23:55.536 31474 32255 D native  : I0722 18:23:55.536640   32255 mergeddicttrans.cc:1571] PBMT preproc: 6s
+07-22 18:23:55.536 31474 32255 D native  : I0722 18:23:55.536870   32255 mergeddicttrans.cc:1588] PBMT trans: 6s
+07-22 18:23:55.537 31474 32256 D native  : I0722 18:23:55.537739   32256 mergeddicttrans.cc:1860] The current system has NMT.
+07-22 18:23:55.537 31474 32256 D native  : I0722 18:23:55.537775   32256 mergeddicttrans.cc:1866] Sentence #0: UI setting option: 6s
+07-22 18:23:55.537 31474 32256 D native  : I0722 18:23:55.537842   32256 mergeddicttrans.cc:1918] To be translated by NMT.
+07-22 18:23:55.539 31474 31492 D TransportRuntime.SQLiteEventStore: Storing event with priority=VERY_LOW, name=FIREBASE_ML_SDK for destination cct
+07-22 18:23:55.541 31474 31492 D TransportRuntime.JobInfoScheduler: Upload for context TransportContext(cct, VERY_LOW, MSRodHRwczovL2ZpcmViYXNlbG9nZ2luZy5nb29nbGVhcGlzLmNvbS92MGNjL2xvZy9iYXRjaD9mb3JtYXQ9anNvbl9wcm90bzNc) is already scheduled. Returning...
+07-22 18:23:55.581 31474 32256 I native  : I0722 18:23:55.581734   32256 mergeddicttrans.cc:1827] Sentence #0: UI setting option: 6s
+07-22 18:23:55.581 31474 32256 I native  : I0722 18:23:55.581877   32256 mergeddicttrans.cc:1828] 
+07-22 18:23:55.581 31474 32256 I native  : Source language: en, target language: zh
+07-22 18:23:55.581 31474 32256 I native  : 
+07-22 18:23:55.581 31474 32256 I native  : Has period trick: 1
+07-22 18:23:55.581 31474 32256 I native  : 
+07-22 18:23:55.581 31474 32256 I native  : Full translation: UI设置选项：6s
+07-22 18:23:55.581 31474 32256 I native  : Translate Instance: 
+07-22 18:23:55.581 31474 32256 I native  : Query (raw): UI setting option: 6s
+07-22 18:23:55.581 31474 32256 I native  : Query (after preprocess): ui setting option : 6s .
+07-22 18:23:55.581 31474 32256 I native  : Query ids (after tokenizer): 553 44 1171 1425 19 141 11 5 2
+07-22 18:23:55.581 31474 32256 I native  : Translation ids: 572 102 173 826 628 10 126 41 6 2
+07-22 18:23:55.581 31474 32256 I native  : Translation (after detokenizer): UI 设置 选项 : 6s .
+07-22 18:23:55.581 31474 32256 I native  : Alignment probability:
+07-22 18:23:55.581 31474 32256 I native  : 	UI	设置	选项	:	6s	.
+07-22 18:23:55.581 31474 32256 I native  : ui	0.901961	0.027451	0.00196078	0.00784314	0.00196078	0.00784314
+07-22 18:23:55.581 31474 32256 I native  : setting	0.0666667	0.968627	0.00392157	0.00392157	0	0.0392157
+07-22 18:23:55.581 31474 32256 I native  : option	0.0196078	0.00392157	0.970588	0.0431373	0.00196078	0.00784314
+07-22 18:23:55.581 31474 32256 I native  : :	0.00588235	0	0.027451	0.92549	0.00392157	0.00784314
+07-22 18:23:55.581 31474 32256 I native  : 6s	0.00392157	0	0.00196078	0.0117647	0.958824	0.0196078
+07-22 18:23:55.581 31474 32256 I native  : .	0	0.00392157	0	0.00392157	0.0117647	0.462745
+07-22 18:23:55.581 31474 32256 I native  : Translation (before postprocess): UI 设置 选项 : 6s .
+07-22 18:23:55.584 31474 31492 D TransportRuntime.SQLiteEventStore: Storing event with priority=VERY_LOW, name=FIREBASE_ML_SDK for destination cct
+07-22 18:23:55.585 31474 32258 D native  : I0722 18:23:55.585943   32258 mergeddicttrans.cc:1860] The current system has NMT.
+07-22 18:23:55.586 31474 32258 D native  : I0722 18:23:55.586009   32258 mergeddicttrans.cc:1866] Sentence #0: フTLL0
+07-22 18:23:55.586 31474 32258 D native  : I0722 18:23:55.586072   32258 mergeddicttrans.cc:1912] To fallback to PB.
+07-22 18:23:55.586 31474 32258 D native  : I0722 18:23:55.586085   32258 mergeddicttrans.cc:1585] Sentence #0: フTLL0
+07-22 18:23:55.586 31474 32258 D native  : I0722 18:23:55.586233   32258 mergeddicttrans.cc:1571] PBMT preproc: フ tll0
+07-22 18:23:55.586 31474 32258 D native  : I0722 18:23:55.586456   32258 mergeddicttrans.cc:1588] PBMT trans: フ tll0
+07-22 18:23:55.587 31474 31492 D TransportRuntime.JobInfoScheduler: Upload for context TransportContext(cct, VERY_LOW, MSRodHRwczovL2ZpcmViYXNlbG9nZ2luZy5nb29nbGVhcGlzLmNvbS92MGNjL2xvZy9iYXRjaD9mb3JtYXQ9anNvbl9wcm90bzNc) is already scheduled. Returning...
+07-22 18:23:55.587 31474 32259 D native  : I0722 18:23:55.587340   32259 mergeddicttrans.cc:1860] The current system has NMT.
+07-22 18:23:55.587 31474 32259 D native  : I0722 18:23:55.587378   32259 mergeddicttrans.cc:1866] Sentence #0: UI setting option: フTLL0
+07-22 18:23:55.587 31474 32259 D native  : I0722 18:23:55.587481   32259 mergeddicttrans.cc:1918] To be translated by NMT.
+07-22 18:23:55.589 31474 31492 D TransportRuntime.SQLiteEventStore: Storing event with priority=VERY_LOW, name=FIREBASE_ML_SDK for destination cct
+07-22 18:23:55.592 31474 31492 D TransportRuntime.JobInfoScheduler: Upload for context TransportContext(cct, VERY_LOW, MSRodHRwczovL2ZpcmViYXNlbG9nZ2luZy5nb29nbGVhcGlzLmNvbS92MGNjL2xvZy9iYXRjaD9mb3JtYXQ9anNvbl9wcm90bzNc) is already scheduled. Returning...
+07-22 18:23:55.648 31474 32259 I native  : I0722 18:23:55.648879   32259 mergeddicttrans.cc:1827] Sentence #0: UI setting option: フTLL0
+07-22 18:23:55.649 31474 32259 I native  : I0722 18:23:55.649019   32259 mergeddicttrans.cc:1828] 
+07-22 18:23:55.649 31474 32259 I native  : Source language: en, target language: zh
+07-22 18:23:55.649 31474 32259 I native  : 
+07-22 18:23:55.649 31474 32259 I native  : Has period trick: 1
+07-22 18:23:55.649 31474 32259 I native  : 
+07-22 18:23:55.649 31474 32259 I native  : Full translation: UI设置选项：フtll0
+07-22 18:23:55.649 31474 32259 I native  : Translate Instance: 
+07-22 18:23:55.649 31474 32259 I native  : Query (raw): UI setting option: フTLL0
+07-22 18:23:55.649 31474 32259 I native  : Query (after preprocess): ui setting option : フ tll0 .
+07-22 18:23:55.649 31474 32259 I native  : Query ids (after tokenizer): 553 44 1171 1425 19 51 0 76 4047 116 5 2
+07-22 18:23:55.649 31474 32259 I native  : Translation ids: 572 102 173 826 628 10 3 0 1168 75 75 11 6 2
+07-22 18:23:55.649 31474 32259 I native  : Translation (after detokenizer): UI 设置 选项 : フ tll0 .
+07-22 18:23:55.649 31474 32259 I native  : Alignment probability:
+07-22 18:23:55.649 31474 32259 I native  : 	UI	设置	选项	:	フ	tll0	.
+07-22 18:23:55.649 31474 32259 I native  : ui	0.907843	0.027451	0.00196078	0.00392157	0.00196078	0	0.0196078
+07-22 18:23:55.649 31474 32259 I native  : setting	0.0686275	0.972549	0.00392157	0	0	0	0.0313726
+07-22 18:23:55.649 31474 32259 I native  : option	0.0117647	0	0.982353	0.0156863	0.00392157	0	0.0196078
+07-22 18:23:55.649 31474 32259 I native  : :	0.00588235	0	0.0156863	0.956863	0.00392157	0	0.00392157
+07-22 18:23:55.649 31474 32259 I native  : フ	0.00392157	0	0	0.0196078	0.935294	0.00294118	0.0156863
+07-22 18:23:55.649 31474 32259 I native  : tll0	0	0	0	0	0.0254902	0.978431	0.0313726
+07-22 18:23:55.649 31474 32259 I native  : .	0	0.00392157	0.00196078	0.00784314	0.00784314	0.0127451	0.678431
+07-22 18:23:55.649 31474 32259 I native  : Translation (before postprocess): UI 设置 选项 : フ tll0 .
+07-22 18:23:55.651 31474 32260 D native  : I0722 18:23:55.651749   32260 mergeddicttrans.cc:1860] The current system has NMT.
+07-22 18:23:55.651 31474 32260 D native  : I0722 18:23:55.651803   32260 mergeddicttrans.cc:1866] Sentence #0: 分享
+07-22 18:23:55.651 31474 32260 D native  : I0722 18:23:55.651882   32260 mergeddicttrans.cc:1918] To be translated by NMT.
+07-22 18:23:55.652 31474 31492 D TransportRuntime.SQLiteEventStore: Storing event with priority=VERY_LOW, name=FIREBASE_ML_SDK for destination cct
+07-22 18:23:55.654 31474 31492 D TransportRuntime.JobInfoScheduler: Upload for context TransportContext(cct, VERY_LOW, MSRodHRwczovL2ZpcmViYXNlbG9nZ2luZy5nb29nbGVhcGlzLmNvbS92MGNjL2xvZy9iYXRjaD9mb3JtYXQ9anNvbl9wcm90bzNc) is already scheduled. Returning...
+07-22 18:23:55.666 31474 32260 I native  : I0722 18:23:55.666736   32260 mergeddicttrans.cc:1827] Sentence #0: 分享
+07-22 18:23:55.666 31474 32260 I native  : I0722 18:23:55.666839   32260 mergeddicttrans.cc:1828] 
+07-22 18:23:55.666 31474 32260 I native  : Source language: zh, target language: en
+07-22 18:23:55.666 31474 32260 I native  : 
+07-22 18:23:55.666 31474 32260 I native  : Has period trick: 0
+07-22 18:23:55.666 31474 32260 I native  : 
+07-22 18:23:55.666 31474 32260 I native  : Full translation: Sharing
+07-22 18:23:55.666 31474 32260 I native  : Translate Instance: 
+07-22 18:23:55.666 31474 32260 I native  : Query (raw): 分享
+07-22 18:23:55.666 31474 32260 I native  : Query (after preprocess): 分享
+07-22 18:23:55.666 31474 32260 I native  : Query ids (after tokenizer): 92 1054 2
+07-22 18:23:55.666 31474 32260 I native  : Translation ids: 619 1866 2
+07-22 18:23:55.666 31474 32260 I native  : Translation (after detokenizer): sharing
+07-22 18:23:55.666 31474 32260 I native  : Alignment probability:
+07-22 18:23:55.666 31474 32260 I native  : 	sharing
+07-22 18:23:55.666 31474 32260 I native  : 分享	0.690196
+07-22 18:23:55.666 31474 32260 I native  : Translation (before postprocess): sharing
+07-22 18:23:55.669 31474 32252 D native  : I0722 18:23:55.669557   32252 mergeddicttrans.cc:1860] The current system has NMT.
+07-22 18:23:55.669 31474 32252 D native  : I0722 18:23:55.669625   32252 mergeddicttrans.cc:1866] Sentence #0: 圣除
+07-22 18:23:55.669 31474 32252 D native  : I0722 18:23:55.669673   32252 mergeddicttrans.cc:1918] To be translated by NMT.
+07-22 18:23:55.669 31474 31492 D TransportRuntime.SQLiteEventStore: Storing event with priority=VERY_LOW, name=FIREBASE_ML_SDK for destination cct
+07-22 18:23:55.672 31474 31492 D TransportRuntime.JobInfoScheduler: Upload for context TransportContext(cct, VERY_LOW, MSRodHRwczovL2ZpcmViYXNlbG9nZ2luZy5nb29nbGVhcGlzLmNvbS92MGNjL2xvZy9iYXRjaD9mb3JtYXQ9anNvbl9wcm90bzNc) is already scheduled. Returning...
+07-22 18:23:55.686 31474 32252 I native  : I0722 18:23:55.686117   32252 mergeddicttrans.cc:1827] Sentence #0: 圣除
+07-22 18:23:55.686 31474 32252 I native  : I0722 18:23:55.686226   32252 mergeddicttrans.cc:1828] 
+07-22 18:23:55.686 31474 32252 I native  : Source language: zh, target language: en
+07-22 18:23:55.686 31474 32252 I native  : 
+07-22 18:23:55.686 31474 32252 I native  : Has period trick: 0
+07-22 18:23:55.686 31474 32252 I native  : 
+07-22 18:23:55.686 31474 32252 I native  : Full translation: Holy
+07-22 18:23:55.686 31474 32252 I native  : Translate Instance: 
+07-22 18:23:55.686 31474 32252 I native  : Query (raw): 圣除
+07-22 18:23:55.686 31474 32252 I native  : Query (after preprocess): 圣除
+07-22 18:23:55.686 31474 32252 I native  : Query ids (after tokenizer): 883 804 2
+07-22 18:23:55.686 31474 32252 I native  : Translation ids: 249 1589 2
+07-22 18:23:55.686 31474 32252 I native  : Translation (after detokenizer): holy
+07-22 18:23:55.686 31474 32252 I native  : Alignment probability:
+07-22 18:23:55.686 31474 32252 I native  : 	holy
+07-22 18:23:55.686 31474 32252 I native  : 圣除	0.801961
+07-22 18:23:55.686 31474 32252 I native  : Translation (before postprocess): holy
+07-22 18:23:55.688 31474 32254 D native  : I0722 18:23:55.688628   32254 mergeddicttrans.cc:1860] The current system has NMT.
+07-22 18:23:55.688 31474 32254 D native  : I0722 18:23:55.688702   32254 mergeddicttrans.cc:1866] Sentence #0: 编辑
+07-22 18:23:55.688 31474 32254 D native  : I0722 18:23:55.688776   32254 mergeddicttrans.cc:1918] To be translated by NMT.
+07-22 18:23:55.688 31474 31492 D TransportRuntime.SQLiteEventStore: Storing event with priority=VERY_LOW, name=FIREBASE_ML_SDK for destination cct
+07-22 18:23:55.691 31474 31492 D TransportRuntime.JobInfoScheduler: Upload for context TransportContext(cct, VERY_LOW, MSRodHRwczovL2ZpcmViYXNlbG9nZ2luZy5nb29nbGVhcGlzLmNvbS92MGNjL2xvZy9iYXRjaD9mb3JtYXQ9anNvbl9wcm90bzNc) is already scheduled. Returning...
+07-22 18:23:55.705 31474 32254 I native  : I0722 18:23:55.705512   32254 mergeddicttrans.cc:1827] Sentence #0: 编辑
+07-22 18:23:55.705 31474 32254 I native  : I0722 18:23:55.705622   32254 mergeddicttrans.cc:1828] 
+07-22 18:23:55.705 31474 32254 I native  : Source language: zh, target language: en
+07-22 18:23:55.705 31474 32254 I native  : 
+07-22 18:23:55.705 31474 32254 I native  : Has period trick: 0
+07-22 18:23:55.705 31474 32254 I native  : 
+07-22 18:23:55.705 31474 32254 I native  : Full translation: Editor
+07-22 18:23:55.705 31474 32254 I native  : Translate Instance: 
+07-22 18:23:55.705 31474 32254 I native  : Query (raw): 编辑
+07-22 18:23:55.705 31474 32254 I native  : Query (after preprocess): 编辑
+07-22 18:23:55.705 31474 32254 I native  : Query ids (after tokenizer): 449 934 2
+07-22 18:23:55.705 31474 32254 I native  : Translation ids: 2349 757 2
+07-22 18:23:55.705 31474 32254 I native  : Translation (after detokenizer): editor
+07-22 18:23:55.705 31474 32254 I native  : Alignment probability:
+07-22 18:23:55.705 31474 32254 I native  : 	editor
+07-22 18:23:55.705 31474 32254 I native  : 编辑	0.737255
+07-22 18:23:55.705 31474 32254 I native  : Translation (before postprocess): editor
+07-22 18:23:55.708 31474 32255 D native  : I0722 18:23:55.708035   32255 mergeddicttrans.cc:1860] The current system has NMT.
+07-22 18:23:55.708 31474 32255 D native  : I0722 18:23:55.708109   32255 mergeddicttrans.cc:1866] Sentence #0: 连接除电源时●
+07-22 18:23:55.708 31474 32255 D native  : I0722 18:23:55.708159   32255 mergeddicttrans.cc:1918] To be translated by NMT.
+07-22 18:23:55.708 31474 31492 D TransportRuntime.SQLiteEventStore: Storing event with priority=VERY_LOW, name=FIREBASE_ML_SDK for destination cct
+07-22 18:23:55.710 31474 31492 D TransportRuntime.JobInfoScheduler: Upload for context TransportContext(cct, VERY_LOW, MSRodHRwczovL2ZpcmViYXNlbG9nZ2luZy5nb29nbGVhcGlzLmNvbS92MGNjL2xvZy9iYXRjaD9mb3JtYXQ9anNvbl9wcm90bzNc) is already scheduled. Returning...
+07-22 18:23:55.746 31474 32255 I native  : I0722 18:23:55.746510   32255 mergeddicttrans.cc:1827] Sentence #0: 连接除电源时●
+07-22 18:23:55.746 31474 32255 I native  : I0722 18:23:55.746646   32255 mergeddicttrans.cc:1828] 
+07-22 18:23:55.746 31474 32255 I native  : Source language: zh, target language: en
+07-22 18:23:55.746 31474 32255 I native  : 
+07-22 18:23:55.746 31474 32255 I native  : Has period trick: 0
+07-22 18:23:55.746 31474 32255 I native  : 
+07-22 18:23:55.746 31474 32255 I native  : Full translation: Connect to the power supply ●
+07-22 18:23:55.746 31474 32255 I native  : Translate Instance: 
+07-22 18:23:55.746 31474 32255 I native  : Query (raw): 连接除电源时●
+07-22 18:23:55.746 31474 32255 I native  : Query (after preprocess): 连接 除 电源 时 ●
+07-22 18:23:55.746 31474 32255 I native  : Query ids (after tokenizer): 389 917 52 229 104 3 2144 2
+07-22 18:23:55.746 31474 32255 I native  : Translation ids: 329 185 210 9 3 392 1357 26 2637 2
+07-22 18:23:55.746 31474 32255 I native  : Translation (after detokenizer): Connect to the power supply ●
+07-22 18:23:55.746 31474 32255 I native  : Alignment probability:
+07-22 18:23:55.746 31474 32255 I native  : 	Connect	to	the	power	supply	●
+07-22 18:23:55.746 31474 32255 I native  : 连接	0.607843	0.117647	0.0627451	0.0196078	0.00392157	0.0117647
+07-22 18:23:55.746 31474 32255 I native  : 除	0.0300654	0.4	0.32549	0.145098	0.0196078	0.00784314
+07-22 18:23:55.746 31474 32255 I native  : 电源	0.00522876	0.188235	0.501961	0.792157	0.721569	0.0117647
+07-22 18:23:55.746 31474 32255 I native  : 时	0.0862745	0.117647	0.0196078	0.0117647	0.0901961	0.133333
+07-22 18:23:55.746 31474 32255 I native  : ●	0.0457516	0.141176	0.0470588	0.00784314	0.141176	0.815686
+07-22 18:23:55.746 31474 32255 I native  : Translation (before postprocess): Connect to the power supply ●
+07-22 18:23:55.749 31474 31492 D TransportRuntime.SQLiteEventStore: Storing event with priority=VERY_LOW, name=FIREBASE_ML_SDK for destination cct
+07-22 18:23:55.751 31474 31492 D TransportRuntime.JobInfoScheduler: Upload for context TransportContext(cct, VERY_LOW, MSRodHRwczovL2ZpcmViYXNlbG9nZ2luZy5nb29nbGVhcGlzLmNvbS92MGNjL2xvZy9iYXRjaD9mb3JtYXQ9anNvbl9wcm90bzNc) is already scheduled. Returning...
+07-22 18:24:44.139 31474 31502 E perf_hint: createSessionUsingConfig: PerformanceHint cannot create session. PowerHAL is not supported!
+07-22 18:25:02.506 31474 31474 W WindowOnBackDispatcher: sendCancelIfRunning: isInProgress=false callback=android.view.ViewRootImpl$$ExternalSyntheticLambda13@6c4e19c
+07-22 18:25:02.513 31474 31489 D HWUI    : endAllActiveAnimators on 0x781f28a220 (RippleDrawable) with handle 0x79bf4cf3f0
+07-22 18:25:02.565 31474 31474 D InsetsController: hide(ime(), fromIme=false)
+07-22 18:25:02.565 31474 31474 I ImeTracker: com.example.imagetranslate:36772acb: onCancelled at PHASE_CLIENT_ALREADY_HIDDEN
+07-22 18:26:01.821 31474 31474 W BitmapDrawable: BitmapDrawable created with null Bitmap
+07-22 18:26:01.863 31474 32447 D PipelineManager: Start process bitmap
+07-22 18:26:01.864 31474 31492 D TransportRuntime.SQLiteEventStore: Storing event with priority=VERY_LOW, name=FIREBASE_ML_SDK for destination cct
+07-22 18:26:01.867 31474 31492 D TransportRuntime.JobInfoScheduler: Upload for context TransportContext(cct, VERY_LOW, MSRodHRwczovL2ZpcmViYXNlbG9nZ2luZy5nb29nbGVhcGlzLmNvbS92MGNjL2xvZy9iYXRjaD9mb3JtYXQ9anNvbl9wcm90bzNc) is already scheduled. Returning...
+07-22 18:26:01.892 31474 31831 I tflite  : Replacing 44 out of 46 node(s) with delegate (TfLiteXNNPackDelegate) node, yielding 3 partitions for the whole graph.
+07-22 18:26:01.922 31474 31831 I tflite  : Replacing 44 out of 46 node(s) with delegate (TfLiteXNNPackDelegate) node, yielding 3 partitions for the whole graph.
+07-22 18:26:01.964 31474 31831 I tflite  : Replacing 44 out of 46 node(s) with delegate (TfLiteXNNPackDelegate) node, yielding 3 partitions for the whole graph.
+07-22 18:26:02.033 31474 31831 I tflite  : Replacing 44 out of 46 node(s) with delegate (TfLiteXNNPackDelegate) node, yielding 3 partitions for the whole graph.
+07-22 18:26:02.058 31474 31831 I tflite  : Replacing 44 out of 46 node(s) with delegate (TfLiteXNNPackDelegate) node, yielding 3 partitions for the whole graph.
+07-22 18:26:02.339 31474 32447 D PipelineManager: OCR process succeeded via visionkit pipeline.
+07-22 18:26:02.356 31474 31492 D TransportRuntime.SQLiteEventStore: Storing event with priority=VERY_LOW, name=FIREBASE_ML_SDK for destination cct
+07-22 18:26:02.358 31474 32464 D PipelineManager: Start process bitmap
+07-22 18:26:02.360 31474 31492 D TransportRuntime.JobInfoScheduler: Upload for context TransportContext(cct, VERY_LOW, MSRodHRwczovL2ZpcmViYXNlbG9nZ2luZy5nb29nbGVhcGlzLmNvbS92MGNjL2xvZy9iYXRjaD9mb3JtYXQ9anNvbl9wcm90bzNc) is already scheduled. Returning...
+07-22 18:26:02.383 31474 31492 D TransportRuntime.SQLiteEventStore: Storing event with priority=VERY_LOW, name=FIREBASE_ML_SDK for destination cct
+07-22 18:26:02.386 31474 31492 D TransportRuntime.JobInfoScheduler: Upload for context TransportContext(cct, VERY_LOW, MSRodHRwczovL2ZpcmViYXNlbG9nZ2luZy5nb29nbGVhcGlzLmNvbS92MGNjL2xvZy9iYXRjaD9mb3JtYXQ9anNvbl9wcm90bzNc) is already scheduled. Returning...
+07-22 18:26:02.680 31474 32464 D PipelineManager: OCR process succeeded via visionkit pipeline.
+07-22 18:26:02.687 31474 31492 D TransportRuntime.SQLiteEventStore: Storing event with priority=VERY_LOW, name=FIREBASE_ML_SDK for destination cct
+07-22 18:26:02.690 31474 31492 D TransportRuntime.JobInfoScheduler: Upload for context TransportContext(cct, VERY_LOW, MSRodHRwczovL2ZpcmViYXNlbG9nZ2luZy5nb29nbGVhcGlzLmNvbS92MGNjL2xvZy9iYXRjaD9mb3JtYXQ9anNvbl9wcm90bzNc) is already scheduled. Returning...
+07-22 18:26:02.706 31474 31492 D TransportRuntime.SQLiteEventStore: Storing event with priority=VERY_LOW, name=FIREBASE_ML_SDK for destination cct
+07-22 18:26:02.708 31474 31492 D TransportRuntime.JobInfoScheduler: Upload for context TransportContext(cct, VERY_LOW, MSRodHRwczovL2ZpcmViYXNlbG9nZ2luZy5nb29nbGVhcGlzLmNvbS92MGNjL2xvZy9iYXRjaD9mb3JtYXQ9anNvbl9wcm90bzNc) is already scheduled. Returning...
+07-22 18:26:02.766 31474 32465 D PipelineManager: Start process bitmap
+07-22 18:26:03.139 31474 32465 D PipelineManager: OCR process succeeded via visionkit pipeline.
+07-22 18:26:03.153 31474 32466 D PipelineManager: Start process bitmap
+07-22 18:26:03.427 31474 32466 D PipelineManager: OCR process succeeded via visionkit pipeline.
+07-22 18:26:03.501 31474 32467 D PipelineManager: Start process bitmap
+07-22 18:26:03.929 31474 32467 D PipelineManager: OCR process succeeded via visionkit pipeline.
+07-22 18:26:03.957 31474 32468 D PipelineManager: Start process bitmap
+07-22 18:26:04.225 31474 32468 D PipelineManager: OCR process succeeded via visionkit pipeline.
+07-22 18:26:04.435 31474 32469 D PipelineManager: Start process bitmap
+07-22 18:26:04.440 31474 31831 I tflite  : Replacing 44 out of 46 node(s) with delegate (TfLiteXNNPackDelegate) node, yielding 3 partitions for the whole graph.
+07-22 18:26:04.448 31474 31831 I tflite  : Replacing 44 out of 46 node(s) with delegate (TfLiteXNNPackDelegate) node, yielding 3 partitions for the whole graph.
+07-22 18:26:04.454 31474 31831 I tflite  : Replacing 44 out of 46 node(s) with delegate (TfLiteXNNPackDelegate) node, yielding 3 partitions for the whole graph.
+07-22 18:26:04.471 31474 31831 I tflite  : Replacing 44 out of 46 node(s) with delegate (TfLiteXNNPackDelegate) node, yielding 3 partitions for the whole graph.
+07-22 18:26:04.476 31474 31831 I tflite  : Replacing 44 out of 46 node(s) with delegate (TfLiteXNNPackDelegate) node, yielding 3 partitions for the whole graph.
+07-22 18:26:04.494 31474 32469 D PipelineManager: OCR process succeeded via visionkit pipeline.
+07-22 18:26:04.504 31474 32485 D PipelineManager: Start process bitmap
+07-22 18:26:04.537 31474 32485 D PipelineManager: OCR process succeeded via visionkit pipeline.
+07-22 18:26:04.604 31474 32447 D PipelineManager: Start process bitmap
+07-22 18:26:04.611 31474 31830 I tflite  : Replacing 44 out of 46 node(s) with delegate (TfLiteXNNPackDelegate) node, yielding 3 partitions for the whole graph.
+07-22 18:26:04.621 31474 31830 I tflite  : Replacing 44 out of 46 node(s) with delegate (TfLiteXNNPackDelegate) node, yielding 3 partitions for the whole graph.
+07-22 18:26:04.633 31474 31830 I tflite  : Replacing 44 out of 46 node(s) with delegate (TfLiteXNNPackDelegate) node, yielding 3 partitions for the whole graph.
+07-22 18:26:04.656 31474 31830 I tflite  : Replacing 44 out of 46 node(s) with delegate (TfLiteXNNPackDelegate) node, yielding 3 partitions for the whole graph.
+07-22 18:26:04.664 31474 31830 I tflite  : Replacing 44 out of 46 node(s) with delegate (TfLiteXNNPackDelegate) node, yielding 3 partitions for the whole graph.
+07-22 18:26:04.693 31474 32447 D PipelineManager: OCR process succeeded via visionkit pipeline.
+07-22 18:26:04.704 31474 32464 D PipelineManager: Start process bitmap
+07-22 18:26:04.755 31474 32464 D PipelineManager: OCR process succeeded via visionkit pipeline.
+07-22 18:26:04.768 31474 32465 D PipelineManager: Start process bitmap
+07-22 18:26:04.775 31474 31831 I tflite  : Replacing 44 out of 46 node(s) with delegate (TfLiteXNNPackDelegate) node, yielding 3 partitions for the whole graph.
+07-22 18:26:04.784 31474 31831 I tflite  : Replacing 44 out of 46 node(s) with delegate (TfLiteXNNPackDelegate) node, yielding 3 partitions for the whole graph.
+07-22 18:26:04.796 31474 31831 I tflite  : Replacing 44 out of 46 node(s) with delegate (TfLiteXNNPackDelegate) node, yielding 3 partitions for the whole graph.
+07-22 18:26:04.817 31474 31831 I tflite  : Replacing 44 out of 46 node(s) with delegate (TfLiteXNNPackDelegate) node, yielding 3 partitions for the whole graph.
+07-22 18:26:04.823 31474 31831 I tflite  : Replacing 44 out of 46 node(s) with delegate (TfLiteXNNPackDelegate) node, yielding 3 partitions for the whole graph.
+07-22 18:26:04.841 31474 32465 D PipelineManager: OCR process succeeded via visionkit pipeline.
+07-22 18:26:04.853 31474 32466 D PipelineManager: Start process bitmap
+07-22 18:26:04.909 31474 32466 D PipelineManager: OCR process succeeded via visionkit pipeline.
+07-22 18:26:05.006 31474 32467 D PipelineManager: Start process bitmap
+07-22 18:26:05.012 31474 31831 I tflite  : Replacing 44 out of 46 node(s) with delegate (TfLiteXNNPackDelegate) node, yielding 3 partitions for the whole graph.
+07-22 18:26:05.020 31474 31831 I tflite  : Replacing 44 out of 46 node(s) with delegate (TfLiteXNNPackDelegate) node, yielding 3 partitions for the whole graph.
+07-22 18:26:05.029 31474 31831 I tflite  : Replacing 44 out of 46 node(s) with delegate (TfLiteXNNPackDelegate) node, yielding 3 partitions for the whole graph.
+07-22 18:26:05.046 31474 31831 I tflite  : Replacing 44 out of 46 node(s) with delegate (TfLiteXNNPackDelegate) node, yielding 3 partitions for the whole graph.
+07-22 18:26:05.073 31474 32467 D PipelineManager: OCR process succeeded via visionkit pipeline.
+07-22 18:26:05.086 31474 32468 D PipelineManager: Start process bitmap
+07-22 18:26:05.128 31474 32468 D PipelineManager: OCR process succeeded via visionkit pipeline.
+07-22 18:26:05.238 31474 32469 D PipelineManager: Start process bitmap
+07-22 18:26:05.242 31474 31831 I tflite  : Replacing 44 out of 46 node(s) with delegate (TfLiteXNNPackDelegate) node, yielding 3 partitions for the whole graph.
+07-22 18:26:05.249 31474 31831 I tflite  : Replacing 44 out of 46 node(s) with delegate (TfLiteXNNPackDelegate) node, yielding 3 partitions for the whole graph.
+07-22 18:26:05.256 31474 31831 I tflite  : Replacing 44 out of 46 node(s) with delegate (TfLiteXNNPackDelegate) node, yielding 3 partitions for the whole graph.
+07-22 18:26:05.269 31474 31831 I tflite  : Replacing 44 out of 46 node(s) with delegate (TfLiteXNNPackDelegate) node, yielding 3 partitions for the whole graph.
+07-22 18:26:05.286 31474 32469 D PipelineManager: OCR process succeeded via visionkit pipeline.
+07-22 18:26:05.294 31474 32485 D PipelineManager: Start process bitmap
+07-22 18:26:05.325 31474 32485 D PipelineManager: OCR process succeeded via visionkit pipeline.
+07-22 18:26:05.385 31474 32447 D PipelineManager: Start process bitmap
+07-22 18:26:05.392 31474 31831 I tflite  : Replacing 44 out of 46 node(s) with delegate (TfLiteXNNPackDelegate) node, yielding 3 partitions for the whole graph.
+07-22 18:26:05.410 31474 31831 I tflite  : Replacing 44 out of 46 node(s) with delegate (TfLiteXNNPackDelegate) node, yielding 3 partitions for the whole graph.
+07-22 18:26:05.421 31474 31831 I tflite  : Replacing 44 out of 46 node(s) with delegate (TfLiteXNNPackDelegate) node, yielding 3 partitions for the whole graph.
+07-22 18:26:05.448 31474 31831 I tflite  : Replacing 44 out of 46 node(s) with delegate (TfLiteXNNPackDelegate) node, yielding 3 partitions for the whole graph.
+07-22 18:26:05.452 31474 31831 I tflite  : Replacing 44 out of 46 node(s) with delegate (TfLiteXNNPackDelegate) node, yielding 3 partitions for the whole graph.
+07-22 18:26:05.491 31474 32447 D PipelineManager: OCR process succeeded via visionkit pipeline.
+07-22 18:26:05.508 31474 32464 D PipelineManager: Start process bitmap
+07-22 18:26:05.570 31474 32464 D PipelineManager: OCR process succeeded via visionkit pipeline.
+07-22 18:26:05.730 31474 32465 D PipelineManager: Start process bitmap
+07-22 18:26:05.735 31474 31831 I tflite  : Replacing 44 out of 46 node(s) with delegate (TfLiteXNNPackDelegate) node, yielding 3 partitions for the whole graph.
+07-22 18:26:05.743 31474 31831 I tflite  : Replacing 44 out of 46 node(s) with delegate (TfLiteXNNPackDelegate) node, yielding 3 partitions for the whole graph.
+07-22 18:26:05.752 31474 31831 I tflite  : Replacing 44 out of 46 node(s) with delegate (TfLiteXNNPackDelegate) node, yielding 3 partitions for the whole graph.
+07-22 18:26:05.764 31474 31831 I tflite  : Replacing 44 out of 46 node(s) with delegate (TfLiteXNNPackDelegate) node, yielding 3 partitions for the whole graph.
+07-22 18:26:05.781 31474 32465 D PipelineManager: OCR process succeeded via visionkit pipeline.
+07-22 18:26:05.788 31474 32466 D PipelineManager: Start process bitmap
+07-22 18:26:05.817 31474 32466 D PipelineManager: OCR process succeeded via visionkit pipeline.
+07-22 18:26:05.859 31474 32467 D PipelineManager: Start process bitmap
+07-22 18:26:05.865 31474 31831 I tflite  : Replacing 44 out of 46 node(s) with delegate (TfLiteXNNPackDelegate) node, yielding 3 partitions for the whole graph.
+07-22 18:26:05.873 31474 31831 I tflite  : Replacing 44 out of 46 node(s) with delegate (TfLiteXNNPackDelegate) node, yielding 3 partitions for the whole graph.
+07-22 18:26:05.882 31474 31831 I tflite  : Replacing 44 out of 46 node(s) with delegate (TfLiteXNNPackDelegate) node, yielding 3 partitions for the whole graph.
+07-22 18:26:05.899 31474 31831 I tflite  : Replacing 44 out of 46 node(s) with delegate (TfLiteXNNPackDelegate) node, yielding 3 partitions for the whole graph.
+07-22 18:26:05.905 31474 31831 I tflite  : Replacing 44 out of 46 node(s) with delegate (TfLiteXNNPackDelegate) node, yielding 3 partitions for the whole graph.
+07-22 18:26:05.925 31474 32467 D PipelineManager: OCR process succeeded via visionkit pipeline.
+07-22 18:26:05.937 31474 32468 D PipelineManager: Start process bitmap
+07-22 18:26:05.977 31474 32468 D PipelineManager: OCR process succeeded via visionkit pipeline.
+07-22 18:26:06.086 31474 32469 D PipelineManager: Start process bitmap
+07-22 18:26:06.093 31474 31831 I tflite  : Replacing 44 out of 46 node(s) with delegate (TfLiteXNNPackDelegate) node, yielding 3 partitions for the whole graph.
+07-22 18:26:06.102 31474 31831 I tflite  : Replacing 44 out of 46 node(s) with delegate (TfLiteXNNPackDelegate) node, yielding 3 partitions for the whole graph.
+07-22 18:26:06.112 31474 31831 I tflite  : Replacing 44 out of 46 node(s) with delegate (TfLiteXNNPackDelegate) node, yielding 3 partitions for the whole graph.
+07-22 18:26:06.146 31474 31831 I tflite  : Replacing 44 out of 46 node(s) with delegate (TfLiteXNNPackDelegate) node, yielding 3 partitions for the whole graph.
+07-22 18:26:06.150 31474 31831 I tflite  : Replacing 44 out of 46 node(s) with delegate (TfLiteXNNPackDelegate) node, yielding 3 partitions for the whole graph.
+07-22 18:26:06.177 31474 32469 D PipelineManager: OCR process succeeded via visionkit pipeline.
+07-22 18:26:06.194 31474 32485 D PipelineManager: Start process bitmap
+07-22 18:26:06.272 31474 32485 D PipelineManager: OCR process succeeded via visionkit pipeline.
+07-22 18:26:06.487 31474 32447 D PipelineManager: Start process bitmap
+07-22 18:26:06.492 31474 31831 I tflite  : Replacing 44 out of 46 node(s) with delegate (TfLiteXNNPackDelegate) node, yielding 3 partitions for the whole graph.
+07-22 18:26:06.502 31474 31831 I tflite  : Replacing 44 out of 46 node(s) with delegate (TfLiteXNNPackDelegate) node, yielding 3 partitions for the whole graph.
+07-22 18:26:06.510 31474 31831 I tflite  : Replacing 44 out of 46 node(s) with delegate (TfLiteXNNPackDelegate) node, yielding 3 partitions for the whole graph.
+07-22 18:26:06.559 31474 32447 D PipelineManager: OCR process succeeded via visionkit pipeline.
+07-22 18:26:06.573 31474 32464 D PipelineManager: Start process bitmap
+07-22 18:26:06.632 31474 32464 D PipelineManager: OCR process succeeded via visionkit pipeline.
+07-22 18:26:06.728 31474 32465 D PipelineManager: Start process bitmap
+07-22 18:26:06.733 31474 31831 I tflite  : Replacing 44 out of 46 node(s) with delegate (TfLiteXNNPackDelegate) node, yielding 3 partitions for the whole graph.
+07-22 18:26:06.742 31474 31831 I tflite  : Replacing 44 out of 46 node(s) with delegate (TfLiteXNNPackDelegate) node, yielding 3 partitions for the whole graph.
+07-22 18:26:06.753 31474 31831 I tflite  : Replacing 44 out of 46 node(s) with delegate (TfLiteXNNPackDelegate) node, yielding 3 partitions for the whole graph.
+07-22 18:26:06.775 31474 31831 I tflite  : Replacing 44 out of 46 node(s) with delegate (TfLiteXNNPackDelegate) node, yielding 3 partitions for the whole graph.
+07-22 18:26:06.779 31474 31831 I tflite  : Replacing 44 out of 46 node(s) with delegate (TfLiteXNNPackDelegate) node, yielding 3 partitions for the whole graph.
+07-22 18:26:06.797 31474 32465 D PipelineManager: OCR process succeeded via visionkit pipeline.
+07-22 18:26:06.809 31474 32466 D PipelineManager: Start process bitmap
+07-22 18:26:06.883 31474 32466 D PipelineManager: OCR process succeeded via visionkit pipeline.
+07-22 18:26:06.987 31474 32467 D PipelineManager: Start process bitmap
+07-22 18:26:06.993 31474 31831 I tflite  : Replacing 44 out of 46 node(s) with delegate (TfLiteXNNPackDelegate) node, yielding 3 partitions for the whole graph.
+07-22 18:26:07.003 31474 31831 I tflite  : Replacing 44 out of 46 node(s) with delegate (TfLiteXNNPackDelegate) node, yielding 3 partitions for the whole graph.
+07-22 18:26:07.011 31474 31831 I tflite  : Replacing 44 out of 46 node(s) with delegate (TfLiteXNNPackDelegate) node, yielding 3 partitions for the whole graph.
+07-22 18:26:07.029 31474 31831 I tflite  : Replacing 44 out of 46 node(s) with delegate (TfLiteXNNPackDelegate) node, yielding 3 partitions for the whole graph.
+07-22 18:26:07.045 31474 32467 D PipelineManager: OCR process succeeded via visionkit pipeline.
+07-22 18:26:07.057 31474 32468 D PipelineManager: Start process bitmap
+07-22 18:26:07.102 31474 32468 D PipelineManager: OCR process succeeded via visionkit pipeline.
+07-22 18:26:07.143 31474 32469 D PipelineManager: Start process bitmap
+07-22 18:26:07.156 31474 31831 I tflite  : Replacing 44 out of 46 node(s) with delegate (TfLiteXNNPackDelegate) node, yielding 3 partitions for the whole graph.
+07-22 18:26:07.186 31474 32469 D PipelineManager: OCR process succeeded via visionkit pipeline.
+07-22 18:26:07.196 31474 32485 D PipelineManager: Start process bitmap
+07-22 18:26:07.238 31474 32485 D PipelineManager: OCR process succeeded via visionkit pipeline.
+07-22 18:26:07.279 31474 32447 D PipelineManager: Start process bitmap
+07-22 18:26:07.284 31474 31831 I tflite  : Replacing 44 out of 46 node(s) with delegate (TfLiteXNNPackDelegate) node, yielding 3 partitions for the whole graph.
+07-22 18:26:07.319 31474 31831 I tflite  : Replacing 44 out of 46 node(s) with delegate (TfLiteXNNPackDelegate) node, yielding 3 partitions for the whole graph.
+07-22 18:26:07.349 31474 31831 I tflite  : Replacing 44 out of 46 node(s) with delegate (TfLiteXNNPackDelegate) node, yielding 3 partitions for the whole graph.
+07-22 18:26:07.385 31474 32447 D PipelineManager: OCR process succeeded via visionkit pipeline.
+07-22 18:26:07.396 31474 32464 D PipelineManager: Start process bitmap
+07-22 18:26:07.475 31474 32464 D PipelineManager: OCR process succeeded via visionkit pipeline.
+07-22 18:26:14.330 31474 31474 D VRI[ImageTranslateActivity]: visibilityChanged oldVisibility=true newVisibility=false
+07-22 18:26:17.922 31474 31474 D InsetsController: hide(ime(), fromIme=false)
+07-22 18:26:17.922 31474 31474 I ImeTracker: com.example.imagetranslate:ceabc728: onCancelled at PHASE_CLIENT_ALREADY_HIDDEN
+07-22 18:26:52.654 31474 31502 E perf_hint: createSessionUsingConfig: PerformanceHint cannot create session. PowerHAL is not supported!
+07-22 18:26:52.663 31474 31474 D AutofillManager: view not autofillable - has multiline input type
+07-22 18:26:52.663 31474 31474 D AutofillManager: view not autofillable - has multiline input type
+07-22 18:26:54.118 31474 31474 W WindowOnBackDispatcher: sendCancelIfRunning: isInProgress=false callback=android.view.ViewRootImpl$$ExternalSyntheticLambda13@d872d7a
+07-22 18:26:54.120 31474 31474 D AutofillManager: view not autofillable - has multiline input type
+07-22 18:26:54.120 31474 31474 D AutofillManager: view not autofillable - has multiline input type
+07-22 18:26:54.134 31474 31474 W InputEventReceiver: Attempted to finish an input event but the input event receiver has already been disposed.
+07-22 18:26:54.189 31474 31474 D InsetsController: hide(ime(), fromIme=false)
+07-22 18:26:54.189 31474 31474 I ImeTracker: com.example.imagetranslate:c27b75e1: onCancelled at PHASE_CLIENT_ALREADY_HIDDEN
+07-22 18:26:55.588 31474 31492 D TransportRuntime.SQLiteEventStore: Storing event with priority=VERY_LOW, name=FIREBASE_ML_SDK for destination cct
+07-22 18:26:55.589 31474 32466 D native  : I0722 18:26:55.589212   32466 mergeddicttrans.cc:1860] The current system has NMT.
+07-22 18:26:55.589 31474 32466 D native  : I0722 18:26:55.589337   32466 mergeddicttrans.cc:1866] Sentence #0: Pixel
+07-22 18:26:55.591 31474 31492 D TransportRuntime.JobInfoScheduler: Upload for context TransportContext(cct, VERY_LOW, MSRodHRwczovL2ZpcmViYXNlbG9nZ2luZy5nb29nbGVhcGlzLmNvbS92MGNjL2xvZy9iYXRjaD9mb3JtYXQ9anNvbl9wcm90bzNc) is already scheduled. Returning...
+07-22 18:26:55.591 31474 32466 D native  : I0722 18:26:55.589422   32466 mergeddicttrans.cc:1912] To fallback to PB.
+07-22 18:26:55.591 31474 32466 D native  : I0722 18:26:55.591589   32466 mergeddicttrans.cc:1585] Sentence #0: Pixel
+07-22 18:26:55.592 31474 32466 D native  : I0722 18:26:55.592884   32466 mergeddicttrans.cc:1571] PBMT preproc: pixel
+07-22 18:26:55.593 31474 32466 D native  : I0722 18:26:55.593303   32466 mergeddicttrans.cc:1588] PBMT trans: 像素
+07-22 18:26:55.601 31474 32467 D native  : I0722 18:26:55.601262   32467 mergeddicttrans.cc:1860] The current system has NMT.
+07-22 18:26:55.601 31474 32467 D native  : I0722 18:26:55.601348   32467 mergeddicttrans.cc:1866] Sentence #0: Android系统
+07-22 18:26:55.601 31474 32467 D native  : I0722 18:26:55.601409   32467 mergeddicttrans.cc:1918] To be translated by NMT.
+07-22 18:26:55.601 31474 31492 D TransportRuntime.SQLiteEventStore: Storing event with priority=VERY_LOW, name=FIREBASE_ML_SDK for destination cct
+07-22 18:26:55.603 31474 31492 D TransportRuntime.JobInfoScheduler: Upload for context TransportContext(cct, VERY_LOW, MSRodHRwczovL2ZpcmViYXNlbG9nZ2luZy5nb29nbGVhcGlzLmNvbS92MGNjL2xvZy9iYXRjaD9mb3JtYXQ9anNvbl9wcm90bzNc) is already scheduled. Returning...
+07-22 18:26:55.650 31474 32467 I native  : I0722 18:26:55.650422   32467 mergeddicttrans.cc:1827] Sentence #0: Android系统
+07-22 18:26:55.650 31474 32467 I native  : I0722 18:26:55.650529   32467 mergeddicttrans.cc:1828] 
+07-22 18:26:55.650 31474 32467 I native  : Source language: zh, target language: en
+07-22 18:26:55.650 31474 32467 I native  : 
+07-22 18:26:55.650 31474 32467 I native  : Has period trick: 0
+07-22 18:26:55.650 31474 32467 I native  : 
+07-22 18:26:55.650 31474 32467 I native  : Full translation: Android system
+07-22 18:26:55.650 31474 32467 I native  : Translate Instance: 
+07-22 18:26:55.650 31474 32467 I native  : Query (raw): Android系统
+07-22 18:26:55.650 31474 32467 I native  : Query (after preprocess): android 系统
+07-22 18:26:55.650 31474 32467 I native  : Query ids (after tokenizer): 86 76 25 23 22 20 25 145 2
+07-22 18:26:55.650 31474 32467 I native  : Translation ids: 1054 272 136 190 2
+07-22 18:26:55.650 31474 32467 I native  : Translation (after detokenizer): Android system
+07-22 18:26:55.650 31474 32467 I native  : Alignment probability:
+07-22 18:26:55.650 31474 32467 I native  : 	Android	system
+07-22 18:26:55.650 31474 32467 I native  : android	0.932026	0.0117647
+07-22 18:26:55.650 31474 32467 I native  : 系统	0.0143791	0.909804
+07-22 18:26:55.650 31474 32467 I native  : Translation (before postprocess): Android system
+07-22 18:26:55.652 31474 32468 D native  : I0722 18:26:55.652884   32468 mergeddicttrans.cc:1860] The current system has NMT.
+07-22 18:26:55.652 31474 32468 D native  : I0722 18:26:55.652958   32468 mergeddicttrans.cc:1866] Sentence #0: 已连按到USB · 调试·现在
+07-22 18:26:55.653 31474 32468 D native  : I0722 18:26:55.653035   32468 mergeddicttrans.cc:1918] To be translated by NMT.
+07-22 18:26:55.653 31474 31492 D TransportRuntime.SQLiteEventStore: Storing event with priority=VERY_LOW, name=FIREBASE_ML_SDK for destination cct
+07-22 18:26:55.655 31474 31492 D TransportRuntime.JobInfoScheduler: Upload for context TransportContext(cct, VERY_LOW, MSRodHRwczovL2ZpcmViYXNlbG9nZ2luZy5nb29nbGVhcGlzLmNvbS92MGNjL2xvZy9iYXRjaD9mb3JtYXQ9anNvbl9wcm90bzNc) is already scheduled. Returning...
+07-22 18:26:55.710 31474 32468 I native  : I0722 18:26:55.710527   32468 mergeddicttrans.cc:1827] Sentence #0: 已连按到USB · 调试·现在
+07-22 18:26:55.710 31474 32468 I native  : I0722 18:26:55.710664   32468 mergeddicttrans.cc:1828] 
+07-22 18:26:55.710 31474 32468 I native  : Source language: zh, target language: en
+07-22 18:26:55.710 31474 32468 I native  : 
+07-22 18:26:55.710 31474 32468 I native  : Has period trick: 0
+07-22 18:26:55.710 31474 32468 I native  : 
+07-22 18:26:55.710 31474 32468 I native  : Full translation: Has press USB · Debugging · Now
+07-22 18:26:55.710 31474 32468 I native  : Translate Instance: 
+07-22 18:26:55.710 31474 32468 I native  : Query (raw): 已连按到USB · 调试·现在
+07-22 18:26:55.710 31474 32468 I native  : Query (after preprocess): 已 连 按 到 usb · 调试 · 现在
+07-22 18:26:55.710 31474 32468 I native  : Query ids (after tokenizer): 493 1125 390 106 543 24 58 1032 351 1195 1032 1244 2
+07-22 18:26:55.710 31474 32468 I native  : Translation ids: 92 160 1842 882 213 2290 572 82 711 1421 2290 1814 2
+07-22 18:26:55.710 31474 32468 I native  : Translation (after detokenizer): Has press USB · Debugging · Now
+07-22 18:26:55.710 31474 32468 I native  : Alignment probability:
+07-22 18:26:55.710 31474 32468 I native  : 	Has	press	USB	·	Debugging	·	Now
+07-22 18:26:55.710 31474 32468 I native  : 已	0.65098	0.133333	0.00784314	0	0.00392157	0.0156863	0.00784314
+07-22 18:26:55.710 31474 32468 I native  : 连	0.158824	0.301961	0.0294118	0	0.000980392	0	0.00392157
+07-22 18:26:55.710 31474 32468 I native  : 按	0.0803922	0.45098	0.0686275	0.0156863	0.00294118	0.00392157	0.00392157
+07-22 18:26:55.710 31474 32468 I native  : 到	0.00392157	0.0156863	0.15098	0.00392157	0	0	0
+07-22 18:26:55.710 31474 32468 I native  : usb	0.0176471	0.00784314	0.711765	0.0196078	0.0166667	0	0
+07-22 18:26:55.710 31474 32468 I native  : ·	0.00196078	0	0.00784314	0.933333	0.00980392	0	0
+07-22 18:26:55.710 31474 32468 I native  : 调试	0.00588235	0	0.00392157	0.0156863	0.646078	0.00392157	0.0235294
+07-22 18:26:55.710 31474 32468 I native  : ·	0.00392157	0	0	0.00392157	0.137255	0.831373	0.0352941
+07-22 18:26:55.710 31474 32468 I native  : 现在	0.00392157	0	0	0	0.0215686	0.0745098	0.858824
+07-22 18:26:55.710 31474 32468 I native  : Translation (before postprocess): Has press USB · Debugging · Now
+07-22 18:26:55.713 31474 32469 D native  : I0722 18:26:55.713463   32469 mergeddicttrans.cc:1860] The current system has NMT.
+07-22 18:26:55.713 31474 32469 D native  : I0722 18:26:55.713542   32469 mergeddicttrans.cc:1866] Sentence #0: 点接即可关闭 USB调试
+07-22 18:26:55.713 31474 32469 D native  : I0722 18:26:55.713613   32469 mergeddicttrans.cc:1918] To be translated by NMT.
+07-22 18:26:55.713 31474 31492 D TransportRuntime.SQLiteEventStore: Storing event with priority=VERY_LOW, name=FIREBASE_ML_SDK for destination cct
+07-22 18:26:55.716 31474 31492 D TransportRuntime.JobInfoScheduler: Upload for context TransportContext(cct, VERY_LOW, MSRodHRwczovL2ZpcmViYXNlbG9nZ2luZy5nb29nbGVhcGlzLmNvbS92MGNjL2xvZy9iYXRjaD9mb3JtYXQ9anNvbl9wcm90bzNc) is already scheduled. Returning...
+07-22 18:26:55.758 31474 32469 I native  : I0722 18:26:55.757952   32469 mergeddicttrans.cc:1827] Sentence #0: 点接即可关闭 USB调试
+07-22 18:26:55.758 31474 32469 I native  : I0722 18:26:55.758051   32469 mergeddicttrans.cc:1828] 
+07-22 18:26:55.758 31474 32469 I native  : Source language: zh, target language: en
+07-22 18:26:55.758 31474 32469 I native  : 
+07-22 18:26:55.758 31474 32469 I native  : Has period trick: 0
+07-22 18:26:55.758 31474 32469 I native  : 
+07-22 18:26:55.758 31474 32469 I native  : Full translation: Turn off USB debugging
+07-22 18:26:55.758 31474 32469 I native  : Translate Instance: 
+07-22 18:26:55.758 31474 32469 I native  : Query (raw): 点接即可关闭 USB调试
+07-22 18:26:55.758 31474 32469 I native  : Query (after preprocess): 点 接 即 可 关闭 usb 调试
+07-22 18:26:55.758 31474 32469 I native  : Query ids (after tokenizer): 342 153 663 57 248 1028 543 24 58 351 1195 2
+07-22 18:26:55.758 31474 32469 I native  : Translation ids: 45 1852 606 882 213 2806 711 1421 2
+07-22 18:26:55.758 31474 32469 I native  : Translation (after detokenizer): Turn off USB debugging
+07-22 18:26:55.758 31474 32469 I native  : Alignment probability:
+07-22 18:26:55.758 31474 32469 I native  : 	Turn	off	USB	debugging
+07-22 18:26:55.758 31474 32469 I native  : 点	0.356863	0.137255	0.0254902	0.0627451
+07-22 18:26:55.758 31474 32469 I native  : 接	0.0568627	0.0588235	0.00784314	0.0156863
+07-22 18:26:55.758 31474 32469 I native  : 即	0.119608	0.137255	0.0156863	0.020915
+07-22 18:26:55.758 31474 32469 I native  : 可	0.0686275	0.0196078	0.00784314	0.0117647
+07-22 18:26:55.758 31474 32469 I native  : 关闭	0.323529	0.486275	0.00980392	0.0222222
+07-22 18:26:55.758 31474 32469 I native  : usb	0.0470588	0.137255	0.892157	0.00915033
+07-22 18:26:55.758 31474 32469 I native  : 调试	0.00392157	0	0.0137255	0.648366
+07-22 18:26:55.758 31474 32469 I native  : Translation (before postprocess): Turn off USB debugging
+07-22 18:26:55.761 31474 32485 D native  : I0722 18:26:55.760971   32485 mergeddicttrans.cc:1860] The current system has NMT.
+07-22 18:26:55.761 31474 31492 D TransportRuntime.SQLiteEventStore: Storing event with priority=VERY_LOW, name=FIREBASE_ML_SDK for destination cct
+07-22 18:26:55.761 31474 32485 D native  : I0722 18:26:55.761075   32485 mergeddicttrans.cc:1866] Sentence #0: 基于当前时间和环境条件来优化您的屏幕以改善可读性
+07-22 18:26:55.761 31474 32485 D native  : I0722 18:26:55.761151   32485 mergeddicttrans.cc:1918] To be translated by NMT.
+07-22 18:26:55.763 31474 31492 D TransportRuntime.JobInfoScheduler: Upload for context TransportContext(cct, VERY_LOW, MSRodHRwczovL2ZpcmViYXNlbG9nZ2luZy5nb29nbGVhcGlzLmNvbS92MGNjL2xvZy9iYXRjaD9mb3JtYXQ9anNvbl9wcm90bzNc) is already scheduled. Returning...
+07-22 18:26:55.845 31474 32485 I native  : I0722 18:26:55.845721   32485 mergeddicttrans.cc:1827] Sentence #0: 基于当前时间和环境条件来优化您的屏幕以改善可读性
+07-22 18:26:55.845 31474 32485 I native  : I0722 18:26:55.845832   32485 mergeddicttrans.cc:1828] 
+07-22 18:26:55.845 31474 32485 I native  : Source language: zh, target language: en
+07-22 18:26:55.845 31474 32485 I native  : 
+07-22 18:26:55.845 31474 32485 I native  : Has period trick: 0
+07-22 18:26:55.845 31474 32485 I native  : 
+07-22 18:26:55.845 31474 32485 I native  : Full translation: Optimize your screen based on current time and environmental conditions to improve readability
+07-22 18:26:55.845 31474 32485 I native  : Translate Instance: 
+07-22 18:26:55.845 31474 32485 I native  : Query (raw): 基于当前时间和环境条件来优化您的屏幕以改善可读性
+07-22 18:26:55.845 31474 32485 I native  : Query (after preprocess): 基于 当前 时间 和 环境 条件 来 优化 您 的 屏幕 以 改善 可读性
+07-22 18:26:55.845 31474 32485 I native  : Query ids (after tokenizer): 128 69 193 368 374 8 803 301 98 165 259 80 195 4 3 1164 1514 81 495 1399 57 1816 53 2
+07-22 18:26:55.845 31474 32485 I native  : Translation ids: 122 353 170 952 297 978 490 18 522 187 8 896 35 1428 9 795 1311 1260 2
+07-22 18:26:55.845 31474 32485 I native  : Translation (after detokenizer): Optimize your screen based on current time and environmental conditions to improve readability
+07-22 18:26:55.845 31474 32485 I native  : Alignment probability:
+07-22 18:26:55.845 31474 32485 I native  : 	Optimize	your	screen	based	on	current	time	and	environmental	conditions	to	improve	readability
+07-22 18:26:55.845 31474 32485 I native  : 基于	0.0921569	0.0235294	0.00392157	0.54902	0.854902	0.00392157	0.00392157	0.00784314	0.00392157	0	0.0196078	0	0
+07-22 18:26:55.845 31474 32485 I native  : 当前	0.00392157	0.00784314	0.0156863	0.00784314	0.0196078	0.823529	0.0235294	0	0.00196078	0	0.00392157	0	0
+07-22 18:26:55.845 31474 32485 I native  : 时间	0.00196078	0.00784314	0.00392157	0.00392157	0.0117647	0.0705882	0.960784	0.113725	0.00392157	0.00392157	0	0	0
+07-22 18:26:55.845 31474 32485 I native  : 和	0	0	0	0.0117647	0.00392157	0	0.00392157	0.866667	0.00196078	0	0	0	0
+07-22 18:26:55.845 31474 32485 I native  : 环境	0.000980392	0	0	0.00392157	0.00392157	0.0313726	0	0.00392157	0.482353	0.00392157	0	0	0
+07-22 18:26:55.845 31474 32485 I native  : 条件	0.000980392	0	0.00392157	0	0.00392157	0.00784314	0.00392157	0.00784314	0.419608	0.964706	0.0117647	0	0
+07-22 18:26:55.845 31474 32485 I native  : 来	0.0117647	0	0	0.0117647	0.0196078	0	0	0	0.00980392	0	0.0117647	0	0
+07-22 18:26:55.845 31474 32485 I native  : 优化	0.79902	0.00784314	0.00392157	0.0235294	0.00784314	0.00392157	0	0	0.00196078	0	0.0196078	0.0117647	0
+07-22 18:26:55.845 31474 32485 I native  : 您	0.0313726	0.815686	0.0117647	0.0117647	0.00392157	0.0156863	0	0	0	0	0.00392157	0	0.00784314
+07-22 18:26:55.845 31474 32485 I native  : 的	0	0	0.0352941	0	0	0	0	0	0	0	0	0	0
+07-22 18:26:55.845 31474 32485 I native  : 屏幕	0.00588235	0.0509804	0.894118	0.0235294	0	0.00392157	0	0	0.00196078	0	0	0	0.00196078
+07-22 18:26:55.845 31474 32485 I native  : 以	0.000980392	0	0	0.254902	0.0196078	0	0	0	0.00980392	0	0.721569	0.00784314	0.00196078
+07-22 18:26:55.845 31474 32485 I native  : 改善	0.00784314	0.00784314	0.00392157	0.0745098	0.0196078	0.0196078	0	0	0	0	0.141176	0.890196	0.0137255
+07-22 18:26:55.845 31474 32485 I native  : 可读性	0.00196078	0.0705882	0.027451	0.0117647	0.00784314	0.00784314	0	0	0	0	0	0.0745098	0.917647
+07-22 18:26:55.845 31474 32485 I native  : Translation (before postprocess): Optimize your screen based on current time and environmental conditions to improve readability
+07-22 18:26:55.848 31474 31492 D TransportRuntime.SQLiteEventStore: Storing event with priority=VERY_LOW, name=FIREBASE_ML_SDK for destination cct
+07-22 18:26:55.849 31474 32447 D native  : I0722 18:26:55.849154   32447 mergeddicttrans.cc:1860] The current system has NMT.
+07-22 18:26:55.849 31474 32447 D native  : I0722 18:26:55.849223   32447 mergeddicttrans.cc:1866] Sentence #0: 和减少视疲劳
+07-22 18:26:55.849 31474 32447 D native  : I0722 18:26:55.849283   32447 mergeddicttrans.cc:1918] To be translated by NMT.
+07-22 18:26:55.851 31474 31492 D TransportRuntime.JobInfoScheduler: Upload for context TransportContext(cct, VERY_LOW, MSRodHRwczovL2ZpcmViYXNlbG9nZ2luZy5nb29nbGVhcGlzLmNvbS92MGNjL2xvZy9iYXRjaD9mb3JtYXQ9anNvbl9wcm90bzNc) is already scheduled. Returning...
+07-22 18:26:55.885 31474 32447 I native  : I0722 18:26:55.884983   32447 mergeddicttrans.cc:1827] Sentence #0: 和减少视疲劳
+07-22 18:26:55.885 31474 32447 I native  : I0722 18:26:55.885095   32447 mergeddicttrans.cc:1828] 
+07-22 18:26:55.885 31474 32447 I native  : Source language: zh, target language: en
+07-22 18:26:55.885 31474 32447 I native  : 
+07-22 18:26:55.885 31474 32447 I native  : Has period trick: 0
+07-22 18:26:55.885 31474 32447 I native  : 
+07-22 18:26:55.885 31474 32447 I native  : Full translation: And reduce the fatigue
+07-22 18:26:55.885 31474 32447 I native  : Translate Instance: 
+07-22 18:26:55.885 31474 32447 I native  : Query (raw): 和减少视疲劳
+07-22 18:26:55.885 31474 32447 I native  : Query (after preprocess): 和 减少 视 疲劳
+07-22 18:26:55.885 31474 32447 I native  : Query ids (after tokenizer): 8 701 467 918 3 2899 1904 2
+07-22 18:26:55.885 31474 32447 I native  : Translation ids: 1054 1722 3 2748 253 299 2
+07-22 18:26:55.885 31474 32447 I native  : Translation (after detokenizer): And reduce the fatigue
+07-22 18:26:55.885 31474 32447 I native  : Alignment probability:
+07-22 18:26:55.885 31474 32447 I native  : 	And	reduce	the	fatigue
+07-22 18:26:55.885 31474 32447 I native  : 和	0.364706	0.0117647	0.0196078	0
+07-22 18:26:55.885 31474 32447 I native  : 减少	0.368627	0.929412	0.0509804	0.00784314
+07-22 18:26:55.885 31474 32447 I native  : 视	0.0705882	0.0235294	0.505882	0.135948
+07-22 18:26:55.885 31474 32447 I native  : 疲劳	0.0313726	0.0156863	0.380392	0.746405
+07-22 18:26:55.885 31474 32447 I native  : Translation (before postprocess): And reduce the fatigue
+07-22 18:26:55.887 31474 32464 D native  : I0722 18:26:55.887696   32464 mergeddicttrans.cc:1860] The current system has NMT.
+07-22 18:26:55.887 31474 32464 D native  : I0722 18:26:55.887789   32464 mergeddicttrans.cc:1866] Sentence #0: 颜色
+07-22 18:26:55.887 31474 32464 D native  : I0722 18:26:55.887886   32464 mergeddicttrans.cc:1522] STT before postprocess: 颜色 -> color
+07-22 18:26:55.888 31474 31492 D TransportRuntime.SQLiteEventStore: Storing event with priority=VERY_LOW, name=FIREBASE_ML_SDK for destination cct
+07-22 18:26:55.890 31474 31492 D TransportRuntime.JobInfoScheduler: Upload for context TransportContext(cct, VERY_LOW, MSRodHRwczovL2ZpcmViYXNlbG9nZ2luZy5nb29nbGVhcGlzLmNvbS92MGNjL2xvZy9iYXRjaD9mb3JtYXQ9anNvbl9wcm90bzNc) is already scheduled. Returning...
+07-22 18:26:55.896 31474 32465 D native  : I0722 18:26:55.896236   32465 mergeddicttrans.cc:1860] The current system has NMT.
+07-22 18:26:55.896 31474 32465 D native  : I0722 18:26:55.896331   32465 mergeddicttrans.cc:1866] Sentence #0: 自然色
+07-22 18:26:55.896 31474 32465 D native  : I0722 18:26:55.896409   32465 mergeddicttrans.cc:1918] To be translated by NMT.
+07-22 18:26:55.897 31474 31492 D TransportRuntime.SQLiteEventStore: Storing event with priority=VERY_LOW, name=FIREBASE_ML_SDK for destination cct
+07-22 18:26:55.900 31474 31492 D TransportRuntime.JobInfoScheduler: Upload for context TransportContext(cct, VERY_LOW, MSRodHRwczovL2ZpcmViYXNlbG9nZ2luZy5nb29nbGVhcGlzLmNvbS92MGNjL2xvZy9iYXRjaD9mb3JtYXQ9anNvbl9wcm90bzNc) is already scheduled. Returning...
+07-22 18:26:55.912 31474 32465 I native  : I0722 18:26:55.912084   32465 mergeddicttrans.cc:1827] Sentence #0: 自然色
+07-22 18:26:55.912 31474 32465 I native  : I0722 18:26:55.912193   32465 mergeddicttrans.cc:1828] 
+07-22 18:26:55.912 31474 32465 I native  : Source language: zh, target language: en
+07-22 18:26:55.912 31474 32465 I native  : 
+07-22 18:26:55.912 31474 32465 I native  : Has period trick: 0
+07-22 18:26:55.912 31474 32465 I native  : 
+07-22 18:26:55.912 31474 32465 I native  : Full translation: Natural color
+07-22 18:26:55.912 31474 32465 I native  : Translate Instance: 
+07-22 18:26:55.912 31474 32465 I native  : Query (raw): 自然色
+07-22 18:26:55.912 31474 32465 I native  : Query (after preprocess): 自然色
+07-22 18:26:55.912 31474 32465 I native  : Query ids (after tokenizer): 268 400 82 2
+07-22 18:26:55.912 31474 32465 I native  : Translation ids: 1914 753 2
+07-22 18:26:55.912 31474 32465 I native  : Translation (after detokenizer): natural color
+07-22 18:26:55.912 31474 32465 I native  : Alignment probability:
+07-22 18:26:55.912 31474 32465 I native  : 	natural	color
+07-22 18:26:55.912 31474 32465 I native  : 自然色	0.564706	0.847059
+07-22 18:26:55.912 31474 32465 I native  : Translation (before postprocess): natural color
+07-22 18:26:55.914 31474 32466 D native  : I0722 18:26:55.914578   32466 mergeddicttrans.cc:1860] The current system has NMT.
+07-22 18:26:55.914 31474 32466 D native  : I0722 18:26:55.914656   32466 mergeddicttrans.cc:1866] Sentence #0: 颜色对比度
+07-22 18:26:55.914 31474 32466 D native  : I0722 18:26:55.914713   32466 mergeddicttrans.cc:1918] To be translated by NMT.
+07-22 18:26:55.914 31474 31492 D TransportRuntime.SQLiteEventStore: Storing event with priority=VERY_LOW, name=FIREBASE_ML_SDK for destination cct
+07-22 18:26:55.917 31474 31492 D TransportRuntime.JobInfoScheduler: Upload for context TransportContext(cct, VERY_LOW, MSRodHRwczovL2ZpcmViYXNlbG9nZ2luZy5nb29nbGVhcGlzLmNvbS92MGNjL2xvZy9iYXRjaD9mb3JtYXQ9anNvbl9wcm90bzNc) is already scheduled. Returning...
+07-22 18:26:55.941 31474 32466 I native  : I0722 18:26:55.941674   32466 mergeddicttrans.cc:1827] Sentence #0: 颜色对比度
+07-22 18:26:55.941 31474 32466 I native  : I0722 18:26:55.941821   32466 mergeddicttrans.cc:1828] 
+07-22 18:26:55.941 31474 32466 I native  : Source language: zh, target language: en
+07-22 18:26:55.941 31474 32466 I native  : 
+07-22 18:26:55.941 31474 32466 I native  : Has period trick: 0
+07-22 18:26:55.941 31474 32466 I native  : 
+07-22 18:26:55.941 31474 32466 I native  : Full translation: Color contrast
+07-22 18:26:55.941 31474 32466 I native  : Translate Instance: 
+07-22 18:26:55.941 31474 32466 I native  : Query (raw): 颜色对比度
+07-22 18:26:55.941 31474 32466 I native  : Query (after preprocess): 颜色 对比度
+07-22 18:26:55.941 31474 32466 I native  : Query ids (after tokenizer): 3 966 82 54 986 72 2
+07-22 18:26:55.941 31474 32466 I native  : Translation ids: 1258 57 919 98 125 2
+07-22 18:26:55.941 31474 32466 I native  : Translation (after detokenizer): Color contrast
+07-22 18:26:55.941 31474 32466 I native  : Alignment probability:
+07-22 18:26:55.941 31474 32466 I native  : 	Color	contrast
+07-22 18:26:55.941 31474 32466 I native  : 颜色	0.837255	0.00784314
+07-22 18:26:55.941 31474 32466 I native  : 对比度	0.101961	0.83268
+07-22 18:26:55.941 31474 32466 I native  : Translation (before postprocess): Color contrast
+07-22 18:26:55.945 31474 32467 D native  : I0722 18:26:55.945893   32467 mergeddicttrans.cc:1860] The current system has NMT.
+07-22 18:26:55.945 31474 32467 D native  : I0722 18:26:55.945972   32467 mergeddicttrans.cc:1866] Sentence #0: 默认
+07-22 18:26:55.946 31474 32467 D native  : I0722 18:26:55.946037   32467 mergeddicttrans.cc:1918] To be translated by NMT.
+07-22 18:26:55.946 31474 31492 D TransportRuntime.SQLiteEventStore: Storing event with priority=VERY_LOW, name=FIREBASE_ML_SDK for destination cct
+07-22 18:26:55.948 31474 31492 D TransportRuntime.JobInfoScheduler: Upload for context TransportContext(cct, VERY_LOW, MSRodHRwczovL2ZpcmViYXNlbG9nZ2luZy5nb29nbGVhcGlzLmNvbS92MGNjL2xvZy9iYXRjaD9mb3JtYXQ9anNvbl9wcm90bzNc) is already scheduled. Returning...
+07-22 18:26:55.963 31474 32467 I native  : I0722 18:26:55.963765   32467 mergeddicttrans.cc:1827] Sentence #0: 默认
+07-22 18:26:55.963 31474 32467 I native  : I0722 18:26:55.963875   32467 mergeddicttrans.cc:1828] 
+07-22 18:26:55.963 31474 32467 I native  : Source language: zh, target language: en
+07-22 18:26:55.963 31474 32467 I native  : 
+07-22 18:26:55.963 31474 32467 I native  : Has period trick: 0
+07-22 18:26:55.963 31474 32467 I native  : 
+07-22 18:26:55.963 31474 32467 I native  : Full translation: Default
+07-22 18:26:55.963 31474 32467 I native  : Translate Instance: 
+07-22 18:26:55.963 31474 32467 I native  : Query (raw): 默认
+07-22 18:26:55.963 31474 32467 I native  : Query (after preprocess): 默认
+07-22 18:26:55.963 31474 32467 I native  : Query ids (after tokenizer): 3 1724 1238 2
+07-22 18:26:55.963 31474 32467 I native  : Translation ids: 533 1634 2
+07-22 18:26:55.963 31474 32467 I native  : Translation (after detokenizer): default
+07-22 18:26:55.963 31474 32467 I native  : Alignment probability:
+07-22 18:26:55.963 31474 32467 I native  : 	default
+07-22 18:26:55.963 31474 32467 I native  : 默认	0.756863
+07-22 18:26:55.963 31474 32467 I native  : Translation (before postprocess): default
+07-22 18:26:55.966 31474 32468 D native  : I0722 18:26:55.966128   32468 mergeddicttrans.cc:1860] The current system has NMT.
+07-22 18:26:55.966 31474 32468 D native  : I0722 18:26:55.966210   32468 mergeddicttrans.cc:1866] Sentence #0: 其他显示控件
+07-22 18:26:55.966 31474 32468 D native  : I0722 18:26:55.966259   32468 mergeddicttrans.cc:1918] To be translated by NMT.
+07-22 18:26:55.966 31474 31492 D TransportRuntime.SQLiteEventStore: Storing event with priority=VERY_LOW, name=FIREBASE_ML_SDK for destination cct
+07-22 18:26:55.968 31474 31492 D TransportRuntime.JobInfoScheduler: Upload for context TransportContext(cct, VERY_LOW, MSRodHRwczovL2ZpcmViYXNlbG9nZ2luZy5nb29nbGVhcGlzLmNvbS92MGNjL2xvZy9iYXRjaD9mb3JtYXQ9anNvbl9wcm90bzNc) is already scheduled. Returning...
+07-22 18:26:55.992 31474 32468 I native  : I0722 18:26:55.992686   32468 mergeddicttrans.cc:1827] Sentence #0: 其他显示控件
+07-22 18:26:55.992 31474 32468 I native  : I0722 18:26:55.992787   32468 mergeddicttrans.cc:1828] 
+07-22 18:26:55.992 31474 32468 I native  : Source language: zh, target language: en
+07-22 18:26:55.992 31474 32468 I native  : 
+07-22 18:26:55.992 31474 32468 I native  : Has period trick: 0
+07-22 18:26:55.992 31474 32468 I native  : 
+07-22 18:26:55.992 31474 32468 I native  : Full translation: Other display controls
+07-22 18:26:55.992 31474 32468 I native  : Translate Instance: 
+07-22 18:26:55.992 31474 32468 I native  : Query (raw): 其他显示控件
+07-22 18:26:55.992 31474 32468 I native  : Query (after preprocess): 其他 显示 控件
+07-22 18:26:55.992 31474 32468 I native  : Query ids (after tokenizer): 512 274 2236 98 2
+07-22 18:26:55.992 31474 32468 I native  : Translation ids: 122 1701 452 223 7 2
+07-22 18:26:55.992 31474 32468 I native  : Translation (after detokenizer): Other display controls
+07-22 18:26:55.992 31474 32468 I native  : Alignment probability:
+07-22 18:26:55.992 31474 32468 I native  : 	Other	display	controls
+07-22 18:26:55.992 31474 32468 I native  : 其他	0.890196	0.0352941	0.00196078
+07-22 18:26:55.992 31474 32468 I native  : 显示	0.0352941	0.921569	0.00588235
+07-22 18:26:55.992 31474 32468 I native  : 控件	0.00392157	0.0352941	0.523529
+07-22 18:26:55.992 31474 32468 I native  : Translation (before postprocess): Other display controls
+07-22 18:26:55.995 31474 32469 D native  : I0722 18:26:55.995229   32469 mergeddicttrans.cc:1860] The current system has NMT.
+07-22 18:26:55.995 31474 32469 D native  : I0722 18:26:55.995303   32469 mergeddicttrans.cc:1866] Sentence #0: 旋转设置
+07-22 18:26:55.995 31474 32469 D native  : I0722 18:26:55.995355   32469 mergeddicttrans.cc:1918] To be translated by NMT.
+07-22 18:26:55.995 31474 31492 D TransportRuntime.SQLiteEventStore: Storing event with priority=VERY_LOW, name=FIREBASE_ML_SDK for destination cct
+07-22 18:26:55.997 31474 31492 D TransportRuntime.JobInfoScheduler: Upload for context TransportContext(cct, VERY_LOW, MSRodHRwczovL2ZpcmViYXNlbG9nZ2luZy5nb29nbGVhcGlzLmNvbS92MGNjL2xvZy9iYXRjaD9mb3JtYXQ9anNvbl9wcm90bzNc) is already scheduled. Returning...
+07-22 18:26:56.019 31474 32469 I native  : I0722 18:26:56.019840   32469 mergeddicttrans.cc:1827] Sentence #0: 旋转设置
+07-22 18:26:56.019 31474 32469 I native  : I0722 18:26:56.019951   32469 mergeddicttrans.cc:1828] 
+07-22 18:26:56.019 31474 32469 I native  : Source language: zh, target language: en
+07-22 18:26:56.019 31474 32469 I native  : 
+07-22 18:26:56.019 31474 32469 I native  : Has period trick: 0
+07-22 18:26:56.019 31474 32469 I native  : 
+07-22 18:26:56.019 31474 32469 I native  : Full translation: Rotate settings
+07-22 18:26:56.019 31474 32469 I native  : Translate Instance: 
+07-22 18:26:56.019 31474 32469 I native  : Query (raw): 旋转设置
+07-22 18:26:56.019 31474 32469 I native  : Query (after preprocess): 旋转 设置
+07-22 18:26:56.019 31474 32469 I native  : Query ids (after tokenizer): 3 1172 1135 147 2
+07-22 18:26:56.019 31474 32469 I native  : Translation ids: 87 173 155 1078 7 2
+07-22 18:26:56.019 31474 32469 I native  : Translation (after detokenizer): Rotate settings
+07-22 18:26:56.019 31474 32469 I native  : Alignment probability:
+07-22 18:26:56.019 31474 32469 I native  : 	Rotate	settings
+07-22 18:26:56.019 31474 32469 I native  : 旋转	0.760784	0.0764706
+07-22 18:26:56.019 31474 32469 I native  : 设置	0.069281	0.431373
+07-22 18:26:56.019 31474 32469 I native  : Translation (before postprocess): Rotate settings
+07-22 18:26:56.022 31474 32485 D native  : I0722 18:26:56.022217   32485 mergeddicttrans.cc:1860] The current system has NMT.
+07-22 18:26:56.022 31474 32485 D native  : I0722 18:26:56.022276   32485 mergeddicttrans.cc:1866] Sentence #0: 启用自动旋转
+07-22 18:26:56.022 31474 32485 D native  : I0722 18:26:56.022323   32485 mergeddicttrans.cc:1918] To be translated by NMT.
+07-22 18:26:56.022 31474 31492 D TransportRuntime.SQLiteEventStore: Storing event with priority=VERY_LOW, name=FIREBASE_ML_SDK for destination cct
+07-22 18:26:56.024 31474 31492 D TransportRuntime.JobInfoScheduler: Upload for context TransportContext(cct, VERY_LOW, MSRodHRwczovL2ZpcmViYXNlbG9nZ2luZy5nb29nbGVhcGlzLmNvbS92MGNjL2xvZy9iYXRjaD9mb3JtYXQ9anNvbl9wcm90bzNc) is already scheduled. Returning...
+07-22 18:26:56.054 31474 32485 I native  : I0722 18:26:56.054431   32485 mergeddicttrans.cc:1827] Sentence #0: 启用自动旋转
+07-22 18:26:56.054 31474 32485 I native  : I0722 18:26:56.054546   32485 mergeddicttrans.cc:1828] 
+07-22 18:26:56.054 31474 32485 I native  : Source language: zh, target language: en
+07-22 18:26:56.054 31474 32485 I native  : 
+07-22 18:26:56.054 31474 32485 I native  : Has period trick: 0
+07-22 18:26:56.054 31474 32485 I native  : 
+07-22 18:26:56.054 31474 32485 I native  : Full translation: Enable automatic rotation
+07-22 18:26:56.054 31474 32485 I native  : Translate Instance: 
+07-22 18:26:56.054 31474 32485 I native  : Query (raw): 启用自动旋转
+07-22 18:26:56.054 31474 32485 I native  : Query (after preprocess): 启用 自动 旋转
+07-22 18:26:56.054 31474 32485 I native  : Query ids (after tokenizer): 1016 79 977 3 1172 1135 2
+07-22 18:26:56.054 31474 32485 I native  : Translation ids: 839 177 979 731 1151 110 2
+07-22 18:26:56.054 31474 32485 I native  : Translation (after detokenizer): Enable automatic rotation
+07-22 18:26:56.054 31474 32485 I native  : Alignment probability:
+07-22 18:26:56.054 31474 32485 I native  : 	Enable	automatic	rotation
+07-22 18:26:56.054 31474 32485 I native  : 启用	0.770588	0.0509804	0.0117647
+07-22 18:26:56.054 31474 32485 I native  : 自动	0.190196	0.845098	0.0196078
+07-22 18:26:56.054 31474 32485 I native  : 旋转	0.0156863	0.0372549	0.87451
+07-22 18:26:56.054 31474 32485 I native  : Translation (before postprocess): Enable automatic rotation
+07-22 18:26:56.057 31474 32447 D native  : I0722 18:26:56.057147   32447 mergeddicttrans.cc:1860] The current system has NMT.
+07-22 18:26:56.057 31474 32447 D native  : I0722 18:26:56.057241   32447 mergeddicttrans.cc:1866] Sentence #0: 目程序使用全屏长宽比
+07-22 18:26:56.057 31474 31492 D TransportRuntime.SQLiteEventStore: Storing event with priority=VERY_LOW, name=FIREBASE_ML_SDK for destination cct
+07-22 18:26:56.057 31474 32447 D native  : I0722 18:26:56.057299   32447 mergeddicttrans.cc:1918] To be translated by NMT.
+07-22 18:26:56.059 31474 31492 D TransportRuntime.JobInfoScheduler: Upload for context TransportContext(cct, VERY_LOW, MSRodHRwczovL2ZpcmViYXNlbG9nZ2luZy5nb29nbGVhcGlzLmNvbS92MGNjL2xvZy9iYXRjaD9mb3JtYXQ9anNvbl9wcm90bzNc) is already scheduled. Returning...
+07-22 18:26:56.113 31474 32447 I native  : I0722 18:26:56.113183   32447 mergeddicttrans.cc:1827] Sentence #0: 目程序使用全屏长宽比
+07-22 18:26:56.113 31474 32447 I native  : I0722 18:26:56.113279   32447 mergeddicttrans.cc:1828] 
+07-22 18:26:56.113 31474 32447 I native  : Source language: zh, target language: en
+07-22 18:26:56.113 31474 32447 I native  : 
+07-22 18:26:56.113 31474 32447 I native  : Has period trick: 0
+07-22 18:26:56.113 31474 32447 I native  : 
+07-22 18:26:56.113 31474 32447 I native  : Full translation: Application of full-screen length
+07-22 18:26:56.113 31474 32447 I native  : Translate Instance: 
+07-22 18:26:56.113 31474 32447 I native  : Query (raw): 目程序使用全屏长宽比
+07-22 18:26:56.113 31474 32447 I native  : Query (after preprocess): 目 程序 使用 全 屏长 宽比
+07-22 18:26:56.113 31474 32447 I native  : Query ids (after tokenizer): 306 453 89 252 3 1164 471 3 1282 986 2
+07-22 18:26:56.113 31474 32447 I native  : Translation ids: 857 1616 6 1201 15 978 1849 2
+07-22 18:26:56.113 31474 32447 I native  : Translation (after detokenizer): Application of full - screen length
+07-22 18:26:56.113 31474 32447 I native  : Alignment probability:
+07-22 18:26:56.113 31474 32447 I native  : 	Application	of	full	-	screen	length
+07-22 18:26:56.113 31474 32447 I native  : 目	0.519608	0.0352941	0.192157	0.00784314	0	0.00392157
+07-22 18:26:56.113 31474 32447 I native  : 程序	0.172549	0.4	0.192157	0.0117647	0.00392157	0.0470588
+07-22 18:26:56.113 31474 32447 I native  : 使用	0.158824	0.266667	0.0392157	0.00784314	0	0.0470588
+07-22 18:26:56.113 31474 32447 I native  : 全	0.0235294	0.117647	0.435294	0.00784314	0.00784314	0.0313726
+07-22 18:26:56.113 31474 32447 I native  : 屏长	0.00196078	0.0666667	0.0509804	0.862745	0.803922	0.619608
+07-22 18:26:56.113 31474 32447 I native  : 宽比	0.00980392	0.0627451	0.054902	0.0745098	0.0784314	0.215686
+07-22 18:26:56.113 31474 32447 I native  : Translation (before postprocess): Application of full - screen length
+07-22 18:26:56.116 31474 32464 D native  : I0722 18:26:56.116035   32464 mergeddicttrans.cc:1860] The current system has NMT.
+07-22 18:26:56.116 31474 31492 D TransportRuntime.SQLiteEventStore: Storing event with priority=VERY_LOW, name=FIREBASE_ML_SDK for destination cct
+07-22 18:26:56.116 31474 32464 D native  : I0722 18:26:56.116133   32464 mergeddicttrans.cc:1866] Sentence #0: 中
+07-22 18:26:56.116 31474 32464 D native  : I0722 18:26:56.116213   32464 mergeddicttrans.cc:1918] To be translated by NMT.
+07-22 18:26:56.118 31474 31492 D TransportRuntime.JobInfoScheduler: Upload for context TransportContext(cct, VERY_LOW, MSRodHRwczovL2ZpcmViYXNlbG9nZ2luZy5nb29nbGVhcGlzLmNvbS92MGNjL2xvZy9iYXRjaD9mb3JtYXQ9anNvbl9wcm90bzNc) is already scheduled. Returning...
+07-22 18:26:56.132 31474 32464 I native  : I0722 18:26:56.132080   32464 mergeddicttrans.cc:1827] Sentence #0: 中
+07-22 18:26:56.132 31474 32464 I native  : I0722 18:26:56.132193   32464 mergeddicttrans.cc:1828] 
+07-22 18:26:56.132 31474 32464 I native  : Source language: zh, target language: en
+07-22 18:26:56.132 31474 32464 I native  : 
+07-22 18:26:56.132 31474 32464 I native  : Has period trick: 0
+07-22 18:26:56.132 31474 32464 I native  : 
+07-22 18:26:56.132 31474 32464 I native  : Full translation: In the middle
+07-22 18:26:56.132 31474 32464 I native  : Translate Instance: 
+07-22 18:26:56.132 31474 32464 I native  : Query (raw): 中
+07-22 18:26:56.132 31474 32464 I native  : Query (after preprocess): 中
+07-22 18:26:56.132 31474 32464 I native  : Query ids (after tokenizer): 12 2
+07-22 18:26:56.132 31474 32464 I native  : Translation ids: 11 3 2875 2
+07-22 18:26:56.132 31474 32464 I native  : Translation (after detokenizer): in the middle
+07-22 18:26:56.132 31474 32464 I native  : Alignment probability:
+07-22 18:26:56.132 31474 32464 I native  : 	in	the	middle
+07-22 18:26:56.132 31474 32464 I native  : 中	0.603922	0.4	0.501961
+07-22 18:26:56.132 31474 32464 I native  : Translation (before postprocess): in the middle
+07-22 18:26:56.134 31474 31492 D TransportRuntime.SQLiteEventStore: Storing event with priority=VERY_LOW, name=FIREBASE_ML_SDK for destination cct
+07-22 18:26:56.137 31474 31492 D TransportRuntime.JobInfoScheduler: Upload for context TransportContext(cct, VERY_LOW, MSRodHRwczovL2ZpcmViYXNlbG9nZ2luZy5nb29nbGVhcGlzLmNvbS92MGNjL2xvZy9iYXRjaD9mb3JtYXQ9anNvbl9wcm90bzNc) is already scheduled. Returning...
+07-22 18:26:56.142 31474 32466 D native  : I0722 18:26:56.142042   32466 mergeddicttrans.cc:1860] The current system has NMT.
+07-22 18:26:56.142 31474 32466 D native  : I0722 18:26:56.142129   32466 mergeddicttrans.cc:1866] Sentence #0: 6s
+07-22 18:26:56.142 31474 32466 D native  : I0722 18:26:56.142185   32466 mergeddicttrans.cc:1912] To fallback to PB.
+07-22 18:26:56.142 31474 32466 D native  : I0722 18:26:56.142197   32466 mergeddicttrans.cc:1585] Sentence #0: 6s
+07-22 18:26:56.142 31474 32466 D native  : I0722 18:26:56.142330   32466 mergeddicttrans.cc:1571] PBMT preproc: 6s
+07-22 18:26:56.142 31474 32466 D native  : I0722 18:26:56.142544   32466 mergeddicttrans.cc:1588] PBMT trans: 6s
+07-22 18:26:56.143 31474 32467 D native  : I0722 18:26:56.143454   32467 mergeddicttrans.cc:1860] The current system has NMT.
+07-22 18:26:56.143 31474 32467 D native  : I0722 18:26:56.143496   32467 mergeddicttrans.cc:1866] Sentence #0: UI setting option: 6s
+07-22 18:26:56.143 31474 32467 D native  : I0722 18:26:56.143568   32467 mergeddicttrans.cc:1918] To be translated by NMT.
+07-22 18:26:56.145 31474 31492 D TransportRuntime.SQLiteEventStore: Storing event with priority=VERY_LOW, name=FIREBASE_ML_SDK for destination cct
+07-22 18:26:56.148 31474 31492 D TransportRuntime.JobInfoScheduler: Upload for context TransportContext(cct, VERY_LOW, MSRodHRwczovL2ZpcmViYXNlbG9nZ2luZy5nb29nbGVhcGlzLmNvbS92MGNjL2xvZy9iYXRjaD9mb3JtYXQ9anNvbl9wcm90bzNc) is already scheduled. Returning...
+07-22 18:26:56.210 31474 32467 I native  : I0722 18:26:56.210137   32467 mergeddicttrans.cc:1827] Sentence #0: UI setting option: 6s
+07-22 18:26:56.210 31474 32467 I native  : I0722 18:26:56.210243   32467 mergeddicttrans.cc:1828] 
+07-22 18:26:56.210 31474 32467 I native  : Source language: en, target language: zh
+07-22 18:26:56.210 31474 32467 I native  : 
+07-22 18:26:56.210 31474 32467 I native  : Has period trick: 1
+07-22 18:26:56.210 31474 32467 I native  : 
+07-22 18:26:56.210 31474 32467 I native  : Full translation: UI设置选项：6s
+07-22 18:26:56.210 31474 32467 I native  : Translate Instance: 
+07-22 18:26:56.210 31474 32467 I native  : Query (raw): UI setting option: 6s
+07-22 18:26:56.210 31474 32467 I native  : Query (after preprocess): ui setting option : 6s .
+07-22 18:26:56.210 31474 32467 I native  : Query ids (after tokenizer): 553 44 1171 1425 19 141 11 5 2
+07-22 18:26:56.210 31474 32467 I native  : Translation ids: 572 102 173 826 628 10 126 41 6 2
+07-22 18:26:56.210 31474 32467 I native  : Translation (after detokenizer): UI 设置 选项 : 6s .
+07-22 18:26:56.210 31474 32467 I native  : Alignment probability:
+07-22 18:26:56.210 31474 32467 I native  : 	UI	设置	选项	:	6s	.
+07-22 18:26:56.210 31474 32467 I native  : ui	0.901961	0.027451	0.00196078	0.00784314	0.00196078	0.00784314
+07-22 18:26:56.210 31474 32467 I native  : setting	0.0666667	0.968627	0.00392157	0.00392157	0	0.0392157
+07-22 18:26:56.210 31474 32467 I native  : option	0.0196078	0.00392157	0.970588	0.0431373	0.00196078	0.00784314
+07-22 18:26:56.210 31474 32467 I native  : :	0.00588235	0	0.027451	0.92549	0.00392157	0.00784314
+07-22 18:26:56.210 31474 32467 I native  : 6s	0.00392157	0	0.00196078	0.0117647	0.958824	0.0196078
+07-22 18:26:56.210 31474 32467 I native  : .	0	0.00392157	0	0.00392157	0.0117647	0.462745
+07-22 18:26:56.210 31474 32467 I native  : Translation (before postprocess): UI 设置 选项 : 6s .
+07-22 18:26:56.212 31474 31492 D TransportRuntime.SQLiteEventStore: Storing event with priority=VERY_LOW, name=FIREBASE_ML_SDK for destination cct
+07-22 18:26:56.215 31474 31492 D TransportRuntime.JobInfoScheduler: Upload for context TransportContext(cct, VERY_LOW, MSRodHRwczovL2ZpcmViYXNlbG9nZ2luZy5nb29nbGVhcGlzLmNvbS92MGNjL2xvZy9iYXRjaD9mb3JtYXQ9anNvbl9wcm90bzNc) is already scheduled. Returning...
+07-22 18:26:56.224 31474 32469 D native  : I0722 18:26:56.224332   32469 mergeddicttrans.cc:1860] The current system has NMT.
+07-22 18:26:56.224 31474 32469 D native  : I0722 18:26:56.224428   32469 mergeddicttrans.cc:1866] Sentence #0: フTLL0
+07-22 18:26:56.224 31474 32469 D native  : I0722 18:26:56.224482   32469 mergeddicttrans.cc:1912] To fallback to PB.
+07-22 18:26:56.224 31474 32469 D native  : I0722 18:26:56.224495   32469 mergeddicttrans.cc:1585] Sentence #0: フTLL0
+07-22 18:26:56.224 31474 32469 D native  : I0722 18:26:56.224645   32469 mergeddicttrans.cc:1571] PBMT preproc: フ tll0
+07-22 18:26:56.224 31474 32469 D native  : I0722 18:26:56.224884   32469 mergeddicttrans.cc:1588] PBMT trans: フ tll0
+07-22 18:26:56.225 31474 32485 D native  : I0722 18:26:56.225795   32485 mergeddicttrans.cc:1860] The current system has NMT.
+07-22 18:26:56.225 31474 32485 D native  : I0722 18:26:56.225836   32485 mergeddicttrans.cc:1866] Sentence #0: UI setting option: フTLL0
+07-22 18:26:56.225 31474 32485 D native  : I0722 18:26:56.225907   32485 mergeddicttrans.cc:1918] To be translated by NMT.
+07-22 18:26:56.227 31474 31492 D TransportRuntime.SQLiteEventStore: Storing event with priority=VERY_LOW, name=FIREBASE_ML_SDK for destination cct
+07-22 18:26:56.230 31474 31492 D TransportRuntime.JobInfoScheduler: Upload for context TransportContext(cct, VERY_LOW, MSRodHRwczovL2ZpcmViYXNlbG9nZ2luZy5nb29nbGVhcGlzLmNvbS92MGNjL2xvZy9iYXRjaD9mb3JtYXQ9anNvbl9wcm90bzNc) is already scheduled. Returning...
+07-22 18:26:56.290 31474 32485 I native  : I0722 18:26:56.290455   32485 mergeddicttrans.cc:1827] Sentence #0: UI setting option: フTLL0
+07-22 18:26:56.290 31474 32485 I native  : I0722 18:26:56.290569   32485 mergeddicttrans.cc:1828] 
+07-22 18:26:56.290 31474 32485 I native  : Source language: en, target language: zh
+07-22 18:26:56.290 31474 32485 I native  : 
+07-22 18:26:56.290 31474 32485 I native  : Has period trick: 1
+07-22 18:26:56.290 31474 32485 I native  : 
+07-22 18:26:56.290 31474 32485 I native  : Full translation: UI设置选项：フtll0
+07-22 18:26:56.290 31474 32485 I native  : Translate Instance: 
+07-22 18:26:56.290 31474 32485 I native  : Query (raw): UI setting option: フTLL0
+07-22 18:26:56.290 31474 32485 I native  : Query (after preprocess): ui setting option : フ tll0 .
+07-22 18:26:56.290 31474 32485 I native  : Query ids (after tokenizer): 553 44 1171 1425 19 51 0 76 4047 116 5 2
+07-22 18:26:56.290 31474 32485 I native  : Translation ids: 572 102 173 826 628 10 3 0 1168 75 75 11 6 2
+07-22 18:26:56.290 31474 32485 I native  : Translation (after detokenizer): UI 设置 选项 : フ tll0 .
+07-22 18:26:56.290 31474 32485 I native  : Alignment probability:
+07-22 18:26:56.290 31474 32485 I native  : 	UI	设置	选项	:	フ	tll0	.
+07-22 18:26:56.290 31474 32485 I native  : ui	0.907843	0.027451	0.00196078	0.00392157	0.00196078	0	0.0196078
+07-22 18:26:56.290 31474 32485 I native  : setting	0.0686275	0.972549	0.00392157	0	0	0	0.0313726
+07-22 18:26:56.290 31474 32485 I native  : option	0.0117647	0	0.982353	0.0156863	0.00392157	0	0.0196078
+07-22 18:26:56.290 31474 32485 I native  : :	0.00588235	0	0.0156863	0.956863	0.00392157	0	0.00392157
+07-22 18:26:56.290 31474 32485 I native  : フ	0.00392157	0	0	0.0196078	0.935294	0.00294118	0.0156863
+07-22 18:26:56.290 31474 32485 I native  : tll0	0	0	0	0	0.0254902	0.978431	0.0313726
+07-22 18:26:56.290 31474 32485 I native  : .	0	0.00392157	0.00196078	0.00784314	0.00784314	0.0127451	0.678431
+07-22 18:26:56.290 31474 32485 I native  : Translation (before postprocess): UI 设置 选项 : フ tll0 .
+07-22 18:26:56.292 31474 32447 D native  : I0722 18:26:56.292821   32447 mergeddicttrans.cc:1860] The current system has NMT.
+07-22 18:26:56.292 31474 32447 D native  : I0722 18:26:56.292888   32447 mergeddicttrans.cc:1866] Sentence #0: 分享
+07-22 18:26:56.292 31474 32447 D native  : I0722 18:26:56.292961   32447 mergeddicttrans.cc:1918] To be translated by NMT.
+07-22 18:26:56.293 31474 31492 D TransportRuntime.SQLiteEventStore: Storing event with priority=VERY_LOW, name=FIREBASE_ML_SDK for destination cct
+07-22 18:26:56.295 31474 31492 D TransportRuntime.JobInfoScheduler: Upload for context TransportContext(cct, VERY_LOW, MSRodHRwczovL2ZpcmViYXNlbG9nZ2luZy5nb29nbGVhcGlzLmNvbS92MGNjL2xvZy9iYXRjaD9mb3JtYXQ9anNvbl9wcm90bzNc) is already scheduled. Returning...
+07-22 18:26:56.307 31474 32447 I native  : I0722 18:26:56.307209   32447 mergeddicttrans.cc:1827] Sentence #0: 分享
+07-22 18:26:56.307 31474 32447 I native  : I0722 18:26:56.307324   32447 mergeddicttrans.cc:1828] 
+07-22 18:26:56.307 31474 32447 I native  : Source language: zh, target language: en
+07-22 18:26:56.307 31474 32447 I native  : 
+07-22 18:26:56.307 31474 32447 I native  : Has period trick: 0
+07-22 18:26:56.307 31474 32447 I native  : 
+07-22 18:26:56.307 31474 32447 I native  : Full translation: Sharing
+07-22 18:26:56.307 31474 32447 I native  : Translate Instance: 
+07-22 18:26:56.307 31474 32447 I native  : Query (raw): 分享
+07-22 18:26:56.307 31474 32447 I native  : Query (after preprocess): 分享
+07-22 18:26:56.307 31474 32447 I native  : Query ids (after tokenizer): 92 1054 2
+07-22 18:26:56.307 31474 32447 I native  : Translation ids: 619 1866 2
+07-22 18:26:56.307 31474 32447 I native  : Translation (after detokenizer): sharing
+07-22 18:26:56.307 31474 32447 I native  : Alignment probability:
+07-22 18:26:56.307 31474 32447 I native  : 	sharing
+07-22 18:26:56.307 31474 32447 I native  : 分享	0.690196
+07-22 18:26:56.307 31474 32447 I native  : Translation (before postprocess): sharing
+07-22 18:26:56.324 31474 32464 D native  : I0722 18:26:56.324656   32464 mergeddicttrans.cc:1860] The current system has NMT.
+07-22 18:26:56.324 31474 32464 D native  : I0722 18:26:56.324742   32464 mergeddicttrans.cc:1866] Sentence #0: 圣除
+07-22 18:26:56.324 31474 32464 D native  : I0722 18:26:56.324803   32464 mergeddicttrans.cc:1918] To be translated by NMT.
+07-22 18:26:56.325 31474 31492 D TransportRuntime.SQLiteEventStore: Storing event with priority=VERY_LOW, name=FIREBASE_ML_SDK for destination cct
+07-22 18:26:56.328 31474 31492 D TransportRuntime.JobInfoScheduler: Upload for context TransportContext(cct, VERY_LOW, MSRodHRwczovL2ZpcmViYXNlbG9nZ2luZy5nb29nbGVhcGlzLmNvbS92MGNjL2xvZy9iYXRjaD9mb3JtYXQ9anNvbl9wcm90bzNc) is already scheduled. Returning...
+07-22 18:26:56.343 31474 32464 I native  : I0722 18:26:56.343185   32464 mergeddicttrans.cc:1827] Sentence #0: 圣除
+07-22 18:26:56.343 31474 32464 I native  : I0722 18:26:56.343303   32464 mergeddicttrans.cc:1828] 
+07-22 18:26:56.343 31474 32464 I native  : Source language: zh, target language: en
+07-22 18:26:56.343 31474 32464 I native  : 
+07-22 18:26:56.343 31474 32464 I native  : Has period trick: 0
+07-22 18:26:56.343 31474 32464 I native  : 
+07-22 18:26:56.343 31474 32464 I native  : Full translation: Holy
+07-22 18:26:56.343 31474 32464 I native  : Translate Instance: 
+07-22 18:26:56.343 31474 32464 I native  : Query (raw): 圣除
+07-22 18:26:56.343 31474 32464 I native  : Query (after preprocess): 圣除
+07-22 18:26:56.343 31474 32464 I native  : Query ids (after tokenizer): 883 804 2
+07-22 18:26:56.343 31474 32464 I native  : Translation ids: 249 1589 2
+07-22 18:26:56.343 31474 32464 I native  : Translation (after detokenizer): holy
+07-22 18:26:56.343 31474 32464 I native  : Alignment probability:
+07-22 18:26:56.343 31474 32464 I native  : 	holy
+07-22 18:26:56.343 31474 32464 I native  : 圣除	0.801961
+07-22 18:26:56.343 31474 32464 I native  : Translation (before postprocess): holy
+07-22 18:26:56.345 31474 32465 D native  : I0722 18:26:56.345586   32465 mergeddicttrans.cc:1860] The current system has NMT.
+07-22 18:26:56.345 31474 32465 D native  : I0722 18:26:56.345661   32465 mergeddicttrans.cc:1866] Sentence #0: 编辑
+07-22 18:26:56.345 31474 32465 D native  : I0722 18:26:56.345733   32465 mergeddicttrans.cc:1918] To be translated by NMT.
+07-22 18:26:56.345 31474 31492 D TransportRuntime.SQLiteEventStore: Storing event with priority=VERY_LOW, name=FIREBASE_ML_SDK for destination cct
+07-22 18:26:56.348 31474 31492 D TransportRuntime.JobInfoScheduler: Upload for context TransportContext(cct, VERY_LOW, MSRodHRwczovL2ZpcmViYXNlbG9nZ2luZy5nb29nbGVhcGlzLmNvbS92MGNjL2xvZy9iYXRjaD9mb3JtYXQ9anNvbl9wcm90bzNc) is already scheduled. Returning...
+07-22 18:26:56.362 31474 32465 I native  : I0722 18:26:56.362792   32465 mergeddicttrans.cc:1827] Sentence #0: 编辑
+07-22 18:26:56.362 31474 32465 I native  : I0722 18:26:56.362904   32465 mergeddicttrans.cc:1828] 
+07-22 18:26:56.362 31474 32465 I native  : Source language: zh, target language: en
+07-22 18:26:56.362 31474 32465 I native  : 
+07-22 18:26:56.362 31474 32465 I native  : Has period trick: 0
+07-22 18:26:56.362 31474 32465 I native  : 
+07-22 18:26:56.362 31474 32465 I native  : Full translation: Editor
+07-22 18:26:56.362 31474 32465 I native  : Translate Instance: 
+07-22 18:26:56.362 31474 32465 I native  : Query (raw): 编辑
+07-22 18:26:56.362 31474 32465 I native  : Query (after preprocess): 编辑
+07-22 18:26:56.362 31474 32465 I native  : Query ids (after tokenizer): 449 934 2
+07-22 18:26:56.362 31474 32465 I native  : Translation ids: 2349 757 2
+07-22 18:26:56.362 31474 32465 I native  : Translation (after detokenizer): editor
+07-22 18:26:56.362 31474 32465 I native  : Alignment probability:
+07-22 18:26:56.362 31474 32465 I native  : 	editor
+07-22 18:26:56.362 31474 32465 I native  : 编辑	0.737255
+07-22 18:26:56.362 31474 32465 I native  : Translation (before postprocess): editor
+07-22 18:26:56.365 31474 32466 D native  : I0722 18:26:56.365248   32466 mergeddicttrans.cc:1860] The current system has NMT.
+07-22 18:26:56.365 31474 32466 D native  : I0722 18:26:56.365329   32466 mergeddicttrans.cc:1866] Sentence #0: 连接除电源时●
+07-22 18:26:56.365 31474 32466 D native  : I0722 18:26:56.365393   32466 mergeddicttrans.cc:1918] To be translated by NMT.
+07-22 18:26:56.365 31474 31492 D TransportRuntime.SQLiteEventStore: Storing event with priority=VERY_LOW, name=FIREBASE_ML_SDK for destination cct
+07-22 18:26:56.367 31474 31492 D TransportRuntime.JobInfoScheduler: Upload for context TransportContext(cct, VERY_LOW, MSRodHRwczovL2ZpcmViYXNlbG9nZ2luZy5nb29nbGVhcGlzLmNvbS92MGNjL2xvZy9iYXRjaD9mb3JtYXQ9anNvbl9wcm90bzNc) is already scheduled. Returning...
+07-22 18:26:56.403 31474 32466 I native  : I0722 18:26:56.403872   32466 mergeddicttrans.cc:1827] Sentence #0: 连接除电源时●
+07-22 18:26:56.404 31474 32466 I native  : I0722 18:26:56.404027   32466 mergeddicttrans.cc:1828] 
+07-22 18:26:56.404 31474 32466 I native  : Source language: zh, target language: en
+07-22 18:26:56.404 31474 32466 I native  : 
+07-22 18:26:56.404 31474 32466 I native  : Has period trick: 0
+07-22 18:26:56.404 31474 32466 I native  : 
+07-22 18:26:56.404 31474 32466 I native  : Full translation: Connect to the power supply ●
+07-22 18:26:56.404 31474 32466 I native  : Translate Instance: 
+07-22 18:26:56.404 31474 32466 I native  : Query (raw): 连接除电源时●
+07-22 18:26:56.404 31474 32466 I native  : Query (after preprocess): 连接 除 电源 时 ●
+07-22 18:26:56.404 31474 32466 I native  : Query ids (after tokenizer): 389 917 52 229 104 3 2144 2
+07-22 18:26:56.404 31474 32466 I native  : Translation ids: 329 185 210 9 3 392 1357 26 2637 2
+07-22 18:26:56.404 31474 32466 I native  : Translation (after detokenizer): Connect to the power supply ●
+07-22 18:26:56.404 31474 32466 I native  : Alignment probability:
+07-22 18:26:56.404 31474 32466 I native  : 	Connect	to	the	power	supply	●
+07-22 18:26:56.404 31474 32466 I native  : 连接	0.607843	0.117647	0.0627451	0.0196078	0.00392157	0.0117647
+07-22 18:26:56.404 31474 32466 I native  : 除	0.0300654	0.4	0.32549	0.145098	0.0196078	0.00784314
+07-22 18:26:56.404 31474 32466 I native  : 电源	0.00522876	0.188235	0.501961	0.792157	0.721569	0.0117647
+07-22 18:26:56.404 31474 32466 I native  : 时	0.0862745	0.117647	0.0196078	0.0117647	0.0901961	0.133333
+07-22 18:26:56.404 31474 32466 I native  : ●	0.0457516	0.141176	0.0470588	0.00784314	0.141176	0.815686
+07-22 18:26:56.404 31474 32466 I native  : Translation (before postprocess): Connect to the power supply ●
+07-22 18:26:56.406 31474 31492 D TransportRuntime.SQLiteEventStore: Storing event with priority=VERY_LOW, name=FIREBASE_ML_SDK for destination cct
+07-22 18:26:56.411 31474 31492 D TransportRuntime.JobInfoScheduler: Upload for context TransportContext(cct, VERY_LOW, MSRodHRwczovL2ZpcmViYXNlbG9nZ2luZy5nb29nbGVhcGlzLmNvbS92MGNjL2xvZy9iYXRjaD9mb3JtYXQ9anNvbl9wcm90bzNc) is already scheduled. Returning...
+07-22 18:27:00.037 31474 31501 E perf_hint: createSessionUsingConfig: PerformanceHint cannot create session. PowerHAL is not supported!
+07-22 18:27:00.806 31474 31474 W WindowOnBackDispatcher: sendCancelIfRunning: isInProgress=false callback=android.view.ViewRootImpl$$ExternalSyntheticLambda13@23285f9
+07-22 18:27:00.818 31474 31474 W InputEventReceiver: Attempted to finish an input event but the input event receiver has already been disposed.
+07-22 18:27:00.857 31474 31474 D InsetsController: hide(ime(), fromIme=false)
+07-22 18:27:00.857 31474 31474 I ImeTracker: com.example.imagetranslate:3b880b3c: onCancelled at PHASE_CLIENT_ALREADY_HIDDEN

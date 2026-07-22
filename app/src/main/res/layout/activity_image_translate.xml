@@ -1,174 +1,383 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout 
+<androidx.constraintlayout.widget.ConstraintLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:padding="16dp">
+    android:background="?attr/colorSurfaceContainerLow">
 
-    <TextView
-        android:id="@+id/tvStatus"
+    <LinearLayout
+        android:id="@+id/appHeader"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginEnd="8dp"
-        android:text="初始化中..."
-        android:textSize="14sp"
-        app:layout_constraintTop_toTopOf="parent"
+        android:layout_marginStart="20dp"
+        android:layout_marginTop="14dp"
+        android:layout_marginEnd="20dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toStartOf="@id/btnPickImage" />
+        app:layout_constraintTop_toTopOf="parent">
 
-    <Button
-        android:id="@+id/btnPickImage"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="选择图片"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
 
-    <androidx.constraintlayout.widget.Barrier
-        android:id="@+id/topControlsBottom"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        app:barrierDirection="bottom"
-        app:constraint_referenced_ids="tvStatus,btnPickImage" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="sans-serif-medium"
+                android:letterSpacing="0"
+                android:text="@string/app_name"
+                android:textColor="?attr/colorOnSurface"
+                android:textSize="22sp" />
 
-    <ScrollView
-        android:layout_width="match_parent"
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="5dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <ProgressBar
+                    android:id="@+id/progressBar"
+                    style="?android:attr/progressBarStyleSmall"
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:layout_marginEnd="7dp"
+                    android:indeterminateTint="?attr/colorPrimary"
+                    android:visibility="gone" />
+
+                <TextView
+                    android:id="@+id/tvStatus"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:ellipsize="end"
+                    android:letterSpacing="0"
+                    android:maxLines="2"
+                    android:text="@string/status_initializing"
+                    android:textColor="?attr/colorOnSurfaceVariant"
+                    android:textSize="13sp" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnPickImage"
+            style="@style/Widget.ImageTranslate.Button.Outlined"
+            android:layout_width="wrap_content"
+            android:layout_height="44dp"
+            android:layout_marginStart="14dp"
+            android:text="@string/action_pick_image"
+            app:icon="@drawable/ic_add_photo"
+            app:iconGravity="textStart"
+            app:iconPadding="7dp"
+            app:iconSize="18dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnTakePhoto"
+            style="@style/Widget.ImageTranslate.Button.Outlined"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:layout_marginStart="8dp"
+            android:contentDescription="@string/action_take_photo"
+            android:padding="0dp"
+            android:text=""
+            android:tooltipText="@string/action_take_photo"
+            app:icon="@drawable/ic_camera"
+            app:iconGravity="textStart"
+            app:iconPadding="0dp"
+            app:iconSize="20dp" />
+    </LinearLayout>
+
+    <androidx.core.widget.NestedScrollView
+        android:id="@+id/imageWorkspace"
+        android:layout_width="0dp"
         android:layout_height="0dp"
-        android:layout_marginTop="8dp"
-        app:layout_constraintTop_toBottomOf="@id/topControlsBottom"
-        app:layout_constraintBottom_toTopOf="@+id/bottomPanel">
+        android:layout_marginTop="18dp"
+        android:clipToPadding="false"
+        android:fillViewport="true"
+        android:overScrollMode="ifContentScrolls"
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp"
+        android:paddingBottom="16dp"
+        app:layout_constraintBottom_toTopOf="@id/bottomPanel"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/appHeader">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:gravity="center">
+            android:orientation="vertical">
 
-            <ImageView
-                android:id="@+id/ivOriginal"
+            <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:adjustViewBounds="true"
-                android:scaleType="fitCenter"
-                android:background="#FFF"
-                android:minHeight="200dp" />
+                app:cardBackgroundColor="?attr/colorSurface"
+                app:cardCornerRadius="8dp"
+                app:cardElevation="0dp"
+                app:strokeColor="?attr/colorOutlineVariant"
+                app:strokeWidth="1dp">
 
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="#DDD"
-                android:layout_marginVertical="12dp" />
-
-            <FrameLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:minHeight="200dp">
-
-                <ImageView
-                    android:id="@+id/ivResult"
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:adjustViewBounds="true"
-                    android:scaleType="fitCenter"
-                    android:background="#FFF"
-                    android:minHeight="200dp" />
+                    android:orientation="vertical">
 
-                <com.example.imagetranslate.ui.ReplacementOverlayView
-                    android:id="@+id/replacementOverlay"
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="40dp"
+                        android:fontFamily="sans-serif-medium"
+                        android:gravity="center_vertical"
+                        android:paddingHorizontal="14dp"
+                        android:text="@string/label_original_image"
+                        android:textColor="?attr/colorOnSurface"
+                        android:textSize="14sp" />
+
+                    <FrameLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:minHeight="220dp">
+
+                        <com.example.imagetranslate.ui.ZoomableImageView
+                            android:id="@+id/ivOriginal"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:adjustViewBounds="true"
+                            android:background="?attr/colorSurfaceContainerLowest"
+                            android:contentDescription="@string/label_original_image"
+                            android:minHeight="220dp"
+                            android:scaleType="matrix" />
+
+                        <LinearLayout
+                            android:id="@+id/emptyOriginalState"
+                            android:layout_width="match_parent"
+                            android:layout_height="220dp"
+                            android:background="?attr/colorSurfaceContainerLowest"
+                            android:gravity="center"
+                            android:orientation="vertical"
+                            android:padding="24dp">
+
+                            <ImageView
+                                android:layout_width="32dp"
+                                android:layout_height="32dp"
+                                android:contentDescription="@null"
+                                android:src="@drawable/ic_image_placeholder"
+                                app:tint="?attr/colorOnSurfaceVariant" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="10dp"
+                                android:text="@string/empty_original_title"
+                                android:textColor="?attr/colorOnSurfaceVariant"
+                                android:textSize="14sp" />
+                        </LinearLayout>
+                    </FrameLayout>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:layout_marginBottom="4dp"
+                app:cardBackgroundColor="?attr/colorSurface"
+                app:cardCornerRadius="8dp"
+                app:cardElevation="0dp"
+                app:strokeColor="?attr/colorOutlineVariant"
+                app:strokeWidth="1dp">
+
+                <LinearLayout
                     android:layout_width="match_parent"
-                    android:layout_height="match_parent" />
-            </FrameLayout>
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="40dp"
+                        android:fontFamily="sans-serif-medium"
+                        android:gravity="center_vertical"
+                        android:paddingHorizontal="14dp"
+                        android:text="@string/label_translation_result"
+                        android:textColor="?attr/colorOnSurface"
+                        android:textSize="14sp" />
+
+                    <FrameLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:minHeight="220dp">
+
+                        <com.example.imagetranslate.ui.ZoomableImageView
+                            android:id="@+id/ivResult"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:adjustViewBounds="true"
+                            android:background="?attr/colorSurfaceContainerLowest"
+                            android:contentDescription="@string/label_translation_result"
+                            android:minHeight="220dp"
+                            android:scaleType="matrix" />
+
+                        <com.example.imagetranslate.ui.ReplacementOverlayView
+                            android:id="@+id/replacementOverlay"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent" />
+
+                        <LinearLayout
+                            android:id="@+id/emptyResultState"
+                            android:layout_width="match_parent"
+                            android:layout_height="220dp"
+                            android:background="?attr/colorSurfaceContainerLowest"
+                            android:gravity="center"
+                            android:orientation="vertical"
+                            android:padding="24dp">
+
+                            <ImageView
+                                android:layout_width="32dp"
+                                android:layout_height="32dp"
+                                android:contentDescription="@null"
+                                android:src="@drawable/ic_translate"
+                                app:tint="?attr/colorOnSurfaceVariant" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="10dp"
+                                android:text="@string/empty_result_title"
+                                android:textColor="?attr/colorOnSurfaceVariant"
+                                android:textSize="14sp" />
+                        </LinearLayout>
+                    </FrameLayout>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
         </LinearLayout>
-    </ScrollView>
+    </androidx.core.widget.NestedScrollView>
 
     <LinearLayout
         android:id="@+id/bottomPanel"
-        android:layout_width="match_parent"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
+        android:background="@drawable/bg_bottom_panel"
+        android:elevation="8dp"
         android:orientation="vertical"
-        android:gravity="center"
-        android:paddingVertical="12dp"
-        app:layout_constraintBottom_toBottomOf="parent">
+        android:paddingStart="20dp"
+        android:paddingTop="14dp"
+        android:paddingEnd="20dp"
+        android:paddingBottom="16dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent">
 
         <com.google.android.material.button.MaterialButtonToggleGroup
             android:id="@+id/translationModeGroup"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="8dp"
+            android:layout_height="44dp"
             app:checkedButton="@id/btnModeBidirectional"
             app:selectionRequired="true"
             app:singleSelection="true">
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnModeChineseEnglish"
-                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                style="@style/Widget.ImageTranslate.SegmentedButton"
                 android:layout_width="0dp"
-                android:layout_height="wrap_content"
+                android:layout_height="44dp"
                 android:layout_weight="1"
-                android:text="中 → 英"
-                android:textSize="12sp" />
+                android:text="@string/mode_chinese_english" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnModeEnglishChinese"
-                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                style="@style/Widget.ImageTranslate.SegmentedButton"
                 android:layout_width="0dp"
-                android:layout_height="wrap_content"
+                android:layout_height="44dp"
                 android:layout_weight="1"
-                android:text="英 → 中"
-                android:textSize="12sp" />
+                android:text="@string/mode_english_chinese" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnModeBidirectional"
-                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                style="@style/Widget.ImageTranslate.SegmentedButton"
                 android:layout_width="0dp"
-                android:layout_height="wrap_content"
+                android:layout_height="44dp"
                 android:layout_weight="1"
-                android:text="中 ⇄ 英"
-                android:textSize="12sp" />
+                android:text="@string/mode_bidirectional" />
         </com.google.android.material.button.MaterialButtonToggleGroup>
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:gravity="center"
+            android:layout_marginTop="5dp"
+            android:gravity="center_vertical"
             android:orientation="horizontal">
-
-            <ProgressBar
-                android:id="@+id/progressBar"
-                android:layout_width="24dp"
-                android:layout_height="24dp"
-                android:visibility="gone" />
 
             <com.google.android.material.switchmaterial.SwitchMaterial
                 android:id="@+id/switchPreciseMask"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_weight="1"
                 android:checked="true"
-                android:text="精确遮罩"
-                android:textSize="12sp" />
+                android:text="@string/setting_precise_mask"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:textSize="13sp" />
 
             <CheckBox
                 android:id="@+id/checkShowMarkers"
                 android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
+                android:layout_height="48dp"
                 android:checked="true"
-                android:text="标号"
-                android:textSize="12sp" />
+                android:buttonTint="?attr/colorPrimary"
+                android:text="@string/setting_show_markers"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:textSize="13sp" />
+        </LinearLayout>
 
-            <Button
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnRestartRecognition"
+                style="@style/Widget.ImageTranslate.Button.Outlined"
+                android:layout_width="112dp"
+                android:layout_height="52dp"
+                android:layout_marginEnd="10dp"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp"
+                android:text="@string/action_recognize_again"
+                android:visibility="gone"
+                app:icon="@drawable/ic_refresh"
+                app:iconGravity="textStart"
+                app:iconPadding="7dp"
+                app:iconSize="19dp" />
+
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnTranslate"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginHorizontal="8dp"
-                android:text="@string/action_recognize_text" />
-
-            <Button
-                android:id="@+id/btnSave"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
+                style="@style/Widget.ImageTranslate.Button.Primary"
+                android:layout_width="0dp"
+                android:layout_height="52dp"
+                android:layout_weight="1"
                 android:enabled="false"
-                android:text="保存" />
+                android:text="@string/action_recognize_text"
+                app:icon="@drawable/ic_translate"
+                app:iconGravity="textStart"
+                app:iconPadding="8dp"
+                app:iconSize="19dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnSave"
+                style="@style/Widget.ImageTranslate.Button.Outlined"
+                android:layout_width="112dp"
+                android:layout_height="52dp"
+                android:layout_marginStart="10dp"
+                android:enabled="false"
+                android:text="@string/action_save"
+                app:icon="@drawable/ic_save"
+                app:iconGravity="textStart"
+                app:iconPadding="7dp"
+                app:iconSize="19dp" />
         </LinearLayout>
     </LinearLayout>
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -38,7 +38,8 @@
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="关闭"
                 android:padding="10dp"
-                android:src="@android:drawable/ic_menu_close_clear_cancel"
+                android:src="@drawable/ic_close"
+                android:stateListAnimator="@animator/press_scale"
                 app:tint="?attr/colorOnSurfaceVariant" />
         </LinearLayout>
 

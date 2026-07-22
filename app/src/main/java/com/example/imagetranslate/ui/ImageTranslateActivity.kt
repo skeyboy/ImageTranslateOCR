@@ -2,20 +2,20 @@ package com.example.imagetranslate.ui
 
 import android.graphics.*
 import android.graphics.drawable.ColorDrawable
+import android.media.ExifInterface
 import android.net.Uri
 import android.os.Bundle
 import android.provider.MediaStore
 import android.text.Layout
 import android.text.StaticLayout
 import android.text.TextPaint
-import android.view.GestureDetector
 import android.view.Gravity
-import android.view.MotionEvent
 import android.view.View
 import android.widget.PopupWindow
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.FileProvider
 import androidx.lifecycle.lifecycleScope
 import com.example.imagetranslate.App
 import com.example.imagetranslate.R
@@ -30,23 +30,42 @@ import com.example.imagetranslate.ocr.RecognizerScript
 import com.example.imagetranslate.translate.TranslateManager
 import com.example.imagetranslate.translate.TranslationMode
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
+import java.io.File
 
 class ImageTranslateActivity : AppCompatActivity() {
+
+    private companion object {
+        const val STATE_PENDING_CAMERA_URI = "pending_camera_uri"
+        const val TRANSLATION_WORKFLOW_TIMEOUT_MS = 90_000L
+    }
+
+    private enum class WorkflowStage {
+        READY,
+        REVIEW,
+        RESULT
+    }
 
     private lateinit var binding: ActivityImageTranslateBinding
     private val ocrManager = OCRManager()
     private val translateManager = TranslateManager()
     private val inpainter = ImageInpainter()
     private var translationMode = TranslationMode.AUTO_BIDIRECTIONAL
+    private var workflowStage = WorkflowStage.READY
+    private var workflowBusy = false
+    private var modelDownloadJob: Job? = null
 
     private var originalBitmap: Bitmap? = null
     private var processedBitmap: Bitmap? = null
     private var ocrReviewRegions: MutableList<OcrReviewRegion>? = null
     private var replacementRegions = emptyList<ReplacementRegion>()
     private var replacementInfoPopup: PopupWindow? = null
-    private lateinit var resultGestureDetector: GestureDetector
+    private var pendingCameraUri: Uri? = null
 
     private data class TranslatedRegion(
         val source: RecognizedText,
@@ -89,8 +108,23 @@ class ImageTranslateActivity : AppCompatActivity() {
         ActivityResultContracts.GetContent()
     ) { uri: Uri? -> uri?.let { loadImage(it) } }
 
+    private val takePhoto = registerForActivityResult(
+        ActivityResultContracts.TakePicture()
+    ) { captured ->
+        val uri = pendingCameraUri
+        pendingCameraUri = null
+        if (captured && uri != null) {
+            loadImage(uri)
+        } else if (uri != null) {
+            runCatching { contentResolver.delete(uri, null, null) }
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        pendingCameraUri = savedInstanceState
+            ?.getString(STATE_PENDING_CAMERA_URI)
+            ?.let(Uri::parse)
         binding = ActivityImageTranslateBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
@@ -98,8 +132,16 @@ class ImageTranslateActivity : AppCompatActivity() {
         downloadModel()
     }
 
+    override fun onSaveInstanceState(outState: Bundle) {
+        pendingCameraUri?.let { outState.putString(STATE_PENDING_CAMERA_URI, it.toString()) }
+        super.onSaveInstanceState(outState)
+    }
+
     private fun setupListeners() {
         binding.replacementOverlay.attachTo(binding.ivResult)
+        binding.ivResult.setOnMatrixChangedListener {
+            binding.replacementOverlay.invalidate()
+        }
         binding.replacementOverlay.setOnMarkerClickListener { index, x, y ->
             if (ocrReviewRegions != null) {
                 showOcrReview(index, x, y)
@@ -108,6 +150,7 @@ class ImageTranslateActivity : AppCompatActivity() {
             }
         }
         binding.btnPickImage.setOnClickListener { pickImage.launch("image/*") }
+        binding.btnTakePhoto.setOnClickListener { openCamera() }
 
         binding.translationModeGroup.addOnButtonCheckedListener { _, checkedId, isChecked ->
             if (!isChecked) return@addOnButtonCheckedListener
@@ -120,16 +163,28 @@ class ImageTranslateActivity : AppCompatActivity() {
 
         binding.btnTranslate.setOnClickListener {
             val bitmap = originalBitmap ?: return@setOnClickListener
-            if (ocrReviewRegions == null) {
-                beginOcrReview(bitmap)
-                return@setOnClickListener
+            when (workflowStage) {
+                WorkflowStage.READY -> beginOcrReview(bitmap)
+                WorkflowStage.REVIEW -> {
+                    if (!translateManager.areModelsReady) {
+                        downloadModel()
+                        Toast.makeText(
+                            this,
+                            "翻译模型未就绪，正在重新下载",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                        return@setOnClickListener
+                    }
+                    if (!App.isOpenCVReady) {
+                        Toast.makeText(this, "OpenCV 未就绪，请稍后", Toast.LENGTH_SHORT).show()
+                        return@setOnClickListener
+                    }
+                    translateReviewedImage(bitmap)
+                }
+                WorkflowStage.RESULT -> restartRecognition()
             }
-            if (!App.isOpenCVReady) {
-                Toast.makeText(this, "OpenCV 未就绪，请稍后", Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
-            }
-            translateReviewedImage(bitmap)
         }
+        binding.btnRestartRecognition.setOnClickListener { restartRecognition() }
 
         binding.btnSave.setOnClickListener {
             processedBitmap?.let { saveImage(it) }
@@ -144,29 +199,62 @@ class ImageTranslateActivity : AppCompatActivity() {
             }
         }
 
-        resultGestureDetector = GestureDetector(
-            this,
-            object : GestureDetector.SimpleOnGestureListener() {
-                override fun onDown(event: MotionEvent): Boolean = true
+        binding.ivResult.setOnSingleTapConfirmedListener { x, y ->
+            val markerHandled = binding.replacementOverlay.visibility == View.VISIBLE &&
+                binding.replacementOverlay.performMarkerClick(x, y)
+            if (!markerHandled) toggleReplacementAt(x, y)
+        }
+    }
 
-                override fun onSingleTapConfirmed(event: MotionEvent): Boolean {
-                    return toggleReplacementAt(event.x, event.y)
-                }
+    private fun openCamera() {
+        var cameraUri: Uri? = null
+        try {
+            val cameraDirectory = File(cacheDir, "camera").apply {
+                check(exists() || mkdirs()) { "无法创建相机缓存目录" }
             }
-        )
-        binding.ivResult.setOnTouchListener { _, event ->
-            resultGestureDetector.onTouchEvent(event)
+            val photoFile = File.createTempFile("capture_", ".jpg", cameraDirectory)
+            cameraUri = FileProvider.getUriForFile(
+                this,
+                "$packageName.fileprovider",
+                photoFile
+            )
+            pendingCameraUri = cameraUri
+            takePhoto.launch(cameraUri)
+        } catch (e: Exception) {
+            cameraUri?.let { runCatching { contentResolver.delete(it, null, null) } }
+            pendingCameraUri = null
+            Toast.makeText(this, "无法打开相机：${e.message}", Toast.LENGTH_SHORT).show()
         }
     }
 
     private fun downloadModel() {
-        lifecycleScope.launch {
+        if (modelDownloadJob?.isActive == true) {
+            if (!workflowBusy) binding.tvStatus.text = "正在准备翻译模型..."
+            return
+        }
+        modelDownloadJob = lifecycleScope.launch {
             try {
                 binding.tvStatus.text = "下载翻译模型中..."
                 translateManager.downloadModelIfNeeded()
-                binding.tvStatus.text = "就绪，请选择图片"
+                if (!workflowBusy) {
+                    binding.tvStatus.text = when (workflowStage) {
+                        WorkflowStage.REVIEW -> "翻译模型已就绪，请确认翻译"
+                        WorkflowStage.RESULT -> "翻译模型已就绪"
+                        WorkflowStage.READY -> if (originalBitmap == null) {
+                            "就绪，请选择图片"
+                        } else {
+                            "图片已加载"
+                        }
+                    }
+                }
+            } catch (e: TimeoutCancellationException) {
+                if (!workflowBusy) {
+                    binding.tvStatus.text = "翻译模型下载超时，请检查网络后重试"
+                }
             } catch (e: Exception) {
-                binding.tvStatus.text = "模型下载失败：${e.message}"
+                if (!workflowBusy) {
+                    binding.tvStatus.text = "翻译模型下载失败，请检查网络后重试"
+                }
             }
         }
     }
@@ -176,15 +264,18 @@ class ImageTranslateActivity : AppCompatActivity() {
             try {
                 binding.tvStatus.text = "加载图片中..."
                 val bitmap = withContext(Dispatchers.IO) {
-                    MediaStore.Images.Media.getBitmap(contentResolver, uri)
+                    decodeOrientedBitmap(uri)
                 }
                 originalBitmap = bitmap
                 binding.ivOriginal.setImageBitmap(bitmap)
+                binding.ivOriginal.resetZoom()
+                binding.emptyOriginalState.visibility = View.GONE
                 binding.ivResult.setImageBitmap(null)
+                binding.emptyResultState.visibility = View.VISIBLE
                 processedBitmap = null
                 clearReplacementRegions()
                 clearOcrReview()
-                binding.btnSave.isEnabled = false
+                updateWorkflowActions(WorkflowStage.READY)
                 binding.tvStatus.text = "图片已加载"
             } catch (e: Exception) {
                 binding.tvStatus.text = "图片加载失败"
@@ -193,12 +284,64 @@ class ImageTranslateActivity : AppCompatActivity() {
         }
     }
 
+    private fun decodeOrientedBitmap(uri: Uri): Bitmap {
+        val orientation = runCatching {
+            contentResolver.openInputStream(uri)?.use { stream ->
+                ExifInterface(stream).getAttributeInt(
+                    ExifInterface.TAG_ORIENTATION,
+                    ExifInterface.ORIENTATION_NORMAL
+                )
+            }
+        }.getOrNull() ?: ExifInterface.ORIENTATION_NORMAL
+
+        val decoded = contentResolver.openInputStream(uri)?.use(BitmapFactory::decodeStream)
+            ?: error("无法读取图片数据")
+        val transform = exifTransform(orientation) ?: return decoded
+        val oriented = Bitmap.createBitmap(
+            decoded,
+            0,
+            0,
+            decoded.width,
+            decoded.height,
+            transform,
+            true
+        )
+        if (oriented !== decoded) decoded.recycle()
+        return oriented
+    }
+
+    private fun exifTransform(orientation: Int): Matrix? = when (orientation) {
+        ExifInterface.ORIENTATION_FLIP_HORIZONTAL -> Matrix().apply {
+            setScale(-1f, 1f)
+        }
+        ExifInterface.ORIENTATION_ROTATE_180 -> Matrix().apply {
+            setRotate(180f)
+        }
+        ExifInterface.ORIENTATION_FLIP_VERTICAL -> Matrix().apply {
+            setScale(1f, -1f)
+        }
+        ExifInterface.ORIENTATION_TRANSPOSE -> Matrix().apply {
+            setRotate(90f)
+            postScale(-1f, 1f)
+        }
+        ExifInterface.ORIENTATION_ROTATE_90 -> Matrix().apply {
+            setRotate(90f)
+        }
+        ExifInterface.ORIENTATION_TRANSVERSE -> Matrix().apply {
+            setRotate(-90f)
+            postScale(-1f, 1f)
+        }
+        ExifInterface.ORIENTATION_ROTATE_270 -> Matrix().apply {
+            setRotate(-90f)
+        }
+        else -> null
+    }
+
     private fun beginOcrReview(bitmap: Bitmap) {
         lifecycleScope.launch {
             binding.tvStatus.text = "识别中..."
             binding.progressBar.visibility = View.VISIBLE
-            binding.btnTranslate.isEnabled = false
-            setTranslationModeEnabled(false)
+            setWorkflowBusy(true)
 
             try {
                 val ocrBitmap = withContext(Dispatchers.Default) { createOcrBitmap(bitmap) }
@@ -218,8 +361,9 @@ class ImageTranslateActivity : AppCompatActivity() {
                 ocrReviewRegions = texts.map { OcrReviewRegion(it) }.toMutableList()
                 processedBitmap = bitmap.copy(Bitmap.Config.ARGB_8888, true)
                 binding.ivResult.setImageBitmap(processedBitmap)
-                binding.btnTranslate.setText(R.string.action_confirm_translation)
-                binding.btnSave.isEnabled = false
+                binding.ivResult.resetZoom()
+                binding.emptyResultState.visibility = View.GONE
+                updateWorkflowActions(WorkflowStage.REVIEW)
                 updateReplacementMarkers()
                 updateOcrReviewStatus()
             } catch (e: Exception) {
@@ -227,8 +371,7 @@ class ImageTranslateActivity : AppCompatActivity() {
                 Toast.makeText(this@ImageTranslateActivity, e.message, Toast.LENGTH_LONG).show()
             } finally {
                 binding.progressBar.visibility = View.GONE
-                binding.btnTranslate.isEnabled = true
-                setTranslationModeEnabled(true)
+                setWorkflowBusy(false)
             }
         }
     }
@@ -244,20 +387,23 @@ class ImageTranslateActivity : AppCompatActivity() {
         lifecycleScope.launch {
             val activeMode = translationMode
             binding.progressBar.visibility = View.VISIBLE
-            binding.btnTranslate.isEnabled = false
-            setTranslationModeEnabled(false)
+            setWorkflowBusy(true)
 
             try {
 
                 binding.tvStatus.text = "翻译 ${texts.size} 段文字..."
-                val regions = texts.mapIndexed { index, item ->
-                    binding.tvStatus.text = "翻译 ${index + 1}/${texts.size}..."
-                    try {
-                        val translatedText = translateManager.translate(item.text, activeMode)
-                        val changed = translatedText.trim() != item.text.trim()
-                        TranslatedRegion(item, translatedText, changed)
-                    } catch (e: Exception) {
-                        TranslatedRegion(item, item.text, false, translationFailed = true)
+                val regions = withTimeout(TRANSLATION_WORKFLOW_TIMEOUT_MS) {
+                    texts.mapIndexed { index, item ->
+                        binding.tvStatus.text = "翻译 ${index + 1}/${texts.size}..."
+                        try {
+                            val translatedText = translateManager.translate(item.text, activeMode)
+                            val changed = translatedText.trim() != item.text.trim()
+                            TranslatedRegion(item, translatedText, changed)
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (e: Exception) {
+                            TranslatedRegion(item, item.text, false, translationFailed = true)
+                        }
                     }
                 }
 
@@ -302,9 +448,10 @@ class ImageTranslateActivity : AppCompatActivity() {
                     )
                 }
                 binding.ivResult.setImageBitmap(processedBitmap)
+                binding.ivResult.resetZoom()
+                binding.emptyResultState.visibility = View.GONE
                 updateReplacementMarkers()
-                binding.btnTranslate.setText(R.string.action_recognize_again)
-                binding.btnSave.isEnabled = true
+                updateWorkflowActions(WorkflowStage.RESULT)
                 val failedCount = regions.count { it.translationFailed }
                 val replacedCount = renderedRegions.size
                 val skippedEraseCount = translatedRegions.size - erasedBounds.size
@@ -313,15 +460,72 @@ class ImageTranslateActivity : AppCompatActivity() {
                     if (failedCount > 0) append("；$failedCount 段翻译失败")
                     if (skippedEraseCount > 0) append("；$skippedEraseCount 段因擦除风险保留原文")
                 }
+            } catch (e: TimeoutCancellationException) {
+                binding.tvStatus.text = "翻译超时，请检查网络后重试"
+                Toast.makeText(
+                    this@ImageTranslateActivity,
+                    "翻译服务响应超时，已停止本次处理",
+                    Toast.LENGTH_LONG
+                ).show()
             } catch (e: Exception) {
                 binding.tvStatus.text = "失败：${e.message}"
                 Toast.makeText(this@ImageTranslateActivity, e.message, Toast.LENGTH_LONG).show()
             } finally {
                 binding.progressBar.visibility = View.GONE
-                binding.btnTranslate.isEnabled = true
-                setTranslationModeEnabled(true)
+                setWorkflowBusy(false)
             }
         }
+    }
+
+    private fun restartRecognition() {
+        val bitmap = originalBitmap ?: return
+        clearOcrReview()
+        clearReplacementRegions()
+        binding.ivResult.setImageBitmap(null)
+        processedBitmap?.takeIf { it !== bitmap && !it.isRecycled }?.recycle()
+        processedBitmap = null
+        binding.emptyResultState.visibility = View.VISIBLE
+        updateWorkflowActions(WorkflowStage.READY)
+        beginOcrReview(bitmap)
+    }
+
+    private fun updateWorkflowActions(stage: WorkflowStage) {
+        workflowStage = stage
+        when (stage) {
+            WorkflowStage.READY -> {
+                binding.btnRestartRecognition.visibility = View.GONE
+                binding.btnTranslate.setText(R.string.action_recognize_text)
+                binding.btnTranslate.setIconResource(R.drawable.ic_translate)
+                binding.btnSave.visibility = View.VISIBLE
+                binding.btnSave.isEnabled = false
+            }
+            WorkflowStage.REVIEW -> {
+                binding.btnRestartRecognition.visibility = View.VISIBLE
+                binding.btnTranslate.setText(R.string.action_confirm_translation)
+                binding.btnTranslate.setIconResource(R.drawable.ic_translate)
+                binding.btnSave.visibility = View.GONE
+                binding.btnSave.isEnabled = false
+            }
+            WorkflowStage.RESULT -> {
+                binding.btnRestartRecognition.visibility = View.GONE
+                binding.btnTranslate.setText(R.string.action_recognize_again)
+                binding.btnTranslate.setIconResource(R.drawable.ic_refresh)
+                binding.btnSave.visibility = View.VISIBLE
+                binding.btnSave.isEnabled = !workflowBusy
+            }
+        }
+        binding.btnTranslate.isEnabled = !workflowBusy && originalBitmap != null
+        binding.btnRestartRecognition.isEnabled = !workflowBusy
+    }
+
+    private fun setWorkflowBusy(busy: Boolean) {
+        workflowBusy = busy
+        binding.btnTranslate.isEnabled = !busy && originalBitmap != null
+        binding.btnRestartRecognition.isEnabled = !busy
+        binding.btnSave.isEnabled = !busy && workflowStage == WorkflowStage.RESULT
+        binding.btnPickImage.isEnabled = !busy
+        binding.btnTakePhoto.isEnabled = !busy
+        setTranslationModeEnabled(!busy)
     }
 
     private fun setTranslationModeEnabled(enabled: Boolean) {
@@ -527,6 +731,7 @@ class ImageTranslateActivity : AppCompatActivity() {
             setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
             isOutsideTouchable = true
             elevation = 8 * density
+            animationStyle = R.style.Animation_ImageTranslate_MarkerPopup
             setOnDismissListener { replacementInfoPopup = null }
         }
 
@@ -567,7 +772,6 @@ class ImageTranslateActivity : AppCompatActivity() {
         dismissReplacementInfo()
         ocrReviewRegions = null
         if (::binding.isInitialized) {
-            binding.btnTranslate.setText(R.string.action_recognize_text)
             binding.replacementOverlay.setMarkers(emptyList())
         }
     }

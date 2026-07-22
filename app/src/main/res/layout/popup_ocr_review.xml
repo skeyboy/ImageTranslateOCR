@@ -38,7 +38,8 @@
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="@string/action_close"
                 android:padding="10dp"
-                android:src="@android:drawable/ic_menu_close_clear_cancel"
+                android:src="@drawable/ic_close"
+                android:stateListAnimator="@animator/press_scale"
                 app:tint="?attr/colorOnSurfaceVariant" />
         </LinearLayout>
 
@@ -64,6 +65,7 @@
             android:id="@+id/checkIncludeTranslation"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:buttonTint="?attr/colorPrimary"
             android:text="@string/include_in_translation" />
 
         <TextView
@@ -75,6 +77,7 @@
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnSaveOcrReview"
+            style="@style/Widget.ImageTranslate.Button.Primary"
             android:layout_width="match_parent"
             android:layout_height="48dp"
             android:layout_marginTop="8dp"

@@ -1,0 +1,5 @@
+.derivedData*/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+Pods/

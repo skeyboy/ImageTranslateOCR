@@ -8,6 +8,9 @@ import com.google.mlkit.nl.translate.Translation
 import com.google.mlkit.nl.translate.Translator
 import com.google.mlkit.nl.translate.TranslatorOptions
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withTimeout
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
@@ -18,6 +21,12 @@ enum class TranslationMode {
 }
 
 class TranslateManager {
+    private companion object {
+        const val MODEL_DOWNLOAD_TIMEOUT_MS = 60_000L
+        const val LANGUAGE_IDENTIFICATION_TIMEOUT_MS = 10_000L
+        const val TRANSLATION_TIMEOUT_MS = 20_000L
+    }
+
     private val languageIdentifier = LanguageIdentification.getClient(
         LanguageIdentificationOptions.Builder()
             .setConfidenceThreshold(0.34f)
@@ -25,6 +34,11 @@ class TranslateManager {
     )
     private val translators = mutableMapOf<Pair<String, String>, Translator>()
     private val downloadedModels = mutableSetOf<Pair<String, String>>()
+    private val modelDownloadMutex = Mutex()
+
+    val areModelsReady: Boolean
+        get() = (TranslateLanguage.CHINESE to TranslateLanguage.ENGLISH) in downloadedModels &&
+            (TranslateLanguage.ENGLISH to TranslateLanguage.CHINESE) in downloadedModels
 
     suspend fun downloadModelIfNeeded(): Boolean {
         ensureModel(TranslateLanguage.CHINESE, TranslateLanguage.ENGLISH)
@@ -32,17 +46,20 @@ class TranslateManager {
         return true
     }
 
-    private suspend fun ensureModel(sourceLanguage: String, targetLanguage: String) {
-        val languagePair = sourceLanguage to targetLanguage
-        if (languagePair in downloadedModels) return
-        val conditions = DownloadConditions.Builder().build()
-        suspendCancellableCoroutine { cont ->
-            translatorFor(sourceLanguage, targetLanguage).downloadModelIfNeeded(conditions)
-                .addOnSuccessListener { if (cont.isActive) cont.resume(Unit) }
-                .addOnFailureListener { if (cont.isActive) cont.resumeWithException(it) }
+    private suspend fun ensureModel(sourceLanguage: String, targetLanguage: String) =
+        modelDownloadMutex.withLock {
+            val languagePair = sourceLanguage to targetLanguage
+            if (languagePair in downloadedModels) return@withLock
+            val conditions = DownloadConditions.Builder().build()
+            withTimeout(MODEL_DOWNLOAD_TIMEOUT_MS) {
+                suspendCancellableCoroutine { cont ->
+                    translatorFor(sourceLanguage, targetLanguage).downloadModelIfNeeded(conditions)
+                        .addOnSuccessListener { if (cont.isActive) cont.resume(Unit) }
+                        .addOnFailureListener { if (cont.isActive) cont.resumeWithException(it) }
+                }
+            }
+            downloadedModels.add(languagePair)
         }
-        downloadedModels.add(languagePair)
-    }
 
     suspend fun translate(
         text: String,
@@ -156,12 +173,14 @@ class TranslateManager {
     private suspend fun identifySourceLanguage(text: String): String? {
         if (text.any(::isHanCharacter)) return TranslateLanguage.CHINESE
         if (text.none { it in 'A'..'Z' || it in 'a'..'z' }) return null
-        val detected = suspendCancellableCoroutine { cont ->
-            languageIdentifier.identifyLanguage(text)
-                .addOnSuccessListener { language -> if (cont.isActive) cont.resume(language) }
-                .addOnFailureListener { error ->
-                    if (cont.isActive) cont.resumeWithException(error)
-                }
+        val detected = withTimeout(LANGUAGE_IDENTIFICATION_TIMEOUT_MS) {
+            suspendCancellableCoroutine { cont ->
+                languageIdentifier.identifyLanguage(text)
+                    .addOnSuccessListener { language -> if (cont.isActive) cont.resume(language) }
+                    .addOnFailureListener { error ->
+                        if (cont.isActive) cont.resumeWithException(error)
+                    }
+            }
         }
         if (detected == "und") {
             return TranslateLanguage.ENGLISH
@@ -218,10 +237,12 @@ class TranslateManager {
     private suspend fun translateWithModel(
         translator: Translator,
         text: String
-    ): String = suspendCancellableCoroutine { cont ->
-        translator.translate(text)
-            .addOnSuccessListener { result -> if (cont.isActive) cont.resume(result) }
-            .addOnFailureListener { e -> if (cont.isActive) cont.resumeWithException(e) }
+    ): String = withTimeout(TRANSLATION_TIMEOUT_MS) {
+        suspendCancellableCoroutine { cont ->
+            translator.translate(text)
+                .addOnSuccessListener { result -> if (cont.isActive) cont.resume(result) }
+                .addOnFailureListener { e -> if (cont.isActive) cont.resumeWithException(e) }
+        }
     }
 
     fun close() {

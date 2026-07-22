@@ -9,6 +9,16 @@
         android:icon="@mipmap/ic_launcher"
         android:label="图片翻译"
         android:theme="@style/Theme.ImageTranslate">
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/camera_file_paths" />
+        </provider>
+
         <activity
             android:name=".ui.ImageTranslateActivity"
             android:exported="true"
@@ -20,4 +30,3 @@
         </activity>
     </application>
 </manifest>
-
