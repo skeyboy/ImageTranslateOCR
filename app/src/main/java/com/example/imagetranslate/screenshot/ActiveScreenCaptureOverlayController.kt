@@ -277,7 +277,7 @@ internal class ActiveScreenCaptureOverlayController(
         }
 
         val (screenWidth, screenHeight) = windowBounds()
-        patches.forEach { patch ->
+        val patchWindows = patches.mapNotNull { patch ->
             val windowBounds = TranslationOverlayTouchPolicy.scalePatchBounds(
                 left = patch.bounds.left,
                 top = patch.bounds.top,
@@ -290,9 +290,16 @@ internal class ActiveScreenCaptureOverlayController(
             )
             if (windowBounds == null) {
                 if (!patch.bitmap.isRecycled) patch.bitmap.recycle()
-                return@forEach
+                null
+            } else {
+                patch to windowBounds
             }
+        }
 
+        patchWindows.forEach { (patch, windowBounds) ->
+            val overlapCount = patchWindows.count { (_, otherBounds) ->
+                TranslationOverlayTouchPolicy.overlaps(windowBounds, otherBounds)
+            }
             val view = ScreenTranslationOverlayView(themedContext)
             val params = createLayoutParams(
                 width = windowBounds.width,
@@ -304,7 +311,7 @@ internal class ActiveScreenCaptureOverlayController(
                 x = windowBounds.x,
                 y = windowBounds.y
             ).apply {
-                alpha = translationPatchWindowAlpha()
+                alpha = translationPatchWindowAlpha(overlapCount)
             }
             view.replacePatches(
                 listOf(
@@ -556,13 +563,13 @@ internal class ActiveScreenCaptureOverlayController(
         appContext.resources.displayMetrics.let { it.widthPixels to it.heightPixels }
     }
 
-    private fun translationPatchWindowAlpha(): Float {
+    private fun translationPatchWindowAlpha(overlapCount: Int): Float {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return 1f
         val maximumAlpha = runCatching {
             appContext.getSystemService(InputManager::class.java)
                 .maximumObscuringOpacityForTouch
         }.getOrDefault(DEFAULT_MAXIMUM_OBSCURING_ALPHA)
-        return TranslationOverlayTouchPolicy.windowAlpha(maximumAlpha)
+        return TranslationOverlayTouchPolicy.windowAlpha(maximumAlpha, overlapCount)
     }
 
     private fun onMainThread(block: () -> Unit) {

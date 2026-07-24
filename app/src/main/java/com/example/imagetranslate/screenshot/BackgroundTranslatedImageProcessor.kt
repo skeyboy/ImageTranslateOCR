@@ -123,11 +123,10 @@ internal class BackgroundTranslatedImageProcessor(
         check(!closed) { "Image processor is closed" }
         return try {
             val batch = recognizeAndTranslate(bitmap, mode, fastOcr = true)
-            if (batch.regions.isNotEmpty()) {
-                check(App.isOpenCVReady) { "OpenCV is not ready" }
-            }
+            val themeColor = ScreenThemeColorEstimator.estimate(bitmap)
+            val themeSurfaceColor = ScreenThemeColorEstimator.compositableSurface(themeColor)
             val patches = batch.regions.mapNotNull { region ->
-                createOverlayPatch(bitmap, region)
+                createOverlayPatch(bitmap, region, themeSurfaceColor)
             }
             BackgroundTranslatedOverlayResult(
                 patches = patches,
@@ -203,7 +202,8 @@ internal class BackgroundTranslatedImageProcessor(
 
     private fun createOverlayPatch(
         bitmap: Bitmap,
-        region: BackgroundImageRegion
+        region: BackgroundImageRegion,
+        themeColor: Int
     ): ScreenTranslationPatch? {
         val sourceBounds = region.source.bounds.clampedTo(bitmap) ?: return null
         val cropBounds = Rect(
@@ -227,36 +227,27 @@ internal class BackgroundTranslatedImageProcessor(
         )
         var output: Bitmap? = null
         return try {
-            val inpaintResult = ImageInpainter().eraseWithPreciseMask(crop, listOf(localBounds))
-            val patchBitmap = inpaintResult.bitmap
+            val patchBitmap = Bitmap.createBitmap(
+                cropBounds.width(),
+                cropBounds.height(),
+                Bitmap.Config.ARGB_8888
+            )
             output = patchBitmap
-            if (localBounds !in inpaintResult.erasedRegions) {
+            val localRegion = region.copy(
+                source = region.source.copy(bounds = localBounds)
+            )
+            val rendered = BackgroundTranslatedImageRenderer.render(
+                patchBitmap,
+                listOf(localRegion),
+                styleSourceBitmap = crop,
+                overlayBackgroundColor = themeColor
+            )
+            if (rendered.isEmpty()) {
                 patchBitmap.recycle()
                 output = null
                 null
             } else {
-                val localRegion = region.copy(
-                    source = region.source.copy(bounds = localBounds)
-                )
-                val rendered = BackgroundTranslatedImageRenderer.render(
-                    patchBitmap,
-                    listOf(localRegion),
-                    styleSourceBitmap = crop,
-                    useGlassBackground = true
-                )
-                if (rendered.isEmpty()) {
-                    patchBitmap.recycle()
-                    output = null
-                    null
-                } else {
-                    val glassOverlay = BackgroundTranslatedImageRenderer.isolateGlassOverlay(
-                        patchBitmap,
-                        localBounds
-                    )
-                    patchBitmap.recycle()
-                    output = glassOverlay
-                    ScreenTranslationPatch(Rect(cropBounds), glassOverlay).also { output = null }
-                }
+                ScreenTranslationPatch(Rect(cropBounds), patchBitmap).also { output = null }
             }
         } catch (_: Exception) {
             output?.takeIf { !it.isRecycled }?.recycle()
@@ -290,19 +281,34 @@ private object BackgroundTranslatedImageRenderer {
         bitmap: Bitmap,
         regions: List<BackgroundImageRegion>,
         styleSourceBitmap: Bitmap = bitmap,
-        useGlassBackground: Boolean = false
+        overlayBackgroundColor: Int? = null
     ): List<Rect> {
         val canvas = Canvas(bitmap)
         val renderedRegions = mutableListOf<Rect>()
         regions.forEach { region ->
             val bounds = region.source.bounds.clampedTo(bitmap) ?: return@forEach
-            val style = estimateTextStyle(
+            val estimatedStyle = estimateTextStyle(
                 styleSourceBitmap,
                 bounds,
                 region.source.text
             )
-            if (useGlassBackground) {
-                drawGlassBackground(canvas, bitmap, bounds, style.isDarkBackground)
+            val style = if (overlayBackgroundColor == null) {
+                estimatedStyle
+            } else {
+                val isDarkTheme = isDarkColor(overlayBackgroundColor)
+                estimatedStyle.copy(
+                    foregroundColor = if (isDarkTheme) Color.WHITE else Color.BLACK,
+                    isDarkBackground = isDarkTheme
+                )
+            }
+            if (overlayBackgroundColor != null) {
+                drawThemeBackground(
+                    canvas,
+                    bitmap,
+                    styleSourceBitmap,
+                    bounds,
+                    overlayBackgroundColor
+                )
             }
             val isControlLabel = style.isDarkBackground &&
                 region.source.text.filterNot(Char::isWhitespace).length <= 20
@@ -338,88 +344,79 @@ private object BackgroundTranslatedImageRenderer {
         return renderedRegions
     }
 
-    private fun drawGlassBackground(
+    private fun drawThemeBackground(
         canvas: Canvas,
         bitmap: Bitmap,
+        sourceBitmap: Bitmap,
         textBounds: Rect,
-        isDarkBackground: Boolean
+        themeColor: Int
     ) {
-        val materialBounds = glassMaterialBounds(textBounds, bitmap) ?: return
-        val source = Bitmap.createBitmap(
+        val materialBounds = overlayMaterialBounds(textBounds, bitmap) ?: return
+        val destination = RectF(materialBounds)
+        val cornerRadius = overlayCornerRadius(destination)
+        val sourcePixels = IntArray(materialBounds.width() * materialBounds.height())
+        sourceBitmap.getPixels(
+            sourcePixels,
+            0,
+            materialBounds.width(),
+            materialBounds.left,
+            materialBounds.top,
+            materialBounds.width(),
+            materialBounds.height()
+        )
+        sourcePixels.indices.forEach { index ->
+            sourcePixels[index] = ScreenThemeColorEstimator.compensationColor(
+                targetSurface = themeColor,
+                sourceColor = sourcePixels[index]
+            )
+        }
+        val compensation = Bitmap.createBitmap(
             materialBounds.width(),
             materialBounds.height(),
             Bitmap.Config.ARGB_8888
-        ).also { copy ->
-            Canvas(copy).drawBitmap(
-                bitmap,
-                -materialBounds.left.toFloat(),
-                -materialBounds.top.toFloat(),
-                Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
+        ).apply {
+            setPixels(
+                sourcePixels,
+                0,
+                materialBounds.width(),
+                0,
+                0,
+                materialBounds.width(),
+                materialBounds.height()
             )
         }
-        val downsampled = Bitmap.createScaledBitmap(
-            source,
-            maxOf(1, source.width / GLASS_DOWNSAMPLE_FACTOR),
-            maxOf(1, source.height / GLASS_DOWNSAMPLE_FACTOR),
-            true
-        )
-        val destination = RectF(materialBounds)
-        val cornerRadius = glassCornerRadius(destination)
         val materialPath = Path().apply {
             addRoundRect(destination, cornerRadius, cornerRadius, Path.Direction.CW)
         }
-        canvas.save()
-        canvas.clipPath(materialPath)
-        canvas.drawBitmap(
-            downsampled,
-            null,
-            destination,
-            Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
-        )
+        try {
+            canvas.save()
+            canvas.clipPath(materialPath)
+            canvas.drawBitmap(
+                compensation,
+                materialBounds.left.toFloat(),
+                materialBounds.top.toFloat(),
+                Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
+            )
+            canvas.restore()
+        } finally {
+            if (!compensation.isRecycled) compensation.recycle()
+        }
         canvas.drawRoundRect(
             destination,
             cornerRadius,
             cornerRadius,
             Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                color = if (isDarkBackground) GLASS_DARK_TINT else GLASS_LIGHT_TINT
-            }
-        )
-        canvas.restore()
-        canvas.drawRoundRect(
-            destination,
-            cornerRadius,
-            cornerRadius,
-            Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                color = if (isDarkBackground) GLASS_DARK_BORDER else GLASS_LIGHT_BORDER
+                color = if (isDarkColor(themeColor)) DARK_THEME_BORDER else LIGHT_THEME_BORDER
                 style = Paint.Style.STROKE
-                strokeWidth = GLASS_BORDER_WIDTH_PX
+                strokeWidth = OVERLAY_BORDER_WIDTH_PX
             }
         )
-        if (downsampled !== source && !downsampled.isRecycled) downsampled.recycle()
-        if (!source.isRecycled) source.recycle()
     }
 
-    fun isolateGlassOverlay(bitmap: Bitmap, textBounds: Rect): Bitmap {
-        val output = Bitmap.createBitmap(bitmap.width, bitmap.height, Bitmap.Config.ARGB_8888)
-        val materialBounds = glassMaterialBounds(textBounds, bitmap) ?: return output
-        val destination = RectF(materialBounds)
-        val cornerRadius = glassCornerRadius(destination)
-        val path = Path().apply {
-            addRoundRect(destination, cornerRadius, cornerRadius, Path.Direction.CW)
-        }
-        Canvas(output).apply {
-            save()
-            clipPath(path)
-            drawBitmap(bitmap, 0f, 0f, Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG))
-            restore()
-        }
-        return output
-    }
-
-    private fun glassMaterialBounds(textBounds: Rect, bitmap: Bitmap): Rect? {
+    private fun overlayMaterialBounds(textBounds: Rect, bitmap: Bitmap): Rect? {
         val materialPadding = minOf(
-            GLASS_MAXIMUM_PADDING_PX,
-            maxOf(GLASS_MINIMUM_PADDING_PX, textBounds.height() / 10)
+            OVERLAY_MAXIMUM_PADDING_PX,
+            maxOf(OVERLAY_MINIMUM_PADDING_PX, textBounds.height() / 10)
         )
         return Rect(
             textBounds.left - materialPadding,
@@ -429,10 +426,16 @@ private object BackgroundTranslatedImageRenderer {
         ).clampedTo(bitmap)
     }
 
-    private fun glassCornerRadius(bounds: RectF): Float = maxOf(
-        GLASS_MINIMUM_CORNER_RADIUS_PX,
-        minOf(bounds.width(), bounds.height()) * GLASS_CORNER_RADIUS_RATIO
+    private fun overlayCornerRadius(bounds: RectF): Float = maxOf(
+        OVERLAY_MINIMUM_CORNER_RADIUS_PX,
+        minOf(bounds.width(), bounds.height()) * OVERLAY_CORNER_RADIUS_RATIO
     )
+
+    private fun isDarkColor(color: Int): Boolean = luminance(
+        Color.red(color),
+        Color.green(color),
+        Color.blue(color)
+    ) < DARK_BACKGROUND_LUMINANCE
 
     private fun fittingLayout(
         text: String,
@@ -638,14 +641,11 @@ private object BackgroundTranslatedImageRenderer {
     private const val DARK_BACKGROUND_LUMINANCE = 145
     private const val MINIMUM_CONTRAST_DELTA = 90
     private const val BOLD_STROKE_COVERAGE = 0.3f
-    private const val GLASS_DOWNSAMPLE_FACTOR = 5
-    private const val GLASS_MINIMUM_PADDING_PX = 3
-    private const val GLASS_MAXIMUM_PADDING_PX = 5
-    private const val GLASS_MINIMUM_CORNER_RADIUS_PX = 4f
-    private const val GLASS_CORNER_RADIUS_RATIO = 0.16f
-    private const val GLASS_BORDER_WIDTH_PX = 1f
-    private val GLASS_LIGHT_TINT = Color.argb(184, 250, 251, 253)
-    private val GLASS_DARK_TINT = Color.argb(176, 25, 29, 35)
-    private val GLASS_LIGHT_BORDER = Color.argb(72, 255, 255, 255)
-    private val GLASS_DARK_BORDER = Color.argb(58, 255, 255, 255)
+    private const val OVERLAY_MINIMUM_PADDING_PX = 3
+    private const val OVERLAY_MAXIMUM_PADDING_PX = 5
+    private const val OVERLAY_MINIMUM_CORNER_RADIUS_PX = 4f
+    private const val OVERLAY_CORNER_RADIUS_RATIO = 0.16f
+    private const val OVERLAY_BORDER_WIDTH_PX = 1f
+    private val LIGHT_THEME_BORDER = Color.argb(34, 0, 0, 0)
+    private val DARK_THEME_BORDER = Color.argb(64, 255, 255, 255)
 }

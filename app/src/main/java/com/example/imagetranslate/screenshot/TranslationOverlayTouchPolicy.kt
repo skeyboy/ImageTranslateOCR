@@ -1,8 +1,10 @@
 package com.example.imagetranslate.screenshot
 
-import kotlin.math.sqrt
+import kotlin.math.pow
 
 internal object TranslationOverlayTouchPolicy {
+    const val PREFERRED_SINGLE_WINDOW_ALPHA = 0.72f
+
     internal data class WindowBounds(
         val x: Int,
         val y: Int,
@@ -10,15 +12,22 @@ internal object TranslationOverlayTouchPolicy {
         val height: Int
     )
 
-    private const val PREFERRED_ALPHA = 0.55f
     private const val SAFETY_MARGIN = 0.02f
 
-    fun windowAlpha(maximumObscuringAlpha: Float): Float {
+    fun windowAlpha(maximumObscuringAlpha: Float, overlapCount: Int): Float {
         val safeCombinedAlpha = (maximumObscuringAlpha - SAFETY_MARGIN).coerceIn(0f, 1f)
-        // Android combines overlapping window opacity as 1 - (1-a1) * (1-a2).
-        val alphaForTwoOverlappingWindows = 1f - sqrt(1f - safeCombinedAlpha)
-        return minOf(PREFERRED_ALPHA, alphaForTwoOverlappingWindows)
+        val windowsAtOnePoint = overlapCount.coerceAtLeast(1)
+        // Android combines opacity as 1 - (1-a1) * ... * (1-an).
+        val safeWindowAlpha = 1f - (1f - safeCombinedAlpha)
+            .toDouble()
+            .pow(1.0 / windowsAtOnePoint)
+            .toFloat()
+        return minOf(PREFERRED_SINGLE_WINDOW_ALPHA, safeWindowAlpha)
     }
+
+    fun overlaps(first: WindowBounds, second: WindowBounds): Boolean =
+        first.x < second.x + second.width && second.x < first.x + first.width &&
+            first.y < second.y + second.height && second.y < first.y + first.height
 
     fun scalePatchBounds(
         left: Int,
