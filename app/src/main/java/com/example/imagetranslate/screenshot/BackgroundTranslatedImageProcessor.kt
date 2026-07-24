@@ -4,9 +4,7 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
-import android.graphics.Path
 import android.graphics.Rect
-import android.graphics.RectF
 import android.graphics.Typeface
 import android.text.Layout
 import android.text.StaticLayout
@@ -52,7 +50,8 @@ private data class BackgroundTextStyle(
     val isDarkBackground: Boolean,
     val typeface: Typeface,
     val fontSizeMultiplier: Float,
-    val lineSpacingMultiplier: Float
+    val lineSpacingMultiplier: Float,
+    val sourceLineCount: Int
 )
 
 internal class BackgroundTranslatedImageProcessor(
@@ -123,17 +122,19 @@ internal class BackgroundTranslatedImageProcessor(
         check(!closed) { "Image processor is closed" }
         return try {
             val batch = recognizeAndTranslate(bitmap, mode, fastOcr = true)
-            val themeColor = ScreenThemeColorEstimator.estimate(bitmap)
-            val themeSurfaceColor = ScreenThemeColorEstimator.compositableSurface(themeColor)
-            val patches = batch.regions.mapNotNull { region ->
-                createOverlayPatch(bitmap, region, themeSurfaceColor)
+            val fallbackSurface = ScreenThemeColorEstimator.compositableSurface(
+                ScreenThemeColorEstimator.estimate(bitmap)
+            )
+            val renderedPatches = batch.regions.mapNotNull { region ->
+                createOverlayPatch(bitmap, region, fallbackSurface)
             }
+            val patches = mergeOverlappingPatches(renderedPatches)
             BackgroundTranslatedOverlayResult(
                 patches = patches,
                 sourceWidth = bitmap.width,
                 sourceHeight = bitmap.height,
                 recognizedCount = batch.recognizedCount,
-                failedCount = batch.failedCount + (batch.regions.size - patches.size)
+                failedCount = batch.failedCount + (batch.regions.size - renderedPatches.size)
             )
         } finally {
             if (!reuseResources) close()
@@ -159,10 +160,15 @@ internal class BackgroundTranslatedImageProcessor(
         mode: TranslationMode,
         fastOcr: Boolean
     ): BackgroundTranslationBatch {
-        val recognized = if (fastOcr) {
+        val rawRecognized = if (fastOcr) {
             ocrManager.recognizeFast(bitmap, recognizerFor(mode))
         } else {
             ocrManager.recognize(bitmap)
+        }
+        val recognized = if (fastOcr) {
+            groupLiveTextBlocks(rawRecognized, bitmap.width, bitmap.height)
+        } else {
+            rawRecognized
         }
         val translated = mutableListOf<BackgroundImageRegion>()
         var failedCount = 0
@@ -172,10 +178,11 @@ internal class BackgroundTranslatedImageProcessor(
             MAX_IMAGE_TRANSLATION_TEXTS
         }
         for (source in recognized.take(maximumTexts)) {
+            val translationSource = normalizeCacheText(source.text)
             val translation = try {
-                val cacheKey = "${mode.name}:${normalizeCacheText(source.text)}"
+                val cacheKey = "${mode.name}:$translationSource"
                 synchronized(translationCache) { translationCache[cacheKey] }
-                    ?: translateManager.translate(source.text, mode).trim().also { translatedText ->
+                    ?: translateManager.translate(translationSource, mode).trim().also { translatedText ->
                         synchronized(translationCache) {
                             translationCache[cacheKey] = translatedText
                         }
@@ -186,12 +193,12 @@ internal class BackgroundTranslatedImageProcessor(
                 failedCount++
                 continue
             }
-            if (translation.isNotEmpty() && translation != source.text.trim()) {
+            if (translation.isNotEmpty() && translation != translationSource) {
                 translated.add(BackgroundImageRegion(source, translation))
             }
         }
         return BackgroundTranslationBatch(
-            recognizedCount = recognized.size,
+            recognizedCount = rawRecognized.size,
             regions = translated,
             failedCount = failedCount
         )
@@ -203,9 +210,10 @@ internal class BackgroundTranslatedImageProcessor(
     private fun createOverlayPatch(
         bitmap: Bitmap,
         region: BackgroundImageRegion,
-        themeColor: Int
+        fallbackSurface: Int
     ): ScreenTranslationPatch? {
         val sourceBounds = region.source.bounds.clampedTo(bitmap) ?: return null
+        val localSurface = estimateLocalSurface(bitmap, sourceBounds, fallbackSurface)
         val cropBounds = Rect(
             (sourceBounds.left - OVERLAY_PATCH_PADDING_PX).coerceAtLeast(0),
             (sourceBounds.top - OVERLAY_PATCH_PADDING_PX).coerceAtLeast(0),
@@ -240,7 +248,7 @@ internal class BackgroundTranslatedImageProcessor(
                 patchBitmap,
                 listOf(localRegion),
                 styleSourceBitmap = crop,
-                overlayBackgroundColor = themeColor
+                overlayBackgroundColor = localSurface
             )
             if (rendered.isEmpty()) {
                 patchBitmap.recycle()
@@ -257,11 +265,140 @@ internal class BackgroundTranslatedImageProcessor(
         }
     }
 
+    private fun groupLiveTextBlocks(
+        recognized: List<RecognizedText>,
+        sourceWidth: Int,
+        sourceHeight: Int
+    ): List<RecognizedText> {
+        val contentTop = (sourceHeight * LIVE_CONTENT_TOP_RATIO).toInt()
+        val contentBottom = (sourceHeight * LIVE_CONTENT_BOTTOM_RATIO).toInt()
+        val contentLines = recognized.filter { item ->
+            val centerY = item.bounds.centerY()
+            centerY in contentTop until contentBottom
+        }
+        val groups = LiveOverlayLayoutPolicy.groupTextLines(
+            contentLines.mapIndexed { index, item ->
+                LiveTextLineBounds(
+                    index = index,
+                    left = item.bounds.left.coerceIn(0, sourceWidth),
+                    top = item.bounds.top.coerceIn(0, sourceHeight),
+                    right = item.bounds.right.coerceIn(0, sourceWidth),
+                    bottom = item.bounds.bottom.coerceIn(0, sourceHeight),
+                    text = item.text
+                )
+            }
+        )
+        return groups.mapNotNull { indices ->
+            val lines = indices.mapNotNull(contentLines::getOrNull)
+            if (lines.isEmpty()) null else mergeLiveTextLines(lines)
+        }
+    }
+
+    private fun mergeLiveTextLines(lines: List<RecognizedText>): RecognizedText {
+        val ordered = lines.sortedWith(compareBy({ it.bounds.top }, { it.bounds.left }))
+        val bounds = Rect(ordered.first().bounds)
+        ordered.drop(1).forEach { bounds.union(it.bounds) }
+        val weights = ordered.map { item ->
+            item.text.count { it.isLetterOrDigit() }.coerceAtLeast(1)
+        }
+        val totalWeight = weights.sum().coerceAtLeast(1)
+        return RecognizedText(
+            text = ordered.joinToString("\n") { it.text.trim() },
+            bounds = bounds,
+            consensusScore = ordered.minOf { it.consensusScore },
+            passCount = ordered.minOf { it.passCount },
+            modelConfidence = ordered.zip(weights).sumOf { (item, weight) ->
+                (item.modelConfidence * weight).toDouble()
+            }.toFloat() / totalWeight,
+            recognizerScript = ordered.map { it.recognizerScript }.distinct().singleOrNull()
+                ?: RecognizerScript.FUSED
+        )
+    }
+
+    private fun estimateLocalSurface(
+        bitmap: Bitmap,
+        bounds: Rect,
+        fallbackSurface: Int
+    ): Int {
+        val padding = maxOf(
+            LOCAL_SURFACE_MINIMUM_PADDING_PX,
+            minOf(LOCAL_SURFACE_MAXIMUM_PADDING_PX, bounds.height() / 3)
+        )
+        val sampleBounds = Rect(
+            (bounds.left - padding).coerceAtLeast(0),
+            (bounds.top - padding).coerceAtLeast(0),
+            (bounds.right + padding).coerceAtMost(bitmap.width),
+            (bounds.bottom + padding).coerceAtMost(bitmap.height)
+        )
+        val sampleStep = maxOf(
+            1,
+            maxOf(sampleBounds.width(), sampleBounds.height()) / LOCAL_SURFACE_SAMPLE_GRID
+        )
+        val samples = ArrayList<Int>()
+        for (y in sampleBounds.top until sampleBounds.bottom step sampleStep) {
+            for (x in sampleBounds.left until sampleBounds.right step sampleStep) {
+                samples += bitmap.getPixel(x, y)
+            }
+        }
+        if (samples.size < LOCAL_SURFACE_MINIMUM_SAMPLES) return fallbackSurface
+        return ScreenThemeColorEstimator.compositableSurface(
+            ScreenThemeColorEstimator.estimate(samples.toIntArray())
+        )
+    }
+
+    private fun mergeOverlappingPatches(
+        patches: List<ScreenTranslationPatch>
+    ): List<ScreenTranslationPatch> {
+        if (patches.size < 2) return patches
+        val groups = LiveOverlayLayoutPolicy.groupIntersectingPatches(
+            patches.mapIndexed { index, patch ->
+                LivePatchBounds(
+                    index,
+                    patch.bounds.left,
+                    patch.bounds.top,
+                    patch.bounds.right,
+                    patch.bounds.bottom
+                )
+            },
+            mergeGap = PATCH_WINDOW_MERGE_GAP_PX
+        )
+        return groups.map { indices ->
+            val groupedPatches = indices.map(patches::get)
+            if (groupedPatches.size == 1) return@map groupedPatches.first()
+
+            val union = Rect(groupedPatches.first().bounds)
+            groupedPatches.drop(1).forEach { union.union(it.bounds) }
+            val mergedBitmap = Bitmap.createBitmap(
+                union.width(),
+                union.height(),
+                Bitmap.Config.ARGB_8888
+            )
+            val canvas = Canvas(mergedBitmap)
+            groupedPatches.forEach { patch ->
+                canvas.drawBitmap(
+                    patch.bitmap,
+                    (patch.bounds.left - union.left).toFloat(),
+                    (patch.bounds.top - union.top).toFloat(),
+                    null
+                )
+            }
+            groupedPatches.recyclePatchBitmaps()
+            ScreenTranslationPatch(union, mergedBitmap)
+        }
+    }
+
     private companion object {
         const val MAX_IMAGE_TRANSLATION_TEXTS = 24
         const val MAX_LIVE_TRANSLATION_TEXTS = 32
         const val MAX_TRANSLATION_CACHE_ENTRIES = 256
         const val OVERLAY_PATCH_PADDING_PX = 5
+        const val PATCH_WINDOW_MERGE_GAP_PX = 3
+        const val LOCAL_SURFACE_MINIMUM_PADDING_PX = 8
+        const val LOCAL_SURFACE_MAXIMUM_PADDING_PX = 36
+        const val LOCAL_SURFACE_SAMPLE_GRID = 48
+        const val LOCAL_SURFACE_MINIMUM_SAMPLES = 16
+        const val LIVE_CONTENT_TOP_RATIO = 0.08f
+        const val LIVE_CONTENT_BOTTOM_RATIO = 0.94f
         val CACHE_WHITESPACE_REGEX = Regex("\\s+")
     }
 }
@@ -297,12 +434,15 @@ private object BackgroundTranslatedImageRenderer {
             } else {
                 val isDarkTheme = isDarkColor(overlayBackgroundColor)
                 estimatedStyle.copy(
-                    foregroundColor = if (isDarkTheme) Color.WHITE else Color.BLACK,
+                    foregroundColor = readableForegroundColor(
+                        estimatedStyle.foregroundColor,
+                        overlayBackgroundColor
+                    ),
                     isDarkBackground = isDarkTheme
                 )
             }
             if (overlayBackgroundColor != null) {
-                drawThemeBackground(
+                drawCompensatedBackground(
                     canvas,
                     bitmap,
                     styleSourceBitmap,
@@ -344,7 +484,7 @@ private object BackgroundTranslatedImageRenderer {
         return renderedRegions
     }
 
-    private fun drawThemeBackground(
+    private fun drawCompensatedBackground(
         canvas: Canvas,
         bitmap: Bitmap,
         sourceBitmap: Bitmap,
@@ -352,8 +492,6 @@ private object BackgroundTranslatedImageRenderer {
         themeColor: Int
     ) {
         val materialBounds = overlayMaterialBounds(textBounds, bitmap) ?: return
-        val destination = RectF(materialBounds)
-        val cornerRadius = overlayCornerRadius(destination)
         val sourcePixels = IntArray(materialBounds.width() * materialBounds.height())
         sourceBitmap.getPixels(
             sourcePixels,
@@ -385,32 +523,16 @@ private object BackgroundTranslatedImageRenderer {
                 materialBounds.height()
             )
         }
-        val materialPath = Path().apply {
-            addRoundRect(destination, cornerRadius, cornerRadius, Path.Direction.CW)
-        }
         try {
-            canvas.save()
-            canvas.clipPath(materialPath)
             canvas.drawBitmap(
                 compensation,
                 materialBounds.left.toFloat(),
                 materialBounds.top.toFloat(),
                 Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
             )
-            canvas.restore()
         } finally {
             if (!compensation.isRecycled) compensation.recycle()
         }
-        canvas.drawRoundRect(
-            destination,
-            cornerRadius,
-            cornerRadius,
-            Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                color = if (isDarkColor(themeColor)) DARK_THEME_BORDER else LIGHT_THEME_BORDER
-                style = Paint.Style.STROKE
-                strokeWidth = OVERLAY_BORDER_WIDTH_PX
-            }
-        )
     }
 
     private fun overlayMaterialBounds(textBounds: Rect, bitmap: Bitmap): Rect? {
@@ -426,16 +548,33 @@ private object BackgroundTranslatedImageRenderer {
         ).clampedTo(bitmap)
     }
 
-    private fun overlayCornerRadius(bounds: RectF): Float = maxOf(
-        OVERLAY_MINIMUM_CORNER_RADIUS_PX,
-        minOf(bounds.width(), bounds.height()) * OVERLAY_CORNER_RADIUS_RATIO
-    )
-
     private fun isDarkColor(color: Int): Boolean = luminance(
         Color.red(color),
         Color.green(color),
         Color.blue(color)
     ) < DARK_BACKGROUND_LUMINANCE
+
+    private fun readableForegroundColor(candidate: Int, surface: Int): Int {
+        val candidateLuminance = luminance(
+            Color.red(candidate),
+            Color.green(candidate),
+            Color.blue(candidate)
+        )
+        val surfaceLuminance = luminance(
+            Color.red(surface),
+            Color.green(surface),
+            Color.blue(surface)
+        )
+        return if (kotlin.math.abs(candidateLuminance - surfaceLuminance) >=
+            MINIMUM_CONTRAST_DELTA
+        ) {
+            candidate
+        } else if (surfaceLuminance < DARK_BACKGROUND_LUMINANCE) {
+            Color.WHITE
+        } else {
+            Color.BLACK
+        }
+    }
 
     private fun fittingLayout(
         text: String,
@@ -445,8 +584,9 @@ private object BackgroundTranslatedImageRenderer {
         alignment: Layout.Alignment,
         style: BackgroundTextStyle
     ): StaticLayout {
-        var low = maxOf(MINIMUM_TEXT_SIZE_PX, height * MINIMUM_FONT_HEIGHT_RATIO)
-        var high = maxOf(low, height * style.fontSizeMultiplier)
+        val sourceLineHeight = height.toFloat() / style.sourceLineCount.coerceAtLeast(1)
+        var low = maxOf(MINIMUM_TEXT_SIZE_PX, sourceLineHeight * MINIMUM_FONT_HEIGHT_RATIO)
+        var high = maxOf(low, sourceLineHeight * style.fontSizeMultiplier)
         var best = createLayout(
             text,
             paint,
@@ -465,7 +605,7 @@ private object BackgroundTranslatedImageRenderer {
                 alignment,
                 style.lineSpacingMultiplier
             )
-            if (candidate.height <= height) {
+            if (candidate.height <= height && !hasOrphanedLastLine(candidate, text)) {
                 low = size
                 best = candidate
             } else {
@@ -473,6 +613,17 @@ private object BackgroundTranslatedImageRenderer {
             }
         }
         return best
+    }
+
+    private fun hasOrphanedLastLine(layout: StaticLayout, text: String): Boolean {
+        if (layout.lineCount <= 1 || text.count { !it.isWhitespace() } > SHORT_TEXT_LIMIT) {
+            return false
+        }
+        val lastLine = layout.lineCount - 1
+        val visibleCharacters = text
+            .substring(layout.getLineStart(lastLine), layout.getLineEnd(lastLine))
+            .count { !it.isWhitespace() }
+        return visibleCharacters <= ORPHANED_LINE_CHARACTER_LIMIT
     }
 
     private fun createLayout(
@@ -582,6 +733,7 @@ private object BackgroundTranslatedImageRenderer {
         }
         val area = maxOf(1, bounds.width() * bounds.height())
         val isBold = strokePixels.toFloat() / area >= BOLD_STROKE_COVERAGE
+        val sourceLineCount = sourceText.lineSequence().count().coerceAtLeast(1)
         val baseTypeface = if (looksLikeCode(sourceText)) {
             Typeface.MONOSPACE
         } else {
@@ -595,7 +747,8 @@ private object BackgroundTranslatedImageRenderer {
                 if (isBold) Typeface.BOLD else Typeface.NORMAL
             ),
             fontSizeMultiplier = if (isBold) 1.05f else 1.12f,
-            lineSpacingMultiplier = if (isBold) 1.02f else 1.08f
+            lineSpacingMultiplier = if (isBold) 1.02f else 1.08f,
+            sourceLineCount = sourceLineCount
         )
     }
 
@@ -607,7 +760,8 @@ private object BackgroundTranslatedImageRenderer {
         isDarkBackground = isDarkBackground,
         typeface = if (looksLikeCode(sourceText)) Typeface.MONOSPACE else Typeface.SANS_SERIF,
         fontSizeMultiplier = 1.1f,
-        lineSpacingMultiplier = 1.06f
+        lineSpacingMultiplier = 1.06f,
+        sourceLineCount = sourceText.lineSequence().count().coerceAtLeast(1)
     )
 
     private fun looksLikeCode(text: String): Boolean {
@@ -641,11 +795,8 @@ private object BackgroundTranslatedImageRenderer {
     private const val DARK_BACKGROUND_LUMINANCE = 145
     private const val MINIMUM_CONTRAST_DELTA = 90
     private const val BOLD_STROKE_COVERAGE = 0.3f
+    private const val SHORT_TEXT_LIMIT = 20
+    private const val ORPHANED_LINE_CHARACTER_LIMIT = 1
     private const val OVERLAY_MINIMUM_PADDING_PX = 3
     private const val OVERLAY_MAXIMUM_PADDING_PX = 5
-    private const val OVERLAY_MINIMUM_CORNER_RADIUS_PX = 4f
-    private const val OVERLAY_CORNER_RADIUS_RATIO = 0.16f
-    private const val OVERLAY_BORDER_WIDTH_PX = 1f
-    private val LIGHT_THEME_BORDER = Color.argb(34, 0, 0, 0)
-    private val DARK_THEME_BORDER = Color.argb(64, 255, 255, 255)
 }

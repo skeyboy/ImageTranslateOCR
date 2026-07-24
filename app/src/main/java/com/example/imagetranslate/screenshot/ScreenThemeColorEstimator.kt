@@ -65,9 +65,9 @@ internal object ScreenThemeColorEstimator {
         val maximumComponent = kotlin.math.floor(alpha * 255f).toInt()
             .coerceAtLeast(minimumComponent)
         return rgb(
-            red.coerceIn(minimumComponent, maximumComponent),
-            green.coerceIn(minimumComponent, maximumComponent),
-            blue.coerceIn(minimumComponent, maximumComponent)
+            compressIntoRange(red, minimumComponent, maximumComponent),
+            compressIntoRange(green, minimumComponent, maximumComponent),
+            compressIntoRange(blue, minimumComponent, maximumComponent)
         )
     }
 
@@ -96,6 +96,10 @@ internal object ScreenThemeColorEstimator {
         ((target - (1f - alpha) * source) / alpha)
             .roundToInt()
             .coerceIn(0, 255)
+
+    private fun compressIntoRange(value: Int, minimum: Int, maximum: Int): Int =
+        (minimum + value.coerceIn(0, 255) / 255f * (maximum - minimum))
+            .roundToInt()
 
     private fun rgb(red: Int, green: Int, blue: Int): Int =
         OPAQUE_ALPHA or (red shl 16) or (green shl 8) or blue

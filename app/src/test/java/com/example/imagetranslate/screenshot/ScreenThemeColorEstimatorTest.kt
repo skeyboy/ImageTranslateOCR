@@ -40,17 +40,17 @@ class ScreenThemeColorEstimatorTest {
     }
 
     @Test
-    fun clampsALightThemeToAComponentRangeThatCanHideTheOriginalPixels() {
+    fun compressesALightThemeIntoTheCompositableRangeWithoutLosingItsHue() {
         assertEquals(
-            0xFFB7B7B7.toInt(),
+            0xFFB7AE99.toInt(),
             ScreenThemeColorEstimator.compositableSurface(0xFFFFEABB.toInt())
         )
     }
 
     @Test
-    fun clampsADarkThemeToTheSameCompositableRangeAndRetainsAvailableHue() {
+    fun compressesADarkThemeIntoTheSameRangeAndRetainsItsHue() {
         assertEquals(
-            0xFF484857.toInt(),
+            0xFF52626E.toInt(),
             ScreenThemeColorEstimator.compositableSurface(0xFF173B57.toInt())
         )
     }
