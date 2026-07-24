@@ -8,6 +8,7 @@ import android.content.pm.ServiceInfo
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Assert.assertTrue
+import org.junit.Assert.assertFalse
 import org.junit.Test
 import org.junit.runner.RunWith
 
@@ -64,7 +65,7 @@ class ScreenshotServiceManifestTest {
     }
 
     @Test
-    fun captureServiceDeclaresMediaProjectionType() {
+    fun captureServiceDeclaresOverlayAndMediaProjectionTypes() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val serviceInfo = context.packageManager.getServiceInfo(
             ComponentName(context, OneShotScreenCaptureService::class.java),
@@ -75,6 +76,23 @@ class ScreenshotServiceManifestTest {
             serviceInfo.foregroundServiceType and
                 ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION != 0
         )
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            assertTrue(
+                serviceInfo.foregroundServiceType and
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE != 0
+            )
+        }
+    }
+
+    @Test
+    fun screenCapturePermissionActivityIsInternal() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val activityInfo = context.packageManager.getActivityInfo(
+            ComponentName(context, ScreenCapturePermissionActivity::class.java),
+            PackageManager.GET_META_DATA
+        )
+
+        assertFalse(activityInfo.exported)
     }
 
     @Test

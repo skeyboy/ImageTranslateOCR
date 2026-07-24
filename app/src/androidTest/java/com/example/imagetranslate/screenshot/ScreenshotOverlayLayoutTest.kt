@@ -35,7 +35,7 @@ class ScreenshotOverlayLayoutTest {
         assertTrue(binding.btnActiveOverlayMode.isClickable)
         assertTrue(binding.btnCollapseActiveOverlay.isClickable)
         assertTrue(binding.btnExpandActiveOverlay.isClickable)
-        assertEquals("英 → 中", binding.btnActiveOverlayMode.text.toString())
+        assertEquals("中英互译", binding.btnActiveOverlayMode.text.toString())
         assertEquals("屏幕翻译", binding.tvCollapsedOverlayStatus.text.toString())
         assertEquals(View.INVISIBLE, binding.collapsedOverlayProgress.visibility)
     }

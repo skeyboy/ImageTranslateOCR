@@ -10,7 +10,6 @@ import android.content.pm.PackageManager
 import android.graphics.*
 import android.graphics.drawable.ColorDrawable
 import android.media.ExifInterface
-import android.media.projection.MediaProjectionManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -219,32 +218,12 @@ class ImageTranslateActivity : AppCompatActivity() {
         ActivityResultContracts.StartActivityForResult()
     ) {
         if (Settings.canDrawOverlays(this)) {
-            requestActiveScreenCapture()
+            showActiveScreenTranslationOverlay()
         } else {
             Toast.makeText(
                 this,
                 R.string.active_screenshot_overlay_denied,
                 Toast.LENGTH_LONG
-            ).show()
-        }
-    }
-
-    private val requestScreenCapture = registerForActivityResult(
-        ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        val resultData = result.data
-        if (result.resultCode == Activity.RESULT_OK && resultData != null) {
-            OneShotScreenCaptureService.start(this, result.resultCode, resultData)
-            Toast.makeText(
-                this,
-                R.string.active_screenshot_session_started,
-                Toast.LENGTH_LONG
-            ).show()
-        } else {
-            Toast.makeText(
-                this,
-                R.string.active_screenshot_cancelled,
-                Toast.LENGTH_SHORT
             ).show()
         }
     }
@@ -448,7 +427,7 @@ class ImageTranslateActivity : AppCompatActivity() {
 
     private fun ensureActiveCaptureOverlayPermission() {
         if (Settings.canDrawOverlays(this)) {
-            requestActiveScreenCapture()
+            showActiveScreenTranslationOverlay()
             return
         }
         requestActiveCaptureOverlayPermission.launch(
@@ -459,9 +438,13 @@ class ImageTranslateActivity : AppCompatActivity() {
         )
     }
 
-    private fun requestActiveScreenCapture() {
-        val manager = getSystemService(MediaProjectionManager::class.java)
-        requestScreenCapture.launch(manager.createScreenCaptureIntent())
+    private fun showActiveScreenTranslationOverlay() {
+        OneShotScreenCaptureService.showOverlay(this)
+        Toast.makeText(
+            this,
+            R.string.active_screenshot_session_started,
+            Toast.LENGTH_LONG
+        ).show()
     }
 
     private fun continueScreenshotMonitorSetup() {

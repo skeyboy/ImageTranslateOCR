@@ -13,6 +13,7 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
 import android.view.WindowManager
+import android.widget.PopupMenu
 import com.example.imagetranslate.R
 import com.example.imagetranslate.databinding.OverlayActiveScreenCaptureBinding
 import com.example.imagetranslate.translate.TranslationMode
@@ -47,7 +48,7 @@ internal class ActiveScreenCaptureOverlayController(
     private var translationParams: WindowManager.LayoutParams? = null
     private var expandedX = edgeMargin
     private var expandedY = edgeMargin
-    private var translationMode = TranslationMode.ENGLISH_TO_CHINESE
+    private var translationMode = TranslationMode.AUTO_BIDIRECTIONAL
     private var sessionActive = false
     private var processing = false
     private var collapsed = false
@@ -64,12 +65,7 @@ internal class ActiveScreenCaptureOverlayController(
             showReadyNow()
         }
         binding.btnActiveOverlayMode.setOnClickListener {
-            translationMode = when (translationMode) {
-                TranslationMode.ENGLISH_TO_CHINESE -> TranslationMode.CHINESE_TO_ENGLISH
-                else -> TranslationMode.ENGLISH_TO_CHINESE
-            }
-            updateModeLabel()
-            listener.onTranslationModeChanged(translationMode)
+            showTranslationModeMenu()
         }
         binding.btnCollapseActiveOverlay.setOnClickListener { collapseNow() }
         binding.btnExpandActiveOverlay.setOnClickListener { expandNow() }
@@ -277,12 +273,61 @@ internal class ActiveScreenCaptureOverlayController(
 
     private fun updateModeLabel() {
         binding.btnActiveOverlayMode.setText(
-            if (translationMode == TranslationMode.ENGLISH_TO_CHINESE) {
-                R.string.active_screenshot_mode_english_chinese
-            } else {
-                R.string.active_screenshot_mode_chinese_english
+            when (translationMode) {
+                TranslationMode.AUTO_BIDIRECTIONAL ->
+                    R.string.active_screenshot_mode_bidirectional
+                TranslationMode.ENGLISH_TO_CHINESE ->
+                    R.string.active_screenshot_mode_english_chinese
+                TranslationMode.CHINESE_TO_ENGLISH ->
+                    R.string.active_screenshot_mode_chinese_english
             }
         )
+    }
+
+    private fun showTranslationModeMenu() {
+        PopupMenu(themedContext, binding.btnActiveOverlayMode).apply {
+            menu.add(
+                MODE_MENU_GROUP,
+                MODE_MENU_BIDIRECTIONAL,
+                0,
+                R.string.active_screenshot_mode_bidirectional
+            )
+            menu.add(
+                MODE_MENU_GROUP,
+                MODE_MENU_ENGLISH_CHINESE,
+                1,
+                R.string.active_screenshot_mode_english_chinese
+            )
+            menu.add(
+                MODE_MENU_GROUP,
+                MODE_MENU_CHINESE_ENGLISH,
+                2,
+                R.string.active_screenshot_mode_chinese_english
+            )
+            menu.setGroupCheckable(MODE_MENU_GROUP, true, true)
+            menu.findItem(
+                when (translationMode) {
+                    TranslationMode.AUTO_BIDIRECTIONAL -> MODE_MENU_BIDIRECTIONAL
+                    TranslationMode.ENGLISH_TO_CHINESE -> MODE_MENU_ENGLISH_CHINESE
+                    TranslationMode.CHINESE_TO_ENGLISH -> MODE_MENU_CHINESE_ENGLISH
+                }
+            ).isChecked = true
+            setOnMenuItemClickListener { item ->
+                val selectedMode = when (item.itemId) {
+                    MODE_MENU_BIDIRECTIONAL -> TranslationMode.AUTO_BIDIRECTIONAL
+                    MODE_MENU_ENGLISH_CHINESE -> TranslationMode.ENGLISH_TO_CHINESE
+                    MODE_MENU_CHINESE_ENGLISH -> TranslationMode.CHINESE_TO_ENGLISH
+                    else -> return@setOnMenuItemClickListener false
+                }
+                if (selectedMode != translationMode) {
+                    translationMode = selectedMode
+                    updateModeLabel()
+                    listener.onTranslationModeChanged(selectedMode)
+                }
+                true
+            }
+            show()
+        }
     }
 
     private fun updateCompactStatus(textRes: Int, showProgress: Boolean) {
@@ -391,5 +436,9 @@ internal class ActiveScreenCaptureOverlayController(
         const val AUTO_COLLAPSE_DELAY_MS = 3_500L
         const val EXPANDED_BOTTOM_MARGIN_DP = 44
         const val COMPACT_BOTTOM_MARGIN_DP = 36
+        const val MODE_MENU_GROUP = 1
+        const val MODE_MENU_BIDIRECTIONAL = 101
+        const val MODE_MENU_ENGLISH_CHINESE = 102
+        const val MODE_MENU_CHINESE_ENGLISH = 103
     }
 }

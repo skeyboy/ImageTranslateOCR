@@ -61,10 +61,11 @@ class OneShotScreenCaptureService : Service() {
     private var timeoutJob: Job? = null
     private var processingJob: Job? = null
     private val translationMutex = Mutex()
+    private var foregroundServiceTypes = 0
     @Volatile
     private var expandControlsForCapture = true
     @Volatile
-    private var translationMode = TranslationMode.ENGLISH_TO_CHINESE
+    private var translationMode = TranslationMode.AUTO_BIDIRECTIONAL
     private val liveProcessorDelegate = lazy {
         BackgroundTranslatedImageProcessor(reuseResources = true)
     }
@@ -83,8 +84,7 @@ class OneShotScreenCaptureService : Service() {
             this,
             object : ActiveScreenCaptureOverlayController.Listener {
                 override fun onCapture() {
-                    continuousTranslationEnabled.set(true)
-                    requestScreenshot(expandControls = true)
+                    beginCaptureFromUser()
                 }
 
                 override fun onStop() {
@@ -110,9 +110,12 @@ class OneShotScreenCaptureService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
+            ACTION_SHOW_OVERLAY -> {
+                startOverlayOnly()
+                return START_NOT_STICKY
+            }
             ACTION_TAKE_SCREENSHOT -> {
-                continuousTranslationEnabled.set(true)
-                requestScreenshot(expandControls = true)
+                beginCaptureFromUser()
                 return START_NOT_STICKY
             }
             ACTION_STOP_SESSION -> {
@@ -135,11 +138,9 @@ class OneShotScreenCaptureService : Service() {
         }
 
         createNotificationChannels()
-        ServiceCompat.startForeground(
-            this,
-            NOTIFICATION_ID,
-            buildSessionNotification(capturing = false),
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        startSessionForeground(
+            capturing = false,
+            requestedType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
             } else {
                 0
@@ -158,7 +159,10 @@ class OneShotScreenCaptureService : Service() {
             return START_NOT_STICKY
         }
 
-        startCaptureSession(resultData)
+        startCaptureSession(
+            resultData = resultData,
+            startImmediately = intent.getBooleanExtra(EXTRA_START_IMMEDIATELY, false)
+        )
         return START_NOT_STICKY
     }
 
@@ -176,7 +180,39 @@ class OneShotScreenCaptureService : Service() {
         super.onDestroy()
     }
 
-    private fun startCaptureSession(resultData: Intent) {
+    private fun startOverlayOnly() {
+        createNotificationChannels()
+        startSessionForeground(
+            capturing = false,
+            requestedType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
+            } else {
+                0
+            }
+        )
+        overlayController.showCompact()
+    }
+
+    private fun startSessionForeground(capturing: Boolean, requestedType: Int) {
+        foregroundServiceTypes = foregroundServiceTypes or requestedType
+        ServiceCompat.startForeground(
+            this,
+            NOTIFICATION_ID,
+            buildSessionNotification(capturing),
+            foregroundServiceTypes
+        )
+    }
+
+    private fun beginCaptureFromUser() {
+        if (projection == null) {
+            ScreenCapturePermissionActivity.request(this)
+            return
+        }
+        continuousTranslationEnabled.set(true)
+        requestScreenshot(expandControls = true)
+    }
+
+    private fun startCaptureSession(resultData: Intent, startImmediately: Boolean) {
         runCatching {
             val thread = HandlerThread("screen-capture-session").apply { start() }
             captureThread = thread
@@ -209,6 +245,10 @@ class OneShotScreenCaptureService : Service() {
                 handler
             )
             overlayController.showCompact()
+            if (startImmediately) {
+                continuousTranslationEnabled.set(true)
+                requestScreenshot(expandControls = true)
+            }
         }.onFailure(::failSession)
     }
 
@@ -541,7 +581,10 @@ class OneShotScreenCaptureService : Service() {
     }
 
     private fun buildSessionNotification(capturing: Boolean) =
-        ScreenCaptureSessionNotificationFactory(this, CHANNEL_ID).build(capturing)
+        ScreenCaptureSessionNotificationFactory(this, CHANNEL_ID).build(
+            capturing = capturing,
+            projectionActive = projection != null
+        )
 
     private fun createNotificationChannels() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
@@ -565,6 +608,8 @@ class OneShotScreenCaptureService : Service() {
     }
 
     companion object {
+        const val ACTION_SHOW_OVERLAY =
+            "com.example.imagetranslate.screenshot.SHOW_TRANSLATION_OVERLAY"
         const val ACTION_START_SESSION =
             "com.example.imagetranslate.screenshot.START_CAPTURE_SESSION"
         const val ACTION_TAKE_SCREENSHOT =
@@ -575,6 +620,7 @@ class OneShotScreenCaptureService : Service() {
             "com.example.imagetranslate.screenshot.CAPTURE_FAILED"
         private const val EXTRA_RESULT_CODE = "result_code"
         private const val EXTRA_RESULT_DATA = "result_data"
+        private const val EXTRA_START_IMMEDIATELY = "start_immediately"
         private const val CHANNEL_ID = "active_screen_capture_controls_v2"
         private const val RESULT_CHANNEL_ID = "active_screen_capture_result"
         private const val NOTIFICATION_ID = 2401
@@ -591,11 +637,24 @@ class OneShotScreenCaptureService : Service() {
         private const val SIGNATURE_BOTTOM_RATIO = 0.88f
         private const val TAG = "ScreenCaptureSession"
 
-        fun start(context: android.content.Context, resultCode: Int, resultData: Intent) {
+        fun showOverlay(context: android.content.Context) {
+            val serviceIntent = Intent(context, OneShotScreenCaptureService::class.java).apply {
+                action = ACTION_SHOW_OVERLAY
+            }
+            ContextCompat.startForegroundService(context, serviceIntent)
+        }
+
+        fun start(
+            context: android.content.Context,
+            resultCode: Int,
+            resultData: Intent,
+            startImmediately: Boolean = false
+        ) {
             val serviceIntent = Intent(context, OneShotScreenCaptureService::class.java).apply {
                 action = ACTION_START_SESSION
                 putExtra(EXTRA_RESULT_CODE, resultCode)
                 putExtra(EXTRA_RESULT_DATA, resultData)
+                putExtra(EXTRA_START_IMMEDIATELY, startImmediately)
             }
             ContextCompat.startForegroundService(context, serviceIntent)
         }

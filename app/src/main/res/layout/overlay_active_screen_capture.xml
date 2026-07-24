@@ -45,7 +45,7 @@
                 android:minWidth="0dp"
                 android:paddingStart="4dp"
                 android:paddingEnd="4dp"
-                android:text="@string/active_screenshot_mode_english_chinese"
+                android:text="@string/active_screenshot_mode_bidirectional"
                 android:textAllCaps="false"
                 android:textColor="#FFFFFF"
                 android:textSize="12sp" />

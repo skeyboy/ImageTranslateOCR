@@ -45,6 +45,14 @@ private data class BackgroundTranslationBatch(
     val failedCount: Int
 )
 
+private data class BackgroundTextStyle(
+    val foregroundColor: Int,
+    val isDarkBackground: Boolean,
+    val typeface: Typeface,
+    val fontSizeMultiplier: Float,
+    val lineSpacingMultiplier: Float
+)
+
 internal class BackgroundTranslatedImageProcessor(
     private val reuseResources: Boolean = false
 ) {
@@ -87,7 +95,8 @@ internal class BackgroundTranslatedImageProcessor(
             try {
                 val renderedRegions = BackgroundTranslatedImageRenderer.render(
                     output,
-                    batch.regions.filter { it.source.bounds in erasedBounds }
+                    batch.regions.filter { it.source.bounds in erasedBounds },
+                    styleSourceBitmap = bitmap
                 )
                 BackgroundTranslatedImageResult(
                     bitmap = output,
@@ -229,7 +238,8 @@ internal class BackgroundTranslatedImageProcessor(
                 )
                 val rendered = BackgroundTranslatedImageRenderer.render(
                     patchBitmap,
-                    listOf(localRegion)
+                    listOf(localRegion),
+                    styleSourceBitmap = crop
                 )
                 if (rendered.isEmpty()) {
                     patchBitmap.recycle()
@@ -267,26 +277,45 @@ private fun Rect.clampedTo(bitmap: Bitmap): Rect? {
 }
 
 private object BackgroundTranslatedImageRenderer {
-    fun render(bitmap: Bitmap, regions: List<BackgroundImageRegion>): List<Rect> {
+    fun render(
+        bitmap: Bitmap,
+        regions: List<BackgroundImageRegion>,
+        styleSourceBitmap: Bitmap = bitmap
+    ): List<Rect> {
         val canvas = Canvas(bitmap)
         val renderedRegions = mutableListOf<Rect>()
         regions.forEach { region ->
             val bounds = region.source.bounds.clampedTo(bitmap) ?: return@forEach
-            val paint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
-                color = readableTextColor(bitmap, bounds)
-                typeface = Typeface.DEFAULT
+            val style = estimateTextStyle(
+                styleSourceBitmap,
+                bounds,
+                region.source.text
+            )
+            val isControlLabel = style.isDarkBackground &&
+                region.source.text.filterNot(Char::isWhitespace).length <= 20
+            val horizontalPadding = if (isControlLabel) 0 else maxOf(2, bounds.height() / 8)
+            val layoutWidth = (bounds.width() - horizontalPadding * 2).coerceAtLeast(1)
+            val alignment = if (isControlLabel) {
+                Layout.Alignment.ALIGN_CENTER
+            } else {
+                Layout.Alignment.ALIGN_NORMAL
             }
-            val layoutWidth = bounds.width().coerceAtLeast(1)
+            val paint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = style.foregroundColor
+                typeface = style.typeface
+            }
             val layout = fittingLayout(
                 region.translation,
                 paint,
                 layoutWidth,
-                bounds.height().coerceAtLeast(1)
+                bounds.height().coerceAtLeast(1),
+                alignment,
+                style
             )
             canvas.save()
             canvas.clipRect(bounds)
             canvas.translate(
-                bounds.left.toFloat(),
+                bounds.left + horizontalPadding.toFloat(),
                 bounds.top + ((bounds.height() - layout.height) / 2f).coerceAtLeast(0f)
             )
             layout.draw(canvas)
@@ -300,14 +329,30 @@ private object BackgroundTranslatedImageRenderer {
         text: String,
         paint: TextPaint,
         width: Int,
-        height: Int
+        height: Int,
+        alignment: Layout.Alignment,
+        style: BackgroundTextStyle
     ): StaticLayout {
-        var low = MINIMUM_TEXT_SIZE_PX
-        var high = height.toFloat().coerceAtLeast(low)
-        var best = createLayout(text, paint, width, low)
+        var low = maxOf(MINIMUM_TEXT_SIZE_PX, height * MINIMUM_FONT_HEIGHT_RATIO)
+        var high = maxOf(low, height * style.fontSizeMultiplier)
+        var best = createLayout(
+            text,
+            paint,
+            width,
+            low,
+            alignment,
+            style.lineSpacingMultiplier
+        )
         repeat(8) {
             val size = (low + high) / 2f
-            val candidate = createLayout(text, paint, width, size)
+            val candidate = createLayout(
+                text,
+                paint,
+                width,
+                size,
+                alignment,
+                style.lineSpacingMultiplier
+            )
             if (candidate.height <= height) {
                 low = size
                 best = candidate
@@ -322,39 +367,166 @@ private object BackgroundTranslatedImageRenderer {
         text: String,
         paint: TextPaint,
         width: Int,
-        textSize: Float
+        textSize: Float,
+        alignment: Layout.Alignment,
+        lineSpacingMultiplier: Float
     ): StaticLayout {
         paint.textSize = textSize
         return StaticLayout.Builder.obtain(text, 0, text.length, paint, width)
-            .setAlignment(Layout.Alignment.ALIGN_CENTER)
+            .setAlignment(alignment)
             .setIncludePad(false)
-            .setLineSpacing(0f, 1f)
+            .setLineSpacing(0f, lineSpacingMultiplier)
             .build()
     }
 
-    private fun readableTextColor(bitmap: Bitmap, bounds: Rect): Int {
-        val stepX = (bounds.width() / SAMPLE_GRID_SIZE).coerceAtLeast(1)
-        val stepY = (bounds.height() / SAMPLE_GRID_SIZE).coerceAtLeast(1)
-        var luminanceSum = 0.0
-        var sampleCount = 0
-        var y = bounds.top
-        while (y < bounds.bottom) {
-            var x = bounds.left
-            while (x < bounds.right) {
+    private fun estimateTextStyle(
+        bitmap: Bitmap,
+        sourceBounds: Rect,
+        sourceText: String
+    ): BackgroundTextStyle {
+        val bounds = sourceBounds.clampedTo(bitmap)
+            ?: return defaultStyle(isDarkBackground = false, sourceText = sourceText)
+        val padding = maxOf(3, bounds.height() / 3)
+        val outer = Rect(
+            (bounds.left - padding).coerceAtLeast(0),
+            (bounds.top - padding).coerceAtLeast(0),
+            (bounds.right + padding).coerceAtMost(bitmap.width),
+            (bounds.bottom + padding).coerceAtMost(bitmap.height)
+        )
+        var backgroundRed = 0L
+        var backgroundGreen = 0L
+        var backgroundBlue = 0L
+        var backgroundSamples = 0
+        for (y in outer.top until outer.bottom) {
+            for (x in outer.left until outer.right) {
+                if (x in bounds.left until bounds.right && y in bounds.top until bounds.bottom) {
+                    continue
+                }
                 val color = bitmap.getPixel(x, y)
-                luminanceSum += 0.2126 * Color.red(color) +
-                    0.7152 * Color.green(color) +
-                    0.0722 * Color.blue(color)
-                sampleCount++
-                x += stepX
+                backgroundRed += Color.red(color)
+                backgroundGreen += Color.green(color)
+                backgroundBlue += Color.blue(color)
+                backgroundSamples++
             }
-            y += stepY
         }
-        val average = if (sampleCount == 0) 255.0 else luminanceSum / sampleCount
-        return if (average >= LIGHT_BACKGROUND_THRESHOLD) Color.rgb(24, 24, 24) else Color.WHITE
+        if (backgroundSamples == 0) {
+            return defaultStyle(isDarkBackground = false, sourceText = sourceText)
+        }
+        val red = (backgroundRed / backgroundSamples).toInt()
+        val green = (backgroundGreen / backgroundSamples).toInt()
+        val blue = (backgroundBlue / backgroundSamples).toInt()
+        val backgroundLuminance = luminance(red, green, blue)
+
+        var maximumDistance = 0
+        for (y in bounds.top until bounds.bottom) {
+            for (x in bounds.left until bounds.right) {
+                val color = bitmap.getPixel(x, y)
+                maximumDistance = maxOf(
+                    maximumDistance,
+                    colorDistanceSquared(color, red, green, blue)
+                )
+            }
+        }
+        val foregroundThreshold = maxOf(1_600, (maximumDistance * 0.45f).toInt())
+        val strokeThreshold = maxOf(900, (maximumDistance * 0.12f).toInt())
+        var foregroundRed = 0L
+        var foregroundGreen = 0L
+        var foregroundBlue = 0L
+        var foregroundSamples = 0
+        var strokePixels = 0
+        for (y in bounds.top until bounds.bottom) {
+            for (x in bounds.left until bounds.right) {
+                val color = bitmap.getPixel(x, y)
+                val distance = colorDistanceSquared(color, red, green, blue)
+                if (distance >= strokeThreshold) strokePixels++
+                if (distance >= foregroundThreshold) {
+                    foregroundRed += Color.red(color)
+                    foregroundGreen += Color.green(color)
+                    foregroundBlue += Color.blue(color)
+                    foregroundSamples++
+                }
+            }
+        }
+        val estimatedForeground = if (foregroundSamples == 0) {
+            if (backgroundLuminance < DARK_BACKGROUND_LUMINANCE) Color.WHITE else Color.BLACK
+        } else {
+            Color.rgb(
+                (foregroundRed / foregroundSamples).toInt(),
+                (foregroundGreen / foregroundSamples).toInt(),
+                (foregroundBlue / foregroundSamples).toInt()
+            )
+        }
+        val foregroundLuminance = luminance(
+            Color.red(estimatedForeground),
+            Color.green(estimatedForeground),
+            Color.blue(estimatedForeground)
+        )
+        val foreground = if (
+            kotlin.math.abs(foregroundLuminance - backgroundLuminance) < MINIMUM_CONTRAST_DELTA
+        ) {
+            if (backgroundLuminance < DARK_BACKGROUND_LUMINANCE) Color.WHITE else Color.BLACK
+        } else {
+            estimatedForeground
+        }
+        val area = maxOf(1, bounds.width() * bounds.height())
+        val isBold = strokePixels.toFloat() / area >= BOLD_STROKE_COVERAGE
+        val baseTypeface = if (looksLikeCode(sourceText)) {
+            Typeface.MONOSPACE
+        } else {
+            Typeface.SANS_SERIF
+        }
+        return BackgroundTextStyle(
+            foregroundColor = foreground,
+            isDarkBackground = backgroundLuminance < DARK_BACKGROUND_LUMINANCE,
+            typeface = Typeface.create(
+                baseTypeface,
+                if (isBold) Typeface.BOLD else Typeface.NORMAL
+            ),
+            fontSizeMultiplier = if (isBold) 1.05f else 1.12f,
+            lineSpacingMultiplier = if (isBold) 1.02f else 1.08f
+        )
     }
 
+    private fun defaultStyle(
+        isDarkBackground: Boolean,
+        sourceText: String
+    ) = BackgroundTextStyle(
+        foregroundColor = if (isDarkBackground) Color.WHITE else Color.BLACK,
+        isDarkBackground = isDarkBackground,
+        typeface = if (looksLikeCode(sourceText)) Typeface.MONOSPACE else Typeface.SANS_SERIF,
+        fontSizeMultiplier = 1.1f,
+        lineSpacingMultiplier = 1.06f
+    )
+
+    private fun looksLikeCode(text: String): Boolean {
+        val compact = text.filterNot(Char::isWhitespace)
+        if (compact.isEmpty() || compact.any(::isHanCharacter)) return false
+        val hasAsciiContent = compact.any { it.isLetterOrDigit() }
+        return hasAsciiContent && (
+            text.contains('_') || text.contains("://") ||
+                (compact.length >= 4 && compact.all {
+                    it.isLetterOrDigit() || it in charArrayOf('.', '/', '-', ':')
+                })
+            )
+    }
+
+    private fun isHanCharacter(character: Char): Boolean =
+        Character.UnicodeScript.of(character.code) == Character.UnicodeScript.HAN
+
+    private fun colorDistanceSquared(color: Int, red: Int, green: Int, blue: Int): Int {
+        val redDifference = Color.red(color) - red
+        val greenDifference = Color.green(color) - green
+        val blueDifference = Color.blue(color) - blue
+        return redDifference * redDifference + greenDifference * greenDifference +
+            blueDifference * blueDifference
+    }
+
+    private fun luminance(red: Int, green: Int, blue: Int): Int =
+        (red * 299 + green * 587 + blue * 114) / 1_000
+
     private const val MINIMUM_TEXT_SIZE_PX = 8f
-    private const val SAMPLE_GRID_SIZE = 6
-    private const val LIGHT_BACKGROUND_THRESHOLD = 150.0
+    private const val MINIMUM_FONT_HEIGHT_RATIO = 0.62f
+    private const val DARK_BACKGROUND_LUMINANCE = 145
+    private const val MINIMUM_CONTRAST_DELTA = 90
+    private const val BOLD_STROKE_COVERAGE = 0.3f
 }

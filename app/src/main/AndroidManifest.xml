@@ -40,7 +40,11 @@
         <service
             android:name=".screenshot.OneShotScreenCaptureService"
             android:exported="false"
-            android:foregroundServiceType="mediaProjection" />
+            android:foregroundServiceType="mediaProjection|specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Shows a user-controlled OCR entry overlay before screen capture is requested" />
+        </service>
 
         <receiver
             android:name=".screenshot.ScreenshotMonitorBootReceiver"
@@ -51,6 +55,13 @@
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
             </intent-filter>
         </receiver>
+
+        <activity
+            android:name=".screenshot.ScreenCapturePermissionActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:launchMode="singleTop"
+            android:theme="@style/Theme.ImageTranslate.ScreenCapturePermission" />
 
         <activity
             android:name=".ui.ImageTranslateActivity"

@@ -11,16 +11,17 @@ internal class ScreenCaptureSessionNotificationFactory(
     private val context: Context,
     private val channelId: String
 ) {
-    fun build(capturing: Boolean): Notification {
+    fun build(capturing: Boolean, projectionActive: Boolean = false): Notification {
         val builder = NotificationCompat.Builder(context, channelId)
             .setSmallIcon(R.drawable.ic_screenshot)
             .setContentTitle(context.getString(R.string.active_screenshot_notification_title))
             .setContentText(
                 context.getString(
-                    if (capturing) {
-                        R.string.active_screenshot_notification_capturing
-                    } else {
-                        R.string.active_screenshot_notification_text
+                    when {
+                        capturing -> R.string.active_screenshot_notification_capturing
+                        projectionActive ->
+                            R.string.active_screenshot_notification_projection_active
+                        else -> R.string.active_screenshot_notification_text
                     }
                 )
             )
