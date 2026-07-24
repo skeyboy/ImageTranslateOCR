@@ -13,4 +13,5 @@
     <color name="on_surface_variant">#62666F</color>
     <color name="outline">#B6BAC3</color>
     <color name="outline_variant">#E1E3E8</color>
+    <color name="screenshot_preview_background">#EEF0F4</color>
 </resources>

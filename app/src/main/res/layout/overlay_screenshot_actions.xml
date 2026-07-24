@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/overlayCard"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:clipToPadding="false"
+    android:elevation="12dp"
+    app:cardBackgroundColor="?attr/colorSurface"
+    app:cardCornerRadius="8dp"
+    app:cardElevation="8dp"
+    app:strokeColor="?attr/colorOutlineVariant"
+    app:strokeWidth="1dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <LinearLayout
+            android:id="@+id/dragHandle"
+            android:layout_width="match_parent"
+            android:layout_height="44dp"
+            android:background="?attr/selectableItemBackground"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="14dp"
+            android:paddingEnd="4dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:fontFamily="sans-serif-medium"
+                android:letterSpacing="0"
+                android:text="@string/screenshot_overlay_title"
+                android:textColor="?attr/colorOnSurface"
+                android:textSize="15sp" />
+
+            <ImageButton
+                android:id="@+id/btnOverlayDismiss"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/screenshot_overlay_ignore"
+                android:padding="10dp"
+                android:src="@drawable/ic_overlay_close" />
+        </LinearLayout>
+
+        <FrameLayout
+            android:id="@+id/screenshotPreviewContainer"
+            android:layout_width="match_parent"
+            android:layout_height="224dp"
+            android:background="@color/screenshot_preview_background">
+
+            <ImageView
+                android:id="@+id/ivScreenshotPreview"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:contentDescription="@string/screenshot_overlay_preview"
+                android:padding="6dp"
+                android:scaleType="fitCenter" />
+
+            <LinearLayout
+                android:id="@+id/screenshotPreviewLoading"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:gravity="center"
+                android:orientation="vertical">
+
+                <ProgressBar
+                    style="?android:attr/progressBarStyleSmall"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:indeterminateTint="?attr/colorPrimary" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:letterSpacing="0"
+                    android:text="@string/screenshot_overlay_loading_preview"
+                    android:textColor="?attr/colorOnSurfaceVariant"
+                    android:textSize="12sp" />
+            </LinearLayout>
+        </FrameLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="38dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp">
+
+            <ProgressBar
+                android:id="@+id/overlayProgress"
+                style="?android:attr/progressBarStyleSmall"
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:layout_marginEnd="8dp"
+                android:indeterminateTint="?attr/colorPrimary"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/tvOverlayStatus"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:letterSpacing="0"
+                android:maxLines="2"
+                android:text="@string/screenshot_overlay_waiting"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/switchOverlayAutoTranslate"
+            android:layout_width="match_parent"
+            android:layout_height="44dp"
+            android:paddingStart="14dp"
+            android:paddingEnd="10dp"
+            android:text="@string/screenshot_overlay_auto_translate"
+            android:textColor="?attr/colorOnSurface"
+            android:textSize="14sp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnOverlayTranslate"
+            style="@style/Widget.ImageTranslate.Button.Primary"
+            android:layout_width="match_parent"
+            android:layout_height="44dp"
+            android:layout_marginStart="12dp"
+            android:layout_marginTop="2dp"
+            android:layout_marginEnd="12dp"
+            android:text="@string/screenshot_action_translate"
+            app:icon="@drawable/ic_translate"
+            app:iconGravity="textStart"
+            app:iconPadding="7dp"
+            app:iconSize="18dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:layout_marginTop="6dp"
+            android:layout_marginEnd="12dp"
+            android:layout_marginBottom="12dp"
+            android:orientation="horizontal">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnOverlayView"
+                style="@style/Widget.ImageTranslate.Button.Outlined"
+                android:layout_width="0dp"
+                android:layout_height="44dp"
+                android:layout_marginEnd="4dp"
+                android:layout_weight="1"
+                android:paddingStart="6dp"
+                android:paddingEnd="6dp"
+                android:text="@string/screenshot_action_translate_and_view"
+                android:textSize="12sp"
+                app:icon="@drawable/ic_image_placeholder"
+                app:iconGravity="textStart"
+                app:iconPadding="4dp"
+                app:iconSize="17dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnOverlaySave"
+                style="@style/Widget.ImageTranslate.Button.Outlined"
+                android:layout_width="0dp"
+                android:layout_height="44dp"
+                android:layout_marginStart="4dp"
+                android:layout_weight="1"
+                android:paddingStart="6dp"
+                android:paddingEnd="6dp"
+                android:text="@string/screenshot_action_translate_and_save"
+                android:textSize="12sp"
+                app:icon="@drawable/ic_save"
+                app:iconGravity="textStart"
+                app:iconPadding="4dp"
+                app:iconSize="17dp" />
+        </LinearLayout>
+    </LinearLayout>
+</com.google.android.material.card.MaterialCardView>

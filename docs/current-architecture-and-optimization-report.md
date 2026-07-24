@@ -457,6 +457,10 @@ flowchart LR
 
 ### 10.1 当前交互
 
+- 相册、拍照或主动截屏取得图片后，主操作为一次点击“识别并翻译”；OCR 完成后默认连续进入翻译、擦除和重绘，不再要求日常用户重复确认。需要编辑或排除 OCR 候选时，可在高级设置中开启“翻译前复核识别文字”。
+- 后台截图监听使用标准开关表达启停状态，权限或披露流程取消时开关会回退，避免界面状态与服务状态不一致。
+- 自动语言方向、精确遮罩和标号显示收纳在可展开的“翻译设置”中，并保留上次展开状态，默认给图片预览留出更多空间。
+- 处理完成后页面自动滚动到翻译结果；保存期间按钮显示进度并防止重复提交。
 - 审核页标号对应 OCR 候选，可查看识别文本、识别来源和共识信息。
 - 用户可修改 OCR 文本或排除错误候选。
 - 结果页红色标号表示已绘制译文，绿色标号表示显示原文或未参与替换。
@@ -969,3 +973,202 @@ PaddleOCR 官方项目当前宣称支持 100+ 语言，并提供基于 Paddle Li
 5. 用固定黄金样本和量化指标验证每次调校，所有结果绑定 Git 提交记录。
 
 按照 P0、P1、P2 顺序推进，可以先解决当前最影响可信度的过度擦除、重叠还原和漏识别，再逐步改善语义与视觉一致性，同时控制性能和包体积。
+
+## 20. 新截图监听与主动截屏翻译方案
+
+### 20.1 需求定义与能力边界
+
+本阶段包含两条相互独立的入口。监听入口观察用户通过系统按键、快捷手势或系统截图按钮生成的新截图照片；主动入口由用户在应用中点击“截屏并翻译”，经过系统授权后建立一个由用户显式控制的 `MediaProjection` 会话。会话通过常驻通知提供“截图”和“结束”操作，每次点击“截图”只保存当前一帧。两条入口取得图片 URI 后均直接交给 `ImageTranslateActivity`，先显示到“原始图片”，再自动执行 OCR、翻译、背景修复、译文重绘和区域打标。
+
+普通第三方应用不能在系统截图落盘前拦截、替换或读取系统截图进程中的原始位图。Android 14 的截图检测 API 只会通知当前可见 Activity 发生了硬件按键截图，不提供图片内容，且不能覆盖应用位于后台时的全局截图。因此，“监听截图”在公开 API 下应定义为监听截图保存后的 `MediaStore` 变化，而不是拦截系统截图动作。
+
+后台监听使用用户明确开启、带常驻通知的前台服务。“检测到截图时显示悬浮窗”默认关闭：关闭时服务使用显式 Intent 把 URI 直接交给 `ImageTranslateActivity`，厂商拒绝后台启动时只保留通知；开启时命中截图后直接显示悬浮窗，不抢占当前应用焦点。
+
+主动截屏不是静默截图。系统会在每次投屏会话前显示授权界面；Android 14 及以上的授权令牌只能用于一次 `VirtualDisplay`。用户可以选择共享单个应用或整个屏幕，应用不能自动确认、缓存或重复使用授权，也不能读取使用 `FLAG_SECURE` 的受保护窗口。
+
+### 20.2 方案比较与决策
+
+| 方案 | 能取得图片 | 后台覆盖范围 | 主要限制 | 决策 |
+| --- | --- | --- | --- | --- |
+| `MediaStore` + `ContentObserver` | 是，截图保存完成后读取 URI | 前台服务存活期间可监听媒体库变化 | Android 13+ 需要完整图片访问权限；依赖厂商截图目录和文件名 | Android MVP 主方案 |
+| Android 14 截图检测 API | 否，只回调事件 | 仅当前可见 Activity | 只支持硬件按键截图，不返回位图，ADB 和测试截图不触发 | 可选埋点，不作为输入 |
+| 会话式 `MediaProjection` | 是，授权会话中按通知操作读取当前帧 | 用户选择的应用或整个屏幕 | 每次会话必须授权；会话期间有系统提示和常驻通知；受保护窗口返回空白 | 用于主动截屏入口 |
+| 无障碍服务截图 | 是 | 启用服务后可按需捕获 | 不监听系统截图生成；能力与 Play 合规成本不匹配 | 不采用 |
+| 文件系统目录监听 | 部分旧系统可行 | 依赖真实文件路径 | 分区存储后不稳定，厂商目录差异大 | 不采用 |
+| root、ADB、隐藏 API | 可能 | 不通用 | 不可上架、不可移植且有安全风险 | 禁止 |
+
+### 20.3 用户流程与数据流
+
+```mermaid
+sequenceDiagram
+    actor User as 用户
+    participant System as Android 系统截图
+    participant Store as MediaStore
+    participant Monitor as ScreenshotMonitorService
+    participant App as ImageTranslateActivity
+    participant Render as 完整图片翻译管线
+    participant Fallback as 悬浮窗/通知降级
+
+    User->>App: 开启截图监听
+    App->>User: 说明监听范围并请求图片、通知权限
+    App->>Monitor: 启动前台监听服务
+    User->>System: 使用系统截图操作
+    System->>Store: 写入截图图片
+    Store-->>Monitor: ContentObserver 变更回调
+    Monitor->>Monitor: 立即查询元数据、路径判定与 URI 去重
+    Monitor->>Store: 若 IS_PENDING=1，以 120ms 有限重试
+    alt 图片已经发布
+        Monitor->>App: 显式传递 URI 与立即翻译 Action
+        App->>Store: 重新读取 content URI
+        App-->>User: 在“原始图片”显示截图
+        App->>Render: OCR、翻译、背景修复、译文重绘
+        Render-->>User: 显示完整翻译图片和区域标记
+    else 界面启动异常
+        Monitor-->>Fallback: 显示预览与持久操作入口
+    end
+```
+
+主动截屏流程为：`应用入口 -> 系统投屏授权 -> 常驻通知 -> 点击“截图” -> 等待通知面板退场 -> 读取当前帧 -> 保存 PNG -> 载入 App 原始图片 -> 自动翻译与打标`。投影会话内始终只持有一个 `VirtualDisplay`，符合 Android 14 令牌单次创建限制；每次通知操作只消费并保存一帧，不重复创建投影。点击“结束”、系统终止投屏、锁屏或进程被回收时立即释放 `VirtualDisplay`、`ImageReader` 和 `MediaProjection`。
+
+为了避免截入应用自身控件，点击“截图”后先关闭上一张截图的悬浮窗，并预留 500ms 让通知面板收起，再接受下一张有效画面。主动截图完成后通过同包显式 Service Action 直接交给 `ScreenshotMonitorService` 的结果处理入口，不等待 `ContentObserver`；文件仍使用 `ImageTranslate_capture_` 前缀，使媒体监听策略跳过它，防止同一图片被重复处理。显式 Action 与通知后台操作使用同一服务边界，在监听服务已运行和仅由主动投影会话临时启动两种状态下都可用。
+
+监听端只使用 `content://` URI，不复制或修改原截图。MediaStore 回调后首次查询不增加固定等待；若图片仍处于 `IS_PENDING`，按 120ms 间隔有限重试。图片发布后立即将 URI 交给主界面，主界面先完成解码和原图展示，再串行进入 OCR、翻译、OpenCV 修复、译文重绘与区域标记。旧的后台摘要和悬浮窗操作链仍保留为直达失败时的兼容降级路径，不再作为默认流程。
+
+悬浮窗使用 `TYPE_APPLICATION_OVERLAY`，初始位置为状态栏下方左上角 12dp 安全边距，宽度上限 336dp；纵向预览区从 148dp 提升到 224dp，使截图成为第一视觉层级，横屏时为避免操作区越界降为 96dp。窗口设置为不可获取键盘焦点且不拦截外部触摸，标题栏可直接拖动并限制在屏幕可见范围内。载入期间禁用依赖图片的操作，缩略图就绪后原位启用，避免重复弹窗和布局跳动。出现和关闭采用 180/140ms 的同源缩放淡入淡出；处理中禁用重复操作，但关闭始终可用。关闭会取消该截图尚未完成的后台任务，避免稍后再次弹出结果。
+
+“后台监听”“开机自启”和“检测到截图时显示悬浮窗”是三个独立设置。开机恢复始终要求照片和通知权限；只有悬浮窗开关开启时才额外要求悬浮窗权限。从应用或常驻通知停止监听会同时关闭自启动，但保留用户的悬浮窗展示偏好。
+
+关闭 Activity、按返回键或从最近任务划掉应用只移除界面任务，不代表停止监听。服务显式声明 `stopWithTask=false` 并返回 `START_STICKY`；收到 `onTaskRemoved` 或在非用户停止条件下被销毁时，安排一次 1.5 秒后的前台服务恢复备援。若服务仍存活，该启动只确认监听状态并取消备援；若进程被一并回收，则重新注册观察器。用户点击应用或通知中的“停止”时先清除后台监听偏好和恢复任务，因此不会自动复活。Android 设置中的“强行停止”会把整个包置为 stopped 状态并取消恢复能力，应用不能绕过，必须等待用户再次主动打开。
+
+Android 16 / HyperOS 真机验证发现：从最近任务划掉 Activity 后，前台服务和进程仍存活，但厂商系统可能停止向后台进程分发 MediaStore `ContentObserver` 回调。服务因此增加每 750ms 一次的轻量元数据查询兜底，只查询最近图片的名称、目录、MIME、时间与 pending 状态；命中后仍走同一 URI 去重和处理链路，不持续解码图片、不采集屏幕。前台或系统正常分发事件时仍由观察器即时触发，轮询只补足漏发事件。
+
+系统横幅的展示时长由 Android 和设备厂商控制，应用不依赖横幅停留时间承载操作。处理中通知静默显示，完成或失败后才发送高优先级结果提醒；结果通知持续保留在通知栏，直到用户明确处理。
+
+结果通知按 Android 标准通知稳定展示上限组织为“正文 + 3 个按钮”：
+
+| 用户操作 | 行为 |
+| --- | --- |
+| 点击通知正文 | 确认并关闭该条结果，不启动 App |
+| 横幅自动收起 | 结果仍保留在通知栏，可下拉后继续操作 |
+| `执行翻译` | 保持后台，重新执行 OCR 和文字翻译并刷新摘要 |
+| `翻译并查看` | 打开 App，自动执行完整 OCR、翻译、背景修复和译文重绘 |
+| `翻译并保存` | 保持后台，执行 OCR、翻译、背景修复和译文重绘，再保存到 `Pictures/ImageTranslate` |
+
+每个 PendingIntent 使用截图 URI、独立 action 和稳定 request code，避免连续截图时后一个通知覆盖前一个通知的操作目标。正文忽略、后台重译和后台保存均使用 Service PendingIntent；只有 `翻译并查看` 以及保存完成通知中的 `查看结果` 使用 Activity PendingIntent。终态通知使用 ongoing 标记且不设置超时，防止横幅收起、清除全部通知或厂商通知策略使操作入口提前丢失；点击正文可明确忽略并关闭。后台保存采用 `IS_PENDING` 原子写入，失败时删除未写完的媒体条目。
+
+主动截图完成后，服务直接启动或切回 `ImageTranslateActivity` 并传递截图 URI；该图片成为新的“原始图片”，完整处理链自动开始。常驻投影通知继续只负责后续截图和会话结束。投影控制通知使用默认重要性但静音的新频道，避免 HyperOS 等系统把低重要性前台服务通知折叠到“更多通知”而隐藏 Action；频道 ID 使用 v2，确保已创建旧频道的升级设备也能采用新的可见性。考虑厂商默认折叠标准 Action，点击投影通知正文也执行截图；展开后仍提供明确的“截图”和“结束”按钮。
+
+### 20.4 Android 实现规划
+
+模块职责如下：
+
+- `ScreenshotMonitorService`：以前台服务形式注册 `ContentObserver`，并以 750ms 元数据轮询兼容厂商后台漏发事件；处理启动、停止、候选串行调度，以及处理进度和结果通知。
+- `ScreenshotOverlayController`：持有临时系统悬浮窗，负责预览图、状态、自动翻译开关、操作按钮、拖动边界和生命周期清理。
+- `ScreenshotOverlayPositionPolicy`：以纯函数计算左上初始位置和拖动后的屏幕边界，支持 JVM 测试。
+- `ScreenshotDetectionTimingPolicy`：固定首次零等待和 120ms 有限重试节奏，避免重新引入人工延迟。
+- `ScreenshotMonitorPreferences`：统一保存显著披露、后台监听和开机恢复选择。
+- `ScreenshotMonitorBootReceiver`：在启动或应用更新完成后检查用户选择与现有权限，满足条件时恢复前台监听服务。
+- `ScreenshotMonitorRestartPolicy`：区分任务移除/系统回收与用户显式停止，防止监听误停或停止后错误复活。
+- `BackgroundScreenshotTranslator`：解码后的截图先经现有 OCR 模块识别，再用自动语言方向逐段翻译；独立策略层负责去重、任务上限、单项失败隔离和通知摘要截断。
+- `ScreenshotResultNotificationFactory`：构建处理、成功和失败通知，集中装配正文确认、划除忽略、后台重译、翻译查看和后台保存 Intent。
+- `ScreenshotNotificationInteractionPolicy`：定义结果通知的交互位置，保证只占用 3 个显式 Action 按钮，并约束只有查看操作使用 Activity PendingIntent。
+- `BackgroundTranslatedImageProcessor`：在服务中完成有上限的 OCR/翻译、OpenCV 精确擦除和 Canvas 译文重绘，不依赖 Activity 或 View。
+- `TranslatedImageGallerySaver`：在 Android 10+ 使用 `MediaStore.IS_PENDING` 原子写入，旧系统使用公共图片目录并登记媒体条目。
+- `OneShotScreenCaptureService`：保持一次用户授权的投屏会话和常驻通知；处理“截图/结束”Action、通知面板退场等待、有效帧过滤、PNG 保存与截图结果直接分发。类名暂时保留以兼容既有清单和测试，职责已变为会话式捕获。
+- `ScreenCaptureSessionNotificationFactory`：集中构建投影会话通知，保证通知常驻且“截图/结束”均使用 Service PendingIntent，不因点击操作打开 Activity。
+- `ScreenshotMediaPolicy`：集中管理厂商截图标记、时间/MIME 过滤和主动截图排除规则，可由 JVM 单元测试直接验证。
+- `MediaCandidate`：保存媒体 URI、显示名称、相对路径、MIME 类型、写入状态和创建时间；当前实现为服务内私有数据结构。
+- `ImageTranslateActivity`：完成显著披露、权限请求、服务开关和通知 Intent 消费，并把截图 URI 接入现有处理链路。
+- 现有 OCR/翻译模块：保持原图质量路径，不为监听场景另建低质量快速 OCR 分支。
+
+候选判定依次执行：
+
+1. 只处理当前注册监听后出现的图片变更，忽略明显早于服务启动的媒体。
+2. Android 10+ 等待 `IS_PENDING=0`，避免读取未写完的图片。
+3. 只接受 `image/*`，并在 `DISPLAY_NAME` 与 `RELATIVE_PATH` 中匹配 `Screenshot`、`Screen Shot`、`Screen Capture`、`截屏`、`截图` 等标记。
+4. 对 URI 去重，兼容同一媒体插入和更新触发多次回调。
+5. 查询失败或媒体仍在写入时做有限延迟重试，不无限轮询。
+
+目录和文件名启发式无法做到 100% 准确。三星、小米、OPPO、vivo 等目标厂商必须使用真实系统截图回归；后续可把已验证的厂商目录规则集中到独立分类器，并用时间、尺寸和来源信息降低误报。不能仅凭“最近新增图片”自动处理，否则相机照片、下载图片和聊天图片都会触发。
+
+### 20.5 权限、隐私与上架约束
+
+Android 权限和服务声明如下：
+
+- Android 13+：`READ_MEDIA_IMAGES`；
+- Android 12 及以下：`READ_EXTERNAL_STORAGE`；
+- Android 13+：`POST_NOTIFICATIONS`；
+- Android 6+：仅在用户开启悬浮窗选项时请求 `SYSTEM_ALERT_WINDOW` 特殊访问；
+- `FOREGROUND_SERVICE` 和 `FOREGROUND_SERVICE_SPECIAL_USE`；
+- `RECEIVE_BOOT_COMPLETED`，仅用于用户明确开启后恢复截图监听；
+- 主动截屏使用 `FOREGROUND_SERVICE_MEDIA_PROJECTION`；Android 9 及以下保存到公共目录还需 `WRITE_EXTERNAL_STORAGE`；
+- 服务声明 `foregroundServiceType="specialUse"`，并通过 `PROPERTY_SPECIAL_USE_FGS_SUBTYPE` 说明用途。
+- 主动截屏服务声明 `foregroundServiceType="mediaProjection"`，且必须在取得本次系统授权后启动。
+
+Android 14 的“选择照片”部分访问不适用于持续监听，因为用户授权时尚未生成的未来截图不在已选集合中。用户必须授予“所有照片”访问；拒绝或只给部分访问时不启动监听，但保留手动选图翻译。
+
+Google Play 将广泛照片访问限制为核心功能场景。发布前必须在 Play Console 声明图片访问的核心用途，并提交清晰的视频或审核说明；若审核策略不接受此核心用途，产品必须降级为 Photo Picker、系统分享入口或用户手动选图，不能尝试绕过权限模型。
+
+开启前的显著披露应说明：应用会检查新图片的名称和目录以识别系统截图；悬浮窗开关关闭时将截图载入主界面并自动处理，厂商禁止后台打开界面时仅保留通知；悬浮窗开关开启时显示左上角预览和操作。用户可随时关闭浮层选项或停止监听。
+
+`SYSTEM_ALERT_WINDOW` 属于用户在系统设置中单独授予的敏感能力。发布前必须确保悬浮窗只由真实截图事件触发、不覆盖权限或支付等敏感界面、不伪装系统控件，并在 Play 审核材料中说明用途；权限被撤回时降级为持续通知操作，不尝试绕过系统限制。
+
+### 20.6 失败处理与体验约束
+
+- 未授予完整图片权限或通知权限：不启动服务，显示明确提示，手动选图功能继续可用。
+- 新媒体仍处于 pending：延迟后有限重试，超时则放弃该候选。
+- URI 已失效或解码失败：结果通知提示处理失败，并保留后台重试、后台保存和查看操作，不删除或修改原截图。
+- 悬浮窗选项关闭：无需悬浮窗权限，截图监听和主动截屏正常运行；权限未授予或被撤回时自动关闭该选项并保留通知入口。
+- 当前前台应用要求隐藏非系统悬浮窗：由 Android 暂时隐藏，离开敏感界面后系统自动恢复，不提升窗口权限规避。
+- OCR 无结果：通知提示未识别到需要翻译的文字；单段翻译失败时继续处理其他段，整体失败或超时后提供进入应用重试的通知。
+- OpenCV 失败：影响“翻译并查看”和“翻译并保存”的完整图片重绘，后台文字翻译摘要不依赖 OpenCV。
+- 主动截屏遇到全黑帧：继续等待当前操作的下一帧，8 秒内没有有效帧则发送失败通知，但保持投影会话可供用户重试。
+- `FLAG_SECURE` 或系统敏感窗口：保持失败，不保存黑图，也不使用隐藏 API 绕过保护。
+- Activity 关闭或最近任务被划掉：前台服务继续运行；若厂商同步回收服务，则由 sticky 服务和短延迟备援尝试恢复。
+- Android 设置中“强行停止”：系统进入 stopped 状态，应用不得自行恢复；用户再次打开后才能继续监听。
+- 服务被厂商深度省电策略持续阻止：常驻通知消失即表示监听当前不可用；引导用户放行自启动和电池后台限制，不循环拉起对抗系统。
+- 开机广播被厂商自启动策略拦截：不绕过系统限制；引导用户在对应系统设置中放行，应用再次打开时可恢复已配置的监听。
+- 连续多张截图：每张截图独立显示进度/结果通知，后台任务串行执行以避免同时加载多个 OCR 和翻译模型；连续 20 次压力验证仍纳入 S2 稳定性阶段。
+
+悬浮窗权限为可选权限，只在用户明确开启展示选项时请求，悬浮窗不参与屏幕采集。方案仍不使用无障碍服务；主动入口只在用户点击后请求投屏授权。Android 对敏感页面隐藏非系统悬浮窗时保持隐藏，不绕过该保护。
+
+### 20.7 分阶段实施与验收
+
+| 阶段 | 范围 | 验收标准 |
+| --- | --- | --- |
+| S0 方案修正 | 明确“保存后监听”和“用户控制的投影会话”边界 | 监听与主动捕获职责分离；投影状态持续可见；只在用户点击通知操作时保存帧 |
+| S1 Android MVP | 权限说明、前台服务、MediaStore 观察、候选过滤、后台 OCR/翻译、结果通知 | 开启后生成一张系统截图，只产生一次结果通知；应用保持后台且通知显示翻译摘要 |
+| S1A 主动截屏 | 投屏授权、常驻通知 Action、退场等待、黑帧过滤、媒体保存、悬浮窗直达 | 一次授权内可多次截图；每次只弹一个悬浮窗；主动截图不触发监听重复通知；结束后投屏资源立即释放 |
+| S2 稳定性 | pending 重试、去重、进程恢复、连续截图、厂商规则 | 连续 20 次截图无重复处理；非截图新增图片不触发；停止后不再通知 |
+| S3 发布准备 | 权限披露、隐私说明、Play 声明、耗电测试 | 商店资料与真实行为一致；后台运行和电量指标达到目标 |
+| S4 可选入口 | 系统分享、快捷设置磁贴或通知快捷操作 | 不增加广泛权限的用户仍可通过显式分享完成翻译 |
+
+设备验收至少覆盖 Android 11、13、14、15/16，并覆盖 Pixel、三星及一个主要国产厂商。测试必须使用设备自身的按键或手势截图，分别验证截图插入、截图编辑后更新、连续截图、通知点击、权限撤销、服务停止和进程被回收场景。
+
+### 20.8 官方依据
+
+- [Android 14 screenshot detection](https://developer.android.com/about/versions/14/features/screenshot-detection)：只对当前 Activity 的按键截图发出回调，不提供截图图片。
+- [ContentObserver](https://developer.android.com/reference/android/database/ContentObserver)：接收内容提供程序数据变化回调。
+- [Shared media storage](https://developer.android.com/training/data-storage/shared/media)：通过 `MediaStore` 查询和访问共享图片。
+- [Android 13 granular media permissions](https://developer.android.com/about/versions/13/behavior-changes-13#granular-media-permissions)：访问其他应用创建的图片需要 `READ_MEDIA_IMAGES`。
+- [Android 14 selected photos access](https://developer.android.com/about/versions/14/changes/partial-photo-video-access)：部分照片访问的权限与重选行为。
+- [Foreground service types](https://developer.android.com/develop/background-work/services/fgs/service-types#special-use)：`specialUse` 前台服务及 subtype 属性要求。
+- [Android Media projection](https://developer.android.com/media/grow/media-projection)：每次会话授权、一次性令牌、回调和 `mediaProjection` 前台服务要求。
+- [Google Play photo and video permissions policy](https://support.google.com/googleplay/android-developer/answer/14115180)：广泛照片权限的核心用途与审核要求。
+
+### 20.9 当前实施状态（2026-07-24）
+
+| 项目 | 状态 | 说明 |
+| --- | --- | --- |
+| S0 方案修正 | 已完成 | 截图监听与主动投影会话保持独立；取得截图后均直接载入 App 原始图片并自动翻译打标，界面未回执时才触发临时悬浮窗 |
+| 权限与显著披露 | 已实现 | 仅在用户确认后申请通知和完整图片权限；部分照片权限不启动监听 |
+| MediaStore 前台监听 | 已实现 | 事件回调首次查询零固定等待；仅 pending/暂不可见媒体按 120ms 最多重试 7 次；后台增加 750ms 元数据轮询兼容厂商漏发回调；Android 16 查询不再在 `sortOrder` 拼接 `LIMIT`，改为 Cursor 侧最多读取 8 条 |
+| 后台监听与开机自启 | 已在 Android 16 / HyperOS 真机验证 | Activity 退出/最近任务移除后服务与 PID 保持，后台漏发事件由 750ms 轮询补偿并成功弹窗；系统回收时使用 sticky + 1.5 秒备援恢复；显式停止会取消全部恢复路径 |
+| 截图操作悬浮窗 | 已在 Android 15、16 真机验证 | 状态栏下方左上角 12dp 显示，224dp 图片主体先出现载入状态再异步补入缩略图；支持拖动、忽略、翻译、查看、保存和持久化自动翻译偏好；敏感 Settings 页面按系统策略隐藏 |
+| 截图直达完整翻译 | 已在 Android 16 / HyperOS 真机验证 | Pnuts 前台触发系统截图后自动切入 App，URI 载入“原始图片”，完成 OCR、翻译、修复、重绘和 6 段区域替换 |
+| 悬浮窗可选展示 | 已在 Android 16 / HyperOS 真机验证 | 默认关闭；未勾选时截图后无本应用浮层，直达失败仅保留通知；勾选后显示 `TYPE_APPLICATION_OVERLAY` 且 Pnuts 保持前台；取消勾选立即移除现有浮层 |
+| 结果通知交互 | 已实现并通过通知结构测试 | 作为直达失败的降级入口持续保留；正文忽略、执行翻译和翻译保存均不启动 App，查看类 Action 进入 Activity |
+| 主动截屏入口 | 已在 Android 15、16 真机验证 | Android 16 / HyperOS 完成整个屏幕授权后，常驻通知触发生成 1440×3200 PNG，并直接提交同一截图直达处理链；每次截图前移除旧降级悬浮窗并等待通知面板退场 |
+| 自动化测试 | 已实现 | 19 个 JVM 单元测试全部通过；15 个 Android 仪器化测试均可编译，本轮 Android 16 真机运行的截图直达、服务 Manifest 和主动截屏通知相关 8 项全部通过 |
+| Android 构建与真机闭环 | 已在 Android 15、16 真机验证 | Pixel 3 验证后台 OCR/翻译摘要；HyperOS 设备验证后台监听恢复、系统整个屏幕投影、常驻通知触发取帧、MediaStore 保存、结果通知、`TYPE_APPLICATION_OVERLAY` 预览及连续截图去除自身浮层的完整链路 |
+| S2/S3/S4 | 未完成 | 厂商覆盖、20 次稳定性测试、Play 审核材料和可选分享入口后续推进 |

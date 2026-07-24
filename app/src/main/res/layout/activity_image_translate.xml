@@ -114,6 +114,7 @@
             android:orientation="vertical">
 
             <com.google.android.material.card.MaterialCardView
+                android:id="@+id/resultCard"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 app:cardBackgroundColor="?attr/colorSurface"
@@ -271,65 +272,151 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent">
 
-        <com.google.android.material.button.MaterialButtonToggleGroup
-            android:id="@+id/translationModeGroup"
-            android:layout_width="match_parent"
-            android:layout_height="44dp"
-            app:checkedButton="@id/btnModeBidirectional"
-            app:selectionRequired="true"
-            app:singleSelection="true">
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnModeChineseEnglish"
-                style="@style/Widget.ImageTranslate.SegmentedButton"
-                android:layout_width="0dp"
-                android:layout_height="44dp"
-                android:layout_weight="1"
-                android:text="@string/mode_chinese_english" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnModeEnglishChinese"
-                style="@style/Widget.ImageTranslate.SegmentedButton"
-                android:layout_width="0dp"
-                android:layout_height="44dp"
-                android:layout_weight="1"
-                android:text="@string/mode_english_chinese" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnModeBidirectional"
-                style="@style/Widget.ImageTranslate.SegmentedButton"
-                android:layout_width="0dp"
-                android:layout_height="44dp"
-                android:layout_weight="1"
-                android:text="@string/mode_bidirectional" />
-        </com.google.android.material.button.MaterialButtonToggleGroup>
-
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="5dp"
-            android:gravity="center_vertical"
-            android:orientation="horizontal">
+            android:orientation="vertical">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnCaptureScreenshot"
+                style="@style/Widget.ImageTranslate.Button.Primary"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:text="@string/action_capture_screenshot"
+                app:icon="@drawable/ic_screenshot"
+                app:iconGravity="textStart"
+                app:iconPadding="6dp"
+                app:iconSize="19dp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:layout_marginTop="4dp"
+                android:orientation="horizontal">
+
+                <com.google.android.material.switchmaterial.SwitchMaterial
+                    android:id="@+id/switchScreenshotMonitor"
+                    android:layout_width="0dp"
+                    android:layout_height="48dp"
+                    android:layout_weight="1"
+                    android:gravity="center_vertical"
+                    android:text="@string/setting_screenshot_monitor"
+                    android:textColor="?attr/colorOnSurface"
+                    android:textSize="14sp" />
+
+                <com.google.android.material.switchmaterial.SwitchMaterial
+                    android:id="@+id/switchScreenshotAutoStart"
+                    android:layout_width="0dp"
+                    android:layout_height="48dp"
+                    android:layout_weight="1"
+                    android:gravity="center_vertical"
+                    android:text="@string/setting_screenshot_auto_start"
+                    android:textColor="?attr/colorOnSurface"
+                    android:textSize="14sp" />
+            </LinearLayout>
 
             <com.google.android.material.switchmaterial.SwitchMaterial
-                android:id="@+id/switchPreciseMask"
-                android:layout_width="0dp"
+                android:id="@+id/switchScreenshotOverlay"
+                android:layout_width="match_parent"
                 android:layout_height="48dp"
-                android:layout_weight="1"
-                android:checked="true"
-                android:text="@string/setting_precise_mask"
+                android:gravity="center_vertical"
+                android:text="@string/setting_screenshot_overlay"
+                android:textColor="?attr/colorOnSurface"
+                android:textSize="14sp" />
+        </LinearLayout>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnAdvancedSettings"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="match_parent"
+            android:layout_height="40dp"
+            android:contentDescription="@string/action_show_translation_settings"
+            android:gravity="center_vertical|start"
+            android:paddingStart="0dp"
+            android:paddingEnd="0dp"
+            android:text="@string/action_translation_settings"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:textSize="13sp"
+            app:icon="@drawable/ic_expand_more"
+            app:iconGravity="textEnd"
+            app:iconPadding="6dp"
+            app:iconSize="18dp" />
+
+        <LinearLayout
+            android:id="@+id/advancedSettingsPanel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <com.google.android.material.button.MaterialButtonToggleGroup
+                android:id="@+id/translationModeGroup"
+                android:layout_width="match_parent"
+                android:layout_height="44dp"
+                app:checkedButton="@id/btnModeBidirectional"
+                app:selectionRequired="true"
+                app:singleSelection="true">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnModeChineseEnglish"
+                    style="@style/Widget.ImageTranslate.SegmentedButton"
+                    android:layout_width="0dp"
+                    android:layout_height="44dp"
+                    android:layout_weight="1"
+                    android:text="@string/mode_chinese_english" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnModeEnglishChinese"
+                    style="@style/Widget.ImageTranslate.SegmentedButton"
+                    android:layout_width="0dp"
+                    android:layout_height="44dp"
+                    android:layout_weight="1"
+                    android:text="@string/mode_english_chinese" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnModeBidirectional"
+                    style="@style/Widget.ImageTranslate.SegmentedButton"
+                    android:layout_width="0dp"
+                    android:layout_height="44dp"
+                    android:layout_weight="1"
+                    android:text="@string/mode_bidirectional" />
+            </com.google.android.material.button.MaterialButtonToggleGroup>
+
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/switchReviewBeforeTranslation"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:text="@string/setting_review_before_translation"
                 android:textColor="?attr/colorOnSurfaceVariant"
                 android:textSize="13sp" />
 
-            <CheckBox
-                android:id="@+id/checkShowMarkers"
-                android:layout_width="wrap_content"
-                android:layout_height="48dp"
-                android:checked="true"
-                android:buttonTint="?attr/colorPrimary"
-                android:text="@string/setting_show_markers"
-                android:textColor="?attr/colorOnSurfaceVariant"
-                android:textSize="13sp" />
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="5dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <com.google.android.material.switchmaterial.SwitchMaterial
+                    android:id="@+id/switchPreciseMask"
+                    android:layout_width="0dp"
+                    android:layout_height="48dp"
+                    android:layout_weight="1"
+                    android:checked="true"
+                    android:text="@string/setting_precise_mask"
+                    android:textColor="?attr/colorOnSurfaceVariant"
+                    android:textSize="13sp" />
+
+                <CheckBox
+                    android:id="@+id/checkShowMarkers"
+                    android:layout_width="wrap_content"
+                    android:layout_height="48dp"
+                    android:checked="true"
+                    android:buttonTint="?attr/colorPrimary"
+                    android:text="@string/setting_show_markers"
+                    android:textColor="?attr/colorOnSurfaceVariant"
+                    android:textSize="13sp" />
+            </LinearLayout>
         </LinearLayout>
 
         <LinearLayout

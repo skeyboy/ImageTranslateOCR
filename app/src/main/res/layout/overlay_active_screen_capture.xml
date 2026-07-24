@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/activeCaptureOverlayRoot"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@android:color/transparent">
+
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/expandedCaptureControls"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:elevation="10dp"
+        app:cardBackgroundColor="#EE1D2025"
+        app:cardCornerRadius="8dp"
+        app:cardElevation="8dp"
+        app:strokeColor="#3FFFFFFF"
+        app:strokeWidth="1dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="2dp"
+            android:paddingEnd="2dp">
+
+            <ImageView
+                android:id="@+id/activeOverlayDragHandle"
+                android:layout_width="30dp"
+                android:layout_height="match_parent"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/active_screenshot_drag_handle"
+                android:padding="7dp"
+                android:src="@drawable/ic_drag_handle"
+                app:tint="#B8FFFFFF" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnActiveOverlayMode"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="70dp"
+                android:layout_height="44dp"
+                android:fontFamily="sans-serif-medium"
+                android:letterSpacing="0"
+                android:minWidth="0dp"
+                android:paddingStart="4dp"
+                android:paddingEnd="4dp"
+                android:text="@string/active_screenshot_mode_english_chinese"
+                android:textAllCaps="false"
+                android:textColor="#FFFFFF"
+                android:textSize="12sp" />
+
+            <FrameLayout
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1">
+
+                <ImageButton
+                    android:id="@+id/btnActiveOverlayCapture"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:layout_gravity="center"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/active_screenshot_action_capture"
+                    android:padding="12dp"
+                    android:src="@drawable/ic_screenshot"
+                    android:tooltipText="@string/active_screenshot_action_capture"
+                    app:tint="#FFFFFF" />
+
+                <LinearLayout
+                    android:id="@+id/activeOverlayStatusGroup"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:gravity="center"
+                    android:orientation="horizontal"
+                    android:paddingHorizontal="3dp"
+                    android:visibility="gone">
+
+                    <ProgressBar
+                        android:id="@+id/activeOverlayProgress"
+                        style="?android:attr/progressBarStyleSmall"
+                        android:layout_width="16dp"
+                        android:layout_height="16dp"
+                        android:layout_marginEnd="5dp"
+                        android:indeterminateTint="#FFFFFF" />
+
+                    <TextView
+                        android:id="@+id/tvActiveOverlayStatus"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:ellipsize="end"
+                        android:letterSpacing="0"
+                        android:maxLines="1"
+                        android:text="@string/active_screenshot_processing_short"
+                        android:textColor="#FFFFFF"
+                        android:textSize="11sp" />
+                </LinearLayout>
+            </FrameLayout>
+
+            <ImageButton
+                android:id="@+id/btnCancelActivePreview"
+                android:layout_width="40dp"
+                android:layout_height="48dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/active_screenshot_cancel_preview"
+                android:padding="11dp"
+                android:src="@drawable/ic_close"
+                android:tooltipText="@string/active_screenshot_cancel_preview"
+                android:visibility="gone"
+                app:tint="#FFFFFF" />
+
+            <ImageButton
+                android:id="@+id/btnCollapseActiveOverlay"
+                android:layout_width="36dp"
+                android:layout_height="48dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/active_screenshot_minimize"
+                android:padding="9dp"
+                android:rotation="-90"
+                android:src="@drawable/ic_expand_more"
+                android:tooltipText="@string/active_screenshot_minimize"
+                app:tint="#D9FFFFFF" />
+
+            <ImageButton
+                android:id="@+id/btnActiveOverlayStop"
+                android:layout_width="36dp"
+                android:layout_height="48dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/active_screenshot_action_stop"
+                android:padding="9dp"
+                android:src="@drawable/ic_overlay_close"
+                android:tooltipText="@string/active_screenshot_action_stop"
+                app:tint="#D9FFFFFF" />
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/collapsedCaptureHandle"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:elevation="10dp"
+        android:visibility="gone"
+        app:cardBackgroundColor="#EE1D2025"
+        app:cardCornerRadius="8dp"
+        app:cardElevation="8dp"
+        app:strokeColor="#3FFFFFFF"
+        app:strokeWidth="1dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingEnd="10dp">
+
+            <ImageButton
+                android:id="@+id/btnExpandActiveOverlay"
+                android:layout_width="38dp"
+                android:layout_height="match_parent"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/active_screenshot_expand"
+                android:padding="10dp"
+                android:src="@drawable/ic_translate"
+                android:tooltipText="@string/active_screenshot_expand"
+                app:tint="#FFFFFF" />
+
+            <ProgressBar
+                android:id="@+id/collapsedOverlayProgress"
+                style="?android:attr/progressBarStyleSmall"
+                android:layout_width="14dp"
+                android:layout_height="14dp"
+                android:layout_marginEnd="6dp"
+                android:indeterminateTint="#FFFFFF"
+                android:visibility="invisible" />
+
+            <TextView
+                android:id="@+id/tvCollapsedOverlayStatus"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:letterSpacing="0"
+                android:maxLines="1"
+                android:text="@string/active_screenshot_compact_ready"
+                android:textColor="#FFFFFF"
+                android:textSize="12sp" />
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+</FrameLayout>

@@ -1,20 +1,32 @@
 package com.example.imagetranslate.ui
 
+import android.Manifest
+import android.app.Activity
+import android.app.NotificationManager
+import android.transition.AutoTransition
+import android.transition.TransitionManager
+import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.*
 import android.graphics.drawable.ColorDrawable
 import android.media.ExifInterface
+import android.media.projection.MediaProjectionManager
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
+import android.provider.Settings
 import android.text.Layout
 import android.text.StaticLayout
 import android.text.TextPaint
 import android.view.Gravity
 import android.view.View
+import android.view.animation.AccelerateDecelerateInterpolator
 import android.widget.PopupWindow
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.lifecycle.lifecycleScope
 import com.example.imagetranslate.App
@@ -27,8 +39,13 @@ import com.example.imagetranslate.inpaint.InpaintResult
 import com.example.imagetranslate.ocr.OCRManager
 import com.example.imagetranslate.ocr.RecognizedText
 import com.example.imagetranslate.ocr.RecognizerScript
+import com.example.imagetranslate.screenshot.OneShotScreenCaptureService
+import com.example.imagetranslate.screenshot.ScreenshotMonitorPreferences
+import com.example.imagetranslate.screenshot.ScreenshotMonitorService
+import com.example.imagetranslate.screenshot.TranslatedImageGallerySaver
 import com.example.imagetranslate.translate.TranslateManager
 import com.example.imagetranslate.translate.TranslationMode
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -43,6 +60,9 @@ class ImageTranslateActivity : AppCompatActivity() {
     private companion object {
         const val STATE_PENDING_CAMERA_URI = "pending_camera_uri"
         const val TRANSLATION_WORKFLOW_TIMEOUT_MS = 90_000L
+        const val UI_PREFERENCES = "image_translate_ui"
+        const val PREFERENCE_ADVANCED_SETTINGS_EXPANDED = "advanced_settings_expanded"
+        const val PREFERENCE_REVIEW_BEFORE_TRANSLATION = "review_before_translation"
     }
 
     private enum class WorkflowStage {
@@ -58,6 +78,7 @@ class ImageTranslateActivity : AppCompatActivity() {
     private var translationMode = TranslationMode.AUTO_BIDIRECTIONAL
     private var workflowStage = WorkflowStage.READY
     private var workflowBusy = false
+    private var updatingScreenshotMonitorControl = false
     private var modelDownloadJob: Job? = null
 
     private var originalBitmap: Bitmap? = null
@@ -120,6 +141,114 @@ class ImageTranslateActivity : AppCompatActivity() {
         }
     }
 
+    private val requestNotificationPermission = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            ensureScreenshotMediaPermission()
+        } else {
+            updateScreenshotMonitorControl(running = false)
+            Toast.makeText(
+                this,
+                R.string.screenshot_monitor_notification_denied,
+                Toast.LENGTH_LONG
+            ).show()
+        }
+    }
+
+    private val requestScreenshotMediaPermission = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted && hasFullImageAccess()) {
+            ensureScreenshotOverlayPermission()
+        } else {
+            updateScreenshotMonitorControl(running = false)
+            Toast.makeText(
+                this,
+                R.string.screenshot_monitor_media_denied,
+                Toast.LENGTH_LONG
+            ).show()
+        }
+    }
+
+    private val requestScreenshotOverlayPermission = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) {
+        if (Settings.canDrawOverlays(this)) {
+            startScreenshotMonitor()
+        } else {
+            updateScreenshotMonitorControl(running = false)
+            Toast.makeText(
+                this,
+                R.string.screenshot_monitor_overlay_denied,
+                Toast.LENGTH_LONG
+            ).show()
+        }
+    }
+
+    private val requestOptionalScreenshotOverlayPermission = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) {
+        val enabled = Settings.canDrawOverlays(this)
+        ScreenshotMonitorPreferences.setOverlayEnabled(this, enabled)
+        updateScreenshotOverlayControl(enabled)
+        if (!enabled) {
+            Toast.makeText(
+                this,
+                R.string.screenshot_monitor_overlay_denied,
+                Toast.LENGTH_LONG
+            ).show()
+        }
+    }
+
+    private val requestCaptureNotificationPermission = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            ensureActiveCaptureOverlayPermission()
+        } else {
+            Toast.makeText(
+                this,
+                R.string.active_screenshot_notification_denied,
+                Toast.LENGTH_LONG
+            ).show()
+        }
+    }
+
+    private val requestActiveCaptureOverlayPermission = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) {
+        if (Settings.canDrawOverlays(this)) {
+            requestActiveScreenCapture()
+        } else {
+            Toast.makeText(
+                this,
+                R.string.active_screenshot_overlay_denied,
+                Toast.LENGTH_LONG
+            ).show()
+        }
+    }
+
+    private val requestScreenCapture = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val resultData = result.data
+        if (result.resultCode == Activity.RESULT_OK && resultData != null) {
+            OneShotScreenCaptureService.start(this, result.resultCode, resultData)
+            Toast.makeText(
+                this,
+                R.string.active_screenshot_session_started,
+                Toast.LENGTH_LONG
+            ).show()
+        } else {
+            Toast.makeText(
+                this,
+                R.string.active_screenshot_cancelled,
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         pendingCameraUri = savedInstanceState
@@ -128,8 +257,30 @@ class ImageTranslateActivity : AppCompatActivity() {
         binding = ActivityImageTranslateBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        val uiPreferences = getSharedPreferences(UI_PREFERENCES, MODE_PRIVATE)
+        binding.switchReviewBeforeTranslation.isChecked = uiPreferences.getBoolean(
+            PREFERENCE_REVIEW_BEFORE_TRANSLATION,
+            false
+        )
+        setAdvancedSettingsExpanded(
+            expanded = uiPreferences.getBoolean(PREFERENCE_ADVANCED_SETTINGS_EXPANDED, false),
+            animate = false,
+            persist = false
+        )
         setupListeners()
         downloadModel()
+        handleScreenshotIntent(intent)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (::binding.isInitialized) restoreConfiguredScreenshotMonitor()
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleScreenshotIntent(intent)
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -151,6 +302,62 @@ class ImageTranslateActivity : AppCompatActivity() {
         }
         binding.btnPickImage.setOnClickListener { pickImage.launch("image/*") }
         binding.btnTakePhoto.setOnClickListener { openCamera() }
+        binding.btnCaptureScreenshot.setOnClickListener { beginActiveScreenCapture() }
+        binding.switchScreenshotMonitor.setOnCheckedChangeListener { _, checked ->
+            if (updatingScreenshotMonitorControl) return@setOnCheckedChangeListener
+            if (checked) {
+                beginScreenshotMonitorSetup()
+            } else {
+                stopScreenshotMonitor()
+            }
+        }
+        binding.switchScreenshotAutoStart.setOnCheckedChangeListener { _, checked ->
+            if (updatingScreenshotMonitorControl) return@setOnCheckedChangeListener
+            if (!binding.switchScreenshotMonitor.isChecked) {
+                updateScreenshotMonitorControl(running = false)
+                Toast.makeText(
+                    this,
+                    R.string.screenshot_auto_start_requires_monitor,
+                    Toast.LENGTH_SHORT
+                ).show()
+                return@setOnCheckedChangeListener
+            }
+            ScreenshotMonitorPreferences.setStartOnBootEnabled(this, checked)
+        }
+        binding.switchScreenshotOverlay.setOnCheckedChangeListener { _, checked ->
+            if (updatingScreenshotMonitorControl) return@setOnCheckedChangeListener
+            if (checked && !Settings.canDrawOverlays(this)) {
+                ScreenshotMonitorPreferences.setOverlayEnabled(this, false)
+                updateScreenshotOverlayControl(false)
+                requestOptionalScreenshotOverlayPermission.launch(
+                    Intent(
+                        Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                        Uri.parse("package:$packageName")
+                    )
+                )
+                return@setOnCheckedChangeListener
+            }
+            ScreenshotMonitorPreferences.setOverlayEnabled(this, checked)
+            if (!checked) {
+                startService(
+                    Intent(this, ScreenshotMonitorService::class.java)
+                        .setAction(ScreenshotMonitorService.ACTION_DISMISS_OVERLAY)
+                )
+            }
+        }
+        binding.btnAdvancedSettings.setOnClickListener {
+            setAdvancedSettingsExpanded(
+                expanded = binding.advancedSettingsPanel.visibility != View.VISIBLE,
+                animate = true,
+                persist = true
+            )
+        }
+        binding.switchReviewBeforeTranslation.setOnCheckedChangeListener { _, checked ->
+            getSharedPreferences(UI_PREFERENCES, MODE_PRIVATE)
+                .edit()
+                .putBoolean(PREFERENCE_REVIEW_BEFORE_TRANSLATION, checked)
+                .apply()
+        }
 
         binding.translationModeGroup.addOnButtonCheckedListener { _, checkedId, isChecked ->
             if (!isChecked) return@addOnButtonCheckedListener
@@ -164,7 +371,10 @@ class ImageTranslateActivity : AppCompatActivity() {
         binding.btnTranslate.setOnClickListener {
             val bitmap = originalBitmap ?: return@setOnClickListener
             when (workflowStage) {
-                WorkflowStage.READY -> beginOcrReview(bitmap)
+                WorkflowStage.READY -> beginOcrReview(
+                    bitmap,
+                    autoTranslate = !binding.switchReviewBeforeTranslation.isChecked
+                )
                 WorkflowStage.REVIEW -> {
                     if (!translateManager.areModelsReady) {
                         downloadModel()
@@ -206,6 +416,244 @@ class ImageTranslateActivity : AppCompatActivity() {
         }
     }
 
+    private fun beginScreenshotMonitorSetup() {
+        if (ScreenshotMonitorPreferences.isDisclosureAccepted(this)) {
+            continueScreenshotMonitorSetup()
+            return
+        }
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.screenshot_monitor_disclosure_title)
+            .setMessage(R.string.screenshot_monitor_disclosure_message)
+            .setNegativeButton(R.string.screenshot_monitor_cancel) { _, _ ->
+                updateScreenshotMonitorControl(running = false)
+            }
+            .setPositiveButton(R.string.screenshot_monitor_continue) { _, _ ->
+                ScreenshotMonitorPreferences.setDisclosureAccepted(this)
+                continueScreenshotMonitorSetup()
+            }
+            .setOnCancelListener { updateScreenshotMonitorControl(running = false) }
+            .show()
+    }
+
+    private fun beginActiveScreenCapture() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) !=
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            requestCaptureNotificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+            return
+        }
+        ensureActiveCaptureOverlayPermission()
+    }
+
+    private fun ensureActiveCaptureOverlayPermission() {
+        if (Settings.canDrawOverlays(this)) {
+            requestActiveScreenCapture()
+            return
+        }
+        requestActiveCaptureOverlayPermission.launch(
+            Intent(
+                Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                Uri.parse("package:$packageName")
+            )
+        )
+    }
+
+    private fun requestActiveScreenCapture() {
+        val manager = getSystemService(MediaProjectionManager::class.java)
+        requestScreenCapture.launch(manager.createScreenCaptureIntent())
+    }
+
+    private fun continueScreenshotMonitorSetup() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) !=
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            requestNotificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+        } else {
+            ensureScreenshotMediaPermission()
+        }
+    }
+
+    private fun ensureScreenshotMediaPermission() {
+        if (hasFullImageAccess()) {
+            ensureScreenshotOverlayPermission()
+            return
+        }
+        requestScreenshotMediaPermission.launch(
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                Manifest.permission.READ_MEDIA_IMAGES
+            } else {
+                Manifest.permission.READ_EXTERNAL_STORAGE
+            }
+        )
+    }
+
+    private fun ensureScreenshotOverlayPermission() {
+        if (!ScreenshotMonitorPreferences.isOverlayEnabled(this)) {
+            startScreenshotMonitor()
+            return
+        }
+        if (Settings.canDrawOverlays(this)) {
+            startScreenshotMonitor()
+            return
+        }
+        requestScreenshotOverlayPermission.launch(
+            Intent(
+                Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                Uri.parse("package:$packageName")
+            )
+        )
+    }
+
+    private fun hasFullImageAccess(): Boolean {
+        val permission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            Manifest.permission.READ_MEDIA_IMAGES
+        } else {
+            Manifest.permission.READ_EXTERNAL_STORAGE
+        }
+        return ContextCompat.checkSelfPermission(this, permission) ==
+            PackageManager.PERMISSION_GRANTED
+    }
+
+    private fun startScreenshotMonitor() {
+        ScreenshotMonitorPreferences.setBackgroundMonitoringEnabled(this, true)
+        ContextCompat.startForegroundService(
+            this,
+            Intent(this, ScreenshotMonitorService::class.java)
+                .setAction(ScreenshotMonitorService.ACTION_START)
+        )
+        updateScreenshotMonitorControl(running = true)
+        Toast.makeText(this, R.string.screenshot_monitor_started, Toast.LENGTH_SHORT).show()
+    }
+
+    private fun stopScreenshotMonitor() {
+        ScreenshotMonitorPreferences.setBackgroundMonitoringEnabled(this, false)
+        ScreenshotMonitorPreferences.setStartOnBootEnabled(this, false)
+        startService(
+            Intent(this, ScreenshotMonitorService::class.java)
+                .setAction(ScreenshotMonitorService.ACTION_STOP)
+        )
+        updateScreenshotMonitorControl(running = false)
+        Toast.makeText(this, R.string.screenshot_monitor_stopped, Toast.LENGTH_SHORT).show()
+    }
+
+    private fun updateScreenshotMonitorControl(
+        running: Boolean = ScreenshotMonitorService.isRunning
+    ) {
+        updatingScreenshotMonitorControl = true
+        binding.switchScreenshotMonitor.isChecked = running
+        binding.switchScreenshotAutoStart.isEnabled = running
+        binding.switchScreenshotAutoStart.isChecked = running &&
+            ScreenshotMonitorPreferences.isStartOnBootEnabled(this)
+        val overlayEnabled = ScreenshotMonitorPreferences.isOverlayEnabled(this) &&
+            Settings.canDrawOverlays(this)
+        if (!overlayEnabled && ScreenshotMonitorPreferences.isOverlayEnabled(this)) {
+            ScreenshotMonitorPreferences.setOverlayEnabled(this, false)
+        }
+        binding.switchScreenshotOverlay.isChecked = overlayEnabled
+        binding.switchScreenshotMonitor.contentDescription = getString(
+            if (running) R.string.screenshot_monitor_status_on
+            else R.string.screenshot_monitor_status_off
+        )
+        updatingScreenshotMonitorControl = false
+    }
+
+    private fun updateScreenshotOverlayControl(enabled: Boolean) {
+        updatingScreenshotMonitorControl = true
+        binding.switchScreenshotOverlay.isChecked = enabled
+        updatingScreenshotMonitorControl = false
+    }
+
+    private fun restoreConfiguredScreenshotMonitor() {
+        if (ScreenshotMonitorService.isRunning ||
+            !ScreenshotMonitorPreferences.isBackgroundMonitoringEnabled(this) ||
+            !hasFullImageAccess() ||
+            (ScreenshotMonitorPreferences.isOverlayEnabled(this) &&
+                !Settings.canDrawOverlays(this)) ||
+            (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) !=
+                PackageManager.PERMISSION_GRANTED)
+        ) {
+            updateScreenshotMonitorControl()
+            return
+        }
+        ContextCompat.startForegroundService(
+            this,
+            Intent(this, ScreenshotMonitorService::class.java)
+                .setAction(ScreenshotMonitorService.ACTION_START)
+        )
+        updateScreenshotMonitorControl(running = true)
+    }
+
+    private fun setAdvancedSettingsExpanded(
+        expanded: Boolean,
+        animate: Boolean,
+        persist: Boolean
+    ) {
+        if (animate) {
+            TransitionManager.beginDelayedTransition(
+                binding.bottomPanel,
+                AutoTransition().apply {
+                    duration = 180L
+                    interpolator = AccelerateDecelerateInterpolator()
+                }
+            )
+        }
+        binding.advancedSettingsPanel.visibility = if (expanded) View.VISIBLE else View.GONE
+        binding.btnAdvancedSettings.setIconResource(
+            if (expanded) R.drawable.ic_expand_less else R.drawable.ic_expand_more
+        )
+        binding.btnAdvancedSettings.contentDescription = getString(
+            if (expanded) R.string.action_hide_translation_settings
+            else R.string.action_show_translation_settings
+        )
+        if (persist) {
+            getSharedPreferences(UI_PREFERENCES, MODE_PRIVATE)
+                .edit()
+                .putBoolean(PREFERENCE_ADVANCED_SETTINGS_EXPANDED, expanded)
+                .apply()
+        }
+    }
+
+    private fun handleScreenshotIntent(incomingIntent: Intent?) {
+        if (incomingIntent?.action == OneShotScreenCaptureService.ACTION_CAPTURE_FAILED) {
+            incomingIntent.action = null
+            binding.tvStatus.text = getString(R.string.active_screenshot_failed)
+            Toast.makeText(this, R.string.active_screenshot_failed, Toast.LENGTH_LONG).show()
+            return
+        }
+        val screenshotIntent = incomingIntent ?: return
+        val screenshotAction = screenshotIntent.action
+        if (screenshotAction !in setOf(
+                ScreenshotMonitorService.ACTION_OPEN_SCREENSHOT,
+                ScreenshotMonitorService.ACTION_TRANSLATE_SCREENSHOT
+            )
+        ) {
+            return
+        }
+        val screenshotUri = screenshotIntent.data ?: return
+        val notificationId = screenshotIntent.getIntExtra(
+            ScreenshotMonitorService.EXTRA_RESULT_NOTIFICATION_ID,
+            0
+        )
+        if (notificationId != 0) {
+            getSystemService(NotificationManager::class.java).cancel(notificationId)
+        }
+        startService(
+            Intent(this, ScreenshotMonitorService::class.java).apply {
+                action = ScreenshotMonitorService.ACTION_CONFIRM_APP_HANDOFF
+                data = screenshotUri
+            }
+        )
+        screenshotIntent.action = null
+        screenshotIntent.data = null
+        loadImage(
+            screenshotUri,
+            autoTranslate = screenshotAction != ScreenshotMonitorService.ACTION_OPEN_SCREENSHOT
+        )
+    }
+
     private fun openCamera() {
         var cameraUri: Uri? = null
         try {
@@ -238,7 +686,7 @@ class ImageTranslateActivity : AppCompatActivity() {
                 translateManager.downloadModelIfNeeded()
                 if (!workflowBusy) {
                     binding.tvStatus.text = when (workflowStage) {
-                        WorkflowStage.REVIEW -> "翻译模型已就绪，请确认翻译"
+                        WorkflowStage.REVIEW -> "翻译模型已就绪，可继续翻译"
                         WorkflowStage.RESULT -> "翻译模型已就绪"
                         WorkflowStage.READY -> if (originalBitmap == null) {
                             "就绪，请选择图片"
@@ -259,7 +707,10 @@ class ImageTranslateActivity : AppCompatActivity() {
         }
     }
 
-    private fun loadImage(uri: Uri) {
+    private fun loadImage(
+        uri: Uri,
+        autoTranslate: Boolean = false
+    ) {
         lifecycleScope.launch {
             try {
                 binding.tvStatus.text = "加载图片中..."
@@ -277,6 +728,10 @@ class ImageTranslateActivity : AppCompatActivity() {
                 clearOcrReview()
                 updateWorkflowActions(WorkflowStage.READY)
                 binding.tvStatus.text = "图片已加载"
+                binding.imageWorkspace.post { binding.imageWorkspace.smoothScrollTo(0, 0) }
+                if (autoTranslate) {
+                    beginOcrReview(bitmap, autoTranslate = true)
+                }
             } catch (e: Exception) {
                 binding.tvStatus.text = "图片加载失败"
                 Toast.makeText(this@ImageTranslateActivity, "加载失败：${e.message}", Toast.LENGTH_SHORT).show()
@@ -337,8 +792,12 @@ class ImageTranslateActivity : AppCompatActivity() {
         else -> null
     }
 
-    private fun beginOcrReview(bitmap: Bitmap) {
+    private fun beginOcrReview(
+        bitmap: Bitmap,
+        autoTranslate: Boolean = false
+    ) {
         lifecycleScope.launch {
+            var shouldAutoTranslate = false
             binding.tvStatus.text = "识别中..."
             binding.progressBar.visibility = View.VISIBLE
             setWorkflowBusy(true)
@@ -366,12 +825,29 @@ class ImageTranslateActivity : AppCompatActivity() {
                 updateWorkflowActions(WorkflowStage.REVIEW)
                 updateReplacementMarkers()
                 updateOcrReviewStatus()
+                shouldAutoTranslate = autoTranslate
+                if (!autoTranslate) scrollToResult()
             } catch (e: Exception) {
                 binding.tvStatus.text = "识别失败：${e.message}"
                 Toast.makeText(this@ImageTranslateActivity, e.message, Toast.LENGTH_LONG).show()
             } finally {
                 binding.progressBar.visibility = View.GONE
                 setWorkflowBusy(false)
+            }
+            if (shouldAutoTranslate) {
+                try {
+                    if (!translateManager.areModelsReady) {
+                        binding.tvStatus.text = "正在准备翻译模型..."
+                        translateManager.downloadModelIfNeeded()
+                    }
+                    if (!App.isOpenCVReady) {
+                        binding.tvStatus.text = "OpenCV 未就绪，请稍后继续翻译"
+                    } else {
+                        translateReviewedImage(bitmap)
+                    }
+                } catch (e: Exception) {
+                    binding.tvStatus.text = "自动翻译准备失败，可点击继续翻译"
+                }
             }
         }
     }
@@ -452,6 +928,7 @@ class ImageTranslateActivity : AppCompatActivity() {
                 binding.emptyResultState.visibility = View.GONE
                 updateReplacementMarkers()
                 updateWorkflowActions(WorkflowStage.RESULT)
+                scrollToResult()
                 val failedCount = regions.count { it.translationFailed }
                 val replacedCount = renderedRegions.size
                 val skippedEraseCount = translatedRegions.size - erasedBounds.size
@@ -525,7 +1002,16 @@ class ImageTranslateActivity : AppCompatActivity() {
         binding.btnSave.isEnabled = !busy && workflowStage == WorkflowStage.RESULT
         binding.btnPickImage.isEnabled = !busy
         binding.btnTakePhoto.isEnabled = !busy
+        binding.btnCaptureScreenshot.isEnabled = !busy
+        binding.btnAdvancedSettings.isEnabled = !busy
+        binding.switchReviewBeforeTranslation.isEnabled = !busy
         setTranslationModeEnabled(!busy)
+    }
+
+    private fun scrollToResult() {
+        binding.imageWorkspace.post {
+            binding.imageWorkspace.smoothScrollTo(0, binding.resultCard.top)
+        }
     }
 
     private fun setTranslationModeEnabled(enabled: Boolean) {
@@ -1063,18 +1549,23 @@ class ImageTranslateActivity : AppCompatActivity() {
     }
 
     private fun saveImage(bitmap: Bitmap) {
-        val filename = "translated_${System.currentTimeMillis()}.jpg"
-        val values = android.content.ContentValues().apply {
-            put(MediaStore.Images.Media.DISPLAY_NAME, filename)
-            put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
-            put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/ImageTranslate")
-        }
-        val uri = contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
-        uri?.let {
-            contentResolver.openOutputStream(it)?.use { out ->
-                bitmap.compress(Bitmap.CompressFormat.JPEG, 95, out)
+        lifecycleScope.launch {
+            binding.btnSave.isEnabled = false
+            binding.btnSave.setText(R.string.action_saving)
+            binding.tvStatus.setText(R.string.status_saving_to_gallery)
+            val savedUri = withContext(Dispatchers.IO) {
+                runCatching { TranslatedImageGallerySaver(this@ImageTranslateActivity).save(bitmap) }
+                    .getOrNull()
             }
-            Toast.makeText(this, "已保存", Toast.LENGTH_SHORT).show()
+            val message = if (savedUri != null) {
+                R.string.screenshot_auto_save_complete
+            } else {
+                R.string.screenshot_auto_save_failed
+            }
+            binding.btnSave.setText(R.string.action_save)
+            binding.btnSave.isEnabled = workflowStage == WorkflowStage.RESULT && !workflowBusy
+            binding.tvStatus.setText(message)
+            Toast.makeText(this@ImageTranslateActivity, message, Toast.LENGTH_SHORT).show()
         }
     }
 

@@ -70,6 +70,42 @@ class OCRManager {
         return refinedResults.sortedWith(compareBy({ it.bounds.top }, { it.bounds.left }))
     }
 
+    suspend fun recognizeFast(
+        bitmap: Bitmap,
+        script: RecognizerScript
+    ): List<RecognizedText> {
+        val candidates = mutableListOf<OcrCandidate>()
+        when (script) {
+            RecognizerScript.CHINESE -> recognizeWith(
+                bitmap,
+                chineseRecognizer,
+                RecognizerScript.CHINESE,
+                PASS_ORIGINAL,
+                0.43f,
+                candidates,
+                extraFilter = { true }
+            )
+            RecognizerScript.LATIN -> recognizeWith(
+                bitmap,
+                latinRecognizer,
+                RecognizerScript.LATIN,
+                PASS_ORIGINAL,
+                0.43f,
+                candidates,
+                extraFilter = { true }
+            )
+            RecognizerScript.FUSED -> addRecognitionPass(
+                bitmap,
+                PASS_ORIGINAL,
+                0.32f,
+                candidates
+            )
+        }
+        return mergeAdjacentLineFragments(fuseCandidates(candidates, bitmap))
+            .map { refineShortLabelByInk(bitmap, it) }
+            .sortedWith(compareBy({ it.bounds.top }, { it.bounds.left }))
+    }
+
     private suspend fun recognizeFullImage(bitmap: Bitmap): List<RecognizedText> {
         val candidates = mutableListOf<OcrCandidate>()
         addRecognitionPass(bitmap, PASS_ORIGINAL, 0.25f, candidates)

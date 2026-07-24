@@ -67,7 +67,11 @@ class TranslateManager {
     ): String {
         val inputText = sanitizeOcrText(text)
         if (shouldPreserveSourceText(inputText)) return inputText
-        val sourceLanguage = identifySourceLanguage(inputText) ?: return inputText
+        val sourceLanguage = if (mode == TranslationMode.AUTO_BIDIRECTIONAL) {
+            identifySourceLanguage(inputText)
+        } else {
+            identifySourceLanguageByScript(inputText)
+        } ?: return inputText
         val targetLanguage = targetLanguageFor(sourceLanguage, mode) ?: return inputText
 
         ensureModel(sourceLanguage, targetLanguage)
@@ -193,6 +197,12 @@ class TranslateManager {
             // OCR text falls back to English inside this two-language workflow.
             else -> TranslateLanguage.ENGLISH
         }
+    }
+
+    private fun identifySourceLanguageByScript(text: String): String? = when {
+        text.any(::isHanCharacter) -> TranslateLanguage.CHINESE
+        text.any { it in 'A'..'Z' || it in 'a'..'z' } -> TranslateLanguage.ENGLISH
+        else -> null
     }
 
     private fun translatorFor(sourceLanguage: String, targetLanguage: String): Translator {
