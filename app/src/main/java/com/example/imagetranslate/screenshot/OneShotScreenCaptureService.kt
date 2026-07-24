@@ -188,7 +188,7 @@ class OneShotScreenCaptureService : Service() {
                 0
             }
         )
-        overlayController.showCompact()
+        overlayController.showReadyExpanded()
     }
 
     private fun startSessionForeground(capturing: Boolean, requestedType: Int) {
@@ -242,10 +242,11 @@ class OneShotScreenCaptureService : Service() {
                 null,
                 handler
             )
-            overlayController.showCompact()
             if (startImmediately) {
                 continuousTranslationEnabled.set(true)
                 requestScreenshot()
+            } else {
+                overlayController.showReadyExpanded()
             }
         }.onFailure(::failSession)
     }

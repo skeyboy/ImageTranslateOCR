@@ -75,7 +75,7 @@ internal class ActiveScreenCaptureOverlayController(
         updateModeLabel()
     }
 
-    fun showCompact() = onMainThread(::showReadyNow)
+    fun showReadyExpanded() = onMainThread(::showReadyNow)
 
     fun hideForCapture() = onMainThread {
         mainHandler.removeCallbacks(collapseRunnable)
@@ -172,7 +172,7 @@ internal class ActiveScreenCaptureOverlayController(
         binding.btnCancelActivePreview.visibility = View.GONE
         binding.btnActiveOverlayMode.isEnabled = true
         updateCompactStatus(R.string.active_screenshot_compact_ready, showProgress = false)
-        collapseNow()
+        expandNow()
     }
 
     private fun expandNow() {

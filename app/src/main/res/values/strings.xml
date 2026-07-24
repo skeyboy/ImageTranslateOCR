@@ -44,7 +44,7 @@
     <string name="active_screenshot_storage_denied">需要存储权限才能在此 Android 版本保存截图</string>
     <string name="active_screenshot_notification_denied">未授予通知权限，识别悬浮窗仍可继续使用</string>
     <string name="active_screenshot_overlay_denied">需要允许在其他应用上层显示，才能开启识别悬浮窗</string>
-    <string name="active_screenshot_session_started">识别悬浮窗已开启，点击“录屏识别”后再开始识别</string>
+    <string name="active_screenshot_session_started">识别悬浮窗已开启，点击“开始识别”后再授权录屏</string>
     <string name="active_screenshot_channel">录屏识别控制</string>
     <string name="active_screenshot_result_channel">主动截屏结果</string>
     <string name="active_screenshot_notification_title">识别悬浮窗已开启</string>
