@@ -63,8 +63,6 @@ class OneShotScreenCaptureService : Service() {
     private val translationMutex = Mutex()
     private var foregroundServiceTypes = 0
     @Volatile
-    private var expandControlsForCapture = true
-    @Volatile
     private var translationMode = TranslationMode.AUTO_BIDIRECTIONAL
     private val liveProcessorDelegate = lazy {
         BackgroundTranslatedImageProcessor(reuseResources = true)
@@ -99,7 +97,7 @@ class OneShotScreenCaptureService : Service() {
                     translationMode = mode
                     if (continuousTranslationEnabled.get()) {
                         cancelActiveCapture(keepContinuousMode = true)
-                        requestScreenshot(expandControls = true)
+                        requestScreenshot()
                     }
                 }
             }
@@ -209,7 +207,7 @@ class OneShotScreenCaptureService : Service() {
             return
         }
         continuousTranslationEnabled.set(true)
-        requestScreenshot(expandControls = true)
+        requestScreenshot()
     }
 
     private fun startCaptureSession(resultData: Intent, startImmediately: Boolean) {
@@ -247,7 +245,7 @@ class OneShotScreenCaptureService : Service() {
             overlayController.showCompact()
             if (startImmediately) {
                 continuousTranslationEnabled.set(true)
-                requestScreenshot(expandControls = true)
+                requestScreenshot()
             }
         }.onFailure(::failSession)
     }
@@ -262,8 +260,7 @@ class OneShotScreenCaptureService : Service() {
             processingFrameCaptured.set(true)
             processCapturedImage(
                 image = image,
-                generation = captureGeneration.get(),
-                expandControls = expandControlsForCapture
+                generation = captureGeneration.get()
             )
             return
         }
@@ -285,14 +282,13 @@ class OneShotScreenCaptureService : Service() {
                 overlayController.showWaitingForStable()
                 discardStaleCaptureForMovement()
             }
-            ScreenFrameAction.CAPTURE -> requestScreenshot(expandControls = false)
+            ScreenFrameAction.CAPTURE -> requestScreenshot()
         }
     }
 
     private fun processCapturedImage(
         image: Image,
-        generation: Int,
-        expandControls: Boolean
+        generation: Int
     ) {
         processingJob?.cancel()
         processingJob = serviceScope.launch {
@@ -309,7 +305,7 @@ class OneShotScreenCaptureService : Service() {
                 }
                 timeoutJob?.cancel()
                 timeoutJob = null
-                overlayController.showProcessing(expandControls)
+                overlayController.showProcessing()
                 val activeMode = translationMode
                 val result = withTimeout(TRANSLATION_TIMEOUT_MS) {
                     translationMutex.withLock {
@@ -335,14 +331,13 @@ class OneShotScreenCaptureService : Service() {
         }
     }
 
-    private fun requestScreenshot(expandControls: Boolean) {
+    private fun requestScreenshot() {
         if (projection == null) {
             stopSelf()
             return
         }
         if (!captureInProgress.compareAndSet(false, true)) return
         processingFrameCaptured.set(false)
-        expandControlsForCapture = expandControls
         val generation = captureGeneration.incrementAndGet()
         overlayController.hideForCapture()
         if (ScreenshotMonitorService.isRunning) {

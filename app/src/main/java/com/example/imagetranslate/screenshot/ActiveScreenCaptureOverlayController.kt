@@ -2,6 +2,7 @@ package com.example.imagetranslate.screenshot
 
 import android.content.Context
 import android.graphics.PixelFormat
+import android.hardware.input.InputManager
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
@@ -84,14 +85,14 @@ internal class ActiveScreenCaptureOverlayController(
         translationView.visibility = View.INVISIBLE
     }
 
-    fun showProcessing(expandControls: Boolean) = onMainThread {
+    fun showProcessing() = onMainThread {
         if (!ensureControlAttachedNow()) return@onMainThread
         ensureTranslationLayerAttachedNow()
         setTranslationBackdropNow(false)
         processing = true
         sessionActive = true
         translationView.clearPatches()
-        if (expandControls || !collapsed) expandNow() else collapseNow()
+        collapseNow()
         binding.root.visibility = View.VISIBLE
         binding.btnActiveOverlayCapture.visibility = View.GONE
         binding.activeOverlayStatusGroup.visibility = View.VISIBLE
@@ -172,13 +173,13 @@ internal class ActiveScreenCaptureOverlayController(
         mainHandler.removeCallbacks(collapseRunnable)
         removeTranslationLayerNow()
         if (!ensureControlAttachedNow()) return
-        expandNow()
         binding.root.visibility = View.VISIBLE
         binding.btnActiveOverlayCapture.visibility = View.VISIBLE
         binding.activeOverlayStatusGroup.visibility = View.GONE
         binding.btnCancelActivePreview.visibility = View.GONE
         binding.btnActiveOverlayMode.isEnabled = true
         updateCompactStatus(R.string.active_screenshot_compact_ready, showProgress = false)
+        collapseNow()
     }
 
     private fun expandNow() {
@@ -283,7 +284,11 @@ internal class ActiveScreenCaptureOverlayController(
                 WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
             x = 0,
             y = 0
-        )
+        ).apply {
+            // Android 12+ only forwards touches through application overlays below
+            // the system's maximum obscuring opacity.
+            alpha = translationLayerWindowAlpha()
+        }
         translationParams = params
         runCatching { windowManager.addView(translationView, params) }
             .onFailure { translationParams = null }
@@ -538,6 +543,15 @@ internal class ActiveScreenCaptureOverlayController(
         appContext.resources.displayMetrics.let { it.widthPixels to it.heightPixels }
     }
 
+    private fun translationLayerWindowAlpha(): Float {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return 1f
+        val maximumAlpha = runCatching {
+            appContext.getSystemService(InputManager::class.java)
+                .maximumObscuringOpacityForTouch
+        }.getOrDefault(DEFAULT_MAXIMUM_OBSCURING_ALPHA)
+        return TranslationOverlayTouchPolicy.windowAlpha(maximumAlpha)
+    }
+
     private fun onMainThread(block: () -> Unit) {
         if (Looper.myLooper() == Looper.getMainLooper()) block() else mainHandler.post(block)
     }
@@ -549,6 +563,7 @@ internal class ActiveScreenCaptureOverlayController(
         const val AUTO_COLLAPSE_DELAY_MS = 3_500L
         const val EXPANDED_BOTTOM_MARGIN_DP = 44
         const val BACKDROP_BLUR_RADIUS_DP = 18
+        const val DEFAULT_MAXIMUM_OBSCURING_ALPHA = 0.8f
         const val CONTROL_PRESS_DURATION_MS = 90L
         const val CONTROL_MATERIALIZE_DURATION_MS = 150L
         const val CONTROL_PRESSED_ALPHA = 0.92f

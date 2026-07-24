@@ -26,7 +26,7 @@ class ScreenCaptureSessionNotificationTest {
         assertTrue(notification.flags and Notification.FLAG_ONGOING_EVENT != 0)
         assertFalse(notification.flags and Notification.FLAG_AUTO_CANCEL != 0)
         assertEquals(
-            listOf("识别", "结束"),
+            listOf("开始识别", "结束"),
             notification.actions.map { it.title.toString() }
         )
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {

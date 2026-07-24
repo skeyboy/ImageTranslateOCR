@@ -13,6 +13,7 @@ import com.example.imagetranslate.R
 import com.example.imagetranslate.databinding.OverlayActiveScreenCaptureBinding
 import com.example.imagetranslate.databinding.OverlayScreenshotActionsBinding
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -35,8 +36,9 @@ class ScreenshotOverlayLayoutTest {
         assertTrue(binding.btnActiveOverlayMode.isClickable)
         assertTrue(binding.btnCollapseActiveOverlay.isClickable)
         assertTrue(binding.btnExpandActiveOverlay.isClickable)
+        assertEquals("开始识别", binding.btnActiveOverlayCapture.text.toString())
         assertEquals("中英互译", binding.btnActiveOverlayMode.text.toString())
-        assertEquals("屏幕翻译", binding.tvCollapsedOverlayStatus.text.toString())
+        assertEquals("录屏识别", binding.tvCollapsedOverlayStatus.text.toString())
         assertEquals(View.INVISIBLE, binding.collapsedOverlayProgress.visibility)
     }
 
@@ -48,6 +50,13 @@ class ScreenshotOverlayLayoutTest {
         InstrumentationRegistry.getInstrumentation().runOnMainSync {
             val view = ScreenTranslationOverlayView(context)
             assertEquals(View.INVISIBLE, view.visibility)
+            assertFalse(view.isClickable)
+            assertFalse(view.isFocusable)
+            assertFalse(view.isLongClickable)
+            assertEquals(
+                View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS,
+                view.importantForAccessibility
+            )
 
             view.replacePatches(
                 listOf(ScreenTranslationPatch(Rect(4, 6, 16, 14), patchBitmap)),

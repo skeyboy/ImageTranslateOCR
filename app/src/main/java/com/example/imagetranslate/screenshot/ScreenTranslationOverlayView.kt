@@ -32,6 +32,10 @@ internal class ScreenTranslationOverlayView @JvmOverloads constructor(
 
     init {
         setBackgroundColor(android.graphics.Color.TRANSPARENT)
+        importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS
+        isClickable = false
+        isFocusable = false
+        isLongClickable = false
         visibility = INVISIBLE
     }
 
