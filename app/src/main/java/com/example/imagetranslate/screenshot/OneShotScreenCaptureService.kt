@@ -60,6 +60,8 @@ class OneShotScreenCaptureService : Service() {
     private var captureHandler: Handler? = null
     private var timeoutJob: Job? = null
     private var processingJob: Job? = null
+    private var activeCapturePlan: ScrollCapturePlan? = null
+    private var lastSignatureSampleAt = Long.MIN_VALUE
     private val translationMutex = Mutex()
     private var foregroundServiceTypes = 0
     @Volatile
@@ -261,7 +263,8 @@ class OneShotScreenCaptureService : Service() {
             processingFrameCaptured.set(true)
             processCapturedImage(
                 image = image,
-                generation = captureGeneration.get()
+                generation = captureGeneration.get(),
+                capturePlan = activeCapturePlan
             )
             return
         }
@@ -271,26 +274,45 @@ class OneShotScreenCaptureService : Service() {
             image.close()
             return
         }
+        val nowMs = SystemClock.elapsedRealtime()
+        if (lastSignatureSampleAt != Long.MIN_VALUE &&
+            nowMs - lastSignatureSampleAt < FRAME_SIGNATURE_INTERVAL_MS
+        ) {
+            image.close()
+            return
+        }
+        lastSignatureSampleAt = nowMs
         val signature = try {
             image.use(::sampleFrameSignature)
         } catch (error: Exception) {
             Log.w(TAG, "Unable to sample screen frame", error)
             return
         }
-        when (changeDetector.onFrame(signature, SystemClock.elapsedRealtime())) {
+        when (changeDetector.onFrame(signature, nowMs)) {
             ScreenFrameAction.NONE -> Unit
             ScreenFrameAction.MOVING -> {
                 overlayController.showWaitingForStable()
                 discardStaleCaptureForMovement()
             }
-            ScreenFrameAction.CAPTURE -> requestScreenshot()
+            ScreenFrameAction.CAPTURE -> {
+                val capturePlan = changeDetector.consumeCapturePlan()
+                Log.i(
+                    TAG,
+                    "Settled viewport: shiftY=${capturePlan?.contentShiftY ?: 0}, " +
+                        "confidence=${capturePlan?.confidence ?: 0f}, " +
+                        "overlap=${capturePlan?.overlapRatio ?: 0f}"
+                )
+                requestScreenshot(capturePlan)
+            }
         }
     }
 
     private fun processCapturedImage(
         image: Image,
-        generation: Int
+        generation: Int,
+        capturePlan: ScrollCapturePlan?
     ) {
+        val processingStartedAt = SystemClock.elapsedRealtime()
         processingJob?.cancel()
         processingJob = serviceScope.launch {
             var sourceBitmap: Bitmap? = null
@@ -312,12 +334,22 @@ class OneShotScreenCaptureService : Service() {
                     translationMutex.withLock {
                         liveProcessor.translateForOverlay(
                             bitmap = bitmap,
-                            mode = activeMode
+                            mode = activeMode,
+                            capturePlan = capturePlan
                         )
                     }
                 }
                 translatedResult = result
                 if (isActive && generation == captureGeneration.get()) {
+                    Log.i(
+                        TAG,
+                        "Overlay translation completed: totalMs=" +
+                            "${SystemClock.elapsedRealtime() - processingStartedAt}, " +
+                            "differential=${result.differentialApplied}, " +
+                            "shiftY=${capturePlan?.contentShiftY ?: 0}, " +
+                            "reused=${result.reusedRegionCount}, " +
+                            "recognized=${result.recognizedCount}, patches=${result.patches.size}"
+                    )
                     finishScreenshot(result, generation)
                     translatedResult = null
                 }
@@ -332,12 +364,13 @@ class OneShotScreenCaptureService : Service() {
         }
     }
 
-    private fun requestScreenshot() {
+    private fun requestScreenshot(capturePlan: ScrollCapturePlan? = null) {
         if (projection == null) {
             stopSelf()
             return
         }
         if (!captureInProgress.compareAndSet(false, true)) return
+        activeCapturePlan = capturePlan
         processingFrameCaptured.set(false)
         val generation = captureGeneration.incrementAndGet()
         overlayController.hideForCapture()
@@ -423,7 +456,13 @@ class OneShotScreenCaptureService : Service() {
                 sampleIndex++
             }
         }
-        return ScreenFrameSignature(samples)
+        return ScreenFrameSignature(
+            samples = samples,
+            columns = SIGNATURE_COLUMNS,
+            rows = SIGNATURE_ROWS,
+            sampleTopPx = top,
+            sampleBottomPx = bottom
+        )
     }
 
     private fun resolveDisplayMetrics(): DisplayMetrics {
@@ -450,6 +489,7 @@ class OneShotScreenCaptureService : Service() {
         captureRequested.set(false)
         captureInProgress.set(false)
         processingFrameCaptured.set(false)
+        activeCapturePlan = null
         getSystemService(NotificationManager::class.java).notify(
             NOTIFICATION_ID,
             buildSessionNotification(capturing = false)
@@ -473,6 +513,7 @@ class OneShotScreenCaptureService : Service() {
         timeoutJob = null
         captureRequested.set(false)
         processingFrameCaptured.set(false)
+        activeCapturePlan = null
         continuousTranslationEnabled.set(false)
         getSystemService(NotificationManager::class.java).notify(
             NOTIFICATION_ID,
@@ -495,6 +536,8 @@ class OneShotScreenCaptureService : Service() {
         captureRequested.set(false)
         captureInProgress.set(false)
         processingFrameCaptured.set(false)
+        activeCapturePlan = null
+        lastSignatureSampleAt = Long.MIN_VALUE
         if (!keepContinuousMode) continuousTranslationEnabled.set(false)
         timeoutJob?.cancel()
         timeoutJob = null
@@ -509,6 +552,7 @@ class OneShotScreenCaptureService : Service() {
         captureGeneration.incrementAndGet()
         captureRequested.set(false)
         processingFrameCaptured.set(false)
+        activeCapturePlan = null
         timeoutJob?.cancel()
         timeoutJob = null
         processingJob?.cancel()
@@ -627,10 +671,11 @@ class OneShotScreenCaptureService : Service() {
         private const val PIXEL_SAMPLE_COLUMNS = 32
         private const val PIXEL_SAMPLE_ROWS = 48
         private const val BLACK_PIXEL_THRESHOLD = 8
-        private const val SIGNATURE_COLUMNS = 20
-        private const val SIGNATURE_ROWS = 32
-        private const val SIGNATURE_TOP_CROP_RATIO = 0.05f
-        private const val SIGNATURE_BOTTOM_RATIO = 0.88f
+        private const val SIGNATURE_COLUMNS = 48
+        private const val SIGNATURE_ROWS = 72
+        private const val SIGNATURE_TOP_CROP_RATIO = 0.08f
+        private const val SIGNATURE_BOTTOM_RATIO = 0.94f
+        private const val FRAME_SIGNATURE_INTERVAL_MS = 75L
         private const val TAG = "ScreenCaptureSession"
 
         fun showOverlay(context: android.content.Context) {

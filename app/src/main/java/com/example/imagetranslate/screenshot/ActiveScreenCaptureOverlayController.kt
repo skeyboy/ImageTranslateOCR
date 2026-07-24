@@ -1,7 +1,6 @@
 package com.example.imagetranslate.screenshot
 
 import android.content.Context
-import android.graphics.Rect
 import android.graphics.PixelFormat
 import android.hardware.input.InputManager
 import android.os.Build
@@ -41,7 +40,7 @@ internal class ActiveScreenCaptureOverlayController(
     private val binding = OverlayActiveScreenCaptureBinding.inflate(
         LayoutInflater.from(themedContext)
     )
-    private val translationViews = mutableListOf<ScreenTranslationOverlayView>()
+    private val translationView = ScreenTranslationOverlayView(themedContext)
     private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
     private val edgeMargin = dp(12)
     private val expandedWidth = dp(306)
@@ -241,7 +240,8 @@ internal class ActiveScreenCaptureOverlayController(
 
     private fun ensureControlAttachedNow(): Boolean {
         if (!Settings.canDrawOverlays(appContext)) return false
-        if (binding.root.isAttachedToWindow) return true
+        if (binding.root.parent != null) return true
+        if (!ensureTranslationAttachedNow()) return false
         val bounds = windowBounds()
         val initialX = ((bounds.first - expandedWidth) / 2).coerceAtLeast(edgeMargin)
         val initialY = (bounds.second - expandedHeight - dp(EXPANDED_BOTTOM_MARGIN_DP))
@@ -261,8 +261,8 @@ internal class ActiveScreenCaptureOverlayController(
         binding.root.scaleY = CONTROL_ENTRY_SCALE
         runCatching { windowManager.addView(binding.root, params) }
             .onFailure { controlParams = null }
-        if (binding.root.isAttachedToWindow) animateControlMaterialization()
-        return binding.root.isAttachedToWindow
+        if (binding.root.parent != null) animateControlMaterialization()
+        return binding.root.parent != null
     }
 
     private fun showTranslationPatchesNow(
@@ -271,98 +271,49 @@ internal class ActiveScreenCaptureOverlayController(
         sourceHeight: Int
     ) {
         removeTranslationLayersNow()
-        if (!Settings.canDrawOverlays(appContext) || sourceWidth <= 0 || sourceHeight <= 0) {
+        if (!ensureTranslationAttachedNow() || sourceWidth <= 0 || sourceHeight <= 0) {
             patches.recyclePatchBitmaps()
             return
         }
-
-        val (screenWidth, screenHeight) = windowBounds()
-        val patchWindows = patches.mapNotNull { patch ->
-            val windowBounds = TranslationOverlayTouchPolicy.scalePatchBounds(
-                left = patch.bounds.left,
-                top = patch.bounds.top,
-                right = patch.bounds.right,
-                bottom = patch.bounds.bottom,
-                sourceWidth = sourceWidth,
-                sourceHeight = sourceHeight,
-                screenWidth = screenWidth,
-                screenHeight = screenHeight
-            )
-            if (windowBounds == null) {
-                if (!patch.bitmap.isRecycled) patch.bitmap.recycle()
-                null
-            } else {
-                patch to windowBounds
-            }
-        }
-
-        patchWindows.forEach { (patch, windowBounds) ->
-            val overlapCount = patchWindows.count { (_, otherBounds) ->
-                TranslationOverlayTouchPolicy.overlaps(windowBounds, otherBounds)
-            }
-            val view = ScreenTranslationOverlayView(themedContext)
-            val params = createLayoutParams(
-                width = windowBounds.width,
-                height = windowBounds.height,
-                flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                    WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
-                    WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
-                    WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
-                x = windowBounds.x,
-                y = windowBounds.y
-            ).apply {
-                alpha = translationPatchWindowAlpha(overlapCount)
-            }
-            view.replacePatches(
-                listOf(
-                    ScreenTranslationPatch(
-                        bounds = Rect(0, 0, patch.bounds.width(), patch.bounds.height()),
-                        bitmap = patch.bitmap
-                    )
-                ),
-                patch.bounds.width(),
-                patch.bounds.height()
-            )
-            val added = runCatching { windowManager.addView(view, params) }.isSuccess
-            if (added) {
-                translationViews += view
-            } else {
-                view.clearPatches()
-            }
-        }
-        raiseControlAboveTranslationNow()
+        translationView.replacePatches(patches, sourceWidth, sourceHeight)
     }
 
-    private fun raiseControlAboveTranslationNow(): Boolean {
-        val params = controlParams ?: return false
-        if (!binding.root.isAttachedToWindow) return ensureControlAttachedNow()
-        return runCatching {
-            windowManager.removeViewImmediate(binding.root)
-            windowManager.addView(binding.root, params)
-            binding.root.isAttachedToWindow
-        }.getOrElse {
-            controlParams = null
-            false
+    private fun ensureTranslationAttachedNow(): Boolean {
+        if (!Settings.canDrawOverlays(appContext)) return false
+        if (translationView.parent != null) return true
+        val bounds = windowBounds()
+        val params = createLayoutParams(
+            width = bounds.first,
+            height = bounds.second,
+            flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
+                WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
+                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+            x = 0,
+            y = 0
+        ).apply {
+            alpha = translationPatchWindowAlpha(overlapCount = 1)
         }
+        return runCatching {
+            windowManager.addView(translationView, params)
+            translationView.parent != null
+        }.getOrDefault(false)
     }
 
     private fun dismissNow() {
         mainHandler.removeCallbacks(collapseRunnable)
         removeTranslationLayersNow()
-        if (binding.root.isAttachedToWindow) {
+        if (binding.root.parent != null) {
             runCatching { windowManager.removeViewImmediate(binding.root) }
+        }
+        if (translationView.parent != null) {
+            runCatching { windowManager.removeViewImmediate(translationView) }
         }
         controlParams = null
     }
 
     private fun removeTranslationLayersNow() {
-        translationViews.forEach { view ->
-            view.clearPatches()
-            if (view.isAttachedToWindow) {
-                runCatching { windowManager.removeViewImmediate(view) }
-            }
-        }
-        translationViews.clear()
+        translationView.clearPatches()
     }
 
     private fun updateModeLabel() {

@@ -31,7 +31,9 @@ internal data class BackgroundTranslatedOverlayResult(
     val sourceWidth: Int,
     val sourceHeight: Int,
     val recognizedCount: Int,
-    val failedCount: Int
+    val failedCount: Int,
+    val differentialApplied: Boolean = false,
+    val reusedRegionCount: Int = 0
 )
 
 private data class BackgroundImageRegion(
@@ -43,6 +45,23 @@ private data class BackgroundTranslationBatch(
     val recognizedCount: Int,
     val regions: List<BackgroundImageRegion>,
     val failedCount: Int
+)
+
+private data class CachedLiveRegion(
+    val region: BackgroundImageRegion,
+    val fingerprint: IntArray
+)
+
+private data class LiveOverlaySnapshot(
+    val width: Int,
+    val height: Int,
+    val mode: TranslationMode,
+    val regions: List<CachedLiveRegion>
+)
+
+private data class DifferentialTranslationBatch(
+    val batch: BackgroundTranslationBatch,
+    val reusedRegionCount: Int
 )
 
 private data class BackgroundTextStyle(
@@ -65,6 +84,7 @@ internal class BackgroundTranslatedImageProcessor(
         ): Boolean = size > MAX_TRANSLATION_CACHE_ENTRIES
     }
     private var closed = false
+    private var liveOverlaySnapshot: LiveOverlaySnapshot? = null
 
     suspend fun translate(
         bitmap: Bitmap,
@@ -117,11 +137,16 @@ internal class BackgroundTranslatedImageProcessor(
 
     suspend fun translateForOverlay(
         bitmap: Bitmap,
-        mode: TranslationMode
+        mode: TranslationMode,
+        capturePlan: ScrollCapturePlan? = null
     ): BackgroundTranslatedOverlayResult {
         check(!closed) { "Image processor is closed" }
         return try {
-            val batch = recognizeAndTranslate(bitmap, mode, fastOcr = true)
+            val differential = capturePlan?.let { plan ->
+                recognizeDifferentialViewport(bitmap, mode, plan)
+            }
+            val batch = differential?.batch
+                ?: recognizeAndTranslate(bitmap, mode, fastOcr = true)
             val fallbackSurface = ScreenThemeColorEstimator.compositableSurface(
                 ScreenThemeColorEstimator.estimate(bitmap)
             )
@@ -134,8 +159,11 @@ internal class BackgroundTranslatedImageProcessor(
                 sourceWidth = bitmap.width,
                 sourceHeight = bitmap.height,
                 recognizedCount = batch.recognizedCount,
-                failedCount = batch.failedCount + (batch.regions.size - renderedPatches.size)
+                failedCount = batch.failedCount + (batch.regions.size - renderedPatches.size),
+                differentialApplied = differential != null,
+                reusedRegionCount = differential?.reusedRegionCount ?: 0
             )
+                .also { updateLiveOverlaySnapshot(bitmap, mode, batch.regions) }
         } finally {
             if (!reuseResources) close()
         }
@@ -147,6 +175,7 @@ internal class BackgroundTranslatedImageProcessor(
         ocrManager.close()
         translateManager.close()
         synchronized(translationCache) { translationCache.clear() }
+        liveOverlaySnapshot = null
     }
 
     private fun recognizerFor(mode: TranslationMode): RecognizerScript = when (mode) {
@@ -158,12 +187,28 @@ internal class BackgroundTranslatedImageProcessor(
     private suspend fun recognizeAndTranslate(
         bitmap: Bitmap,
         mode: TranslationMode,
-        fastOcr: Boolean
+        fastOcr: Boolean,
+        recognitionBounds: Rect? = null,
+        preferredRecognizer: RecognizerScript? = null
     ): BackgroundTranslationBatch {
-        val rawRecognized = if (fastOcr) {
-            ocrManager.recognizeFast(bitmap, recognizerFor(mode))
-        } else {
-            ocrManager.recognize(bitmap)
+        val ocrBitmap = recognitionBounds?.let { bounds ->
+            Bitmap.createBitmap(bitmap, bounds.left, bounds.top, bounds.width(), bounds.height())
+        } ?: bitmap
+        val rawRecognized = try {
+            val localRecognized = if (fastOcr) {
+                ocrManager.recognizeFast(ocrBitmap, preferredRecognizer ?: recognizerFor(mode))
+            } else {
+                ocrManager.recognize(ocrBitmap)
+            }
+            recognitionBounds?.let { bounds ->
+                localRecognized.map { item ->
+                    item.copy(
+                        bounds = Rect(item.bounds).apply { offset(bounds.left, bounds.top) }
+                    )
+                }
+            } ?: localRecognized
+        } finally {
+            if (ocrBitmap !== bitmap && !ocrBitmap.isRecycled) ocrBitmap.recycle()
         }
         val recognized = if (fastOcr) {
             groupLiveTextBlocks(rawRecognized, bitmap.width, bitmap.height)
@@ -202,6 +247,163 @@ internal class BackgroundTranslatedImageProcessor(
             regions = translated,
             failedCount = failedCount
         )
+    }
+
+    private suspend fun recognizeDifferentialViewport(
+        bitmap: Bitmap,
+        mode: TranslationMode,
+        capturePlan: ScrollCapturePlan
+    ): DifferentialTranslationBatch? {
+        val snapshot = liveOverlaySnapshot ?: return null
+        if (snapshot.width != bitmap.width || snapshot.height != bitmap.height ||
+            snapshot.mode != mode || snapshot.regions.isEmpty() ||
+            capturePlan.confidence < MINIMUM_DIFFERENTIAL_CONFIDENCE
+        ) return null
+
+        val shiftY = capturePlan.contentShiftY
+        if (kotlin.math.abs(shiftY) < MINIMUM_DIFFERENTIAL_SHIFT_PX ||
+            kotlin.math.abs(shiftY) > bitmap.height * MAXIMUM_DIFFERENTIAL_SHIFT_RATIO
+        ) return null
+
+        val contentTop = (bitmap.height * LIVE_CONTENT_TOP_RATIO).toInt()
+        val contentBottom = (bitmap.height * LIVE_CONTENT_BOTTOM_RATIO).toInt()
+        val overlapMargin = maxOf(DIFFERENTIAL_MINIMUM_MARGIN_PX, bitmap.height / 18)
+        val recognitionBounds = if (shiftY < 0) {
+            Rect(
+                0,
+                (contentBottom + shiftY - overlapMargin).coerceAtLeast(contentTop),
+                bitmap.width,
+                contentBottom
+            )
+        } else {
+            Rect(
+                0,
+                contentTop,
+                bitmap.width,
+                (contentTop + shiftY + overlapMargin).coerceAtMost(contentBottom)
+            )
+        }
+        if (recognitionBounds.height() <= 0 ||
+            recognitionBounds.height() > bitmap.height * MAXIMUM_DIFFERENTIAL_ROI_RATIO
+        ) return null
+
+        val shifted = snapshot.regions.mapNotNull { cached ->
+            val shiftedBounds = Rect(cached.region.source.bounds).apply { offset(0, shiftY) }
+            if (shiftedBounds.left < 0 || shiftedBounds.top < contentTop ||
+                shiftedBounds.right > bitmap.width || shiftedBounds.bottom > contentBottom
+            ) return@mapNotNull null
+            val matchedBounds = findFingerprintMatch(
+                bitmap = bitmap,
+                expectedBounds = shiftedBounds,
+                expectedFingerprint = cached.fingerprint,
+                contentTop = contentTop,
+                contentBottom = contentBottom
+            ) ?: return@mapNotNull null
+            cached.region.copy(
+                source = cached.region.source.copy(bounds = matchedBounds)
+            )
+        }
+        val validationRatio = shifted.size.toFloat() / snapshot.regions.size
+        if (validationRatio < MINIMUM_REUSED_REGION_RATIO) return null
+
+        val invalidOutsideRecognitionArea = snapshot.regions.size - shifted.size > 0 &&
+            shifted.none { Rect.intersects(it.source.bounds, recognitionBounds) }
+        if (invalidOutsideRecognitionArea && validationRatio < STRONG_REUSED_REGION_RATIO) {
+            return null
+        }
+        val reused = shifted.filterNot { Rect.intersects(it.source.bounds, recognitionBounds) }
+        val newBatch = recognizeAndTranslate(
+            bitmap = bitmap,
+            mode = mode,
+            fastOcr = true,
+            recognitionBounds = recognitionBounds,
+            preferredRecognizer = preferredRecognizer(snapshot)
+        )
+        val combined = reused + newBatch.regions.filterNot { candidate ->
+            reused.any { existing -> Rect.intersects(existing.source.bounds, candidate.source.bounds) }
+        }
+        return DifferentialTranslationBatch(
+            batch = BackgroundTranslationBatch(
+                recognizedCount = reused.size + newBatch.recognizedCount,
+                regions = combined,
+                failedCount = newBatch.failedCount
+            ),
+            reusedRegionCount = reused.size
+        )
+    }
+
+    private fun preferredRecognizer(snapshot: LiveOverlaySnapshot): RecognizerScript {
+        val scripts = snapshot.regions.map { it.region.source.recognizerScript }.distinct()
+        return scripts.singleOrNull()?.takeUnless { it == RecognizerScript.FUSED }
+            ?: RecognizerScript.FUSED
+    }
+
+    private fun updateLiveOverlaySnapshot(
+        bitmap: Bitmap,
+        mode: TranslationMode,
+        regions: List<BackgroundImageRegion>
+    ) {
+        liveOverlaySnapshot = LiveOverlaySnapshot(
+            width = bitmap.width,
+            height = bitmap.height,
+            mode = mode,
+            regions = regions.mapNotNull { region ->
+                val bounds = region.source.bounds.clampedTo(bitmap) ?: return@mapNotNull null
+                CachedLiveRegion(
+                    region = region.copy(source = region.source.copy(bounds = Rect(bounds))),
+                    fingerprint = fingerprint(bitmap, bounds)
+                )
+            }
+        )
+    }
+
+    private fun fingerprint(bitmap: Bitmap, bounds: Rect): IntArray {
+        val samples = IntArray(FINGERPRINT_COLUMNS * FINGERPRINT_ROWS)
+        var index = 0
+        repeat(FINGERPRINT_ROWS) { row ->
+            val y = bounds.top + (bounds.height() - 1) * row /
+                (FINGERPRINT_ROWS - 1).coerceAtLeast(1)
+            repeat(FINGERPRINT_COLUMNS) { column ->
+                val x = bounds.left + (bounds.width() - 1) * column /
+                    (FINGERPRINT_COLUMNS - 1).coerceAtLeast(1)
+                val color = bitmap.getPixel(x, y)
+                val red = color shr 16 and 0xFF
+                val green = color shr 8 and 0xFF
+                val blue = color and 0xFF
+                samples[index++] = (red * 54 + green * 183 + blue * 19) shr 8
+            }
+        }
+        return samples
+    }
+
+    private fun findFingerprintMatch(
+        bitmap: Bitmap,
+        expectedBounds: Rect,
+        expectedFingerprint: IntArray,
+        contentTop: Int,
+        contentBottom: Int
+    ): Rect? {
+        var bestBounds: Rect? = null
+        var bestError = Float.MAX_VALUE
+        for (offsetY in -FINGERPRINT_VERTICAL_SEARCH_PX..FINGERPRINT_VERTICAL_SEARCH_PX step
+            FINGERPRINT_VERTICAL_SEARCH_STEP_PX
+        ) {
+            val candidate = Rect(expectedBounds).apply { offset(0, offsetY) }
+            if (candidate.top < contentTop || candidate.bottom > contentBottom) continue
+            val error = fingerprintError(expectedFingerprint, fingerprint(bitmap, candidate))
+            if (error < bestError) {
+                bestError = error
+                bestBounds = candidate
+            }
+        }
+        return bestBounds?.takeIf { bestError <= MAXIMUM_FINGERPRINT_ERROR }
+    }
+
+    private fun fingerprintError(first: IntArray, second: IntArray): Float {
+        if (first.size != second.size || first.isEmpty()) return Float.MAX_VALUE
+        return first.indices.sumOf { index ->
+            kotlin.math.abs(first[index] - second[index])
+        }.toFloat() / first.size
     }
 
     private fun normalizeCacheText(text: String): String =
@@ -399,6 +601,18 @@ internal class BackgroundTranslatedImageProcessor(
         const val LOCAL_SURFACE_MINIMUM_SAMPLES = 16
         const val LIVE_CONTENT_TOP_RATIO = 0.08f
         const val LIVE_CONTENT_BOTTOM_RATIO = 0.94f
+        const val MINIMUM_DIFFERENTIAL_CONFIDENCE = 0.2f
+        const val MINIMUM_DIFFERENTIAL_SHIFT_PX = 36
+        const val DIFFERENTIAL_MINIMUM_MARGIN_PX = 72
+        const val MAXIMUM_DIFFERENTIAL_SHIFT_RATIO = 0.62f
+        const val MAXIMUM_DIFFERENTIAL_ROI_RATIO = 0.72f
+        const val MINIMUM_REUSED_REGION_RATIO = 0.35f
+        const val STRONG_REUSED_REGION_RATIO = 0.65f
+        const val FINGERPRINT_COLUMNS = 6
+        const val FINGERPRINT_ROWS = 4
+        const val FINGERPRINT_VERTICAL_SEARCH_PX = 32
+        const val FINGERPRINT_VERTICAL_SEARCH_STEP_PX = 8
+        const val MAXIMUM_FINGERPRINT_ERROR = 55f
         val CACHE_WHITESPACE_REGEX = Regex("\\s+")
     }
 }
