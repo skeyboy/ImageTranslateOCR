@@ -52,6 +52,7 @@ internal class ActiveScreenCaptureOverlayController(
     private var sessionActive = false
     private var processing = false
     private var collapsed = false
+    private var translationBackdropEnabled = false
 
     private val collapseRunnable = Runnable {
         if (sessionActive && !processing) collapseNow()
@@ -78,6 +79,7 @@ internal class ActiveScreenCaptureOverlayController(
 
     fun hideForCapture() = onMainThread {
         mainHandler.removeCallbacks(collapseRunnable)
+        setTranslationBackdropNow(false)
         binding.root.visibility = View.INVISIBLE
         translationView.visibility = View.INVISIBLE
     }
@@ -85,6 +87,7 @@ internal class ActiveScreenCaptureOverlayController(
     fun showProcessing(expandControls: Boolean) = onMainThread {
         if (!ensureControlAttachedNow()) return@onMainThread
         ensureTranslationLayerAttachedNow()
+        setTranslationBackdropNow(false)
         processing = true
         sessionActive = true
         translationView.clearPatches()
@@ -100,6 +103,7 @@ internal class ActiveScreenCaptureOverlayController(
     }
 
     fun showWaitingForStable() = onMainThread {
+        setTranslationBackdropNow(false)
         translationView.clearPatches()
         sessionActive = true
         updateCompactStatus(R.string.active_screenshot_compact_waiting, showProgress = true)
@@ -124,6 +128,7 @@ internal class ActiveScreenCaptureOverlayController(
         }
         processing = false
         sessionActive = true
+        setTranslationBackdropNow(patches.isNotEmpty())
         translationView.replacePatches(patches, sourceWidth, sourceHeight)
         binding.root.visibility = View.VISIBLE
         binding.btnActiveOverlayCapture.visibility = View.GONE
@@ -151,6 +156,7 @@ internal class ActiveScreenCaptureOverlayController(
     fun showCaptureFailed() = onMainThread(::showReadyNow)
 
     fun clearTranslations() = onMainThread {
+        setTranslationBackdropNow(false)
         translationView.clearPatches()
     }
 
@@ -281,7 +287,39 @@ internal class ActiveScreenCaptureOverlayController(
         translationParams = params
         runCatching { windowManager.addView(translationView, params) }
             .onFailure { translationParams = null }
-        return translationView.isAttachedToWindow
+        return translationView.isAttachedToWindow && raiseControlAboveTranslationNow()
+    }
+
+    private fun raiseControlAboveTranslationNow(): Boolean {
+        val params = controlParams ?: return false
+        if (!binding.root.isAttachedToWindow) return ensureControlAttachedNow()
+        return runCatching {
+            windowManager.removeViewImmediate(binding.root)
+            windowManager.addView(binding.root, params)
+            binding.root.isAttachedToWindow
+        }.getOrElse {
+            controlParams = null
+            false
+        }
+    }
+
+    private fun setTranslationBackdropNow(enabled: Boolean) {
+        if (translationBackdropEnabled == enabled) return
+        translationBackdropEnabled = enabled
+        val params = translationParams ?: return
+        val canBlurBehind = enabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+            runCatching { windowManager.isCrossWindowBlurEnabled }.getOrDefault(false)
+        params.flags = if (canBlurBehind) {
+            params.flags or WindowManager.LayoutParams.FLAG_BLUR_BEHIND
+        } else {
+            params.flags and WindowManager.LayoutParams.FLAG_BLUR_BEHIND.inv()
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            params.blurBehindRadius = if (canBlurBehind) dp(BACKDROP_BLUR_RADIUS_DP) else 0
+        }
+        if (translationView.isAttachedToWindow) {
+            runCatching { windowManager.updateViewLayout(translationView, params) }
+        }
     }
 
     private fun dismissNow() {
@@ -294,6 +332,7 @@ internal class ActiveScreenCaptureOverlayController(
     }
 
     private fun removeTranslationLayerNow() {
+        translationBackdropEnabled = false
         translationView.clearPatches()
         if (translationView.isAttachedToWindow) {
             runCatching { windowManager.removeViewImmediate(translationView) }
@@ -509,6 +548,7 @@ internal class ActiveScreenCaptureOverlayController(
     private companion object {
         const val AUTO_COLLAPSE_DELAY_MS = 3_500L
         const val EXPANDED_BOTTOM_MARGIN_DP = 44
+        const val BACKDROP_BLUR_RADIUS_DP = 18
         const val CONTROL_PRESS_DURATION_MS = 90L
         const val CONTROL_MATERIALIZE_DURATION_MS = 150L
         const val CONTROL_PRESSED_ALPHA = 0.92f

@@ -3,6 +3,7 @@ package com.example.imagetranslate.screenshot
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Rect
 import android.util.AttributeSet
@@ -72,6 +73,7 @@ internal class ScreenTranslationOverlayView @JvmOverloads constructor(
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         if (sourceWidth <= 0 || sourceHeight <= 0 || patches.isEmpty()) return
+        canvas.drawColor(BACKDROP_SCRIM_COLOR)
         val scaleX = width.toFloat() / sourceWidth
         val scaleY = height.toFloat() / sourceHeight
         canvas.save()
@@ -91,5 +93,6 @@ internal class ScreenTranslationOverlayView @JvmOverloads constructor(
 
     private companion object {
         const val PATCH_FADE_IN_MS = 140L
+        val BACKDROP_SCRIM_COLOR = Color.argb(30, 15, 19, 25)
     }
 }

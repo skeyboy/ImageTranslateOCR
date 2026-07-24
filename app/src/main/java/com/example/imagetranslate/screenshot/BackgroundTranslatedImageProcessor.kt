@@ -249,7 +249,13 @@ internal class BackgroundTranslatedImageProcessor(
                     output = null
                     null
                 } else {
-                    ScreenTranslationPatch(Rect(cropBounds), patchBitmap).also { output = null }
+                    val glassOverlay = BackgroundTranslatedImageRenderer.isolateGlassOverlay(
+                        patchBitmap,
+                        localBounds
+                    )
+                    patchBitmap.recycle()
+                    output = glassOverlay
+                    ScreenTranslationPatch(Rect(cropBounds), glassOverlay).also { output = null }
                 }
             }
         } catch (_: Exception) {
@@ -338,16 +344,7 @@ private object BackgroundTranslatedImageRenderer {
         textBounds: Rect,
         isDarkBackground: Boolean
     ) {
-        val materialPadding = minOf(
-            GLASS_MAXIMUM_PADDING_PX,
-            maxOf(GLASS_MINIMUM_PADDING_PX, textBounds.height() / 10)
-        )
-        val materialBounds = Rect(
-            textBounds.left - materialPadding,
-            textBounds.top - materialPadding,
-            textBounds.right + materialPadding,
-            textBounds.bottom + materialPadding
-        ).clampedTo(bitmap) ?: return
+        val materialBounds = glassMaterialBounds(textBounds, bitmap) ?: return
         val source = Bitmap.createBitmap(
             materialBounds.width(),
             materialBounds.height(),
@@ -367,10 +364,7 @@ private object BackgroundTranslatedImageRenderer {
             true
         )
         val destination = RectF(materialBounds)
-        val cornerRadius = maxOf(
-            GLASS_MINIMUM_CORNER_RADIUS_PX,
-            minOf(destination.width(), destination.height()) * GLASS_CORNER_RADIUS_RATIO
-        )
+        val cornerRadius = glassCornerRadius(destination)
         val materialPath = Path().apply {
             addRoundRect(destination, cornerRadius, cornerRadius, Path.Direction.CW)
         }
@@ -404,6 +398,41 @@ private object BackgroundTranslatedImageRenderer {
         if (downsampled !== source && !downsampled.isRecycled) downsampled.recycle()
         if (!source.isRecycled) source.recycle()
     }
+
+    fun isolateGlassOverlay(bitmap: Bitmap, textBounds: Rect): Bitmap {
+        val output = Bitmap.createBitmap(bitmap.width, bitmap.height, Bitmap.Config.ARGB_8888)
+        val materialBounds = glassMaterialBounds(textBounds, bitmap) ?: return output
+        val destination = RectF(materialBounds)
+        val cornerRadius = glassCornerRadius(destination)
+        val path = Path().apply {
+            addRoundRect(destination, cornerRadius, cornerRadius, Path.Direction.CW)
+        }
+        Canvas(output).apply {
+            save()
+            clipPath(path)
+            drawBitmap(bitmap, 0f, 0f, Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG))
+            restore()
+        }
+        return output
+    }
+
+    private fun glassMaterialBounds(textBounds: Rect, bitmap: Bitmap): Rect? {
+        val materialPadding = minOf(
+            GLASS_MAXIMUM_PADDING_PX,
+            maxOf(GLASS_MINIMUM_PADDING_PX, textBounds.height() / 10)
+        )
+        return Rect(
+            textBounds.left - materialPadding,
+            textBounds.top - materialPadding,
+            textBounds.right + materialPadding,
+            textBounds.bottom + materialPadding
+        ).clampedTo(bitmap)
+    }
+
+    private fun glassCornerRadius(bounds: RectF): Float = maxOf(
+        GLASS_MINIMUM_CORNER_RADIUS_PX,
+        minOf(bounds.width(), bounds.height()) * GLASS_CORNER_RADIUS_RATIO
+    )
 
     private fun fittingLayout(
         text: String,

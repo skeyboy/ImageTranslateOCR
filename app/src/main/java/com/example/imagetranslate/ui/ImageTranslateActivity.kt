@@ -200,20 +200,6 @@ class ImageTranslateActivity : AppCompatActivity() {
         }
     }
 
-    private val requestCaptureNotificationPermission = registerForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { granted ->
-        if (granted) {
-            ensureActiveCaptureOverlayPermission()
-        } else {
-            Toast.makeText(
-                this,
-                R.string.active_screenshot_notification_denied,
-                Toast.LENGTH_LONG
-            ).show()
-        }
-    }
-
     private val requestActiveCaptureOverlayPermission = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) {
@@ -415,13 +401,6 @@ class ImageTranslateActivity : AppCompatActivity() {
     }
 
     private fun beginActiveScreenCapture() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) !=
-            PackageManager.PERMISSION_GRANTED
-        ) {
-            requestCaptureNotificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
-            return
-        }
         ensureActiveCaptureOverlayPermission()
     }
 
