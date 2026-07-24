@@ -57,12 +57,12 @@
 
                 <ImageButton
                     android:id="@+id/btnActiveOverlayCapture"
-                    android:layout_width="48dp"
-                    android:layout_height="48dp"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
                     android:layout_gravity="center"
-                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:background="@drawable/bg_active_overlay_primary"
                     android:contentDescription="@string/active_screenshot_action_capture"
-                    android:padding="12dp"
+                    android:padding="9dp"
                     android:src="@drawable/ic_screenshot"
                     android:tooltipText="@string/active_screenshot_action_capture"
                     app:tint="#FFFFFF" />

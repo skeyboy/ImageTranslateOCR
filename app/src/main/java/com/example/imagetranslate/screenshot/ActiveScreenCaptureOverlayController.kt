@@ -8,11 +8,13 @@ import android.os.Looper
 import android.provider.Settings
 import android.view.ContextThemeWrapper
 import android.view.Gravity
+import android.view.HapticFeedbackConstants
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
 import android.view.WindowManager
+import android.view.animation.DecelerateInterpolator
 import android.widget.PopupMenu
 import com.example.imagetranslate.R
 import com.example.imagetranslate.databinding.OverlayActiveScreenCaptureBinding
@@ -46,8 +48,6 @@ internal class ActiveScreenCaptureOverlayController(
     private val collapsedHeight = dp(42)
     private var controlParams: WindowManager.LayoutParams? = null
     private var translationParams: WindowManager.LayoutParams? = null
-    private var expandedX = edgeMargin
-    private var expandedY = edgeMargin
     private var translationMode = TranslationMode.AUTO_BIDIRECTIONAL
     private var sessionActive = false
     private var processing = false
@@ -70,7 +70,7 @@ internal class ActiveScreenCaptureOverlayController(
         binding.btnCollapseActiveOverlay.setOnClickListener { collapseNow() }
         binding.btnExpandActiveOverlay.setOnClickListener { expandNow() }
         binding.collapsedCaptureHandle.setOnClickListener { expandNow() }
-        attachDragGesture()
+        attachDragGestures()
         updateModeLabel()
     }
 
@@ -177,48 +177,74 @@ internal class ActiveScreenCaptureOverlayController(
 
     private fun expandNow() {
         if (!ensureControlAttachedNow()) return
+        val params = controlParams ?: return
         val bounds = windowBounds()
-        expandedX = expandedX.coerceIn(
-            edgeMargin,
-            (bounds.first - expandedWidth - edgeMargin).coerceAtLeast(edgeMargin)
-        )
-        if (expandedY == edgeMargin) {
-            expandedY = (
-                bounds.second - expandedHeight - dp(EXPANDED_BOTTOM_MARGIN_DP)
-            ).coerceAtLeast(edgeMargin)
+        val position = if (collapsed) {
+            ActiveOverlayPositionPolicy.resizeAroundCenter(
+                x = params.x,
+                y = params.y,
+                fromWidth = params.width,
+                fromHeight = params.height,
+                toWidth = expandedWidth,
+                toHeight = expandedHeight,
+                screenWidth = bounds.first,
+                screenHeight = bounds.second,
+                margin = edgeMargin
+            )
         } else {
-            expandedY = expandedY.coerceIn(
-                edgeMargin,
-                (bounds.second - expandedHeight - edgeMargin).coerceAtLeast(edgeMargin)
+            ScreenshotOverlayPositionPolicy.clamp(
+                x = params.x,
+                y = params.y,
+                windowWidth = bounds.first,
+                windowHeight = bounds.second,
+                overlayWidth = expandedWidth,
+                overlayHeight = expandedHeight,
+                marginPx = edgeMargin
             )
         }
+        val stateChanged = collapsed
         binding.collapsedCaptureHandle.visibility = View.GONE
         binding.expandedCaptureControls.visibility = View.VISIBLE
         collapsed = false
-        updateControlWindow(expandedWidth, expandedHeight, expandedX, expandedY)
+        updateControlWindow(expandedWidth, expandedHeight, position.x, position.y)
+        if (stateChanged) animateControlMaterialization()
     }
 
     private fun collapseNow() {
         if (!ensureControlAttachedNow()) return
         mainHandler.removeCallbacks(collapseRunnable)
+        val params = controlParams ?: return
+        if (collapsed) return
         val bounds = windowBounds()
+        val position = ActiveOverlayPositionPolicy.resizeAroundCenter(
+            x = params.x,
+            y = params.y,
+            fromWidth = params.width,
+            fromHeight = params.height,
+            toWidth = collapsedWidth,
+            toHeight = collapsedHeight,
+            screenWidth = bounds.first,
+            screenHeight = bounds.second,
+            margin = edgeMargin
+        )
         binding.expandedCaptureControls.visibility = View.GONE
         binding.collapsedCaptureHandle.visibility = View.VISIBLE
         collapsed = true
         updateControlWindow(
             collapsedWidth,
             collapsedHeight,
-            ((bounds.first - collapsedWidth) / 2).coerceAtLeast(0),
-            (bounds.second - collapsedHeight - dp(COMPACT_BOTTOM_MARGIN_DP)).coerceAtLeast(0)
+            position.x,
+            position.y
         )
+        animateControlMaterialization()
     }
 
     private fun ensureControlAttachedNow(): Boolean {
         if (!Settings.canDrawOverlays(appContext)) return false
         if (binding.root.isAttachedToWindow) return true
         val bounds = windowBounds()
-        expandedX = ((bounds.first - expandedWidth) / 2).coerceAtLeast(edgeMargin)
-        expandedY = (bounds.second - expandedHeight - dp(EXPANDED_BOTTOM_MARGIN_DP))
+        val initialX = ((bounds.first - expandedWidth) / 2).coerceAtLeast(edgeMargin)
+        val initialY = (bounds.second - expandedHeight - dp(EXPANDED_BOTTOM_MARGIN_DP))
             .coerceAtLeast(edgeMargin)
         val params = createLayoutParams(
             width = expandedWidth,
@@ -226,12 +252,16 @@ internal class ActiveScreenCaptureOverlayController(
             flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                 WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
                 WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
-            x = expandedX,
-            y = expandedY
+            x = initialX,
+            y = initialY
         )
         controlParams = params
+        binding.root.alpha = 0f
+        binding.root.scaleX = CONTROL_ENTRY_SCALE
+        binding.root.scaleY = CONTROL_ENTRY_SCALE
         runCatching { windowManager.addView(binding.root, params) }
             .onFailure { controlParams = null }
+        if (binding.root.isAttachedToWindow) animateControlMaterialization()
         return binding.root.isAttachedToWindow
     }
 
@@ -345,20 +375,28 @@ internal class ActiveScreenCaptureOverlayController(
         runCatching { windowManager.updateViewLayout(binding.root, params) }
     }
 
-    private fun attachDragGesture() {
+    private fun attachDragGestures() {
+        attachDragGesture(binding.activeOverlayDragHandle)
+        attachDragGesture(binding.collapsedCaptureHandle)
+        attachDragGesture(binding.btnExpandActiveOverlay)
+    }
+
+    private fun attachDragGesture(target: View) {
         var downX = 0f
         var downY = 0f
         var startX = 0
         var startY = 0
         var dragging = false
-        binding.activeOverlayDragHandle.setOnTouchListener { view, event ->
+        target.setOnTouchListener { view, event ->
+            val params = controlParams ?: return@setOnTouchListener false
             when (event.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
                     downX = event.rawX
                     downY = event.rawY
-                    startX = expandedX
-                    startY = expandedY
+                    startX = params.x
+                    startY = params.y
                     dragging = false
+                    setControlPressed(true)
                     true
                 }
                 MotionEvent.ACTION_MOVE -> {
@@ -366,29 +404,65 @@ internal class ActiveScreenCaptureOverlayController(
                     val dy = event.rawY - downY
                     if (!dragging && (abs(dx) > touchSlop || abs(dy) > touchSlop)) {
                         dragging = true
+                        view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
                     }
                     if (dragging) {
                         val bounds = windowBounds()
-                        expandedX = (startX + dx.toInt()).coerceIn(
-                            edgeMargin,
-                            (bounds.first - expandedWidth - edgeMargin).coerceAtLeast(edgeMargin)
+                        val position = ScreenshotOverlayPositionPolicy.clamp(
+                            x = startX + dx.toInt(),
+                            y = startY + dy.toInt(),
+                            windowWidth = bounds.first,
+                            windowHeight = bounds.second,
+                            overlayWidth = params.width,
+                            overlayHeight = params.height,
+                            marginPx = edgeMargin
                         )
-                        expandedY = (startY + dy.toInt()).coerceIn(
-                            edgeMargin,
-                            (bounds.second - expandedHeight - edgeMargin).coerceAtLeast(edgeMargin)
+                        updateControlWindow(
+                            params.width,
+                            params.height,
+                            position.x,
+                            position.y
                         )
-                        updateControlWindow(expandedWidth, expandedHeight, expandedX, expandedY)
                     }
                     true
                 }
                 MotionEvent.ACTION_UP -> {
+                    setControlPressed(false)
                     if (!dragging) view.performClick()
                     true
                 }
-                MotionEvent.ACTION_CANCEL -> true
+                MotionEvent.ACTION_CANCEL -> {
+                    setControlPressed(false)
+                    true
+                }
                 else -> false
             }
         }
+    }
+
+    private fun setControlPressed(pressed: Boolean) {
+        binding.root.animate().cancel()
+        binding.root.animate()
+            .alpha(if (pressed) CONTROL_PRESSED_ALPHA else 1f)
+            .scaleX(if (pressed) CONTROL_PRESSED_SCALE else 1f)
+            .scaleY(if (pressed) CONTROL_PRESSED_SCALE else 1f)
+            .setDuration(CONTROL_PRESS_DURATION_MS)
+            .setInterpolator(DecelerateInterpolator())
+            .start()
+    }
+
+    private fun animateControlMaterialization() {
+        binding.root.animate().cancel()
+        binding.root.alpha = CONTROL_MATERIALIZE_ALPHA
+        binding.root.scaleX = CONTROL_ENTRY_SCALE
+        binding.root.scaleY = CONTROL_ENTRY_SCALE
+        binding.root.animate()
+            .alpha(1f)
+            .scaleX(1f)
+            .scaleY(1f)
+            .setDuration(CONTROL_MATERIALIZE_DURATION_MS)
+            .setInterpolator(DecelerateInterpolator())
+            .start()
     }
 
     private fun createLayoutParams(
@@ -435,7 +509,12 @@ internal class ActiveScreenCaptureOverlayController(
     private companion object {
         const val AUTO_COLLAPSE_DELAY_MS = 3_500L
         const val EXPANDED_BOTTOM_MARGIN_DP = 44
-        const val COMPACT_BOTTOM_MARGIN_DP = 36
+        const val CONTROL_PRESS_DURATION_MS = 90L
+        const val CONTROL_MATERIALIZE_DURATION_MS = 150L
+        const val CONTROL_PRESSED_ALPHA = 0.92f
+        const val CONTROL_MATERIALIZE_ALPHA = 0.82f
+        const val CONTROL_PRESSED_SCALE = 0.985f
+        const val CONTROL_ENTRY_SCALE = 0.96f
         const val MODE_MENU_GROUP = 1
         const val MODE_MENU_BIDIRECTIONAL = 101
         const val MODE_MENU_ENGLISH_CHINESE = 102

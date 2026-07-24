@@ -4,7 +4,9 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.Path
 import android.graphics.Rect
+import android.graphics.RectF
 import android.graphics.Typeface
 import android.text.Layout
 import android.text.StaticLayout
@@ -239,7 +241,8 @@ internal class BackgroundTranslatedImageProcessor(
                 val rendered = BackgroundTranslatedImageRenderer.render(
                     patchBitmap,
                     listOf(localRegion),
-                    styleSourceBitmap = crop
+                    styleSourceBitmap = crop,
+                    useGlassBackground = true
                 )
                 if (rendered.isEmpty()) {
                     patchBitmap.recycle()
@@ -280,7 +283,8 @@ private object BackgroundTranslatedImageRenderer {
     fun render(
         bitmap: Bitmap,
         regions: List<BackgroundImageRegion>,
-        styleSourceBitmap: Bitmap = bitmap
+        styleSourceBitmap: Bitmap = bitmap,
+        useGlassBackground: Boolean = false
     ): List<Rect> {
         val canvas = Canvas(bitmap)
         val renderedRegions = mutableListOf<Rect>()
@@ -291,6 +295,9 @@ private object BackgroundTranslatedImageRenderer {
                 bounds,
                 region.source.text
             )
+            if (useGlassBackground) {
+                drawGlassBackground(canvas, bitmap, bounds, style.isDarkBackground)
+            }
             val isControlLabel = style.isDarkBackground &&
                 region.source.text.filterNot(Char::isWhitespace).length <= 20
             val horizontalPadding = if (isControlLabel) 0 else maxOf(2, bounds.height() / 8)
@@ -323,6 +330,79 @@ private object BackgroundTranslatedImageRenderer {
             renderedRegions.add(Rect(bounds))
         }
         return renderedRegions
+    }
+
+    private fun drawGlassBackground(
+        canvas: Canvas,
+        bitmap: Bitmap,
+        textBounds: Rect,
+        isDarkBackground: Boolean
+    ) {
+        val materialPadding = minOf(
+            GLASS_MAXIMUM_PADDING_PX,
+            maxOf(GLASS_MINIMUM_PADDING_PX, textBounds.height() / 10)
+        )
+        val materialBounds = Rect(
+            textBounds.left - materialPadding,
+            textBounds.top - materialPadding,
+            textBounds.right + materialPadding,
+            textBounds.bottom + materialPadding
+        ).clampedTo(bitmap) ?: return
+        val source = Bitmap.createBitmap(
+            materialBounds.width(),
+            materialBounds.height(),
+            Bitmap.Config.ARGB_8888
+        ).also { copy ->
+            Canvas(copy).drawBitmap(
+                bitmap,
+                -materialBounds.left.toFloat(),
+                -materialBounds.top.toFloat(),
+                Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
+            )
+        }
+        val downsampled = Bitmap.createScaledBitmap(
+            source,
+            maxOf(1, source.width / GLASS_DOWNSAMPLE_FACTOR),
+            maxOf(1, source.height / GLASS_DOWNSAMPLE_FACTOR),
+            true
+        )
+        val destination = RectF(materialBounds)
+        val cornerRadius = maxOf(
+            GLASS_MINIMUM_CORNER_RADIUS_PX,
+            minOf(destination.width(), destination.height()) * GLASS_CORNER_RADIUS_RATIO
+        )
+        val materialPath = Path().apply {
+            addRoundRect(destination, cornerRadius, cornerRadius, Path.Direction.CW)
+        }
+        canvas.save()
+        canvas.clipPath(materialPath)
+        canvas.drawBitmap(
+            downsampled,
+            null,
+            destination,
+            Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
+        )
+        canvas.drawRoundRect(
+            destination,
+            cornerRadius,
+            cornerRadius,
+            Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = if (isDarkBackground) GLASS_DARK_TINT else GLASS_LIGHT_TINT
+            }
+        )
+        canvas.restore()
+        canvas.drawRoundRect(
+            destination,
+            cornerRadius,
+            cornerRadius,
+            Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = if (isDarkBackground) GLASS_DARK_BORDER else GLASS_LIGHT_BORDER
+                style = Paint.Style.STROKE
+                strokeWidth = GLASS_BORDER_WIDTH_PX
+            }
+        )
+        if (downsampled !== source && !downsampled.isRecycled) downsampled.recycle()
+        if (!source.isRecycled) source.recycle()
     }
 
     private fun fittingLayout(
@@ -529,4 +609,14 @@ private object BackgroundTranslatedImageRenderer {
     private const val DARK_BACKGROUND_LUMINANCE = 145
     private const val MINIMUM_CONTRAST_DELTA = 90
     private const val BOLD_STROKE_COVERAGE = 0.3f
+    private const val GLASS_DOWNSAMPLE_FACTOR = 5
+    private const val GLASS_MINIMUM_PADDING_PX = 3
+    private const val GLASS_MAXIMUM_PADDING_PX = 5
+    private const val GLASS_MINIMUM_CORNER_RADIUS_PX = 4f
+    private const val GLASS_CORNER_RADIUS_RATIO = 0.16f
+    private const val GLASS_BORDER_WIDTH_PX = 1f
+    private val GLASS_LIGHT_TINT = Color.argb(184, 250, 251, 253)
+    private val GLASS_DARK_TINT = Color.argb(176, 25, 29, 35)
+    private val GLASS_LIGHT_BORDER = Color.argb(72, 255, 255, 255)
+    private val GLASS_DARK_BORDER = Color.argb(58, 255, 255, 255)
 }
