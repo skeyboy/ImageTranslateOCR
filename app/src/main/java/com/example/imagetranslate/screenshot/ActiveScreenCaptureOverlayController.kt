@@ -112,7 +112,6 @@ internal class ActiveScreenCaptureOverlayController(
         if (!ensureControlAttachedNow()) return@onMainThread
         processing = true
         sessionActive = true
-        removeTranslationLayersNow()
         collapseNow()
         binding.root.visibility = View.VISIBLE
         binding.btnActiveOverlayCapture.visibility = View.GONE
@@ -128,11 +127,11 @@ internal class ActiveScreenCaptureOverlayController(
     fun showWaitingForStable() = onMainThread {
         translationView.hideForViewportMovement()
         sessionActive = true
-        updateCompactStatus(R.string.active_screenshot_compact_waiting, showProgress = true)
+        updateCompactStatus(R.string.active_screenshot_compact_waiting, showProgress = false)
         if (binding.expandedCaptureControls.visibility == View.VISIBLE) {
             binding.btnActiveOverlayCapture.visibility = View.GONE
             binding.activeOverlayStatusGroup.visibility = View.VISIBLE
-            binding.activeOverlayProgress.visibility = View.VISIBLE
+            binding.activeOverlayProgress.visibility = View.INVISIBLE
             binding.tvActiveOverlayStatus.setText(R.string.active_screenshot_waiting_stable)
             binding.btnCancelActivePreview.visibility = View.VISIBLE
         }

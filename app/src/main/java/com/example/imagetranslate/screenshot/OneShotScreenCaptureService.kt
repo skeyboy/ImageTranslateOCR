@@ -1128,7 +1128,7 @@ class OneShotScreenCaptureService : Service() {
         private const val SIGNATURE_ROWS = 72
         private const val SIGNATURE_TOP_CROP_RATIO = 0.08f
         private const val SIGNATURE_BOTTOM_RATIO = 0.94f
-        private const val FRAME_SIGNATURE_INTERVAL_MS = 75L
+        private const val FRAME_SIGNATURE_INTERVAL_MS = 50L
         private const val DISPLAY_CHANGE_SETTLE_MS = 900L
         private const val MEDIA_PROJECTION_RESIZE_SETTLE_MS = 120L
         private const val ROTATION_FRAME_RECOVERY_TIMEOUT_MS = 3_000L
