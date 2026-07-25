@@ -16,7 +16,7 @@ class ScreenFrameChangeDetectorTest {
     fun movingScreenCapturesOnlyAfterItHasSettled() {
         assertEquals(ScreenFrameAction.NONE, detector.onFrame(frame(10), 0L))
         assertEquals(ScreenFrameAction.MOVING, detector.onFrame(frame(80), 100L))
-        assertEquals(ScreenFrameAction.NONE, detector.onFrame(frame(140), 250L))
+        assertEquals(ScreenFrameAction.MOVING_UPDATE, detector.onFrame(frame(140), 250L))
         assertEquals(ScreenFrameAction.NONE, detector.onFrame(frame(140), 600L))
         assertEquals(ScreenFrameAction.CAPTURE, detector.onFrame(frame(140), 651L))
     }
@@ -63,6 +63,7 @@ class ScreenFrameChangeDetectorTest {
         scrollDetector.onCaptureStarted(reference, 0L)
 
         assertEquals(ScreenFrameAction.MOVING, scrollDetector.onFrame(current, 100L))
+        assertEquals(-160, scrollDetector.currentMotionPlan()?.contentShiftY)
         assertEquals(ScreenFrameAction.NONE, scrollDetector.onFrame(current, 401L))
         assertEquals(ScreenFrameAction.CAPTURE, scrollDetector.onFrame(current, 477L))
         val plan = scrollDetector.consumeCapturePlan()

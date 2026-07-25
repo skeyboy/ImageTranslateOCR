@@ -24,6 +24,7 @@ import kotlin.math.abs
 
 internal class ActiveScreenCaptureOverlayController(
     context: Context,
+    initialExperienceMode: LiveOverlayExperienceMode,
     private val listener: Listener
 ) {
     interface Listener {
@@ -32,11 +33,12 @@ internal class ActiveScreenCaptureOverlayController(
         fun onCancelPreview()
         fun onTranslationModeChanged(mode: TranslationMode)
         fun onTranslationVisibilityChanged()
+        fun onExperienceModeRequested(mode: LiveOverlayExperienceMode)
     }
 
     private val appContext = context.applicationContext
     private val mainHandler = Handler(Looper.getMainLooper())
-    private val windowManager = appContext.getSystemService(WindowManager::class.java)
+    private val applicationWindowManager = appContext.getSystemService(WindowManager::class.java)
     private val themedContext = ContextThemeWrapper(context, R.style.Theme_ImageTranslate)
     private val binding = OverlayActiveScreenCaptureBinding.inflate(
         LayoutInflater.from(themedContext)
@@ -50,6 +52,8 @@ internal class ActiveScreenCaptureOverlayController(
     private val collapsedHeight = dp(42)
     private var controlParams: WindowManager.LayoutParams? = null
     private var translationMode = TranslationMode.AUTO_BIDIRECTIONAL
+    private var experienceMode = initialExperienceMode
+    private var attachedWindowManager: WindowManager? = null
     private var sessionActive = false
     private var processing = false
     private var collapsed = false
@@ -64,7 +68,7 @@ internal class ActiveScreenCaptureOverlayController(
             showReadyNow()
         }
         binding.btnActiveOverlayMode.setOnClickListener {
-            showTranslationModeMenu()
+            showOverlayMenu()
         }
         binding.btnToggleActiveTranslation.addOnCheckedChangeListener { _, checked ->
             translationVisible = checked
@@ -80,9 +84,16 @@ internal class ActiveScreenCaptureOverlayController(
 
     fun showReadyExpanded() = onMainThread(::showReadyNow)
 
+    fun setExperienceMode(mode: LiveOverlayExperienceMode) = onMainThread {
+        if (experienceMode == mode) return@onMainThread
+        dismissNow()
+        experienceMode = mode
+        showReadyNow()
+    }
+
     fun hideForCapture() = onMainThread {
         binding.root.visibility = View.INVISIBLE
-        removeTranslationLayersNow()
+        translationView.setPatchesVisible(false, animateChange = false)
     }
 
     fun showProcessing() = onMainThread {
@@ -102,8 +113,8 @@ internal class ActiveScreenCaptureOverlayController(
         updateCompactStatus(R.string.active_screenshot_compact_processing, showProgress = true)
     }
 
-    fun showWaitingForStable() = onMainThread {
-        removeTranslationLayersNow()
+    fun showWaitingForStable(estimatedShiftY: Int?) = onMainThread {
+        translationView.beginMovementPreview(estimatedShiftY ?: 0)
         sessionActive = true
         updateCompactStatus(R.string.active_screenshot_compact_waiting, showProgress = true)
         if (binding.expandedCaptureControls.visibility == View.VISIBLE) {
@@ -113,6 +124,10 @@ internal class ActiveScreenCaptureOverlayController(
             binding.tvActiveOverlayStatus.setText(R.string.active_screenshot_waiting_stable)
             binding.btnCancelActivePreview.visibility = View.VISIBLE
         }
+    }
+
+    fun updateMovementPreview(estimatedShiftY: Int?) = onMainThread {
+        if (estimatedShiftY != null) translationView.updateMovementPreview(estimatedShiftY)
     }
 
     fun showResult(
@@ -142,7 +157,6 @@ internal class ActiveScreenCaptureOverlayController(
         binding.btnActiveOverlayMode.isEnabled = true
         binding.btnToggleActiveTranslation.isEnabled = hasTranslationResult
         binding.btnToggleActiveTranslation.isChecked = translationVisible
-        expandNow()
         updateCompactStatus(
             if (patches.isEmpty()) {
                 R.string.active_screenshot_compact_no_text
@@ -162,7 +176,7 @@ internal class ActiveScreenCaptureOverlayController(
     fun dismiss() = onMainThread(::dismissNow)
 
     private fun showReadyNow() {
-        if (!Settings.canDrawOverlays(appContext)) {
+        if (!canAttachOverlay()) {
             dismissNow()
             return
         }
@@ -247,7 +261,7 @@ internal class ActiveScreenCaptureOverlayController(
     }
 
     private fun ensureControlAttachedNow(): Boolean {
-        if (!Settings.canDrawOverlays(appContext)) return false
+        if (!canAttachOverlay()) return false
         if (binding.root.parent != null) return true
         if (!ensureTranslationAttachedNow()) return false
         val bounds = windowBounds()
@@ -267,8 +281,10 @@ internal class ActiveScreenCaptureOverlayController(
         binding.root.alpha = 0f
         binding.root.scaleX = CONTROL_ENTRY_SCALE
         binding.root.scaleY = CONTROL_ENTRY_SCALE
+        val windowManager = activeWindowManager() ?: return false
         runCatching { windowManager.addView(binding.root, params) }
             .onFailure { controlParams = null }
+        if (binding.root.parent != null) attachedWindowManager = windowManager
         if (binding.root.parent != null) animateControlMaterialization()
         return binding.root.parent != null
     }
@@ -288,7 +304,7 @@ internal class ActiveScreenCaptureOverlayController(
     }
 
     private fun ensureTranslationAttachedNow(): Boolean {
-        if (!Settings.canDrawOverlays(appContext)) return false
+        if (!canAttachOverlay()) return false
         if (translationView.parent != null) return true
         val bounds = windowBounds()
         val params = createLayoutParams(
@@ -303,14 +319,17 @@ internal class ActiveScreenCaptureOverlayController(
         ).apply {
             alpha = translationPatchWindowAlpha(overlapCount = 1)
         }
+        val windowManager = activeWindowManager() ?: return false
         return runCatching {
             windowManager.addView(translationView, params)
+            if (translationView.parent != null) attachedWindowManager = windowManager
             translationView.parent != null
         }.getOrDefault(false)
     }
 
     private fun dismissNow() {
         removeTranslationLayersNow()
+        val windowManager = attachedWindowManager ?: applicationWindowManager
         if (binding.root.parent != null) {
             runCatching { windowManager.removeViewImmediate(binding.root) }
         }
@@ -318,6 +337,7 @@ internal class ActiveScreenCaptureOverlayController(
             runCatching { windowManager.removeViewImmediate(translationView) }
         }
         controlParams = null
+        attachedWindowManager = null
     }
 
     private fun removeTranslationLayersNow() {
@@ -337,7 +357,7 @@ internal class ActiveScreenCaptureOverlayController(
         )
     }
 
-    private fun showTranslationModeMenu() {
+    private fun showOverlayMenu() {
         PopupMenu(themedContext, binding.btnActiveOverlayMode).apply {
             menu.add(
                 MODE_MENU_GROUP,
@@ -365,7 +385,42 @@ internal class ActiveScreenCaptureOverlayController(
                     TranslationMode.CHINESE_TO_ENGLISH -> MODE_MENU_CHINESE_ENGLISH
                 }
             ).isChecked = true
+            menu.add(
+                MENU_HEADER_GROUP,
+                MENU_HEADER_EXPERIENCE,
+                10,
+                R.string.active_screenshot_experience_group
+            ).isEnabled = false
+            menu.add(
+                EXPERIENCE_MENU_GROUP,
+                EXPERIENCE_MENU_DEFAULT,
+                11,
+                R.string.active_screenshot_experience_default
+            )
+            menu.add(
+                EXPERIENCE_MENU_GROUP,
+                EXPERIENCE_MENU_ENHANCED,
+                12,
+                R.string.active_screenshot_experience_enhanced
+            )
+            menu.setGroupCheckable(EXPERIENCE_MENU_GROUP, true, true)
+            menu.findItem(
+                if (experienceMode == LiveOverlayExperienceMode.ENHANCED) {
+                    EXPERIENCE_MENU_ENHANCED
+                } else {
+                    EXPERIENCE_MENU_DEFAULT
+                }
+            ).isChecked = true
             setOnMenuItemClickListener { item ->
+                val selectedExperience = when (item.itemId) {
+                    EXPERIENCE_MENU_DEFAULT -> LiveOverlayExperienceMode.DEFAULT
+                    EXPERIENCE_MENU_ENHANCED -> LiveOverlayExperienceMode.ENHANCED
+                    else -> null
+                }
+                if (selectedExperience != null) {
+                    listener.onExperienceModeRequested(selectedExperience)
+                    return@setOnMenuItemClickListener true
+                }
                 val selectedMode = when (item.itemId) {
                     MODE_MENU_BIDIRECTIONAL -> TranslationMode.AUTO_BIDIRECTIONAL
                     MODE_MENU_ENGLISH_CHINESE -> TranslationMode.ENGLISH_TO_CHINESE
@@ -395,7 +450,10 @@ internal class ActiveScreenCaptureOverlayController(
         params.height = height
         params.x = x
         params.y = y
-        runCatching { windowManager.updateViewLayout(binding.root, params) }
+        runCatching {
+            (attachedWindowManager ?: activeWindowManager())
+                ?.updateViewLayout(binding.root, params)
+        }
     }
 
     private fun attachDragGestures() {
@@ -497,7 +555,9 @@ internal class ActiveScreenCaptureOverlayController(
     ) = WindowManager.LayoutParams(
         width,
         height,
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        if (experienceMode == LiveOverlayExperienceMode.ENHANCED) {
+            WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
         } else {
             @Suppress("DEPRECATION")
@@ -516,20 +576,37 @@ internal class ActiveScreenCaptureOverlayController(
     }
 
     private fun windowBounds(): Pair<Int, Int> = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-        windowManager.maximumWindowMetrics.bounds.let { it.width() to it.height() }
+        applicationWindowManager.maximumWindowMetrics.bounds.let { it.width() to it.height() }
     } else {
         @Suppress("DEPRECATION")
         appContext.resources.displayMetrics.let { it.widthPixels to it.heightPixels }
     }
 
     private fun translationPatchWindowAlpha(overlapCount: Int): Float {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return 1f
+        if (experienceMode == LiveOverlayExperienceMode.ENHANCED ||
+            Build.VERSION.SDK_INT < Build.VERSION_CODES.S
+        ) return 1f
         val maximumAlpha = runCatching {
             appContext.getSystemService(InputManager::class.java)
                 .maximumObscuringOpacityForTouch
         }.getOrDefault(DEFAULT_MAXIMUM_OBSCURING_ALPHA)
-        return TranslationOverlayTouchPolicy.windowAlpha(maximumAlpha, overlapCount)
+        return LiveOverlayExperiencePolicy.translationWindowAlpha(
+            experienceMode,
+            TranslationOverlayTouchPolicy.windowAlpha(maximumAlpha, overlapCount)
+        )
     }
+
+    private fun canAttachOverlay(): Boolean =
+        (experienceMode == LiveOverlayExperienceMode.ENHANCED &&
+            ScreenTranslationAccessibilityService.isConnected) ||
+            Settings.canDrawOverlays(appContext)
+
+    private fun activeWindowManager(): WindowManager? =
+        if (experienceMode == LiveOverlayExperienceMode.ENHANCED) {
+            ScreenTranslationAccessibilityService.windowManagerOrNull()
+        } else {
+            applicationWindowManager
+        }
 
     private fun onMainThread(block: () -> Unit) {
         if (Looper.myLooper() == Looper.getMainLooper()) block() else mainHandler.post(block)
@@ -551,5 +628,10 @@ internal class ActiveScreenCaptureOverlayController(
         const val MODE_MENU_BIDIRECTIONAL = 101
         const val MODE_MENU_ENGLISH_CHINESE = 102
         const val MODE_MENU_CHINESE_ENGLISH = 103
+        const val MENU_HEADER_GROUP = 2
+        const val MENU_HEADER_EXPERIENCE = 200
+        const val EXPERIENCE_MENU_GROUP = 3
+        const val EXPERIENCE_MENU_DEFAULT = 301
+        const val EXPERIENCE_MENU_ENHANCED = 302
     }
 }

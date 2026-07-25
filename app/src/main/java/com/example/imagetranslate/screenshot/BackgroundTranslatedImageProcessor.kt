@@ -148,7 +148,8 @@ internal class BackgroundTranslatedImageProcessor(
     suspend fun translateForOverlay(
         bitmap: Bitmap,
         mode: TranslationMode,
-        capturePlan: ScrollCapturePlan? = null
+        capturePlan: ScrollCapturePlan? = null,
+        overlayAlpha: Float = ScreenThemeColorEstimator.DEFAULT_OVERLAY_ALPHA
     ): BackgroundTranslatedOverlayResult {
         check(!closed) { "Image processor is closed" }
         return try {
@@ -158,10 +159,11 @@ internal class BackgroundTranslatedImageProcessor(
             val batch = differential?.batch
                 ?: recognizeAndTranslate(bitmap, mode, fastOcr = true)
             val fallbackSurface = ScreenThemeColorEstimator.compositableSurface(
-                ScreenThemeColorEstimator.estimate(bitmap)
+                ScreenThemeColorEstimator.estimate(bitmap),
+                overlayAlpha
             )
             val renderedPatches = batch.regions.mapNotNull { region ->
-                createOverlayPatch(bitmap, region, fallbackSurface)
+                createOverlayPatch(bitmap, region, fallbackSurface, overlayAlpha)
             }
             val patches = mergeOverlappingPatches(renderedPatches)
             BackgroundTranslatedOverlayResult(
@@ -440,10 +442,16 @@ internal class BackgroundTranslatedImageProcessor(
     private fun createOverlayPatch(
         bitmap: Bitmap,
         region: BackgroundImageRegion,
-        fallbackSurface: Int
+        fallbackSurface: Int,
+        overlayAlpha: Float
     ): ScreenTranslationPatch? {
         val sourceBounds = region.source.bounds.clampedTo(bitmap) ?: return null
-        val localSurface = estimateLocalSurface(bitmap, sourceBounds, fallbackSurface)
+        val localSurface = estimateLocalSurface(
+            bitmap,
+            sourceBounds,
+            fallbackSurface,
+            overlayAlpha
+        )
         val cropBounds = Rect(
             (sourceBounds.left - OVERLAY_PATCH_PADDING_PX).coerceAtLeast(0),
             (sourceBounds.top - OVERLAY_PATCH_PADDING_PX).coerceAtLeast(0),
@@ -478,7 +486,8 @@ internal class BackgroundTranslatedImageProcessor(
                 patchBitmap,
                 listOf(localRegion),
                 styleSourceBitmap = crop,
-                overlayBackgroundColor = localSurface
+                overlayBackgroundColor = localSurface,
+                overlayAlpha = overlayAlpha
             )
             if (rendered.isEmpty()) {
                 patchBitmap.recycle()
@@ -552,7 +561,8 @@ internal class BackgroundTranslatedImageProcessor(
     private fun estimateLocalSurface(
         bitmap: Bitmap,
         bounds: Rect,
-        fallbackSurface: Int
+        fallbackSurface: Int,
+        overlayAlpha: Float
     ): Int {
         val padding = maxOf(
             LOCAL_SURFACE_MINIMUM_PADDING_PX,
@@ -571,12 +581,16 @@ internal class BackgroundTranslatedImageProcessor(
         val samples = ArrayList<Int>()
         for (y in sampleBounds.top until sampleBounds.bottom step sampleStep) {
             for (x in sampleBounds.left until sampleBounds.right step sampleStep) {
+                if (x in bounds.left until bounds.right && y in bounds.top until bounds.bottom) {
+                    continue
+                }
                 samples += bitmap.getPixel(x, y)
             }
         }
         if (samples.size < LOCAL_SURFACE_MINIMUM_SAMPLES) return fallbackSurface
         return ScreenThemeColorEstimator.compositableSurface(
-            ScreenThemeColorEstimator.estimate(samples.toIntArray())
+            ScreenThemeColorEstimator.estimate(samples.toIntArray()),
+            overlayAlpha
         )
     }
 
@@ -668,7 +682,8 @@ private object BackgroundTranslatedImageRenderer {
         bitmap: Bitmap,
         regions: List<BackgroundImageRegion>,
         styleSourceBitmap: Bitmap = bitmap,
-        overlayBackgroundColor: Int? = null
+        overlayBackgroundColor: Int? = null,
+        overlayAlpha: Float = ScreenThemeColorEstimator.DEFAULT_OVERLAY_ALPHA
     ): List<Rect> {
         val canvas = Canvas(bitmap)
         val renderedRegions = mutableListOf<Rect>()
@@ -697,7 +712,8 @@ private object BackgroundTranslatedImageRenderer {
                     bitmap,
                     styleSourceBitmap,
                     bounds,
-                    overlayBackgroundColor
+                    overlayBackgroundColor,
+                    overlayAlpha
                 )
             }
             val isControlLabel = style.isDarkBackground &&
@@ -739,7 +755,8 @@ private object BackgroundTranslatedImageRenderer {
         bitmap: Bitmap,
         sourceBitmap: Bitmap,
         textBounds: Rect,
-        themeColor: Int
+        themeColor: Int,
+        overlayAlpha: Float
     ) {
         val materialBounds = overlayMaterialBounds(textBounds, bitmap) ?: return
         val sourcePixels = IntArray(materialBounds.width() * materialBounds.height())
@@ -755,7 +772,8 @@ private object BackgroundTranslatedImageRenderer {
         sourcePixels.indices.forEach { index ->
             sourcePixels[index] = ScreenThemeColorEstimator.compensationColor(
                 targetSurface = themeColor,
-                sourceColor = sourcePixels[index]
+                sourceColor = sourcePixels[index],
+                overlayAlpha = overlayAlpha
             )
         }
         val compensation = Bitmap.createBitmap(

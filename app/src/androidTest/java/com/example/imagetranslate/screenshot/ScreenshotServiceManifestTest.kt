@@ -85,6 +85,19 @@ class ScreenshotServiceManifestTest {
     }
 
     @Test
+    fun enhancedModeRegistersAnAccessibilityService() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val serviceInfo = context.packageManager.getServiceInfo(
+            ComponentName(context, ScreenTranslationAccessibilityService::class.java),
+            PackageManager.GET_META_DATA
+        )
+
+        assertTrue(serviceInfo.exported)
+        assertTrue(serviceInfo.permission == Manifest.permission.BIND_ACCESSIBILITY_SERVICE)
+        assertTrue(serviceInfo.metaData.containsKey("android.accessibilityservice"))
+    }
+
+    @Test
     fun screenCapturePermissionActivityIsInternal() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val activityInfo = context.packageManager.getActivityInfo(
@@ -93,6 +106,7 @@ class ScreenshotServiceManifestTest {
         )
 
         assertFalse(activityInfo.exported)
+        assertTrue(activityInfo.taskAffinity.isNullOrEmpty())
     }
 
     @Test

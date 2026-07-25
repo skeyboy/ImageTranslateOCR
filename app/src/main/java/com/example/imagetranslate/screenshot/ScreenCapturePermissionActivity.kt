@@ -15,6 +15,7 @@ class ScreenCapturePermissionActivity : ComponentActivity() {
     ) { result ->
         val resultData = result.data
         if (result.resultCode == RESULT_OK && resultData != null) {
+            finishAndRemoveTask()
             OneShotScreenCaptureService.start(
                 context = this,
                 resultCode = result.resultCode,
@@ -22,13 +23,14 @@ class ScreenCapturePermissionActivity : ComponentActivity() {
                 startImmediately = true
             )
         } else {
+            finishAndRemoveTask()
+            OneShotScreenCaptureService.showOverlay(this)
             Toast.makeText(
                 this,
                 R.string.active_screenshot_cancelled,
                 Toast.LENGTH_SHORT
             ).show()
         }
-        finish()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {

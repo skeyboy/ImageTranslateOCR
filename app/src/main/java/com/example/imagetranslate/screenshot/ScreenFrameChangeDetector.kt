@@ -13,6 +13,7 @@ internal data class ScreenFrameSignature(
 internal enum class ScreenFrameAction {
     NONE,
     MOVING,
+    MOVING_UPDATE,
     CAPTURE
 }
 
@@ -33,6 +34,7 @@ internal class ScreenFrameChangeDetector(
     private var peakMovementRatio = 0f
     private var captureBaseline: ScreenFrameSignature? = null
     private var pendingCapturePlan: ScrollCapturePlan? = null
+    private var latestMotionPlan: ScrollCapturePlan? = null
     private val stableFrames = ArrayDeque<ScreenFrameSignature>(STABLE_FRAME_BUFFER_CAPACITY)
 
     fun onFrame(signature: ScreenFrameSignature, nowMs: Long): ScreenFrameAction {
@@ -50,8 +52,11 @@ internal class ScreenFrameChangeDetector(
             dirty = true
             lastMovementAt = nowMs
             peakMovementRatio = maxOf(peakMovementRatio, differenceRatio)
+            latestMotionPlan = captureBaseline?.let { baseline ->
+                ScrollFrameMotionEstimator.estimate(baseline, signature)
+            }
             return if (movementReported) {
-                ScreenFrameAction.NONE
+                ScreenFrameAction.MOVING_UPDATE
             } else {
                 movementReported = true
                 ScreenFrameAction.MOVING
@@ -85,6 +90,7 @@ internal class ScreenFrameChangeDetector(
         dirty = false
         movementReported = false
         peakMovementRatio = 0f
+        latestMotionPlan = null
         stableFrames.clear()
         lastCaptureAt = nowMs
         ignoreUntil = nowMs + POST_RENDER_IGNORE_MS
@@ -97,6 +103,7 @@ internal class ScreenFrameChangeDetector(
         movementReported = false
         peakMovementRatio = 0f
         pendingCapturePlan = null
+        latestMotionPlan = null
         rememberStableFrame(signature, reset = true)
         lastMovementAt = nowMs
         lastCaptureAt = nowMs
@@ -113,12 +120,15 @@ internal class ScreenFrameChangeDetector(
         peakMovementRatio = 0f
         captureBaseline = null
         pendingCapturePlan = null
+        latestMotionPlan = null
         stableFrames.clear()
     }
 
     fun consumeCapturePlan(): ScrollCapturePlan? = pendingCapturePlan.also {
         pendingCapturePlan = null
     }
+
+    fun currentMotionPlan(): ScrollCapturePlan? = latestMotionPlan
 
     private fun rememberStableFrame(signature: ScreenFrameSignature, reset: Boolean = false) {
         if (reset) stableFrames.clear()

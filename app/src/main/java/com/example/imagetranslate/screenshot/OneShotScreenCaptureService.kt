@@ -20,9 +20,11 @@ import android.os.Handler
 import android.os.HandlerThread
 import android.os.IBinder
 import android.os.SystemClock
+import android.provider.Settings
 import android.util.DisplayMetrics
 import android.util.Log
 import android.view.WindowManager
+import android.widget.Toast
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
@@ -66,6 +68,8 @@ class OneShotScreenCaptureService : Service() {
     private var foregroundServiceTypes = 0
     @Volatile
     private var translationMode = TranslationMode.AUTO_BIDIRECTIONAL
+    @Volatile
+    private var experienceMode = LiveOverlayExperienceMode.DEFAULT
     private val liveProcessorDelegate = lazy {
         BackgroundTranslatedImageProcessor(reuseResources = true)
     }
@@ -80,8 +84,11 @@ class OneShotScreenCaptureService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        isRunning = true
+        experienceMode = resolvedExperienceMode()
         overlayController = ActiveScreenCaptureOverlayController(
             this,
+            experienceMode,
             object : ActiveScreenCaptureOverlayController.Listener {
                 override fun onCapture() {
                     beginCaptureFromUser()
@@ -108,6 +115,10 @@ class OneShotScreenCaptureService : Service() {
                         changeDetector.onTranslationRendered(SystemClock.elapsedRealtime())
                     }
                 }
+
+                override fun onExperienceModeRequested(mode: LiveOverlayExperienceMode) {
+                    requestExperienceMode(mode)
+                }
             }
         )
     }
@@ -126,6 +137,10 @@ class OneShotScreenCaptureService : Service() {
             }
             ACTION_STOP_SESSION -> {
                 stopCaptureSession()
+                return START_NOT_STICKY
+            }
+            ACTION_REFRESH_OVERLAY_MODE -> {
+                applyResolvedExperienceMode()
                 return START_NOT_STICKY
             }
             ACTION_START_SESSION -> Unit
@@ -173,6 +188,7 @@ class OneShotScreenCaptureService : Service() {
     }
 
     override fun onDestroy() {
+        isRunning = false
         val activeProcessingJob = processingJob
         releaseCaptureResources()
         serviceScope.cancel()
@@ -211,6 +227,7 @@ class OneShotScreenCaptureService : Service() {
 
     private fun beginCaptureFromUser() {
         if (projection == null) {
+            overlayController.hideForCapture()
             ScreenCapturePermissionActivity.request(this)
             return
         }
@@ -297,8 +314,15 @@ class OneShotScreenCaptureService : Service() {
         when (changeDetector.onFrame(signature, nowMs)) {
             ScreenFrameAction.NONE -> Unit
             ScreenFrameAction.MOVING -> {
-                overlayController.showWaitingForStable()
+                overlayController.showWaitingForStable(
+                    changeDetector.currentMotionPlan()?.contentShiftY
+                )
                 discardStaleCaptureForMovement()
+            }
+            ScreenFrameAction.MOVING_UPDATE -> {
+                overlayController.updateMovementPreview(
+                    changeDetector.currentMotionPlan()?.contentShiftY
+                )
             }
             ScreenFrameAction.CAPTURE -> {
                 val capturePlan = changeDetector.consumeCapturePlan()
@@ -338,12 +362,17 @@ class OneShotScreenCaptureService : Service() {
                 timeoutJob = null
                 overlayController.showProcessing()
                 val activeMode = translationMode
+                val activeExperienceMode = experienceMode
                 val result = withTimeout(TRANSLATION_TIMEOUT_MS) {
                     translationMutex.withLock {
                         liveProcessor.translateForOverlay(
                             bitmap = bitmap,
                             mode = activeMode,
-                            capturePlan = capturePlan
+                            capturePlan = capturePlan,
+                            overlayAlpha = LiveOverlayExperiencePolicy.translationWindowAlpha(
+                                activeExperienceMode,
+                                ScreenThemeColorEstimator.DEFAULT_OVERLAY_ALPHA
+                            )
                         )
                     }
                 }
@@ -556,8 +585,8 @@ class OneShotScreenCaptureService : Service() {
     }
 
     private fun discardStaleCaptureForMovement() {
-        if (!captureInProgress.compareAndSet(true, false)) return
         captureGeneration.incrementAndGet()
+        captureInProgress.set(false)
         captureRequested.set(false)
         processingFrameCaptured.set(false)
         activeCapturePlan = null
@@ -570,6 +599,42 @@ class OneShotScreenCaptureService : Service() {
             buildSessionNotification(capturing = false)
         )
     }
+
+    private fun requestExperienceMode(mode: LiveOverlayExperienceMode) {
+        LiveOverlayExperiencePreferences.setRequestedMode(this, mode)
+        if (mode == LiveOverlayExperienceMode.ENHANCED &&
+            !ScreenTranslationAccessibilityService.isConnected
+        ) {
+            applyResolvedExperienceMode()
+            Toast.makeText(
+                this,
+                R.string.active_screenshot_enhanced_permission_required,
+                Toast.LENGTH_LONG
+            ).show()
+            startActivity(
+                Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+            )
+            return
+        }
+        applyResolvedExperienceMode()
+    }
+
+    private fun applyResolvedExperienceMode() {
+        val resolved = resolvedExperienceMode()
+        if (experienceMode == resolved) return
+        cancelActiveCapture(keepContinuousMode = false)
+        experienceMode = resolved
+        Log.i(TAG, "Live overlay experience changed: ${resolved.name}")
+        overlayController.setExperienceMode(resolved)
+    }
+
+    private fun resolvedExperienceMode(): LiveOverlayExperienceMode =
+        LiveOverlayExperiencePolicy.resolve(
+            requested = LiveOverlayExperiencePreferences.requestedMode(this),
+            accessibilityConnected = ScreenTranslationAccessibilityService.isConnected
+        )
 
     private fun failSession(error: Throwable? = null) {
         if (error != null) Log.e(TAG, "Screen capture session failed", error)
@@ -664,6 +729,8 @@ class OneShotScreenCaptureService : Service() {
             "com.example.imagetranslate.screenshot.TAKE_SCREENSHOT"
         const val ACTION_STOP_SESSION =
             "com.example.imagetranslate.screenshot.STOP_CAPTURE_SESSION"
+        const val ACTION_REFRESH_OVERLAY_MODE =
+            "com.example.imagetranslate.screenshot.REFRESH_OVERLAY_MODE"
         const val ACTION_CAPTURE_FAILED =
             "com.example.imagetranslate.screenshot.CAPTURE_FAILED"
         private const val EXTRA_RESULT_CODE = "result_code"
@@ -685,6 +752,10 @@ class OneShotScreenCaptureService : Service() {
         private const val SIGNATURE_BOTTOM_RATIO = 0.94f
         private const val FRAME_SIGNATURE_INTERVAL_MS = 75L
         private const val TAG = "ScreenCaptureSession"
+
+        @Volatile
+        var isRunning: Boolean = false
+            private set
 
         fun showOverlay(context: android.content.Context) {
             val serviceIntent = Intent(context, OneShotScreenCaptureService::class.java).apply {
