@@ -63,10 +63,20 @@ class ScreenFrameChangeDetectorTest {
         scrollDetector.onCaptureStarted(reference, 0L)
 
         assertEquals(ScreenFrameAction.MOVING, scrollDetector.onFrame(current, 100L))
-        assertEquals(ScreenFrameAction.CAPTURE, scrollDetector.onFrame(current, 401L))
+        assertEquals(ScreenFrameAction.NONE, scrollDetector.onFrame(current, 401L))
+        assertEquals(ScreenFrameAction.CAPTURE, scrollDetector.onFrame(current, 477L))
         val plan = scrollDetector.consumeCapturePlan()
         assertNotNull(plan)
         assertEquals(-160, plan?.contentShiftY)
+    }
+
+    @Test
+    fun oneSettledFrameDoesNotStartBufferedCapture() {
+        detector.onFrame(frame(10), 0L)
+        assertEquals(ScreenFrameAction.MOVING, detector.onFrame(frame(90), 100L))
+
+        assertEquals(ScreenFrameAction.NONE, detector.onFrame(frame(90), 501L))
+        assertEquals(ScreenFrameAction.CAPTURE, detector.onFrame(frame(90), 601L))
     }
 
     private fun frame(value: Int) = ScreenFrameSignature(IntArray(100) { value })

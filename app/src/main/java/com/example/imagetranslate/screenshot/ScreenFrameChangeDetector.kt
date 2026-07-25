@@ -1,5 +1,7 @@
 package com.example.imagetranslate.screenshot
 
+import kotlin.math.abs
+
 internal data class ScreenFrameSignature(
     val samples: IntArray,
     val columns: Int = samples.size,
@@ -31,15 +33,20 @@ internal class ScreenFrameChangeDetector(
     private var peakMovementRatio = 0f
     private var captureBaseline: ScreenFrameSignature? = null
     private var pendingCapturePlan: ScrollCapturePlan? = null
+    private val stableFrames = ArrayDeque<ScreenFrameSignature>(STABLE_FRAME_BUFFER_CAPACITY)
 
     fun onFrame(signature: ScreenFrameSignature, nowMs: Long): ScreenFrameAction {
         val prior = previous
         previous = signature
-        if (prior == null || prior.samples.size != signature.samples.size) return ScreenFrameAction.NONE
+        if (prior == null || prior.samples.size != signature.samples.size) {
+            rememberStableFrame(signature, reset = true)
+            return ScreenFrameAction.NONE
+        }
         if (nowMs < ignoreUntil) return ScreenFrameAction.NONE
 
         val differenceRatio = differenceRatio(prior, signature)
         if (differenceRatio >= changedSampleRatio) {
+            stableFrames.clear()
             dirty = true
             lastMovementAt = nowMs
             peakMovementRatio = maxOf(peakMovementRatio, differenceRatio)
@@ -50,6 +57,7 @@ internal class ScreenFrameChangeDetector(
                 ScreenFrameAction.MOVING
             }
         }
+        rememberStableFrame(signature)
 
         val captureIntervalSatisfied = lastCaptureAt == Long.MIN_VALUE ||
             nowMs - lastCaptureAt >= minimumCaptureIntervalMs
@@ -60,14 +68,13 @@ internal class ScreenFrameChangeDetector(
         }
         if (dirty &&
             nowMs - lastMovementAt >= requiredStableDelay &&
-            captureIntervalSatisfied
+            captureIntervalSatisfied &&
+            stableFrames.size >= MINIMUM_STABLE_FRAME_SAMPLES
         ) {
             dirty = false
             movementReported = false
             lastCaptureAt = nowMs
-            pendingCapturePlan = captureBaseline?.let { baseline ->
-                ScrollFrameMotionEstimator.estimate(baseline, signature)
-            }
+            pendingCapturePlan = bufferedCapturePlan()
             return ScreenFrameAction.CAPTURE
         }
         return ScreenFrameAction.NONE
@@ -78,6 +85,7 @@ internal class ScreenFrameChangeDetector(
         dirty = false
         movementReported = false
         peakMovementRatio = 0f
+        stableFrames.clear()
         lastCaptureAt = nowMs
         ignoreUntil = nowMs + POST_RENDER_IGNORE_MS
     }
@@ -89,6 +97,7 @@ internal class ScreenFrameChangeDetector(
         movementReported = false
         peakMovementRatio = 0f
         pendingCapturePlan = null
+        rememberStableFrame(signature, reset = true)
         lastMovementAt = nowMs
         lastCaptureAt = nowMs
         ignoreUntil = 0L
@@ -104,10 +113,30 @@ internal class ScreenFrameChangeDetector(
         peakMovementRatio = 0f
         captureBaseline = null
         pendingCapturePlan = null
+        stableFrames.clear()
     }
 
     fun consumeCapturePlan(): ScrollCapturePlan? = pendingCapturePlan.also {
         pendingCapturePlan = null
+    }
+
+    private fun rememberStableFrame(signature: ScreenFrameSignature, reset: Boolean = false) {
+        if (reset) stableFrames.clear()
+        if (stableFrames.size == STABLE_FRAME_BUFFER_CAPACITY) stableFrames.removeFirst()
+        stableFrames.addLast(signature)
+    }
+
+    private fun bufferedCapturePlan(): ScrollCapturePlan? {
+        val baseline = captureBaseline ?: return null
+        val plans = stableFrames.mapNotNull { signature ->
+            ScrollFrameMotionEstimator.estimate(baseline, signature)
+        }
+        if (plans.size < MINIMUM_TEMPORAL_PLAN_SAMPLES) return null
+        val medianShift = plans.map(ScrollCapturePlan::contentShiftY).sorted()[plans.size / 2]
+        val tolerance = maxOf(MINIMUM_TEMPORAL_SHIFT_TOLERANCE_PX, abs(medianShift) / 8)
+        val agreeing = plans.filter { abs(it.contentShiftY - medianShift) <= tolerance }
+        if (agreeing.size < MINIMUM_TEMPORAL_PLAN_SAMPLES) return null
+        return agreeing.last()
     }
 
     private fun differenceRatio(
@@ -132,5 +161,9 @@ internal class ScreenFrameChangeDetector(
         const val DEFAULT_LUMINANCE_DELTA = 24
         const val DEFAULT_FAST_MOVEMENT_RATIO = 0.28f
         const val POST_RENDER_IGNORE_MS = 280L
+        const val STABLE_FRAME_BUFFER_CAPACITY = 3
+        const val MINIMUM_STABLE_FRAME_SAMPLES = 2
+        const val MINIMUM_TEMPORAL_PLAN_SAMPLES = 2
+        const val MINIMUM_TEMPORAL_SHIFT_TOLERANCE_PX = 72
     }
 }
