@@ -41,6 +41,17 @@ class ScreenFrameChangeDetectorTest {
     }
 
     @Test
+    fun presentedTranslationDoesNotTriggerAnotherRefresh() {
+        detector.onCaptureStarted(frame(10), 0L)
+        detector.onTranslationRendered(500L)
+
+        assertEquals(ScreenFrameAction.NONE, detector.onFrame(frame(180), 501L))
+        assertEquals(ScreenFrameAction.NONE, detector.onFrame(frame(180), 900L))
+        assertEquals(ScreenFrameAction.NONE, detector.onFrame(frame(180), 1_300L))
+        assertEquals(ScreenFrameAction.MOVING, detector.onFrame(frame(40), 1_400L))
+    }
+
+    @Test
     fun movementAfterCaptureStartedInvalidatesTheCapturedViewport() {
         detector.onFrame(frame(10), 0L)
         detector.onCaptureStarted(frame(40), 100L)

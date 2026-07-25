@@ -113,8 +113,8 @@ internal class ActiveScreenCaptureOverlayController(
         updateCompactStatus(R.string.active_screenshot_compact_processing, showProgress = true)
     }
 
-    fun showWaitingForStable(estimatedShiftY: Int?) = onMainThread {
-        translationView.beginMovementPreview(estimatedShiftY ?: 0)
+    fun showWaitingForStable() = onMainThread {
+        translationView.hideForViewportMovement()
         sessionActive = true
         updateCompactStatus(R.string.active_screenshot_compact_waiting, showProgress = true)
         if (binding.expandedCaptureControls.visibility == View.VISIBLE) {
@@ -126,18 +126,16 @@ internal class ActiveScreenCaptureOverlayController(
         }
     }
 
-    fun updateMovementPreview(estimatedShiftY: Int?) = onMainThread {
-        if (estimatedShiftY != null) translationView.updateMovementPreview(estimatedShiftY)
-    }
-
     fun showResult(
         patches: List<ScreenTranslationPatch>,
         sourceWidth: Int,
         sourceHeight: Int,
-        recognizedCount: Int
+        recognizedCount: Int,
+        onPresented: () -> Unit
     ) = onMainThread {
         if (!ensureControlAttachedNow()) {
             patches.forEach { if (!it.bitmap.isRecycled) it.bitmap.recycle() }
+            mainHandler.post(onPresented)
             return@onMainThread
         }
         processing = false
@@ -165,6 +163,7 @@ internal class ActiveScreenCaptureOverlayController(
             },
             showProgress = false
         )
+        binding.root.postOnAnimation(onPresented)
     }
 
     fun showCaptureFailed() = onMainThread(::showReadyNow)

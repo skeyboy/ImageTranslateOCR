@@ -65,6 +65,10 @@ class ScreenshotOverlayLayoutTest {
             )
             assertEquals(View.VISIBLE, view.visibility)
 
+            view.hideForViewportMovement()
+            assertEquals(View.INVISIBLE, view.visibility)
+            assertFalse(patchBitmap.isRecycled)
+
             view.clearPatches()
             assertEquals(View.INVISIBLE, view.visibility)
             assertTrue(patchBitmap.isRecycled)
