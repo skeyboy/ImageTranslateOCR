@@ -18,6 +18,24 @@ class LiveOverlayLayoutPolicyTest {
     }
 
     @Test
+    fun splitsLongParagraphsIntoReadableTranslationBlocks() {
+        val groups = LiveOverlayLayoutPolicy.groupTextLines(
+            (0 until 6).map { index ->
+                line(
+                    index = index,
+                    left = 40,
+                    top = 100 + index * 38,
+                    right = 340,
+                    bottom = 130 + index * 38,
+                    text = "Paragraph line $index"
+                )
+            }
+        )
+
+        assertEquals(listOf(listOf(0, 1, 2, 3), listOf(4, 5)), groups)
+    }
+
+    @Test
     fun keepsAHeadingSeparateFromSmallerBodyCopy() {
         val groups = LiveOverlayLayoutPolicy.groupTextLines(
             listOf(

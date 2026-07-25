@@ -7,7 +7,7 @@ class LiveOcrScalePolicyTest {
     @Test
     fun scalesHighResolutionPortraitFramesWhilePreservingAspectRatio() {
         assertEquals(
-            LiveOcrInputSize(1152, 2560),
+            LiveOcrInputSize(1296, 2880),
             LiveOcrScalePolicy.inputSize(1440, 3200)
         )
     }
@@ -22,12 +22,12 @@ class LiveOcrScalePolicyTest {
 
     @Test
     fun mapsRecognitionBoundsBackToTheCaptureCoordinateSpace() {
-        val input = LiveOcrInputSize(1152, 2560)
+        val input = LiveOcrInputSize(1296, 2880)
         val source = LiveOcrInputSize(1440, 3200)
 
-        assertEquals(100, LiveOcrScalePolicy.mapX(80, input, source))
-        assertEquals(200, LiveOcrScalePolicy.mapY(160, input, source))
-        assertEquals(600, LiveOcrScalePolicy.mapX(480, input, source))
-        assertEquals(800, LiveOcrScalePolicy.mapY(640, input, source))
+        assertEquals(100, LiveOcrScalePolicy.mapX(90, input, source))
+        assertEquals(200, LiveOcrScalePolicy.mapY(180, input, source))
+        assertEquals(600, LiveOcrScalePolicy.mapX(540, input, source))
+        assertEquals(800, LiveOcrScalePolicy.mapY(720, input, source))
     }
 }

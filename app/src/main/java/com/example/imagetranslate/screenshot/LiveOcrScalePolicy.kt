@@ -25,5 +25,5 @@ internal object LiveOcrScalePolicy {
     private fun mapCoordinate(value: Int, input: Int, source: Int): Int =
         if (input <= 0) value else (value * source.toFloat() / input).roundToInt()
 
-    private const val MAXIMUM_LONG_EDGE_PX = 2_560
+    private const val MAXIMUM_LONG_EDGE_PX = 2_880
 }

@@ -331,16 +331,10 @@ internal class BackgroundTranslatedImageProcessor(
         val snapshot = liveOverlaySnapshot ?: return null
         if (snapshot.width != bitmap.width || snapshot.height != bitmap.height ||
             snapshot.mode != mode || snapshot.regions.isEmpty() ||
-            capturePlan.confidence < MINIMUM_DIFFERENTIAL_CONFIDENCE ||
-            capturePlan.consensusRatio < MINIMUM_DIFFERENTIAL_CONSENSUS ||
-            capturePlan.registrationError > MAXIMUM_DIFFERENTIAL_REGISTRATION_ERROR
+            !LiveDifferentialRecognitionPolicy.canAttempt(capturePlan, bitmap.height)
         ) return null
 
         val shiftY = capturePlan.contentShiftY
-        if (kotlin.math.abs(shiftY) < MINIMUM_DIFFERENTIAL_SHIFT_PX ||
-            kotlin.math.abs(shiftY) > bitmap.height * MAXIMUM_DIFFERENTIAL_SHIFT_RATIO
-        ) return null
-
         val contentTop = (bitmap.height * LIVE_CONTENT_TOP_RATIO).toInt()
         val contentBottom = (bitmap.height * LIVE_CONTENT_BOTTOM_RATIO).toInt()
         val overlapMargin = maxOf(DIFFERENTIAL_MINIMUM_MARGIN_PX, bitmap.height / 18)
@@ -379,10 +373,12 @@ internal class BackgroundTranslatedImageProcessor(
                 source = cached.region.source.copy(bounds = matchedBounds)
             )
         }
-        val validationRatio = shifted.size.toFloat() / snapshot.regions.size
-        if (shifted.size < MINIMUM_REUSED_REGION_COUNT ||
-            validationRatio < MINIMUM_REUSED_REGION_RATIO
+        if (!LiveDifferentialRecognitionPolicy.hasSufficientReuse(
+                snapshotCount = snapshot.regions.size,
+                shiftedCount = shifted.size
+            )
         ) return null
+        val validationRatio = shifted.size.toFloat() / snapshot.regions.size
 
         val invalidOutsideRecognitionArea = snapshot.regions.size - shifted.size > 0 &&
             shifted.none { Rect.intersects(it.source.bounds, recognitionBounds) }
@@ -400,6 +396,11 @@ internal class BackgroundTranslatedImageProcessor(
         val combined = reused + newBatch.regions.filterNot { candidate ->
             reused.any { existing -> Rect.intersects(existing.source.bounds, candidate.source.bounds) }
         }
+        if (!LiveDifferentialRecognitionPolicy.hasSufficientOutput(
+                snapshotCount = snapshot.regions.size,
+                outputCount = combined.size
+            )
+        ) return null
         return DifferentialTranslationBatch(
             batch = BackgroundTranslationBatch(
                 recognizedCount = reused.size + newBatch.recognizedCount,
@@ -711,15 +712,8 @@ internal class BackgroundTranslatedImageProcessor(
         const val LOCAL_SURFACE_MINIMUM_SAMPLES = 16
         const val LIVE_CONTENT_TOP_RATIO = 0.08f
         const val LIVE_CONTENT_BOTTOM_RATIO = 0.94f
-        const val MINIMUM_DIFFERENTIAL_CONFIDENCE = 0.35f
-        const val MINIMUM_DIFFERENTIAL_CONSENSUS = 0.66f
-        const val MAXIMUM_DIFFERENTIAL_REGISTRATION_ERROR = 52f
-        const val MINIMUM_DIFFERENTIAL_SHIFT_PX = 36
         const val DIFFERENTIAL_MINIMUM_MARGIN_PX = 72
-        const val MAXIMUM_DIFFERENTIAL_SHIFT_RATIO = 0.62f
         const val MAXIMUM_DIFFERENTIAL_ROI_RATIO = 0.72f
-        const val MINIMUM_REUSED_REGION_COUNT = 2
-        const val MINIMUM_REUSED_REGION_RATIO = 0.5f
         const val STRONG_REUSED_REGION_RATIO = 0.72f
         const val FINGERPRINT_COLUMNS = 6
         const val FINGERPRINT_ROWS = 4

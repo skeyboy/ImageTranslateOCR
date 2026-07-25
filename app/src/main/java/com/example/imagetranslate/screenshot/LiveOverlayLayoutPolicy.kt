@@ -25,7 +25,7 @@ internal data class LivePatchBounds(
 )
 
 internal object LiveOverlayLayoutPolicy {
-    private const val MAXIMUM_LINES_PER_BLOCK = 6
+    private const val MAXIMUM_LINES_PER_BLOCK = 4
     private const val MINIMUM_HEIGHT_RATIO = 0.72f
     private const val MINIMUM_HORIZONTAL_OVERLAP = 0.55f
     private const val MAXIMUM_VERTICAL_GAP_RATIO = 0.68f
