@@ -17,13 +17,38 @@ internal enum class ScreenFrameAction {
     CAPTURE
 }
 
+internal object ScreenFrameSignaturePolicy {
+    fun differenceRatio(
+        first: ScreenFrameSignature,
+        second: ScreenFrameSignature,
+        luminanceDelta: Int
+    ): Float {
+        if (first.samples.isEmpty() || first.samples.size != second.samples.size) return 1f
+        var changed = 0
+        first.samples.indices.forEach { index ->
+            if (abs(first.samples[index] - second.samples[index]) >= luminanceDelta) changed++
+        }
+        return changed.toFloat() / first.samples.size
+    }
+
+    fun isDuplicateCapture(
+        first: ScreenFrameSignature,
+        second: ScreenFrameSignature
+    ): Boolean = differenceRatio(first, second, DUPLICATE_LUMINANCE_DELTA) <
+        DUPLICATE_CHANGED_SAMPLE_RATIO
+
+    private const val DUPLICATE_LUMINANCE_DELTA = 10
+    private const val DUPLICATE_CHANGED_SAMPLE_RATIO = 0.012f
+}
+
 internal class ScreenFrameChangeDetector(
     private val stableDelayMs: Long = DEFAULT_STABLE_DELAY_MS,
     private val minimumCaptureIntervalMs: Long = DEFAULT_MINIMUM_CAPTURE_INTERVAL_MS,
     private val changedSampleRatio: Float = DEFAULT_CHANGED_SAMPLE_RATIO,
     private val luminanceDelta: Int = DEFAULT_LUMINANCE_DELTA,
     private val slowMovementStableDelayMs: Long = DEFAULT_SLOW_MOVEMENT_STABLE_DELAY_MS,
-    private val fastMovementRatio: Float = DEFAULT_FAST_MOVEMENT_RATIO
+    private val fastMovementRatio: Float = DEFAULT_FAST_MOVEMENT_RATIO,
+    private val minimumStableFrameSamples: Int = DEFAULT_MINIMUM_STABLE_FRAME_SAMPLES
 ) {
     private var previous: ScreenFrameSignature? = null
     private var dirty = false
@@ -46,7 +71,11 @@ internal class ScreenFrameChangeDetector(
         }
         if (nowMs < ignoreUntil) return ScreenFrameAction.NONE
 
-        val differenceRatio = differenceRatio(prior, signature)
+        val differenceRatio = ScreenFrameSignaturePolicy.differenceRatio(
+            prior,
+            signature,
+            luminanceDelta
+        )
         if (differenceRatio >= changedSampleRatio) {
             stableFrames.clear()
             dirty = true
@@ -74,7 +103,7 @@ internal class ScreenFrameChangeDetector(
         if (dirty &&
             nowMs - lastMovementAt >= requiredStableDelay &&
             captureIntervalSatisfied &&
-            stableFrames.size >= MINIMUM_STABLE_FRAME_SAMPLES
+            stableFrames.size >= minimumStableFrameSamples
         ) {
             dirty = false
             movementReported = false
@@ -149,30 +178,16 @@ internal class ScreenFrameChangeDetector(
         return agreeing.last()
     }
 
-    private fun differenceRatio(
-        first: ScreenFrameSignature,
-        second: ScreenFrameSignature
-    ): Float {
-        if (first.samples.isEmpty()) return 0f
-        var changed = 0
-        first.samples.indices.forEach { index ->
-            if (kotlin.math.abs(first.samples[index] - second.samples[index]) >= luminanceDelta) {
-                changed++
-            }
-        }
-        return changed.toFloat() / first.samples.size
-    }
-
     private companion object {
-        const val DEFAULT_STABLE_DELAY_MS = 420L
-        const val DEFAULT_SLOW_MOVEMENT_STABLE_DELAY_MS = 220L
-        const val DEFAULT_MINIMUM_CAPTURE_INTERVAL_MS = 350L
-        const val DEFAULT_CHANGED_SAMPLE_RATIO = 0.075f
-        const val DEFAULT_LUMINANCE_DELTA = 24
+        const val DEFAULT_STABLE_DELAY_MS = 520L
+        const val DEFAULT_SLOW_MOVEMENT_STABLE_DELAY_MS = 420L
+        const val DEFAULT_MINIMUM_CAPTURE_INTERVAL_MS = 900L
+        const val DEFAULT_CHANGED_SAMPLE_RATIO = 0.055f
+        const val DEFAULT_LUMINANCE_DELTA = 20
         const val DEFAULT_FAST_MOVEMENT_RATIO = 0.28f
         const val POST_RENDER_IGNORE_MS = 280L
-        const val STABLE_FRAME_BUFFER_CAPACITY = 3
-        const val MINIMUM_STABLE_FRAME_SAMPLES = 2
+        const val STABLE_FRAME_BUFFER_CAPACITY = 5
+        const val DEFAULT_MINIMUM_STABLE_FRAME_SAMPLES = 4
         const val MINIMUM_TEMPORAL_PLAN_SAMPLES = 2
         const val MINIMUM_TEMPORAL_SHIFT_TOLERANCE_PX = 72
     }

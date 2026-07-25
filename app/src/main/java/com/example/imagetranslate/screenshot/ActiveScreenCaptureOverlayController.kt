@@ -168,6 +168,11 @@ internal class ActiveScreenCaptureOverlayController(
 
     fun showCaptureFailed() = onMainThread(::showReadyNow)
 
+    fun restoreAfterSkippedCapture() = onMainThread {
+        binding.root.visibility = View.VISIBLE
+        translationView.setPatchesVisible(translationVisible, animateChange = false)
+    }
+
     fun clearTranslations() = onMainThread {
         removeTranslationLayersNow()
     }

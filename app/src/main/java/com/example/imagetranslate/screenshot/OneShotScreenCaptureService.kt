@@ -52,6 +52,8 @@ class OneShotScreenCaptureService : Service() {
     private val captureInProgress = AtomicBoolean(false)
     private val processingFrameCaptured = AtomicBoolean(false)
     private val presentationInProgress = AtomicBoolean(false)
+    private val canRestoreLastResult = AtomicBoolean(false)
+    private val emptyResultRetryCount = AtomicInteger(0)
     private val continuousTranslationEnabled = AtomicBoolean(false)
     private val sessionStopping = AtomicBoolean(false)
     private val captureGeneration = AtomicInteger(0)
@@ -64,6 +66,8 @@ class OneShotScreenCaptureService : Service() {
     private var timeoutJob: Job? = null
     private var processingJob: Job? = null
     private var activeCapturePlan: ScrollCapturePlan? = null
+    @Volatile
+    private var lastAcceptedCaptureSignature: ScreenFrameSignature? = null
     private var lastSignatureSampleAt = Long.MIN_VALUE
     private val translationMutex = Mutex()
     private var foregroundServiceTypes = 0
@@ -289,15 +293,24 @@ class OneShotScreenCaptureService : Service() {
         }
         val image = reader.acquireLatestImage() ?: return
         if (captureRequested.compareAndSet(true, false)) {
-            runCatching { sampleFrameSignature(image) }
-                .onSuccess { signature ->
-                    changeDetector.onCaptureStarted(signature, SystemClock.elapsedRealtime())
+            val signature = runCatching { sampleFrameSignature(image) }.getOrNull()
+            if (signature != null) {
+                changeDetector.onCaptureStarted(signature, SystemClock.elapsedRealtime())
+                val accepted = lastAcceptedCaptureSignature
+                if (accepted != null && canRestoreLastResult.get() &&
+                    ScreenFrameSignaturePolicy.isDuplicateCapture(accepted, signature)
+                ) {
+                    image.close()
+                    finishDuplicateCapture(captureGeneration.get())
+                    return
                 }
+            }
             processingFrameCaptured.set(true)
             processCapturedImage(
                 image = image,
                 generation = captureGeneration.get(),
-                capturePlan = activeCapturePlan
+                capturePlan = activeCapturePlan,
+                captureSignature = signature
             )
             return
         }
@@ -346,14 +359,18 @@ class OneShotScreenCaptureService : Service() {
     private fun processCapturedImage(
         image: Image,
         generation: Int,
-        capturePlan: ScrollCapturePlan?
+        capturePlan: ScrollCapturePlan?,
+        captureSignature: ScreenFrameSignature?
     ) {
         val processingStartedAt = SystemClock.elapsedRealtime()
-        processingJob?.cancel()
         processingJob = serviceScope.launch {
             var sourceBitmap: Bitmap? = null
             var translatedResult: BackgroundTranslatedOverlayResult? = null
             try {
+                if (generation != captureGeneration.get()) {
+                    image.close()
+                    return@launch
+                }
                 sourceBitmap = image.use(::imageToBitmap)
                 val bitmap = sourceBitmap
                 if (!hasVisiblePixels(bitmap)) {
@@ -366,11 +383,15 @@ class OneShotScreenCaptureService : Service() {
                 }
                 timeoutJob?.cancel()
                 timeoutJob = null
-                overlayController.showProcessing()
                 val activeMode = translationMode
                 val activeExperienceMode = experienceMode
                 val result = withTimeout(LiveCaptureTimingPolicy.TRANSLATION_TIMEOUT_MS) {
                     translationMutex.withLock {
+                        if (generation != captureGeneration.get()) {
+                            throw CancellationException("Stale live OCR frame")
+                        }
+                        overlayController.showProcessing()
+                        canRestoreLastResult.set(false)
                         liveProcessor.translateForOverlay(
                             bitmap = bitmap,
                             mode = activeMode,
@@ -384,6 +405,17 @@ class OneShotScreenCaptureService : Service() {
                 }
                 translatedResult = result
                 if (isActive && generation == captureGeneration.get()) {
+                    if (LiveCaptureTimingPolicy.shouldRetryEmptyResult(
+                            patchCount = result.patches.size,
+                            retryCount = emptyResultRetryCount.get()
+                        ) &&
+                        emptyResultRetryCount.compareAndSet(0, 1)
+                    ) {
+                        Log.i(TAG, "Empty live OCR result; retrying the settled viewport once")
+                        translatedResult = null
+                        scheduleEmptyResultRetry(generation)
+                        return@launch
+                    }
                     Log.i(
                         TAG,
                         "Overlay translation completed: totalMs=" +
@@ -393,7 +425,7 @@ class OneShotScreenCaptureService : Service() {
                             "reused=${result.reusedRegionCount}, " +
                             "recognized=${result.recognizedCount}, patches=${result.patches.size}"
                     )
-                    finishScreenshot(result, generation)
+                    finishScreenshot(result, generation, captureSignature)
                     translatedResult = null
                 }
             } catch (error: CancellationException) {
@@ -414,6 +446,7 @@ class OneShotScreenCaptureService : Service() {
         }
         if (!captureInProgress.compareAndSet(false, true)) return
         activeCapturePlan = capturePlan
+        emptyResultRetryCount.set(0)
         processingFrameCaptured.set(false)
         val generation = captureGeneration.incrementAndGet()
         overlayController.hideForCapture()
@@ -523,7 +556,11 @@ class OneShotScreenCaptureService : Service() {
         return metrics
     }
 
-    private fun finishScreenshot(result: BackgroundTranslatedOverlayResult, generation: Int) {
+    private fun finishScreenshot(
+        result: BackgroundTranslatedOverlayResult,
+        generation: Int,
+        captureSignature: ScreenFrameSignature?
+    ) {
         if (generation != captureGeneration.get()) {
             result.patches.recyclePatchBitmaps()
             return
@@ -535,6 +572,10 @@ class OneShotScreenCaptureService : Service() {
         captureInProgress.set(false)
         processingFrameCaptured.set(false)
         activeCapturePlan = null
+        if (result.patches.isNotEmpty()) {
+            lastAcceptedCaptureSignature = captureSignature
+            canRestoreLastResult.set(true)
+        }
         getSystemService(NotificationManager::class.java).notify(
             NOTIFICATION_ID,
             buildSessionNotification(capturing = false)
@@ -561,6 +602,7 @@ class OneShotScreenCaptureService : Service() {
         captureRequested.set(false)
         processingFrameCaptured.set(false)
         presentationInProgress.set(false)
+        canRestoreLastResult.set(false)
         activeCapturePlan = null
         continuousTranslationEnabled.set(false)
         getSystemService(NotificationManager::class.java).notify(
@@ -585,6 +627,8 @@ class OneShotScreenCaptureService : Service() {
         captureInProgress.set(false)
         processingFrameCaptured.set(false)
         presentationInProgress.set(false)
+        canRestoreLastResult.set(false)
+        lastAcceptedCaptureSignature = null
         activeCapturePlan = null
         lastSignatureSampleAt = Long.MIN_VALUE
         if (!keepContinuousMode) continuousTranslationEnabled.set(false)
@@ -605,8 +649,6 @@ class OneShotScreenCaptureService : Service() {
         activeCapturePlan = null
         timeoutJob?.cancel()
         timeoutJob = null
-        processingJob?.cancel()
-        processingJob = null
         getSystemService(NotificationManager::class.java).notify(
             NOTIFICATION_ID,
             buildSessionNotification(capturing = false)
@@ -617,6 +659,52 @@ class OneShotScreenCaptureService : Service() {
         captureHandler?.post {
             imageReader?.let(::onImageAvailable)
         }
+    }
+
+    private fun scheduleEmptyResultRetry(generation: Int) {
+        processingFrameCaptured.set(false)
+        captureRequested.set(false)
+        overlayController.hideForCapture()
+        timeoutJob?.cancel()
+        timeoutJob = serviceScope.launch {
+            kotlinx.coroutines.delay(EMPTY_RESULT_RETRY_DELAY_MS)
+            if (generation != captureGeneration.get() ||
+                !continuousTranslationEnabled.get() ||
+                !captureInProgress.get()
+            ) {
+                return@launch
+            }
+            captureRequested.set(true)
+            drainLatestImage()
+            kotlinx.coroutines.delay(CAPTURE_TIMEOUT_MS)
+            if (generation == captureGeneration.get()) {
+                failScreenshot(
+                    IllegalStateException("Timed out waiting for an OCR retry frame"),
+                    generation
+                )
+            }
+        }
+    }
+
+    private fun finishDuplicateCapture(generation: Int) {
+        if (generation != captureGeneration.get()) return
+        timeoutJob?.cancel()
+        timeoutJob = null
+        captureRequested.set(false)
+        captureInProgress.set(false)
+        processingFrameCaptured.set(false)
+        activeCapturePlan = null
+        presentationInProgress.set(true)
+        getSystemService(NotificationManager::class.java).notify(
+            NOTIFICATION_ID,
+            buildSessionNotification(capturing = false)
+        )
+        overlayController.restoreAfterSkippedCapture()
+        captureHandler?.postDelayed(
+            { resumeFrameObservation(generation) },
+            LiveCaptureTimingPolicy.PRESENTATION_GATE_TIMEOUT_MS
+        )
+        Log.i(TAG, "Skipped duplicate settled viewport before OCR")
     }
 
     private fun resumeFrameObservation(generation: Int) {
@@ -778,6 +866,7 @@ class OneShotScreenCaptureService : Service() {
         private const val RESULT_NOTIFICATION_ID = 2402
         private const val CAPTURE_ACTION_SETTLE_MS = 120L
         private const val CAPTURE_TIMEOUT_MS = 8_000L
+        private const val EMPTY_RESULT_RETRY_DELAY_MS = 360L
         private const val PIXEL_SAMPLE_COLUMNS = 32
         private const val PIXEL_SAMPLE_ROWS = 48
         private const val BLACK_PIXEL_THRESHOLD = 8

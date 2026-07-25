@@ -18,7 +18,9 @@ class ScreenFrameChangeDetectorTest {
         assertEquals(ScreenFrameAction.MOVING, detector.onFrame(frame(80), 100L))
         assertEquals(ScreenFrameAction.MOVING_UPDATE, detector.onFrame(frame(140), 250L))
         assertEquals(ScreenFrameAction.NONE, detector.onFrame(frame(140), 600L))
-        assertEquals(ScreenFrameAction.CAPTURE, detector.onFrame(frame(140), 651L))
+        assertEquals(ScreenFrameAction.NONE, detector.onFrame(frame(140), 651L))
+        assertEquals(ScreenFrameAction.NONE, detector.onFrame(frame(140), 720L))
+        assertEquals(ScreenFrameAction.CAPTURE, detector.onFrame(frame(140), 800L))
     }
 
     @Test
@@ -58,7 +60,9 @@ class ScreenFrameChangeDetectorTest {
 
         assertEquals(ScreenFrameAction.MOVING, detector.onFrame(frame(100), 250L))
         assertEquals(ScreenFrameAction.NONE, detector.onFrame(frame(100), 700L))
-        assertEquals(ScreenFrameAction.CAPTURE, detector.onFrame(frame(100), 1_001L))
+        assertEquals(ScreenFrameAction.NONE, detector.onFrame(frame(100), 1_001L))
+        assertEquals(ScreenFrameAction.NONE, detector.onFrame(frame(100), 1_100L))
+        assertEquals(ScreenFrameAction.CAPTURE, detector.onFrame(frame(100), 1_200L))
     }
 
     @Test
@@ -76,19 +80,36 @@ class ScreenFrameChangeDetectorTest {
         assertEquals(ScreenFrameAction.MOVING, scrollDetector.onFrame(current, 100L))
         assertEquals(-160, scrollDetector.currentMotionPlan()?.contentShiftY)
         assertEquals(ScreenFrameAction.NONE, scrollDetector.onFrame(current, 401L))
-        assertEquals(ScreenFrameAction.CAPTURE, scrollDetector.onFrame(current, 477L))
+        assertEquals(ScreenFrameAction.NONE, scrollDetector.onFrame(current, 477L))
+        assertEquals(ScreenFrameAction.NONE, scrollDetector.onFrame(current, 550L))
+        assertEquals(ScreenFrameAction.CAPTURE, scrollDetector.onFrame(current, 625L))
         val plan = scrollDetector.consumeCapturePlan()
         assertNotNull(plan)
         assertEquals(-160, plan?.contentShiftY)
     }
 
     @Test
-    fun oneSettledFrameDoesNotStartBufferedCapture() {
+    fun transientSettledFramesDoNotStartBufferedCapture() {
         detector.onFrame(frame(10), 0L)
         assertEquals(ScreenFrameAction.MOVING, detector.onFrame(frame(90), 100L))
 
         assertEquals(ScreenFrameAction.NONE, detector.onFrame(frame(90), 501L))
-        assertEquals(ScreenFrameAction.CAPTURE, detector.onFrame(frame(90), 601L))
+        assertEquals(ScreenFrameAction.NONE, detector.onFrame(frame(90), 601L))
+        assertEquals(ScreenFrameAction.NONE, detector.onFrame(frame(90), 701L))
+        assertEquals(ScreenFrameAction.CAPTURE, detector.onFrame(frame(90), 801L))
+    }
+
+    @Test
+    fun duplicateCapturePolicyIgnoresMinorSamplingNoise() {
+        val baseline = frame(100)
+        val minorNoise = baseline.copy(samples = baseline.samples.copyOf().apply { this[0] = 112 })
+        val changed = baseline.copy(samples = baseline.samples.copyOf().apply {
+            this[0] = 112
+            this[1] = 112
+        })
+
+        assertEquals(true, ScreenFrameSignaturePolicy.isDuplicateCapture(baseline, minorNoise))
+        assertEquals(false, ScreenFrameSignaturePolicy.isDuplicateCapture(baseline, changed))
     }
 
     private fun frame(value: Int) = ScreenFrameSignature(IntArray(100) { value })

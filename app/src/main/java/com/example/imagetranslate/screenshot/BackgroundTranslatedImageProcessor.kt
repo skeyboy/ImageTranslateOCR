@@ -174,8 +174,15 @@ internal class BackgroundTranslatedImageProcessor(
                 failedCount = batch.failedCount + (batch.regions.size - renderedPatches.size),
                 differentialApplied = differential != null,
                 reusedRegionCount = differential?.reusedRegionCount ?: 0
-            )
-                .also { updateLiveOverlaySnapshot(bitmap, mode, batch.regions) }
+            ).also { result ->
+                if (LiveCaptureTimingPolicy.shouldUpdateLiveSnapshot(
+                        patchCount = result.patches.size,
+                        translatedRegionCount = batch.regions.size
+                    )
+                ) {
+                    updateLiveOverlaySnapshot(bitmap, mode, batch.regions)
+                }
+            }
         } finally {
             if (!reuseResources) close()
         }

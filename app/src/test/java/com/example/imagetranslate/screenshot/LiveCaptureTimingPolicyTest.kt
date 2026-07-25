@@ -46,4 +46,18 @@ class LiveCaptureTimingPolicyTest {
     fun presentationGateHasABoundedFallback() {
         assertTrue(LiveCaptureTimingPolicy.PRESENTATION_GATE_TIMEOUT_MS <= 500L)
     }
+
+    @Test
+    fun emptyResultRetriesOnlyOnce() {
+        assertTrue(LiveCaptureTimingPolicy.shouldRetryEmptyResult(0, 0))
+        assertFalse(LiveCaptureTimingPolicy.shouldRetryEmptyResult(0, 1))
+        assertFalse(LiveCaptureTimingPolicy.shouldRetryEmptyResult(1, 0))
+    }
+
+    @Test
+    fun emptyResultDoesNotReplaceTheLastUsefulSnapshot() {
+        assertFalse(LiveCaptureTimingPolicy.shouldUpdateLiveSnapshot(0, 0))
+        assertFalse(LiveCaptureTimingPolicy.shouldUpdateLiveSnapshot(0, 4))
+        assertTrue(LiveCaptureTimingPolicy.shouldUpdateLiveSnapshot(3, 4))
+    }
 }
