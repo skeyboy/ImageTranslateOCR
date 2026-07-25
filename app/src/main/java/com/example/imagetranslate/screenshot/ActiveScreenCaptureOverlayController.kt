@@ -51,6 +51,7 @@ internal class ActiveScreenCaptureOverlayController(
     private val collapsedWidth = dp(132)
     private val collapsedHeight = dp(42)
     private var controlParams: WindowManager.LayoutParams? = null
+    private var translationParams: WindowManager.LayoutParams? = null
     private var translationMode = TranslationMode.AUTO_BIDIRECTIONAL
     private var experienceMode = initialExperienceMode
     private var attachedWindowManager: WindowManager? = null
@@ -94,6 +95,17 @@ internal class ActiveScreenCaptureOverlayController(
     fun hideForCapture() = onMainThread {
         binding.root.visibility = View.INVISIBLE
         translationView.setPatchesVisible(false, animateChange = false)
+    }
+
+    fun pulseTransparentCaptureSurface() = onMainThread {
+        if (translationView.parent == null) return@onMainThread
+        translationView.clearPatches()
+        translationView.alpha = 0f
+        translationView.visibility = View.VISIBLE
+        translationView.postOnAnimation {
+            translationView.visibility = View.INVISIBLE
+            translationView.alpha = 1f
+        }
     }
 
     fun showProcessing() = onMainThread {
@@ -178,6 +190,31 @@ internal class ActiveScreenCaptureOverlayController(
     }
 
     fun dismiss() = onMainThread(::dismissNow)
+
+    fun onDisplayGeometryChanged(clearTranslations: Boolean) = onMainThread {
+        val bounds = windowBounds()
+        translationParams?.let { params ->
+            params.width = bounds.first
+            params.height = bounds.second
+            runCatching {
+                (attachedWindowManager ?: activeWindowManager())
+                    ?.updateViewLayout(translationView, params)
+            }
+        }
+        controlParams?.let { params ->
+            val position = ScreenshotOverlayPositionPolicy.clamp(
+                x = params.x,
+                y = params.y,
+                windowWidth = bounds.first,
+                windowHeight = bounds.second,
+                overlayWidth = params.width,
+                overlayHeight = params.height,
+                marginPx = edgeMargin
+            )
+            updateControlWindow(params.width, params.height, position.x, position.y)
+        }
+        if (clearTranslations) translationView.clearPatches()
+    }
 
     private fun showReadyNow() {
         if (!canAttachOverlay()) {
@@ -324,11 +361,12 @@ internal class ActiveScreenCaptureOverlayController(
             alpha = translationPatchWindowAlpha(overlapCount = 1)
         }
         val windowManager = activeWindowManager() ?: return false
+        translationParams = params
         return runCatching {
             windowManager.addView(translationView, params)
             if (translationView.parent != null) attachedWindowManager = windowManager
             translationView.parent != null
-        }.getOrDefault(false)
+        }.onFailure { translationParams = null }.getOrDefault(false)
     }
 
     private fun dismissNow() {
@@ -341,6 +379,7 @@ internal class ActiveScreenCaptureOverlayController(
             runCatching { windowManager.removeViewImmediate(translationView) }
         }
         controlParams = null
+        translationParams = null
         attachedWindowManager = null
     }
 
@@ -580,7 +619,7 @@ internal class ActiveScreenCaptureOverlayController(
     }
 
     private fun windowBounds(): Pair<Int, Int> = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-        applicationWindowManager.maximumWindowMetrics.bounds.let { it.width() to it.height() }
+        applicationWindowManager.currentWindowMetrics.bounds.let { it.width() to it.height() }
     } else {
         @Suppress("DEPRECATION")
         appContext.resources.displayMetrics.let { it.widthPixels to it.heightPixels }

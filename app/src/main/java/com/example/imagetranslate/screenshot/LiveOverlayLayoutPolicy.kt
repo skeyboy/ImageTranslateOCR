@@ -104,6 +104,31 @@ internal object LiveOverlayLayoutPolicy {
         return groups
     }
 
+    fun translationMaterialBounds(
+        textBounds: LivePatchBounds,
+        sourceText: String,
+        sourceWidth: Int,
+        sourceHeight: Int
+    ): LivePatchBounds {
+        val lineCount = sourceText.lineSequence().count().coerceAtLeast(1)
+        val lineHeight = (textBounds.bottom - textBounds.top).coerceAtLeast(1) / lineCount
+        val compactLength = sourceText.count { !it.isWhitespace() }
+        val prominentSingleLine = lineCount == 1 && compactLength <= 80
+        val horizontalPadding = if (prominentSingleLine) {
+            maxOf(8, lineHeight / 2)
+        } else {
+            maxOf(5, lineHeight / 6)
+        }
+        val verticalPadding = maxOf(4, minOf(16, lineHeight / 7))
+        return LivePatchBounds(
+            index = textBounds.index,
+            left = (textBounds.left - horizontalPadding).coerceAtLeast(0),
+            top = (textBounds.top - verticalPadding).coerceAtLeast(0),
+            right = (textBounds.right + horizontalPadding).coerceAtMost(sourceWidth),
+            bottom = (textBounds.bottom + verticalPadding).coerceAtMost(sourceHeight)
+        )
+    }
+
     private fun canAppend(first: LiveTextLineBounds, second: LiveTextLineBounds): Boolean {
         val minimumHeight = minOf(first.height, second.height).coerceAtLeast(1)
         val maximumHeight = maxOf(first.height, second.height).coerceAtLeast(1)

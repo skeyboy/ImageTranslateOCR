@@ -37,8 +37,76 @@ internal object ScreenFrameSignaturePolicy {
     ): Boolean = differenceRatio(first, second, DUPLICATE_LUMINANCE_DELTA) <
         DUPLICATE_CHANGED_SAMPLE_RATIO
 
+    fun hasViewportChanged(
+        captured: ScreenFrameSignature,
+        latest: ScreenFrameSignature
+    ): Boolean = differenceRatio(captured, latest, VIEWPORT_LUMINANCE_DELTA) >=
+        VIEWPORT_CHANGED_SAMPLE_RATIO
+
     private const val DUPLICATE_LUMINANCE_DELTA = 10
     private const val DUPLICATE_CHANGED_SAMPLE_RATIO = 0.012f
+    private const val VIEWPORT_LUMINANCE_DELTA = 18
+    private const val VIEWPORT_CHANGED_SAMPLE_RATIO = 0.045f
+}
+
+internal class InitialViewportStabilityGate(
+    private val minimumSessionAgeMs: Long = DEFAULT_MINIMUM_SESSION_AGE_MS,
+    private val stableDurationMs: Long = DEFAULT_STABLE_DURATION_MS,
+    private val minimumStableSamples: Int = DEFAULT_MINIMUM_STABLE_SAMPLES,
+    private val maximumWaitMs: Long = DEFAULT_MAXIMUM_WAIT_MS,
+    private val changedSampleRatio: Float = DEFAULT_CHANGED_SAMPLE_RATIO,
+    private val luminanceDelta: Int = DEFAULT_LUMINANCE_DELTA
+) {
+    private var startedAt = Long.MIN_VALUE
+    private var lastChangedAt = Long.MIN_VALUE
+    private var previous: ScreenFrameSignature? = null
+    private var stableSamples = 0
+
+    fun reset(nowMs: Long) {
+        startedAt = nowMs
+        lastChangedAt = nowMs
+        previous = null
+        stableSamples = 0
+    }
+
+    fun onFrame(signature: ScreenFrameSignature, nowMs: Long): Boolean {
+        if (startedAt == Long.MIN_VALUE) reset(nowMs)
+        if (nowMs - startedAt >= maximumWaitMs) {
+            previous = signature
+            stableSamples++
+            return true
+        }
+        val prior = previous
+        previous = signature
+        if (prior == null || prior.samples.size != signature.samples.size) {
+            lastChangedAt = nowMs
+            stableSamples = 1
+            return false
+        }
+        val changed = ScreenFrameSignaturePolicy.differenceRatio(
+            prior,
+            signature,
+            luminanceDelta
+        ) >= changedSampleRatio
+        if (changed) {
+            lastChangedAt = nowMs
+            stableSamples = 1
+            return false
+        }
+        stableSamples++
+        return nowMs - startedAt >= minimumSessionAgeMs &&
+            nowMs - lastChangedAt >= stableDurationMs &&
+            stableSamples >= minimumStableSamples
+    }
+
+    private companion object {
+        const val DEFAULT_MINIMUM_SESSION_AGE_MS = 750L
+        const val DEFAULT_STABLE_DURATION_MS = 350L
+        const val DEFAULT_MINIMUM_STABLE_SAMPLES = 3
+        const val DEFAULT_MAXIMUM_WAIT_MS = 1_800L
+        const val DEFAULT_CHANGED_SAMPLE_RATIO = 0.045f
+        const val DEFAULT_LUMINANCE_DELTA = 18
+    }
 }
 
 internal class ScreenFrameChangeDetector(

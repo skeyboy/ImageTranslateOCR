@@ -71,6 +71,24 @@ class ScreenThemeColorEstimatorTest {
         assertTrue(colorDistance(whiteResult, target) <= 3)
     }
 
+    @Test
+    fun selectsReadableTextForDarkAndLightSurfaces() {
+        assertEquals(
+            0xFFFFFFFF.toInt(),
+            ScreenThemeColorEstimator.readableForeground(
+                candidate = 0xFF555555.toInt(),
+                surface = 0xFF17191D.toInt()
+            )
+        )
+        assertEquals(
+            0xFF000000.toInt(),
+            ScreenThemeColorEstimator.readableForeground(
+                candidate = 0xFFAAAAAA.toInt(),
+                surface = 0xFFF7F8FA.toInt()
+            )
+        )
+    }
+
     private fun composite(overlay: Int, source: Int): Int {
         val alpha = ScreenThemeColorEstimator.DEFAULT_OVERLAY_ALPHA
         fun component(shift: Int): Int {

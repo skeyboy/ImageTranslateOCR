@@ -2,6 +2,7 @@ package com.example.imagetranslate.screenshot
 
 import android.graphics.Bitmap
 import kotlin.math.roundToInt
+import kotlin.math.pow
 import kotlin.math.sqrt
 
 internal object ScreenThemeColorEstimator {
@@ -92,6 +93,15 @@ internal object ScreenThemeColorEstimator {
         )
     }
 
+    fun readableForeground(candidate: Int, surface: Int): Int {
+        if (contrastRatio(candidate, surface) >= MINIMUM_TEXT_CONTRAST_RATIO) return candidate
+        val blackContrast = contrastRatio(OPAQUE_BLACK, surface)
+        val whiteContrast = contrastRatio(OPAQUE_WHITE, surface)
+        return if (whiteContrast >= blackContrast) OPAQUE_WHITE else OPAQUE_BLACK
+    }
+
+    fun isDark(color: Int): Boolean = relativeLuminance(color) < DARK_SURFACE_LUMINANCE
+
     private fun compensate(target: Int, source: Int, alpha: Float): Int =
         ((target - (1f - alpha) * source) / alpha)
             .roundToInt()
@@ -104,6 +114,29 @@ internal object ScreenThemeColorEstimator {
     private fun rgb(red: Int, green: Int, blue: Int): Int =
         OPAQUE_ALPHA or (red shl 16) or (green shl 8) or blue
 
+    private fun contrastRatio(first: Int, second: Int): Double {
+        val lighter = maxOf(relativeLuminance(first), relativeLuminance(second))
+        val darker = minOf(relativeLuminance(first), relativeLuminance(second))
+        return (lighter + 0.05) / (darker + 0.05)
+    }
+
+    private fun relativeLuminance(color: Int): Double {
+        fun linear(component: Int): Double {
+            val normalized = component / 255.0
+            return if (normalized <= 0.04045) {
+                normalized / 12.92
+            } else {
+                ((normalized + 0.055) / 1.055).pow(2.4)
+            }
+        }
+        return linear(color ushr 16 and 0xFF) * 0.2126 +
+            linear(color ushr 8 and 0xFF) * 0.7152 +
+            linear(color and 0xFF) * 0.0722
+    }
+
     private const val OPAQUE_ALPHA = -0x1000000
+    private const val OPAQUE_BLACK = -0x1000000
     private const val OPAQUE_WHITE = -0x1
+    private const val MINIMUM_TEXT_CONTRAST_RATIO = 4.5
+    private const val DARK_SURFACE_LUMINANCE = 0.24
 }

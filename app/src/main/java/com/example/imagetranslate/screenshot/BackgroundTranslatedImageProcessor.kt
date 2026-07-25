@@ -3,9 +3,12 @@ package com.example.imagetranslate.screenshot
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.ColorMatrix
+import android.graphics.ColorMatrixColorFilter
 import android.graphics.Paint
 import android.graphics.Rect
 import android.graphics.Typeface
+import android.os.SystemClock
 import android.text.Layout
 import android.text.StaticLayout
 import android.text.TextPaint
@@ -22,6 +25,7 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
+import kotlin.math.sqrt
 
 internal data class BackgroundTranslatedImageResult(
     val bitmap: Bitmap,
@@ -38,7 +42,9 @@ internal data class BackgroundTranslatedOverlayResult(
     val recognizedCount: Int,
     val failedCount: Int,
     val differentialApplied: Boolean = false,
-    val reusedRegionCount: Int = 0
+    val reusedRegionCount: Int = 0,
+    val recognitionAndTranslationMs: Long = 0L,
+    val renderingMs: Long = 0L
 )
 
 private data class BackgroundImageRegion(
@@ -95,6 +101,15 @@ internal class BackgroundTranslatedImageProcessor(
     }
     private var closed = false
     private var liveOverlaySnapshot: LiveOverlaySnapshot? = null
+
+    suspend fun prepareForLiveTranslation() {
+        check(!closed) { "Image processor is closed" }
+        translateManager.downloadModelIfNeeded()
+    }
+
+    fun clearLiveOverlaySnapshot() {
+        liveOverlaySnapshot = null
+    }
 
     suspend fun translate(
         bitmap: Bitmap,
@@ -153,11 +168,14 @@ internal class BackgroundTranslatedImageProcessor(
     ): BackgroundTranslatedOverlayResult {
         check(!closed) { "Image processor is closed" }
         return try {
+            val recognitionStartedAt = SystemClock.elapsedRealtime()
             val differential = capturePlan?.let { plan ->
                 recognizeDifferentialViewport(bitmap, mode, plan)
             }
             val batch = differential?.batch
                 ?: recognizeAndTranslate(bitmap, mode, fastOcr = true)
+            val recognitionAndTranslationMs = SystemClock.elapsedRealtime() - recognitionStartedAt
+            val renderingStartedAt = SystemClock.elapsedRealtime()
             val fallbackSurface = ScreenThemeColorEstimator.compositableSurface(
                 ScreenThemeColorEstimator.estimate(bitmap),
                 overlayAlpha
@@ -173,7 +191,9 @@ internal class BackgroundTranslatedImageProcessor(
                 recognizedCount = batch.recognizedCount,
                 failedCount = batch.failedCount + (batch.regions.size - renderedPatches.size),
                 differentialApplied = differential != null,
-                reusedRegionCount = differential?.reusedRegionCount ?: 0
+                reusedRegionCount = differential?.reusedRegionCount ?: 0,
+                recognitionAndTranslationMs = recognitionAndTranslationMs,
+                renderingMs = SystemClock.elapsedRealtime() - renderingStartedAt
             ).also { result ->
                 if (LiveCaptureTimingPolicy.shouldUpdateLiveSnapshot(
                         patchCount = result.patches.size,
@@ -210,24 +230,43 @@ internal class BackgroundTranslatedImageProcessor(
         recognitionBounds: Rect? = null,
         preferredRecognizer: RecognizerScript? = null
     ): BackgroundTranslationBatch {
-        val ocrBitmap = recognitionBounds?.let { bounds ->
+        val croppedBitmap = recognitionBounds?.let { bounds ->
             Bitmap.createBitmap(bitmap, bounds.left, bounds.top, bounds.width(), bounds.height())
         } ?: bitmap
+        val sourceSize = LiveOcrInputSize(croppedBitmap.width, croppedBitmap.height)
+        val inputSize = if (fastOcr) {
+            LiveOcrScalePolicy.inputSize(croppedBitmap.width, croppedBitmap.height)
+        } else {
+            sourceSize
+        }
+        val ocrBitmap = if (inputSize != sourceSize) {
+            Bitmap.createScaledBitmap(croppedBitmap, inputSize.width, inputSize.height, true)
+        } else {
+            croppedBitmap
+        }
         val rawRecognized = try {
             val localRecognized = if (fastOcr) {
                 ocrManager.recognizeFast(ocrBitmap, preferredRecognizer ?: recognizerFor(mode))
             } else {
                 ocrManager.recognize(ocrBitmap)
             }
-            recognitionBounds?.let { bounds ->
-                localRecognized.map { item ->
-                    item.copy(
-                        bounds = Rect(item.bounds).apply { offset(bounds.left, bounds.top) }
+            localRecognized.map { item ->
+                val sourceBounds = if (inputSize != sourceSize) {
+                    Rect(
+                        LiveOcrScalePolicy.mapX(item.bounds.left, inputSize, sourceSize),
+                        LiveOcrScalePolicy.mapY(item.bounds.top, inputSize, sourceSize),
+                        LiveOcrScalePolicy.mapX(item.bounds.right, inputSize, sourceSize),
+                        LiveOcrScalePolicy.mapY(item.bounds.bottom, inputSize, sourceSize)
                     )
+                } else {
+                    Rect(item.bounds)
                 }
-            } ?: localRecognized
+                recognitionBounds?.let { bounds -> sourceBounds.offset(bounds.left, bounds.top) }
+                item.copy(bounds = sourceBounds)
+            }
         } finally {
-            if (ocrBitmap !== bitmap && !ocrBitmap.isRecycled) ocrBitmap.recycle()
+            if (ocrBitmap !== croppedBitmap && !ocrBitmap.isRecycled) ocrBitmap.recycle()
+            if (croppedBitmap !== bitmap && !croppedBitmap.isRecycled) croppedBitmap.recycle()
         }
         val recognized = if (fastOcr) {
             groupLiveTextBlocks(rawRecognized, bitmap.width, bitmap.height)
@@ -239,7 +278,9 @@ internal class BackgroundTranslatedImageProcessor(
         } else {
             MAX_IMAGE_TRANSLATION_TEXTS
         }
-        val translationSemaphore = Semaphore(MAXIMUM_CONCURRENT_TRANSLATIONS)
+        val translationSemaphore = Semaphore(
+            if (fastOcr) MAXIMUM_CONCURRENT_LIVE_TRANSLATIONS else MAXIMUM_CONCURRENT_TRANSLATIONS
+        )
         val outcomes = coroutineScope {
             recognized.take(maximumTexts).map { source ->
                 async {
@@ -453,17 +494,30 @@ internal class BackgroundTranslatedImageProcessor(
         overlayAlpha: Float
     ): ScreenTranslationPatch? {
         val sourceBounds = region.source.bounds.clampedTo(bitmap) ?: return null
+        val material = LiveOverlayLayoutPolicy.translationMaterialBounds(
+            textBounds = LivePatchBounds(
+                index = 0,
+                left = sourceBounds.left,
+                top = sourceBounds.top,
+                right = sourceBounds.right,
+                bottom = sourceBounds.bottom
+            ),
+            sourceText = region.source.text,
+            sourceWidth = bitmap.width,
+            sourceHeight = bitmap.height
+        )
+        val materialBounds = Rect(material.left, material.top, material.right, material.bottom)
         val localSurface = estimateLocalSurface(
             bitmap,
-            sourceBounds,
+            materialBounds,
             fallbackSurface,
             overlayAlpha
         )
         val cropBounds = Rect(
-            (sourceBounds.left - OVERLAY_PATCH_PADDING_PX).coerceAtLeast(0),
-            (sourceBounds.top - OVERLAY_PATCH_PADDING_PX).coerceAtLeast(0),
-            (sourceBounds.right + OVERLAY_PATCH_PADDING_PX).coerceAtMost(bitmap.width),
-            (sourceBounds.bottom + OVERLAY_PATCH_PADDING_PX).coerceAtMost(bitmap.height)
+            materialBounds.left,
+            materialBounds.top,
+            materialBounds.right,
+            materialBounds.bottom
         )
         val crop = Bitmap.createBitmap(
             bitmap,
@@ -478,6 +532,7 @@ internal class BackgroundTranslatedImageProcessor(
             sourceBounds.right - cropBounds.left,
             sourceBounds.bottom - cropBounds.top
         )
+        val localMaterialBounds = Rect(0, 0, cropBounds.width(), cropBounds.height())
         var output: Bitmap? = null
         return try {
             val patchBitmap = Bitmap.createBitmap(
@@ -494,7 +549,8 @@ internal class BackgroundTranslatedImageProcessor(
                 listOf(localRegion),
                 styleSourceBitmap = crop,
                 overlayBackgroundColor = localSurface,
-                overlayAlpha = overlayAlpha
+                overlayAlpha = overlayAlpha,
+                overlayMaterialBounds = localMaterialBounds
             )
             if (rendered.isEmpty()) {
                 patchBitmap.recycle()
@@ -647,7 +703,7 @@ internal class BackgroundTranslatedImageProcessor(
         const val MAX_LIVE_TRANSLATION_TEXTS = 32
         const val MAX_TRANSLATION_CACHE_ENTRIES = 256
         const val MAXIMUM_CONCURRENT_TRANSLATIONS = 2
-        const val OVERLAY_PATCH_PADDING_PX = 5
+        const val MAXIMUM_CONCURRENT_LIVE_TRANSLATIONS = 3
         const val PATCH_WINDOW_MERGE_GAP_PX = 3
         const val LOCAL_SURFACE_MINIMUM_PADDING_PX = 8
         const val LOCAL_SURFACE_MAXIMUM_PADDING_PX = 36
@@ -690,7 +746,8 @@ private object BackgroundTranslatedImageRenderer {
         regions: List<BackgroundImageRegion>,
         styleSourceBitmap: Bitmap = bitmap,
         overlayBackgroundColor: Int? = null,
-        overlayAlpha: Float = ScreenThemeColorEstimator.DEFAULT_OVERLAY_ALPHA
+        overlayAlpha: Float = ScreenThemeColorEstimator.DEFAULT_OVERLAY_ALPHA,
+        overlayMaterialBounds: Rect? = null
     ): List<Rect> {
         val canvas = Canvas(bitmap)
         val renderedRegions = mutableListOf<Rect>()
@@ -704,9 +761,9 @@ private object BackgroundTranslatedImageRenderer {
             val style = if (overlayBackgroundColor == null) {
                 estimatedStyle
             } else {
-                val isDarkTheme = isDarkColor(overlayBackgroundColor)
+                val isDarkTheme = ScreenThemeColorEstimator.isDark(overlayBackgroundColor)
                 estimatedStyle.copy(
-                    foregroundColor = readableForegroundColor(
+                    foregroundColor = ScreenThemeColorEstimator.readableForeground(
                         estimatedStyle.foregroundColor,
                         overlayBackgroundColor
                     ),
@@ -720,7 +777,8 @@ private object BackgroundTranslatedImageRenderer {
                     styleSourceBitmap,
                     bounds,
                     overlayBackgroundColor,
-                    overlayAlpha
+                    overlayAlpha,
+                    overlayMaterialBounds
                 )
             }
             val isControlLabel = style.isDarkBackground &&
@@ -763,51 +821,30 @@ private object BackgroundTranslatedImageRenderer {
         sourceBitmap: Bitmap,
         textBounds: Rect,
         themeColor: Int,
-        overlayAlpha: Float
+        overlayAlpha: Float,
+        overrideBounds: Rect?
     ) {
-        val materialBounds = overlayMaterialBounds(textBounds, bitmap) ?: return
-        val sourcePixels = IntArray(materialBounds.width() * materialBounds.height())
-        sourceBitmap.getPixels(
-            sourcePixels,
-            0,
-            materialBounds.width(),
-            materialBounds.left,
-            materialBounds.top,
-            materialBounds.width(),
-            materialBounds.height()
-        )
-        sourcePixels.indices.forEach { index ->
-            sourcePixels[index] = ScreenThemeColorEstimator.compensationColor(
-                targetSurface = themeColor,
-                sourceColor = sourcePixels[index],
-                overlayAlpha = overlayAlpha
+        val materialBounds = overrideBounds?.clampedTo(bitmap)
+            ?: overlayMaterialBounds(textBounds, bitmap)
+            ?: return
+        val alpha = overlayAlpha.coerceIn(0.01f, 1f)
+        val sourceMultiplier = -(1f - alpha) / alpha
+        val compensationPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
+            colorFilter = ColorMatrixColorFilter(
+                ColorMatrix(
+                    floatArrayOf(
+                        sourceMultiplier, 0f, 0f, 0f, Color.red(themeColor) / alpha,
+                        0f, sourceMultiplier, 0f, 0f, Color.green(themeColor) / alpha,
+                        0f, 0f, sourceMultiplier, 0f, Color.blue(themeColor) / alpha,
+                        0f, 0f, 0f, 1f, 0f
+                    )
+                )
             )
         }
-        val compensation = Bitmap.createBitmap(
-            materialBounds.width(),
-            materialBounds.height(),
-            Bitmap.Config.ARGB_8888
-        ).apply {
-            setPixels(
-                sourcePixels,
-                0,
-                materialBounds.width(),
-                0,
-                0,
-                materialBounds.width(),
-                materialBounds.height()
-            )
-        }
-        try {
-            canvas.drawBitmap(
-                compensation,
-                materialBounds.left.toFloat(),
-                materialBounds.top.toFloat(),
-                Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
-            )
-        } finally {
-            if (!compensation.isRecycled) compensation.recycle()
-        }
+        canvas.save()
+        canvas.clipRect(materialBounds)
+        canvas.drawBitmap(sourceBitmap, 0f, 0f, compensationPaint)
+        canvas.restore()
     }
 
     private fun overlayMaterialBounds(textBounds: Rect, bitmap: Bitmap): Rect? {
@@ -821,34 +858,6 @@ private object BackgroundTranslatedImageRenderer {
             textBounds.right + materialPadding,
             textBounds.bottom + materialPadding
         ).clampedTo(bitmap)
-    }
-
-    private fun isDarkColor(color: Int): Boolean = luminance(
-        Color.red(color),
-        Color.green(color),
-        Color.blue(color)
-    ) < DARK_BACKGROUND_LUMINANCE
-
-    private fun readableForegroundColor(candidate: Int, surface: Int): Int {
-        val candidateLuminance = luminance(
-            Color.red(candidate),
-            Color.green(candidate),
-            Color.blue(candidate)
-        )
-        val surfaceLuminance = luminance(
-            Color.red(surface),
-            Color.green(surface),
-            Color.blue(surface)
-        )
-        return if (kotlin.math.abs(candidateLuminance - surfaceLuminance) >=
-            MINIMUM_CONTRAST_DELTA
-        ) {
-            candidate
-        } else if (surfaceLuminance < DARK_BACKGROUND_LUMINANCE) {
-            Color.WHITE
-        } else {
-            Color.BLACK
-        }
     }
 
     private fun fittingLayout(
@@ -935,8 +944,11 @@ private object BackgroundTranslatedImageRenderer {
         var backgroundGreen = 0L
         var backgroundBlue = 0L
         var backgroundSamples = 0
-        for (y in outer.top until outer.bottom) {
-            for (x in outer.left until outer.right) {
+        val styleSampleStep = sqrt(
+            bounds.width().toLong() * bounds.height() / TARGET_TEXT_STYLE_SAMPLES.toDouble()
+        ).toInt().coerceAtLeast(1)
+        for (y in outer.top until outer.bottom step styleSampleStep) {
+            for (x in outer.left until outer.right step styleSampleStep) {
                 if (x in bounds.left until bounds.right && y in bounds.top until bounds.bottom) {
                     continue
                 }
@@ -956,8 +968,8 @@ private object BackgroundTranslatedImageRenderer {
         val backgroundLuminance = luminance(red, green, blue)
 
         var maximumDistance = 0
-        for (y in bounds.top until bounds.bottom) {
-            for (x in bounds.left until bounds.right) {
+        for (y in bounds.top until bounds.bottom step styleSampleStep) {
+            for (x in bounds.left until bounds.right step styleSampleStep) {
                 val color = bitmap.getPixel(x, y)
                 maximumDistance = maxOf(
                     maximumDistance,
@@ -972,11 +984,13 @@ private object BackgroundTranslatedImageRenderer {
         var foregroundBlue = 0L
         var foregroundSamples = 0
         var strokePixels = 0
-        for (y in bounds.top until bounds.bottom) {
-            for (x in bounds.left until bounds.right) {
+        var sampledTextPixels = 0
+        for (y in bounds.top until bounds.bottom step styleSampleStep) {
+            for (x in bounds.left until bounds.right step styleSampleStep) {
                 val color = bitmap.getPixel(x, y)
                 val distance = colorDistanceSquared(color, red, green, blue)
                 if (distance >= strokeThreshold) strokePixels++
+                sampledTextPixels++
                 if (distance >= foregroundThreshold) {
                     foregroundRed += Color.red(color)
                     foregroundGreen += Color.green(color)
@@ -1006,8 +1020,8 @@ private object BackgroundTranslatedImageRenderer {
         } else {
             estimatedForeground
         }
-        val area = maxOf(1, bounds.width() * bounds.height())
-        val isBold = strokePixels.toFloat() / area >= BOLD_STROKE_COVERAGE
+        val isBold = strokePixels.toFloat() / sampledTextPixels.coerceAtLeast(1) >=
+            BOLD_STROKE_COVERAGE
         val sourceLineCount = sourceText.lineSequence().count().coerceAtLeast(1)
         val baseTypeface = if (looksLikeCode(sourceText)) {
             Typeface.MONOSPACE
@@ -1072,6 +1086,7 @@ private object BackgroundTranslatedImageRenderer {
     private const val BOLD_STROKE_COVERAGE = 0.3f
     private const val SHORT_TEXT_LIMIT = 20
     private const val ORPHANED_LINE_CHARACTER_LIMIT = 1
+    private const val TARGET_TEXT_STYLE_SAMPLES = 6_000
     private const val OVERLAY_MINIMUM_PADDING_PX = 3
     private const val OVERLAY_MAXIMUM_PADDING_PX = 5
 }

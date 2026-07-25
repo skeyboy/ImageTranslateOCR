@@ -83,6 +83,18 @@ class LiveOverlayLayoutPolicyTest {
         assertEquals(listOf(listOf(0), listOf(1)), groups)
     }
 
+    @Test
+    fun expandsSingleLineTitlesWithoutChangingTheirTextBounds() {
+        val expanded = LiveOverlayLayoutPolicy.translationMaterialBounds(
+            textBounds = patch(0, 100, 200, 500, 264),
+            sourceText = "Running the book",
+            sourceWidth = 1080,
+            sourceHeight = 2400
+        )
+
+        assertEquals(LivePatchBounds(0, 68, 191, 532, 273), expanded)
+    }
+
     private fun line(
         index: Int,
         left: Int,

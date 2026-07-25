@@ -112,6 +112,44 @@ class ScreenFrameChangeDetectorTest {
         assertEquals(false, ScreenFrameSignaturePolicy.isDuplicateCapture(baseline, changed))
     }
 
+    @Test
+    fun initialCaptureWaitsForTheDestinationViewportToRemainStable() {
+        val gate = InitialViewportStabilityGate(
+            minimumSessionAgeMs = 600L,
+            stableDurationMs = 300L,
+            minimumStableSamples = 3,
+            changedSampleRatio = 0.2f,
+            luminanceDelta = 20
+        )
+        gate.reset(0L)
+
+        assertEquals(false, gate.onFrame(frame(20), 100L))
+        assertEquals(false, gate.onFrame(frame(20), 350L))
+        assertEquals(false, gate.onFrame(frame(160), 500L))
+        assertEquals(false, gate.onFrame(frame(160), 700L))
+        assertEquals(true, gate.onFrame(frame(160), 850L))
+    }
+
+    @Test
+    fun initialCaptureUsesLatestFrameWhenTheSourceStopsProducingFrames() {
+        val gate = InitialViewportStabilityGate(
+            minimumSessionAgeMs = 600L,
+            stableDurationMs = 300L,
+            minimumStableSamples = 3,
+            maximumWaitMs = 1_000L
+        )
+        gate.reset(0L)
+
+        assertEquals(false, gate.onFrame(frame(20), 100L))
+        assertEquals(true, gate.onFrame(frame(160), 1_050L))
+    }
+
+    @Test
+    fun viewportChangePolicyInvalidatesAnOcrResultFromAnOldPage() {
+        assertEquals(false, ScreenFrameSignaturePolicy.hasViewportChanged(frame(100), frame(102)))
+        assertEquals(true, ScreenFrameSignaturePolicy.hasViewportChanged(frame(100), frame(180)))
+    }
+
     private fun frame(value: Int) = ScreenFrameSignature(IntArray(100) { value })
 
     private fun patternedFrame(): ScreenFrameSignature {
