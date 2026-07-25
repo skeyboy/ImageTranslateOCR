@@ -8,7 +8,8 @@ internal data class LiveTextLineBounds(
     val top: Int,
     val right: Int,
     val bottom: Int,
-    val text: String
+    val text: String,
+    val quality: Float = 0f
 ) {
     val width: Int get() = right - left
     val height: Int get() = bottom - top
@@ -27,7 +28,25 @@ internal object LiveOverlayLayoutPolicy {
     private const val MAXIMUM_LINES_PER_BLOCK = 6
     private const val MINIMUM_HEIGHT_RATIO = 0.72f
     private const val MINIMUM_HORIZONTAL_OVERLAP = 0.55f
-    private const val MAXIMUM_VERTICAL_GAP_RATIO = 0.95f
+    private const val MAXIMUM_VERTICAL_GAP_RATIO = 0.68f
+    private const val DUPLICATE_MINIMUM_AXIS_OVERLAP = 0.7f
+
+    fun selectDistinctTextLines(lines: List<LiveTextLineBounds>): List<Int> {
+        val selected = mutableListOf<LiveTextLineBounds>()
+        lines.asSequence()
+            .filter { it.width > 0 && it.height > 0 && it.text.isNotBlank() }
+            .sortedWith(
+                compareByDescending<LiveTextLineBounds> { it.quality }
+                    .thenByDescending { it.text.count(Char::isLetterOrDigit) }
+                    .thenByDescending { it.width * it.height }
+            )
+            .forEach { candidate ->
+                if (selected.none { existing -> sameVisualLine(existing, candidate) }) {
+                    selected += candidate
+                }
+            }
+        return selected.sortedWith(compareBy({ it.top }, { it.left })).map { it.index }
+    }
 
     fun groupTextLines(lines: List<LiveTextLineBounds>): List<List<Int>> {
         val remaining = lines
@@ -106,7 +125,26 @@ internal object LiveOverlayLayoutPolicy {
             alignmentTolerance,
             (minimumWidth * 0.18f).toInt()
         )
-        return overlapRatio >= MINIMUM_HORIZONTAL_OVERLAP || leftAligned || centerAligned
+        val sentenceBoundary = first.text.trimEnd().lastOrNull() in SENTENCE_ENDINGS
+        val paragraphGap = verticalGap > maxOf(4, minimumHeight / 3)
+        return overlapRatio >= MINIMUM_HORIZONTAL_OVERLAP &&
+            (leftAligned || centerAligned) &&
+            !(sentenceBoundary && paragraphGap)
+    }
+
+    private fun sameVisualLine(
+        first: LiveTextLineBounds,
+        second: LiveTextLineBounds
+    ): Boolean {
+        val horizontalOverlap = minOf(first.right, second.right) - maxOf(first.left, second.left)
+        val verticalOverlap = minOf(first.bottom, second.bottom) - maxOf(first.top, second.top)
+        if (horizontalOverlap <= 0 || verticalOverlap <= 0) return false
+        val horizontalRatio = horizontalOverlap.toFloat() /
+            minOf(first.width, second.width).coerceAtLeast(1)
+        val verticalRatio = verticalOverlap.toFloat() /
+            minOf(first.height, second.height).coerceAtLeast(1)
+        return horizontalRatio >= DUPLICATE_MINIMUM_AXIS_OVERLAP &&
+            verticalRatio >= DUPLICATE_MINIMUM_AXIS_OVERLAP
     }
 
     private fun startsListItem(text: String): Boolean {
@@ -131,4 +169,5 @@ internal object LiveOverlayLayoutPolicy {
         first.top <= second.bottom + gap && second.top <= first.bottom + gap
 
     private val NUMBERED_LIST_PREFIX = Regex("^(?:\\d+[.)]|[A-Za-z][.)])\\s+.*")
+    private val SENTENCE_ENDINGS = setOf('.', '!', '?', '。', '！', '？')
 }

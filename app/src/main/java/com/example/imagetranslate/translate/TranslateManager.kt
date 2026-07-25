@@ -1,8 +1,6 @@
 package com.example.imagetranslate.translate
 
 import com.google.mlkit.common.model.DownloadConditions
-import com.google.mlkit.nl.languageid.LanguageIdentification
-import com.google.mlkit.nl.languageid.LanguageIdentificationOptions
 import com.google.mlkit.nl.translate.TranslateLanguage
 import com.google.mlkit.nl.translate.Translation
 import com.google.mlkit.nl.translate.Translator
@@ -23,15 +21,9 @@ enum class TranslationMode {
 class TranslateManager {
     private companion object {
         const val MODEL_DOWNLOAD_TIMEOUT_MS = 60_000L
-        const val LANGUAGE_IDENTIFICATION_TIMEOUT_MS = 10_000L
         const val TRANSLATION_TIMEOUT_MS = 20_000L
     }
 
-    private val languageIdentifier = LanguageIdentification.getClient(
-        LanguageIdentificationOptions.Builder()
-            .setConfidenceThreshold(0.34f)
-            .build()
-    )
     private val translators = mutableMapOf<Pair<String, String>, Translator>()
     private val downloadedModels = mutableSetOf<Pair<String, String>>()
     private val modelDownloadMutex = Mutex()
@@ -67,11 +59,7 @@ class TranslateManager {
     ): String {
         val inputText = sanitizeOcrText(text)
         if (shouldPreserveSourceText(inputText)) return inputText
-        val sourceLanguage = if (mode == TranslationMode.AUTO_BIDIRECTIONAL) {
-            identifySourceLanguage(inputText)
-        } else {
-            identifySourceLanguageByScript(inputText)
-        } ?: return inputText
+        val sourceLanguage = identifySourceLanguageByScript(inputText) ?: return inputText
         val targetLanguage = targetLanguageFor(sourceLanguage, mode) ?: return inputText
 
         ensureModel(sourceLanguage, targetLanguage)
@@ -174,31 +162,6 @@ class TranslateManager {
         return trimmed.trim('<', '>', '=', '|', '·', '•')
     }
 
-    private suspend fun identifySourceLanguage(text: String): String? {
-        if (text.any(::isHanCharacter)) return TranslateLanguage.CHINESE
-        if (text.none { it in 'A'..'Z' || it in 'a'..'z' }) return null
-        val detected = withTimeout(LANGUAGE_IDENTIFICATION_TIMEOUT_MS) {
-            suspendCancellableCoroutine { cont ->
-                languageIdentifier.identifyLanguage(text)
-                    .addOnSuccessListener { language -> if (cont.isActive) cont.resume(language) }
-                    .addOnFailureListener { error ->
-                        if (cont.isActive) cont.resumeWithException(error)
-                    }
-            }
-        }
-        if (detected == "und") {
-            return TranslateLanguage.ENGLISH
-        }
-        return when (TranslateLanguage.fromLanguageTag(detected)) {
-            TranslateLanguage.CHINESE -> TranslateLanguage.CHINESE
-            TranslateLanguage.ENGLISH -> TranslateLanguage.ENGLISH
-            // The product language scope is Chinese/English. Short UI words such as
-            // "Color" are often classified as another Latin language, so Latin-only
-            // OCR text falls back to English inside this two-language workflow.
-            else -> TranslateLanguage.ENGLISH
-        }
-    }
-
     private fun identifySourceLanguageByScript(text: String): String? = when {
         text.any(::isHanCharacter) -> TranslateLanguage.CHINESE
         text.any { it in 'A'..'Z' || it in 'a'..'z' } -> TranslateLanguage.ENGLISH
@@ -256,7 +219,6 @@ class TranslateManager {
     }
 
     fun close() {
-        languageIdentifier.close()
         translators.values.forEach(Translator::close)
         translators.clear()
         downloadedModels.clear()

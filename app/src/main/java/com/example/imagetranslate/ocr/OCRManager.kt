@@ -94,16 +94,42 @@ class OCRManager {
                 candidates,
                 extraFilter = { true }
             )
-            RecognizerScript.FUSED -> addRecognitionPass(
-                bitmap,
-                PASS_ORIGINAL,
-                0.32f,
-                candidates
-            )
+            RecognizerScript.FUSED -> {
+                recognizeWith(
+                    bitmap,
+                    latinRecognizer,
+                    RecognizerScript.LATIN,
+                    PASS_ORIGINAL,
+                    0.43f,
+                    candidates,
+                    extraFilter = { true }
+                )
+                if (!hasSufficientLatinCoverage(candidates)) {
+                    candidates.clear()
+                    recognizeWith(
+                        bitmap,
+                        chineseRecognizer,
+                        RecognizerScript.CHINESE,
+                        PASS_ORIGINAL,
+                        0.43f,
+                        candidates,
+                        extraFilter = { true }
+                    )
+                }
+            }
         }
         return mergeAdjacentLineFragments(fuseCandidates(candidates, bitmap))
             .map { refineShortLabelByInk(bitmap, it) }
             .sortedWith(compareBy({ it.bounds.top }, { it.bounds.left }))
+    }
+
+    private fun hasSufficientLatinCoverage(candidates: List<OcrCandidate>): Boolean {
+        val text = candidates.joinToString(" ") { it.result.text }
+        val latinCount = text.count { it in 'A'..'Z' || it in 'a'..'z' }
+        val hanCount = text.count(::isHanCharacter)
+        return candidates.size >= MINIMUM_AUTO_LATIN_RESULTS &&
+            latinCount >= MINIMUM_AUTO_LATIN_CHARACTERS &&
+            latinCount >= hanCount * MINIMUM_AUTO_LATIN_DOMINANCE
     }
 
     private suspend fun recognizeFullImage(bitmap: Bitmap): List<RecognizedText> {
@@ -941,6 +967,9 @@ class OCRManager {
         const val MIN_RETAINED_TEXT_RATIO = 0.8f
         const val STRONG_DETACHED_EDGE_RATIO = 0.28f
         const val MIN_MEANINGFUL_GROUP_CHARACTERS = 2
+        const val MINIMUM_AUTO_LATIN_RESULTS = 2
+        const val MINIMUM_AUTO_LATIN_CHARACTERS = 12
+        const val MINIMUM_AUTO_LATIN_DOMINANCE = 3
         val EXPLICIT_GROUP_SEPARATORS = charArrayOf('/', '／', '|', '｜', '·')
         const val PASS_ORIGINAL = 0
         const val PASS_CONTRAST = 1

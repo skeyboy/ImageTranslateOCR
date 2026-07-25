@@ -17,6 +17,11 @@ import com.example.imagetranslate.ocr.RecognizerScript
 import com.example.imagetranslate.translate.TranslateManager
 import com.example.imagetranslate.translate.TranslationMode
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 
 internal data class BackgroundTranslatedImageResult(
     val bitmap: Bitmap,
@@ -62,6 +67,11 @@ private data class LiveOverlaySnapshot(
 private data class DifferentialTranslationBatch(
     val batch: BackgroundTranslationBatch,
     val reusedRegionCount: Int
+)
+
+private data class TranslationOutcome(
+    val region: BackgroundImageRegion? = null,
+    val failed: Boolean = false
 )
 
 private data class BackgroundTextStyle(
@@ -215,38 +225,52 @@ internal class BackgroundTranslatedImageProcessor(
         } else {
             rawRecognized
         }
-        val translated = mutableListOf<BackgroundImageRegion>()
-        var failedCount = 0
         val maximumTexts = if (fastOcr) {
             MAX_LIVE_TRANSLATION_TEXTS
         } else {
             MAX_IMAGE_TRANSLATION_TEXTS
         }
-        for (source in recognized.take(maximumTexts)) {
-            val translationSource = normalizeCacheText(source.text)
-            val translation = try {
-                val cacheKey = "${mode.name}:$translationSource"
-                synchronized(translationCache) { translationCache[cacheKey] }
-                    ?: translateManager.translate(translationSource, mode).trim().also { translatedText ->
-                        synchronized(translationCache) {
-                            translationCache[cacheKey] = translatedText
-                        }
+        val translationSemaphore = Semaphore(MAXIMUM_CONCURRENT_TRANSLATIONS)
+        val outcomes = coroutineScope {
+            recognized.take(maximumTexts).map { source ->
+                async {
+                    translationSemaphore.withPermit {
+                        translateRegion(source, mode)
                     }
-            } catch (error: CancellationException) {
-                throw error
-            } catch (_: Exception) {
-                failedCount++
-                continue
-            }
-            if (translation.isNotEmpty() && translation != translationSource) {
-                translated.add(BackgroundImageRegion(source, translation))
-            }
+                }
+            }.awaitAll()
         }
         return BackgroundTranslationBatch(
             recognizedCount = rawRecognized.size,
-            regions = translated,
-            failedCount = failedCount
+            regions = outcomes.mapNotNull(TranslationOutcome::region),
+            failedCount = outcomes.count(TranslationOutcome::failed)
         )
+    }
+
+    private suspend fun translateRegion(
+        source: RecognizedText,
+        mode: TranslationMode
+    ): TranslationOutcome {
+        val translationSource = normalizeCacheText(source.text)
+        val translation = try {
+            val cacheKey = "${mode.name}:$translationSource"
+            synchronized(translationCache) { translationCache[cacheKey] }
+                ?: translateManager.translate(translationSource, mode).trim().also { translatedText ->
+                    synchronized(translationCache) {
+                        translationCache[cacheKey] = translatedText
+                    }
+                }
+        } catch (error: CancellationException) {
+            throw error
+        } catch (_: Exception) {
+            return TranslationOutcome(failed = true)
+        }
+        val region = if (translation.isNotEmpty() && translation != translationSource) {
+            BackgroundImageRegion(source, translation)
+        } else {
+            null
+        }
+        return TranslationOutcome(region = region)
     }
 
     private suspend fun recognizeDifferentialViewport(
@@ -257,7 +281,9 @@ internal class BackgroundTranslatedImageProcessor(
         val snapshot = liveOverlaySnapshot ?: return null
         if (snapshot.width != bitmap.width || snapshot.height != bitmap.height ||
             snapshot.mode != mode || snapshot.regions.isEmpty() ||
-            capturePlan.confidence < MINIMUM_DIFFERENTIAL_CONFIDENCE
+            capturePlan.confidence < MINIMUM_DIFFERENTIAL_CONFIDENCE ||
+            capturePlan.consensusRatio < MINIMUM_DIFFERENTIAL_CONSENSUS ||
+            capturePlan.registrationError > MAXIMUM_DIFFERENTIAL_REGISTRATION_ERROR
         ) return null
 
         val shiftY = capturePlan.contentShiftY
@@ -304,7 +330,9 @@ internal class BackgroundTranslatedImageProcessor(
             )
         }
         val validationRatio = shifted.size.toFloat() / snapshot.regions.size
-        if (validationRatio < MINIMUM_REUSED_REGION_RATIO) return null
+        if (shifted.size < MINIMUM_REUSED_REGION_COUNT ||
+            validationRatio < MINIMUM_REUSED_REGION_RATIO
+        ) return null
 
         val invalidOutsideRecognitionArea = snapshot.regions.size - shifted.size > 0 &&
             shifted.none { Rect.intersects(it.source.bounds, recognitionBounds) }
@@ -478,18 +506,22 @@ internal class BackgroundTranslatedImageProcessor(
             val centerY = item.bounds.centerY()
             centerY in contentTop until contentBottom
         }
-        val groups = LiveOverlayLayoutPolicy.groupTextLines(
-            contentLines.mapIndexed { index, item ->
+        val lineBounds = contentLines.mapIndexed { index, item ->
                 LiveTextLineBounds(
                     index = index,
                     left = item.bounds.left.coerceIn(0, sourceWidth),
                     top = item.bounds.top.coerceIn(0, sourceHeight),
                     right = item.bounds.right.coerceIn(0, sourceWidth),
                     bottom = item.bounds.bottom.coerceIn(0, sourceHeight),
-                    text = item.text
+                    text = item.text,
+                    quality = item.modelConfidence * 0.45f +
+                        item.consensusScore * 0.35f +
+                        item.passCount.coerceAtMost(2) * 0.1f
                 )
             }
-        )
+        val distinctLines = LiveOverlayLayoutPolicy.selectDistinctTextLines(lineBounds)
+            .map(lineBounds::get)
+        val groups = LiveOverlayLayoutPolicy.groupTextLines(distinctLines)
         return groups.mapNotNull { indices ->
             val lines = indices.mapNotNull(contentLines::getOrNull)
             if (lines.isEmpty()) null else mergeLiveTextLines(lines)
@@ -593,6 +625,7 @@ internal class BackgroundTranslatedImageProcessor(
         const val MAX_IMAGE_TRANSLATION_TEXTS = 24
         const val MAX_LIVE_TRANSLATION_TEXTS = 32
         const val MAX_TRANSLATION_CACHE_ENTRIES = 256
+        const val MAXIMUM_CONCURRENT_TRANSLATIONS = 2
         const val OVERLAY_PATCH_PADDING_PX = 5
         const val PATCH_WINDOW_MERGE_GAP_PX = 3
         const val LOCAL_SURFACE_MINIMUM_PADDING_PX = 8
@@ -601,18 +634,21 @@ internal class BackgroundTranslatedImageProcessor(
         const val LOCAL_SURFACE_MINIMUM_SAMPLES = 16
         const val LIVE_CONTENT_TOP_RATIO = 0.08f
         const val LIVE_CONTENT_BOTTOM_RATIO = 0.94f
-        const val MINIMUM_DIFFERENTIAL_CONFIDENCE = 0.2f
+        const val MINIMUM_DIFFERENTIAL_CONFIDENCE = 0.35f
+        const val MINIMUM_DIFFERENTIAL_CONSENSUS = 0.66f
+        const val MAXIMUM_DIFFERENTIAL_REGISTRATION_ERROR = 52f
         const val MINIMUM_DIFFERENTIAL_SHIFT_PX = 36
         const val DIFFERENTIAL_MINIMUM_MARGIN_PX = 72
         const val MAXIMUM_DIFFERENTIAL_SHIFT_RATIO = 0.62f
         const val MAXIMUM_DIFFERENTIAL_ROI_RATIO = 0.72f
-        const val MINIMUM_REUSED_REGION_RATIO = 0.35f
-        const val STRONG_REUSED_REGION_RATIO = 0.65f
+        const val MINIMUM_REUSED_REGION_COUNT = 2
+        const val MINIMUM_REUSED_REGION_RATIO = 0.5f
+        const val STRONG_REUSED_REGION_RATIO = 0.72f
         const val FINGERPRINT_COLUMNS = 6
         const val FINGERPRINT_ROWS = 4
         const val FINGERPRINT_VERTICAL_SEARCH_PX = 32
         const val FINGERPRINT_VERTICAL_SEARCH_STEP_PX = 8
-        const val MAXIMUM_FINGERPRINT_ERROR = 55f
+        const val MAXIMUM_FINGERPRINT_ERROR = 38f
         val CACHE_WHITESPACE_REGEX = Regex("\\s+")
     }
 }

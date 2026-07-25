@@ -67,6 +67,8 @@
     <string name="active_screenshot_mode_english_chinese">英 → 中</string>
     <string name="active_screenshot_mode_chinese_english">中 → 英</string>
     <string name="active_screenshot_mode_bidirectional">中英互译</string>
+    <string name="active_screenshot_show_translation">译文</string>
+    <string name="active_screenshot_show_translation_description">显示或隐藏屏幕译文</string>
     <string name="active_screenshot_minimize">收起识别控制</string>
     <string name="active_screenshot_expand">展开录屏识别</string>
     <string name="active_screenshot_compact_ready">录屏识别</string>

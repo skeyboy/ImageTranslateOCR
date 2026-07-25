@@ -6,7 +6,9 @@ import kotlin.math.roundToInt
 internal data class ScrollCapturePlan(
     val contentShiftY: Int,
     val confidence: Float,
-    val overlapRatio: Float
+    val overlapRatio: Float,
+    val registrationError: Float,
+    val consensusRatio: Float
 )
 
 internal object ScrollFrameMotionEstimator {
@@ -32,6 +34,24 @@ internal object ScrollFrameMotionEstimator {
             .sortedBy(ShiftScore::error)
         val best = scores.firstOrNull() ?: return null
         val secondBest = scores.firstOrNull { abs(it.shiftRows - best.shiftRows) > 1 }
+        val bandScores = (0 until BAND_COUNT).mapNotNull { band ->
+            val firstColumn = reference.columns * band / BAND_COUNT
+            val lastColumn = reference.columns * (band + 1) / BAND_COUNT
+            if (textureScore(reference, firstColumn, lastColumn) < MINIMUM_BAND_TEXTURE_SCORE) {
+                return@mapNotNull null
+            }
+            (-maximumShiftRows..maximumShiftRows)
+                .asSequence()
+                .filter { it != 0 }
+                .mapNotNull { shiftRows ->
+                    scoreShift(reference, current, shiftRows, firstColumn, lastColumn)
+                }
+                .minByOrNull(ShiftScore::error)
+        }
+        if (bandScores.size < MINIMUM_TEXTURED_BANDS) return null
+        val agreeingBands = bandScores.count { abs(it.shiftRows - best.shiftRows) <= 1 }
+        if (agreeingBands < MINIMUM_AGREEING_BANDS) return null
+        val consensusRatio = agreeingBands.toFloat() / bandScores.size
         val quality = (1f - best.error / MAXIMUM_USEFUL_ERROR).coerceIn(0f, 1f)
         val distinctness = if (secondBest == null || secondBest.error <= 0.001f) {
             0f
@@ -39,7 +59,9 @@ internal object ScrollFrameMotionEstimator {
             ((secondBest.error - best.error) / secondBest.error * DISTINCTNESS_SCALE)
                 .coerceIn(0f, 1f)
         }
-        val confidence = quality * QUALITY_WEIGHT + distinctness * DISTINCTNESS_WEIGHT
+        val confidence = quality * QUALITY_WEIGHT +
+            distinctness * DISTINCTNESS_WEIGHT +
+            consensusRatio * CONSENSUS_WEIGHT
         if (confidence < MINIMUM_CONFIDENCE) return null
 
         val sampledHeight = reference.sampleBottomPx - reference.sampleTopPx
@@ -50,14 +72,18 @@ internal object ScrollFrameMotionEstimator {
         return ScrollCapturePlan(
             contentShiftY = contentShiftY,
             confidence = confidence,
-            overlapRatio = best.overlapRatio
+            overlapRatio = best.overlapRatio,
+            registrationError = best.error,
+            consensusRatio = consensusRatio
         )
     }
 
     private fun scoreShift(
         reference: ScreenFrameSignature,
         current: ScreenFrameSignature,
-        shiftRows: Int
+        shiftRows: Int,
+        firstColumn: Int = 0,
+        lastColumn: Int = reference.columns
     ): ShiftScore? {
         val firstReferenceRow = maxOf(0, -shiftRows)
         val lastReferenceRow = minOf(reference.rows, reference.rows - shiftRows)
@@ -70,7 +96,7 @@ internal object ScrollFrameMotionEstimator {
             val currentRow = referenceRow + shiftRows
             val referenceOffset = referenceRow * reference.columns
             val currentOffset = currentRow * current.columns
-            repeat(reference.columns) { column ->
+            for (column in firstColumn until lastColumn) {
                 totalError += abs(
                     reference.samples[referenceOffset + column] -
                         current.samples[currentOffset + column]
@@ -85,13 +111,17 @@ internal object ScrollFrameMotionEstimator {
         )
     }
 
-    private fun textureScore(signature: ScreenFrameSignature): Float {
+    private fun textureScore(
+        signature: ScreenFrameSignature,
+        firstColumn: Int = 0,
+        lastColumn: Int = signature.columns
+    ): Float {
         var totalDifference = 0L
         var comparisons = 0
         for (row in 1 until signature.rows) {
             val previousOffset = (row - 1) * signature.columns
             val currentOffset = row * signature.columns
-            repeat(signature.columns) { column ->
+            for (column in firstColumn until lastColumn) {
                 totalDifference += abs(
                     signature.samples[currentOffset + column] -
                         signature.samples[previousOffset + column]
@@ -113,8 +143,13 @@ internal object ScrollFrameMotionEstimator {
     private const val MINIMUM_OVERLAP_ROWS = 4
     private const val MAXIMUM_USEFUL_ERROR = 96f
     private const val DISTINCTNESS_SCALE = 4f
-    private const val QUALITY_WEIGHT = 0.68f
-    private const val DISTINCTNESS_WEIGHT = 0.32f
-    private const val MINIMUM_CONFIDENCE = 0.2f
+    private const val QUALITY_WEIGHT = 0.58f
+    private const val DISTINCTNESS_WEIGHT = 0.22f
+    private const val CONSENSUS_WEIGHT = 0.2f
+    private const val MINIMUM_CONFIDENCE = 0.35f
     private const val MINIMUM_TEXTURE_SCORE = 0.1f
+    private const val MINIMUM_BAND_TEXTURE_SCORE = 0.08f
+    private const val BAND_COUNT = 3
+    private const val MINIMUM_TEXTURED_BANDS = 2
+    private const val MINIMUM_AGREEING_BANDS = 2
 }

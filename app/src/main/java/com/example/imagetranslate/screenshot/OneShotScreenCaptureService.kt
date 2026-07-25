@@ -102,6 +102,12 @@ class OneShotScreenCaptureService : Service() {
                         requestScreenshot()
                     }
                 }
+
+                override fun onTranslationVisibilityChanged() {
+                    captureHandler?.post {
+                        changeDetector.onTranslationRendered(SystemClock.elapsedRealtime())
+                    }
+                }
             }
         )
     }
@@ -300,7 +306,9 @@ class OneShotScreenCaptureService : Service() {
                     TAG,
                     "Settled viewport: shiftY=${capturePlan?.contentShiftY ?: 0}, " +
                         "confidence=${capturePlan?.confidence ?: 0f}, " +
-                        "overlap=${capturePlan?.overlapRatio ?: 0f}"
+                        "overlap=${capturePlan?.overlapRatio ?: 0f}, " +
+                        "error=${capturePlan?.registrationError ?: 0f}, " +
+                        "consensus=${capturePlan?.consensusRatio ?: 0f}"
                 )
                 requestScreenshot(capturePlan)
             }

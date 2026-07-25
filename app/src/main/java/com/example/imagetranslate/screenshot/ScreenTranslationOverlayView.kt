@@ -28,6 +28,7 @@ internal class ScreenTranslationOverlayView @JvmOverloads constructor(
     private var patches = emptyList<ScreenTranslationPatch>()
     private var sourceWidth = 0
     private var sourceHeight = 0
+    private var patchesVisible = true
 
     init {
         setBackgroundColor(android.graphics.Color.TRANSPARENT)
@@ -48,7 +49,7 @@ internal class ScreenTranslationOverlayView @JvmOverloads constructor(
         this.sourceWidth = sourceWidth
         this.sourceHeight = sourceHeight
         animate().cancel()
-        if (newPatches.isEmpty()) {
+        if (newPatches.isEmpty() || !patchesVisible) {
             alpha = 1f
             visibility = INVISIBLE
         } else {
@@ -61,6 +62,27 @@ internal class ScreenTranslationOverlayView @JvmOverloads constructor(
                 .start()
         }
         invalidate()
+    }
+
+    fun setPatchesVisible(visible: Boolean, animateChange: Boolean = true) {
+        patchesVisible = visible
+        animate().cancel()
+        if (!visible || patches.isEmpty()) {
+            alpha = 1f
+            visibility = INVISIBLE
+            return
+        }
+        visibility = VISIBLE
+        if (animateChange) {
+            alpha = 0f
+            animate()
+                .alpha(1f)
+                .setDuration(VISIBILITY_FADE_IN_MS)
+                .setInterpolator(DecelerateInterpolator())
+                .start()
+        } else {
+            alpha = 1f
+        }
     }
 
     fun clearPatches() {
@@ -95,5 +117,6 @@ internal class ScreenTranslationOverlayView @JvmOverloads constructor(
 
     private companion object {
         const val PATCH_FADE_IN_MS = 140L
+        const val VISIBILITY_FADE_IN_MS = 90L
     }
 }

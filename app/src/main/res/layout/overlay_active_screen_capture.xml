@@ -50,6 +50,29 @@
                 android:textColor="#FFFFFF"
                 android:textSize="12sp" />
 
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnToggleActiveTranslation"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="48dp"
+                android:layout_height="40dp"
+                android:checkable="true"
+                android:checked="true"
+                android:contentDescription="@string/active_screenshot_show_translation_description"
+                android:fontFamily="sans-serif-medium"
+                android:letterSpacing="0"
+                android:minWidth="0dp"
+                android:paddingStart="2dp"
+                android:paddingEnd="2dp"
+                android:text="@string/active_screenshot_show_translation"
+                android:textAllCaps="false"
+                android:textColor="#FFFFFF"
+                android:textSize="11sp"
+                android:tooltipText="@string/active_screenshot_show_translation_description"
+                app:backgroundTint="#334A90E2"
+                app:cornerRadius="8dp"
+                app:strokeColor="#66FFFFFF"
+                app:strokeWidth="1dp" />
+
             <FrameLayout
                 android:layout_width="0dp"
                 android:layout_height="match_parent"

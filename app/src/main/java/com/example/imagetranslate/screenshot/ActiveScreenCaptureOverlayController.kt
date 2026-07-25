@@ -31,6 +31,7 @@ internal class ActiveScreenCaptureOverlayController(
         fun onStop()
         fun onCancelPreview()
         fun onTranslationModeChanged(mode: TranslationMode)
+        fun onTranslationVisibilityChanged()
     }
 
     private val appContext = context.applicationContext
@@ -43,7 +44,7 @@ internal class ActiveScreenCaptureOverlayController(
     private val translationView = ScreenTranslationOverlayView(themedContext)
     private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
     private val edgeMargin = dp(12)
-    private val expandedWidth = dp(306)
+    private val expandedWidth = dp(342)
     private val expandedHeight = dp(56)
     private val collapsedWidth = dp(132)
     private val collapsedHeight = dp(42)
@@ -52,10 +53,8 @@ internal class ActiveScreenCaptureOverlayController(
     private var sessionActive = false
     private var processing = false
     private var collapsed = false
-
-    private val collapseRunnable = Runnable {
-        if (sessionActive && !processing) collapseNow()
-    }
+    private var translationVisible = true
+    private var hasTranslationResult = false
 
     init {
         binding.btnActiveOverlayCapture.setOnClickListener { listener.onCapture() }
@@ -67,6 +66,11 @@ internal class ActiveScreenCaptureOverlayController(
         binding.btnActiveOverlayMode.setOnClickListener {
             showTranslationModeMenu()
         }
+        binding.btnToggleActiveTranslation.addOnCheckedChangeListener { _, checked ->
+            translationVisible = checked
+            translationView.setPatchesVisible(checked)
+            listener.onTranslationVisibilityChanged()
+        }
         binding.btnCollapseActiveOverlay.setOnClickListener { collapseNow() }
         binding.btnExpandActiveOverlay.setOnClickListener { expandNow() }
         binding.collapsedCaptureHandle.setOnClickListener { expandNow() }
@@ -77,7 +81,6 @@ internal class ActiveScreenCaptureOverlayController(
     fun showReadyExpanded() = onMainThread(::showReadyNow)
 
     fun hideForCapture() = onMainThread {
-        mainHandler.removeCallbacks(collapseRunnable)
         binding.root.visibility = View.INVISIBLE
         removeTranslationLayersNow()
     }
@@ -95,6 +98,7 @@ internal class ActiveScreenCaptureOverlayController(
         binding.tvActiveOverlayStatus.setText(R.string.active_screenshot_processing_short)
         binding.btnCancelActivePreview.visibility = View.VISIBLE
         binding.btnActiveOverlayMode.isEnabled = false
+        binding.btnToggleActiveTranslation.isEnabled = hasTranslationResult
         updateCompactStatus(R.string.active_screenshot_compact_processing, showProgress = true)
     }
 
@@ -123,6 +127,7 @@ internal class ActiveScreenCaptureOverlayController(
         }
         processing = false
         sessionActive = true
+        hasTranslationResult = patches.isNotEmpty()
         showTranslationPatchesNow(patches, sourceWidth, sourceHeight)
         binding.root.visibility = View.VISIBLE
         binding.btnActiveOverlayCapture.visibility = View.GONE
@@ -135,6 +140,9 @@ internal class ActiveScreenCaptureOverlayController(
         }
         binding.btnCancelActivePreview.visibility = View.VISIBLE
         binding.btnActiveOverlayMode.isEnabled = true
+        binding.btnToggleActiveTranslation.isEnabled = hasTranslationResult
+        binding.btnToggleActiveTranslation.isChecked = translationVisible
+        expandNow()
         updateCompactStatus(
             if (patches.isEmpty()) {
                 R.string.active_screenshot_compact_no_text
@@ -143,8 +151,6 @@ internal class ActiveScreenCaptureOverlayController(
             },
             showProgress = false
         )
-        mainHandler.removeCallbacks(collapseRunnable)
-        mainHandler.postDelayed(collapseRunnable, AUTO_COLLAPSE_DELAY_MS)
     }
 
     fun showCaptureFailed() = onMainThread(::showReadyNow)
@@ -162,7 +168,8 @@ internal class ActiveScreenCaptureOverlayController(
         }
         processing = false
         sessionActive = false
-        mainHandler.removeCallbacks(collapseRunnable)
+        hasTranslationResult = false
+        translationVisible = true
         removeTranslationLayersNow()
         if (!ensureControlAttachedNow()) return
         binding.root.visibility = View.VISIBLE
@@ -170,6 +177,8 @@ internal class ActiveScreenCaptureOverlayController(
         binding.activeOverlayStatusGroup.visibility = View.GONE
         binding.btnCancelActivePreview.visibility = View.GONE
         binding.btnActiveOverlayMode.isEnabled = true
+        binding.btnToggleActiveTranslation.isEnabled = false
+        binding.btnToggleActiveTranslation.isChecked = true
         updateCompactStatus(R.string.active_screenshot_compact_ready, showProgress = false)
         expandNow()
     }
@@ -211,7 +220,6 @@ internal class ActiveScreenCaptureOverlayController(
 
     private fun collapseNow() {
         if (!ensureControlAttachedNow()) return
-        mainHandler.removeCallbacks(collapseRunnable)
         val params = controlParams ?: return
         if (collapsed) return
         val bounds = windowBounds()
@@ -276,6 +284,7 @@ internal class ActiveScreenCaptureOverlayController(
             return
         }
         translationView.replacePatches(patches, sourceWidth, sourceHeight)
+        translationView.setPatchesVisible(translationVisible, animateChange = false)
     }
 
     private fun ensureTranslationAttachedNow(): Boolean {
@@ -301,7 +310,6 @@ internal class ActiveScreenCaptureOverlayController(
     }
 
     private fun dismissNow() {
-        mainHandler.removeCallbacks(collapseRunnable)
         removeTranslationLayersNow()
         if (binding.root.parent != null) {
             runCatching { windowManager.removeViewImmediate(binding.root) }
@@ -531,7 +539,6 @@ internal class ActiveScreenCaptureOverlayController(
         (value * appContext.resources.displayMetrics.density).toInt()
 
     private companion object {
-        const val AUTO_COLLAPSE_DELAY_MS = 3_500L
         const val EXPANDED_BOTTOM_MARGIN_DP = 44
         const val DEFAULT_MAXIMUM_OBSCURING_ALPHA = 0.8f
         const val CONTROL_PRESS_DURATION_MS = 90L

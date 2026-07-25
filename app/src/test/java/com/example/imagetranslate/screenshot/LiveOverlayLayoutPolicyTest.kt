@@ -60,14 +60,38 @@ class LiveOverlayLayoutPolicyTest {
         assertEquals(listOf(listOf(0, 1, 2), listOf(3)), groups)
     }
 
+    @Test
+    fun removesOverlappingRecognizerDuplicatesBeforeGrouping() {
+        val lines = listOf(
+            line(0, 40, 100, 340, 132, "Welcome to Wikipedia", quality = 0.5f),
+            line(1, 42, 101, 339, 133, "Welcome to Wikipedla", quality = 0.9f),
+            line(2, 40, 142, 320, 174, "A separate line", quality = 0.7f)
+        )
+
+        assertEquals(listOf(1, 2), LiveOverlayLayoutPolicy.selectDistinctTextLines(lines))
+    }
+
+    @Test
+    fun keepsParagraphsSeparateAfterAVisibleSentenceGap() {
+        val groups = LiveOverlayLayoutPolicy.groupTextLines(
+            listOf(
+                line(0, 40, 100, 340, 130, "The first paragraph ends."),
+                line(1, 40, 145, 340, 175, "The next paragraph starts here")
+            )
+        )
+
+        assertEquals(listOf(listOf(0), listOf(1)), groups)
+    }
+
     private fun line(
         index: Int,
         left: Int,
         top: Int,
         right: Int,
         bottom: Int,
-        text: String
-    ) = LiveTextLineBounds(index, left, top, right, bottom, text)
+        text: String,
+        quality: Float = 0f
+    ) = LiveTextLineBounds(index, left, top, right, bottom, text, quality)
 
     private fun patch(index: Int, left: Int, top: Int, right: Int, bottom: Int) =
         LivePatchBounds(index, left, top, right, bottom)

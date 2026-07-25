@@ -37,6 +37,25 @@ class ScrollFrameMotionEstimatorTest {
         assertNull(ScrollFrameMotionEstimator.estimate(reference, current))
     }
 
+    @Test
+    fun inconsistentMotionAcrossScreenBandsIsRejected() {
+        val reference = patternedFrame()
+        val up = shiftedFrame(reference, shiftRows = -4)
+        val down = shiftedFrame(reference, shiftRows = 3)
+        val current = signature(
+            IntArray(COLUMNS * ROWS) { index ->
+                val column = index % COLUMNS
+                when {
+                    column < COLUMNS / 3 -> up.samples[index]
+                    column < COLUMNS * 2 / 3 -> down.samples[index]
+                    else -> (index * 37 + 19) % 256
+                }
+            }
+        )
+
+        assertNull(ScrollFrameMotionEstimator.estimate(reference, current))
+    }
+
     private fun patternedFrame(): ScreenFrameSignature = signature(
         IntArray(COLUMNS * ROWS) { index ->
             val row = index / COLUMNS
