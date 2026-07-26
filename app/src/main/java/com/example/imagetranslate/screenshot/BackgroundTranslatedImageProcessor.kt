@@ -409,11 +409,14 @@ internal class BackgroundTranslatedImageProcessor(
             recognitionBounds.height() > bitmap.height * MAXIMUM_DIFFERENTIAL_ROI_RATIO
         ) return null
 
-        val shifted = snapshot.regions.mapNotNull { cached ->
+        val expectedSurvivors = snapshot.regions.mapNotNull { cached ->
             val shiftedBounds = Rect(cached.region.source.bounds).apply { offset(0, shiftY) }
             if (shiftedBounds.left < 0 || shiftedBounds.top < contentTop ||
                 shiftedBounds.right > bitmap.width || shiftedBounds.bottom > contentBottom
             ) return@mapNotNull null
+            cached to shiftedBounds
+        }
+        val shifted = expectedSurvivors.mapNotNull { (cached, shiftedBounds) ->
             val matchedBounds = findFingerprintMatch(
                 bitmap = bitmap,
                 expectedBounds = shiftedBounds,
@@ -426,13 +429,13 @@ internal class BackgroundTranslatedImageProcessor(
             )
         }
         if (!LiveDifferentialRecognitionPolicy.hasSufficientReuse(
-                snapshotCount = snapshot.regions.size,
-                shiftedCount = shifted.size
+                expectedSurvivorCount = expectedSurvivors.size,
+                matchedCount = shifted.size
             )
         ) return null
-        val validationRatio = shifted.size.toFloat() / snapshot.regions.size
+        val validationRatio = shifted.size.toFloat() / expectedSurvivors.size.coerceAtLeast(1)
 
-        val invalidOutsideRecognitionArea = snapshot.regions.size - shifted.size > 0 &&
+        val invalidOutsideRecognitionArea = expectedSurvivors.size - shifted.size > 0 &&
             shifted.none { Rect.intersects(it.source.bounds, recognitionBounds) }
         if (invalidOutsideRecognitionArea && validationRatio < STRONG_REUSED_REGION_RATIO) {
             return null

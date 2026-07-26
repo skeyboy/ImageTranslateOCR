@@ -5,16 +5,22 @@ import kotlin.math.abs
 internal object LiveDifferentialRecognitionPolicy {
     fun canAttempt(plan: ScrollCapturePlan, viewportHeight: Int): Boolean {
         val minimumShift = maxOf(MINIMUM_SHIFT_PX, viewportHeight / MINIMUM_SHIFT_HEIGHT_DIVISOR)
-        return abs(plan.contentShiftY) >= minimumShift &&
-            abs(plan.contentShiftY) <= viewportHeight * MAXIMUM_SHIFT_RATIO &&
-            plan.confidence >= MINIMUM_CONFIDENCE &&
+        val shift = abs(plan.contentShiftY)
+        if (shift < minimumShift || shift > viewportHeight * MAXIMUM_SHIFT_RATIO) return false
+        val stronglyRegistered = plan.confidence >= MINIMUM_CONFIDENCE &&
             plan.consensusRatio >= MINIMUM_CONSENSUS &&
             plan.registrationError <= MAXIMUM_REGISTRATION_ERROR
+        val largeConsistentScroll = shift >= viewportHeight * LARGE_SCROLL_MINIMUM_RATIO &&
+            plan.overlapRatio >= LARGE_SCROLL_MINIMUM_OVERLAP &&
+            plan.confidence >= LARGE_SCROLL_MINIMUM_CONFIDENCE &&
+            plan.consensusRatio >= LARGE_SCROLL_MINIMUM_CONSENSUS &&
+            plan.registrationError <= LARGE_SCROLL_MAXIMUM_REGISTRATION_ERROR
+        return stronglyRegistered || largeConsistentScroll
     }
 
-    fun hasSufficientReuse(snapshotCount: Int, shiftedCount: Int): Boolean {
-        if (snapshotCount <= 0 || shiftedCount < MINIMUM_REUSED_REGION_COUNT) return false
-        return shiftedCount.toFloat() / snapshotCount >= MINIMUM_REUSED_REGION_RATIO
+    fun hasSufficientReuse(expectedSurvivorCount: Int, matchedCount: Int): Boolean {
+        if (expectedSurvivorCount <= 0 || matchedCount < MINIMUM_REUSED_REGION_COUNT) return false
+        return matchedCount.toFloat() / expectedSurvivorCount >= MINIMUM_REUSED_REGION_RATIO
     }
 
     fun hasSufficientOutput(snapshotCount: Int, outputCount: Int): Boolean {
@@ -28,6 +34,11 @@ internal object LiveDifferentialRecognitionPolicy {
     private const val MINIMUM_CONFIDENCE = 0.62f
     private const val MINIMUM_CONSENSUS = 0.74f
     private const val MAXIMUM_REGISTRATION_ERROR = 36f
+    private const val LARGE_SCROLL_MINIMUM_RATIO = 0.18f
+    private const val LARGE_SCROLL_MINIMUM_OVERLAP = 0.35f
+    private const val LARGE_SCROLL_MINIMUM_CONFIDENCE = 0.5f
+    private const val LARGE_SCROLL_MINIMUM_CONSENSUS = 0.66f
+    private const val LARGE_SCROLL_MAXIMUM_REGISTRATION_ERROR = 38f
     private const val MINIMUM_REUSED_REGION_COUNT = 3
     private const val MINIMUM_REUSED_REGION_RATIO = 0.72f
     private const val MINIMUM_OUTPUT_RETENTION_RATIO = 0.8f
