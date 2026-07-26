@@ -1,0 +1,55 @@
+{
+  "schema": 1,
+  "event": "live_recognition_ab_evidence",
+  "date": "2026-07-26",
+  "code_git": "b5e4c4d",
+  "device": {
+    "model": "23113RKC6C",
+    "android": 16,
+    "resolution": "1440x3200",
+    "orientation": "portrait",
+    "theme": "light"
+  },
+  "page": "https://doc.rust-lang.org/book/ch00-00-introduction.html",
+  "gesture": {
+    "from": [720, 2200],
+    "to": [720, 1200],
+    "duration_ms": 650,
+    "settle_seconds": 2
+  },
+  "coverage_gate": {
+    "minimum_region_recall": 0.8,
+    "minimum_area_recall": 0.8
+  },
+  "differential_runs": [
+    {
+      "candidate_ran_first": true,
+      "candidate_total_ms": 922,
+      "reference_total_ms": 1444,
+      "speedup_ratio": 0.3614958525,
+      "region_recall": 0.9,
+      "area_recall": 0.782087326,
+      "coverage_pass": false,
+      "decision": "ACCURACY_REGRESSION"
+    },
+    {
+      "candidate_ran_first": false,
+      "candidate_total_ms": 892,
+      "reference_total_ms": 1390,
+      "speedup_ratio": 0.3582733869,
+      "region_recall": 0.9,
+      "area_recall": 0.7891326547,
+      "coverage_pass": false,
+      "decision": "ACCURACY_REGRESSION"
+    }
+  ],
+  "vertical_bands_run": {
+    "candidate_total_ms": 1553,
+    "reference_total_ms": 1352,
+    "speedup_ratio": -0.1487,
+    "region_recall": 1.0,
+    "area_recall": 0.98277,
+    "coverage_pass": true,
+    "decision": "NO_MEANINGFUL_SPEEDUP"
+  }
+}

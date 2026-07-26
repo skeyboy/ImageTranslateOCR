@@ -38,6 +38,13 @@ JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" ./gradle
 JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" ./gradlew :app:connectedDebugAndroidTest
 ```
 
+连接实机后，可对同一稳定视口执行差分/分块与整屏识别 A/B。脚本会固定页面和滑动手势、交替执行顺序，并输出单行 JSON 与 P50/P90 汇总：
+
+```bash
+AB_RUNS=4 ANDROID_SERIAL=<device-serial> scripts/live-recognition-ab-batch.sh
+AB_CANDIDATE=VERTICAL_BANDS ANDROID_SERIAL=<device-serial> scripts/live-recognition-ab.sh
+```
+
 开启后台截图监听需要通知和完整图片访问权限。“检测到截图时显示悬浮窗”默认关闭；开启后才申请“在其他应用上层显示”权限，并在截图到达时显示左上角预览和操作。关闭时不会创建悬浮窗，而是把图片 URI 直接交给主界面的“原始图片”并自动执行完整翻译与打标；系统拒绝后台拉起界面时仅保留持久通知。监听不会持续采集屏幕内容。开启“开机自启”后，应用会在设备启动且既有权限仍有效时恢复监听；部分厂商仍可能要求在系统的自启动或省电设置中额外放行。
 
 开启后台监听后，返回桌面或从最近任务划掉应用界面不会停止监听，常驻通知表示服务仍在运行。应用优先响应系统媒体变更事件；部分厂商在界面退出后不再分发该事件，因此服务还会每 750ms 查询一次最新截图元数据作为兜底，不持续读取屏幕。应用内或通知中的“停止”会真正关闭监听和恢复任务。Android 设置中的“强行停止”会禁止应用自行启动，必须由用户重新打开应用，这是系统级限制。
