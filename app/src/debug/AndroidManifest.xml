@@ -6,6 +6,9 @@
             android:exported="true" />
         <activity
             android:name=".debug.LiveRecognitionBenchmarkActivity"
-            android:exported="true" />
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:noHistory="true"
+            android:taskAffinity="" />
     </application>
 </manifest>

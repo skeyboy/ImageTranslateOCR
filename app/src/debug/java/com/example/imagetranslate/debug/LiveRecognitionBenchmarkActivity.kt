@@ -43,6 +43,7 @@ class LiveRecognitionBenchmarkActivity : Activity() {
                 .onSuccess { json ->
                     output.text = JSONObject(json).toString(2)
                     Log.i(LOG_TAG, json)
+                    finishBenchmarkTask()
                 }
                 .onFailure { error ->
                     val json = JSONObject()
@@ -53,7 +54,14 @@ class LiveRecognitionBenchmarkActivity : Activity() {
                         .toString()
                     output.text = JSONObject(json).toString(2)
                     Log.e(LOG_TAG, json, error)
+                    finishBenchmarkTask()
                 }
+        }
+    }
+
+    private fun finishBenchmarkTask() {
+        window.decorView.post {
+            if (!isFinishing) finishAndRemoveTask()
         }
     }
 

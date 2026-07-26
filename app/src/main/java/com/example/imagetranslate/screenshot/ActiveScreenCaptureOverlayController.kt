@@ -388,10 +388,7 @@ internal class ActiveScreenCaptureOverlayController(
         val params = createLayoutParams(
             width = bounds.first,
             height = bounds.second,
-            flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
-                WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
-                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+            flags = TranslationOverlayTouchPolicy.PASSTHROUGH_WINDOW_FLAGS,
             x = 0,
             y = 0
         ).apply {

@@ -1,10 +1,20 @@
 package com.example.imagetranslate.screenshot
 
+import android.view.WindowManager
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class TranslationOverlayTouchPolicyTest {
+    @Test
+    fun translationWindowCannotConsumeTouchOrFocus() {
+        val flags = TranslationOverlayTouchPolicy.PASSTHROUGH_WINDOW_FLAGS
+
+        assertTrue(flags and WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE != 0)
+        assertTrue(flags and WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE != 0)
+        assertTrue(flags and WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL != 0)
+    }
+
     @Test
     fun usesAReadableAlphaForANonOverlappingPatch() {
         assertEquals(

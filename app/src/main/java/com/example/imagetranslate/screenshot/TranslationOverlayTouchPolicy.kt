@@ -1,9 +1,15 @@
 package com.example.imagetranslate.screenshot
 
+import android.view.WindowManager
 import kotlin.math.pow
 
 internal object TranslationOverlayTouchPolicy {
     const val PREFERRED_SINGLE_WINDOW_ALPHA = 0.72f
+    val PASSTHROUGH_WINDOW_FLAGS: Int =
+        WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+            WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
+            WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
+            WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
 
     internal data class WindowBounds(
         val x: Int,

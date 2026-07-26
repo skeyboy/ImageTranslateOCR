@@ -15,7 +15,11 @@ if [[ -n "$serial" ]]; then
 fi
 
 temporary_directory=$(mktemp -d /tmp/imagetranslate-ab.XXXXXX)
-trap 'rm -rf "$temporary_directory"' EXIT
+cleanup() {
+    rm -rf "$temporary_directory"
+    "${adb_command[@]}" shell am force-stop "$package_name" >/dev/null 2>&1 || true
+}
+trap cleanup EXIT
 
 baseline_local="$temporary_directory/baseline.png"
 current_local="$temporary_directory/current.png"
