@@ -46,4 +46,8 @@ JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" ./gradle
 
 ## 调校记录
 
-OCR、翻译、擦除和译文排版的历史问题、效果截图及提交记录见 [图片文字翻译与替换调校记录](docs/translation-tuning-log.md)。
+- 实时录屏识别、差分、缓冲、切分、悬浮交互、性能数据和 Git 实验节点见 [实时屏幕识别与悬浮翻译实验账本](docs/live-screen-translation-experiment-log.md)。
+- OCR、翻译、擦除和译文排版的历史问题、效果截图及提交记录见 [图片文字翻译与替换调校记录](docs/translation-tuning-log.md)。
+- 系统截图监听、主动截屏入口和平台权限边界见 [OCR 与截图识别完整报告](docs/ocr-and-screenshot-recognition-complete-report.md)。
+
+后续修改实时屏幕识别链路时，必须同步更新实验账本，记录基线 Git、实验代码 Git、设备与配置、自动化和实机数据、证据路径以及保留/部分保留/回退结论。
