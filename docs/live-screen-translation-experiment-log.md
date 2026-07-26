@@ -2,7 +2,7 @@
 
 > 建立日期：2026-07-26
 >
-> 当前代码基线：`b5e4c4d perf: add live OCR strategy benchmarks`
+> 当前代码基线：`b4565b0 fix: release benchmark UI after A/B`
 >
 > 适用范围：Android 录屏采集、页面运动检测、OCR、翻译、译文贴片与悬浮窗交互
 
@@ -248,6 +248,7 @@ sequenceDiagram
 | 2026-07-26 | `b6ccae1` | 频次、单双缓冲、切分和场景预设 | 配置入口和 AI 推荐场景完成；默认采用自适应 | 保留 |
 | 2026-07-26 | `7b028b7` | 大幅滚动差分准入与理论存活区域复用率 | 两次连续实机滚动均命中差分且未见大面积漏译 | 保留 |
 | 2026-07-26 | `b5e4c4d` | 同视口 A/B、结构化性能日志与覆盖率指标 | 建立可重复基准；严格 A/B 发现差分虽快约 36%，面积召回仅约 78% | 基准设施保留，差分结论降级为受保护实验路径 |
+| 2026-07-26 | `b4565b0` | A/B 调试页生命周期与译文层触摸透传回归 | A/B 完成后自动返回原页面，不再遗留全屏调试任务；透传 flag 纳入测试 | 保留 |
 
 ### 7.1 `7b028b7` 受控实机结果
 
@@ -404,6 +405,23 @@ sequenceDiagram
 
 ## 10. 实验追加记录
 
+### 2026-07-26：A/B 后 UI 无法继续交互
+
+- 状态：保留
+- 基线 Git：`ddc81a7 docs: record live OCR A/B experiment`
+- 实验代码 Git：`b4565b0 fix: release benchmark UI after A/B`
+- 记录 Git：由本次文档提交建立
+- 回退 Git：无
+- 假设：UI 看似无法交互不是主 Activity 或译文层吞掉触摸，而是 Debug A/B Activity 在输出后仍作为全屏任务停留。
+- 修改范围：A/B Activity 改为独立空 task affinity、`noHistory`、不显示在最近任务，成功或失败后执行 `finishAndRemoveTask()`；单轮脚本退出时强制清理调试进程；译文全屏 Window 的 `NOT_TOUCHABLE/NOT_FOCUSABLE` flag 集中为可测试策略。
+- 设备与系统：Xiaomi `23113RKC6C`，Android 16，1440×3200，ADB `192.168.1.4:37527`。
+- 自动化结果：`testDebugUnitTest`、`assembleDebug`、`assembleDebugAndroidTest` 通过；主/测试 APK 均通过 ADB 覆盖安装；仪器测试 `19/19` 通过。
+- 正确性观察：修复前任务栈可见 `LiveRecognitionBenchmarkActivity`，且它会与主 Activity 共享应用任务；修复后完成一轮真实 A/B，任务栈中不再存在 Benchmark Activity，前台恢复系统浏览器，`MediaProjection` 为 `null`。主界面“选取图片”和悬浮条“开始识别”均通过 ADB 实机点击验证。
+- 性能观察：本轮只修交互生命周期，不改变 OCR 主链；回归 A/B 差分 1075ms、整屏 1616ms。
+- 风险与异常：悬浮控制条自身范围仍必须接收点击和拖动；只有其外的全屏译文层强制透传。不能把控制条也设为 `NOT_TOUCHABLE`。
+- 决策及原因：完整保留。修复移除调试工具对产品交互的污染，并用 manifest 与触摸策略测试防止回归。
+- 下一步：继续执行既定的 30 次多场景基线和脏区网格/Track ID A/B。
+
 ### 2026-07-26：同视口 A/B、结构化日志与覆盖率指标
 
 - 状态：部分保留
@@ -476,12 +494,12 @@ sequenceDiagram
 
 | 项目 | 状态 |
 | --- | --- |
-| 代码节点 | `b5e4c4d` |
+| 代码节点 | `b4565b0` |
 | 默认配置 | 自适应 / 高频 / 单缓冲 / 自动差分 |
 | 主 APK | 已通过 ADB 覆盖安装 |
 | 测试 APK | 已通过 ADB 覆盖安装 |
 | JVM/构建 | 通过 |
-| 仪器测试 | 18/18 通过（排除系统录屏授权入口用例） |
+| 仪器测试 | 19/19 通过（排除系统录屏授权入口用例） |
 | 录屏会话 | 验证结束后关闭 |
 | 无障碍增强 | 验证结束后关闭 |
 | 当前推荐下一项 | 30 次多场景基线 + 脏区网格/Track ID/ROI 上下文 A/B |
