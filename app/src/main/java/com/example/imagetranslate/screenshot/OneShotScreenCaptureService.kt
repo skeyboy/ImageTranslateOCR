@@ -83,12 +83,25 @@ class OneShotScreenCaptureService : Service() {
     private var captureHeight = 0
     private var captureDensityDpi = 0
     private var lastSignatureSampleAt = Long.MIN_VALUE
+    private val movementSettleFallback = Runnable {
+        if (!continuousTranslationEnabled.get() || projection == null ||
+            captureInProgress.get() || initialCapturePending.get() ||
+            !changeDetector.forceCaptureAfterQuietPeriod(SystemClock.elapsedRealtime())
+        ) {
+            return@Runnable
+        }
+        val capturePlan = changeDetector.consumeCapturePlan()
+        Log.i(TAG, "Settled viewport from quiet-period fallback")
+        requestScreenshot(capturePlan)
+    }
     private val translationMutex = Mutex()
     private var foregroundServiceTypes = 0
     @Volatile
     private var translationMode = TranslationMode.AUTO_BIDIRECTIONAL
     @Volatile
     private var experienceMode = LiveOverlayExperienceMode.DEFAULT
+    @Volatile
+    private var captureSettings = LiveCaptureSettingsPolicy.default
     private val liveProcessorDelegate = lazy {
         BackgroundTranslatedImageProcessor(reuseResources = true)
     }
@@ -129,9 +142,11 @@ class OneShotScreenCaptureService : Service() {
         super.onCreate()
         isRunning = true
         experienceMode = resolvedExperienceMode()
+        captureSettings = LiveCaptureSettingsPreferences.get(this)
         overlayController = ActiveScreenCaptureOverlayController(
             this,
             experienceMode,
+            captureSettings,
             object : ActiveScreenCaptureOverlayController.Listener {
                 override fun onCapture() {
                     beginCaptureFromUser()
@@ -161,6 +176,10 @@ class OneShotScreenCaptureService : Service() {
 
                 override fun onExperienceModeRequested(mode: LiveOverlayExperienceMode) {
                     requestExperienceMode(mode)
+                }
+
+                override fun onCaptureSettingsChanged(settings: LiveCaptureSettings) {
+                    applyCaptureSettings(settings)
                 }
             }
         )
@@ -313,7 +332,7 @@ class OneShotScreenCaptureService : Service() {
             metrics.widthPixels,
             metrics.heightPixels,
             PixelFormat.RGBA_8888,
-            2
+            captureSettings.bufferMode.imageReaderMaxImages
         )
         newReader.setOnImageAvailableListener(::onImageAvailable, handler)
         val currentDisplay = virtualDisplay
@@ -499,7 +518,7 @@ class OneShotScreenCaptureService : Service() {
         }
         val nowMs = SystemClock.elapsedRealtime()
         if (lastSignatureSampleAt != Long.MIN_VALUE &&
-            nowMs - lastSignatureSampleAt < FRAME_SIGNATURE_INTERVAL_MS
+            nowMs - lastSignatureSampleAt < captureSettings.frequency.frameSampleIntervalMs
         ) {
             image.close()
             return
@@ -528,9 +547,11 @@ class OneShotScreenCaptureService : Service() {
             ScreenFrameAction.MOVING -> {
                 overlayController.showWaitingForStable()
                 discardStaleCaptureForMovement()
+                scheduleMovementSettleFallback()
             }
-            ScreenFrameAction.MOVING_UPDATE -> Unit
+            ScreenFrameAction.MOVING_UPDATE -> scheduleMovementSettleFallback()
             ScreenFrameAction.CAPTURE -> {
+                captureHandler?.removeCallbacks(movementSettleFallback)
                 val capturePlan = changeDetector.consumeCapturePlan()
                 Log.i(
                     TAG,
@@ -543,6 +564,12 @@ class OneShotScreenCaptureService : Service() {
                 requestScreenshot(capturePlan)
             }
         }
+    }
+
+    private fun scheduleMovementSettleFallback() {
+        val handler = captureHandler ?: return
+        handler.removeCallbacks(movementSettleFallback)
+        handler.postDelayed(movementSettleFallback, MOVEMENT_SETTLE_FALLBACK_MS)
     }
 
     private fun processInitialStableFrame(image: Image, signature: ScreenFrameSignature) {
@@ -625,7 +652,8 @@ class OneShotScreenCaptureService : Service() {
                             overlayAlpha = LiveOverlayExperiencePolicy.translationWindowAlpha(
                                 activeExperienceMode,
                                 ScreenThemeColorEstimator.DEFAULT_OVERLAY_ALPHA
-                            )
+                            ),
+                            segmentation = captureSettings.segmentation
                         )
                     }
                 }
@@ -877,6 +905,7 @@ class OneShotScreenCaptureService : Service() {
         pendingInitialFrame.getAndSet(null)?.image?.close()
         activeCapturePlan = null
         lastSignatureSampleAt = Long.MIN_VALUE
+        captureHandler?.removeCallbacks(movementSettleFallback)
         if (!keepContinuousMode) continuousTranslationEnabled.set(false)
         timeoutJob?.cancel()
         timeoutJob = null
@@ -989,6 +1018,41 @@ class OneShotScreenCaptureService : Service() {
             return
         }
         applyResolvedExperienceMode()
+    }
+
+    private fun applyCaptureSettings(settings: LiveCaptureSettings) {
+        val previous = captureSettings
+        if (previous == settings) return
+        captureSettings = settings
+        LiveCaptureSettingsPreferences.set(this, settings)
+        Log.i(
+            TAG,
+            "Live capture settings changed: scene=${settings.scenePreset}, " +
+                "frequency=${settings.frequency}, buffer=${settings.bufferMode}, " +
+                "segmentation=${settings.segmentation}"
+        )
+        if (projection == null) return
+        if (previous.bufferMode != settings.bufferMode) {
+            captureHandler?.post(::reconfigureCaptureForSettings)
+        } else if (continuousTranslationEnabled.get()) {
+            liveProcessor.clearLiveOverlaySnapshot()
+            cancelActiveCapture(keepContinuousMode = true)
+            requestScreenshot()
+        }
+    }
+
+    private fun reconfigureCaptureForSettings() {
+        val handler = captureHandler ?: return
+        if (projection == null) return
+        val resumeContinuousCapture = continuousTranslationEnabled.get()
+        cancelActiveCapture(keepContinuousMode = resumeContinuousCapture)
+        runCatching { configureCapturePipeline(resolveDisplayMetrics(), handler) }
+            .onSuccess {
+                overlayController.onDisplayGeometryChanged(clearTranslations = true)
+                liveProcessor.clearLiveOverlaySnapshot()
+                if (resumeContinuousCapture) awaitStableViewport("capture settings")
+            }
+            .onFailure(::failSession)
     }
 
     private fun applyResolvedExperienceMode() {
@@ -1128,11 +1192,11 @@ class OneShotScreenCaptureService : Service() {
         private const val SIGNATURE_ROWS = 72
         private const val SIGNATURE_TOP_CROP_RATIO = 0.08f
         private const val SIGNATURE_BOTTOM_RATIO = 0.94f
-        private const val FRAME_SIGNATURE_INTERVAL_MS = 50L
         private const val DISPLAY_CHANGE_SETTLE_MS = 900L
         private const val MEDIA_PROJECTION_RESIZE_SETTLE_MS = 120L
         private const val ROTATION_FRAME_RECOVERY_TIMEOUT_MS = 3_000L
         private const val INITIAL_STABILITY_MAX_WAIT_MS = 1_800L
+        private const val MOVEMENT_SETTLE_FALLBACK_MS = 850L
         private val CAPTURE_FRAME_PULSE_DELAYS_MS = longArrayOf(250L, 650L, 1_050L)
         private const val TAG = "ScreenCaptureSession"
 

@@ -34,10 +34,15 @@ class ScreenshotOverlayLayoutTest {
         assertTrue(binding.btnActiveOverlayStop.isClickable)
         assertTrue(binding.btnCancelActivePreview.isClickable)
         assertTrue(binding.btnActiveOverlayMode.isClickable)
+        assertTrue(binding.btnActiveOverlaySettings.isClickable)
         assertTrue(binding.btnCollapseActiveOverlay.isClickable)
         assertTrue(binding.btnExpandActiveOverlay.isClickable)
         assertEquals("开始识别", binding.btnActiveOverlayCapture.text.toString())
         assertEquals("中英互译", binding.btnActiveOverlayMode.text.toString())
+        assertEquals(
+            "识别策略设置",
+            binding.btnActiveOverlaySettings.contentDescription.toString()
+        )
         assertEquals("录屏识别", binding.tvCollapsedOverlayStatus.text.toString())
         assertEquals(View.INVISIBLE, binding.collapsedOverlayProgress.visibility)
     }

@@ -74,6 +74,17 @@
                 app:strokeColor="#66FFFFFF"
                 app:strokeWidth="1dp" />
 
+            <ImageButton
+                android:id="@+id/btnActiveOverlaySettings"
+                android:layout_width="36dp"
+                android:layout_height="48dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/active_screenshot_capture_settings"
+                android:padding="9dp"
+                android:src="@drawable/ic_capture_settings"
+                android:tooltipText="@string/active_screenshot_capture_settings"
+                app:tint="#D9FFFFFF" />
+
             <FrameLayout
                 android:layout_width="0dp"
                 android:layout_height="match_parent"

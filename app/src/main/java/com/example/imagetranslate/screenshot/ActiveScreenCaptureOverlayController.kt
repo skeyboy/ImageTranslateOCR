@@ -25,6 +25,7 @@ import kotlin.math.abs
 internal class ActiveScreenCaptureOverlayController(
     context: Context,
     initialExperienceMode: LiveOverlayExperienceMode,
+    initialCaptureSettings: LiveCaptureSettings,
     private val listener: Listener
 ) {
     interface Listener {
@@ -34,6 +35,7 @@ internal class ActiveScreenCaptureOverlayController(
         fun onTranslationModeChanged(mode: TranslationMode)
         fun onTranslationVisibilityChanged()
         fun onExperienceModeRequested(mode: LiveOverlayExperienceMode)
+        fun onCaptureSettingsChanged(settings: LiveCaptureSettings)
     }
 
     private val appContext = context.applicationContext
@@ -46,7 +48,8 @@ internal class ActiveScreenCaptureOverlayController(
     private val translationView = ScreenTranslationOverlayView(themedContext)
     private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
     private val edgeMargin = dp(12)
-    private val expandedWidth = dp(342)
+    private val expandedWidth: Int
+        get() = minOf(dp(380), (windowBounds().first - edgeMargin * 2).coerceAtLeast(dp(300)))
     private val expandedHeight = dp(56)
     private val collapsedWidth = dp(132)
     private val collapsedHeight = dp(42)
@@ -54,6 +57,7 @@ internal class ActiveScreenCaptureOverlayController(
     private var translationParams: WindowManager.LayoutParams? = null
     private var translationMode = TranslationMode.AUTO_BIDIRECTIONAL
     private var experienceMode = initialExperienceMode
+    private var captureSettings = initialCaptureSettings
     private var attachedWindowManager: WindowManager? = null
     private var sessionActive = false
     private var processing = false
@@ -70,6 +74,9 @@ internal class ActiveScreenCaptureOverlayController(
         }
         binding.btnActiveOverlayMode.setOnClickListener {
             showOverlayMenu()
+        }
+        binding.btnActiveOverlaySettings.setOnClickListener {
+            showCaptureSettingsMenu()
         }
         binding.btnToggleActiveTranslation.addOnCheckedChangeListener { _, checked ->
             translationVisible = checked
@@ -453,7 +460,17 @@ internal class ActiveScreenCaptureOverlayController(
                     EXPERIENCE_MENU_DEFAULT
                 }
             ).isChecked = true
+            menu.add(
+                CAPTURE_SETTINGS_MENU_GROUP,
+                CAPTURE_SETTINGS_MENU_OPEN,
+                20,
+                R.string.active_screenshot_capture_settings
+            )
             setOnMenuItemClickListener { item ->
+                if (item.itemId == CAPTURE_SETTINGS_MENU_OPEN) {
+                    mainHandler.post(::showCaptureSettingsMenu)
+                    return@setOnMenuItemClickListener true
+                }
                 val selectedExperience = when (item.itemId) {
                     EXPERIENCE_MENU_DEFAULT -> LiveOverlayExperienceMode.DEFAULT
                     EXPERIENCE_MENU_ENHANCED -> LiveOverlayExperienceMode.ENHANCED
@@ -479,6 +496,202 @@ internal class ActiveScreenCaptureOverlayController(
             show()
         }
     }
+
+    private fun showCaptureSettingsMenu() {
+        PopupMenu(themedContext, binding.btnActiveOverlaySettings).apply {
+            menu.add(
+                CAPTURE_SETTINGS_MENU_GROUP,
+                CAPTURE_SETTINGS_MENU_SUMMARY,
+                0,
+                appContext.getString(
+                    R.string.active_screenshot_capture_settings_current,
+                    sceneLabel(captureSettings.scenePreset),
+                    frequencyLabel(captureSettings.frequency),
+                    bufferLabel(captureSettings.bufferMode),
+                    segmentationLabel(captureSettings.segmentation)
+                )
+            ).isEnabled = false
+
+            val sceneMenu = menu.addSubMenu(
+                CAPTURE_SETTINGS_MENU_GROUP,
+                CAPTURE_SETTINGS_MENU_SCENE,
+                1,
+                R.string.active_screenshot_scene_group
+            )
+            LiveCaptureScenePreset.entries
+                .filterNot { it == LiveCaptureScenePreset.CUSTOM }
+                .forEachIndexed { index, preset ->
+                    sceneMenu.add(
+                        SCENE_MENU_GROUP,
+                        sceneMenuId(preset),
+                        index,
+                        sceneLabel(preset)
+                    )
+                }
+            sceneMenu.setGroupCheckable(SCENE_MENU_GROUP, true, true)
+            if (captureSettings.scenePreset != LiveCaptureScenePreset.CUSTOM) {
+                sceneMenu.findItem(sceneMenuId(captureSettings.scenePreset))?.isChecked = true
+            }
+
+            val frequencyMenu = menu.addSubMenu(
+                CAPTURE_SETTINGS_MENU_GROUP,
+                CAPTURE_SETTINGS_MENU_FREQUENCY,
+                2,
+                R.string.active_screenshot_frequency_group
+            )
+            LiveCaptureFrequency.entries.forEachIndexed { index, frequency ->
+                frequencyMenu.add(
+                    FREQUENCY_MENU_GROUP,
+                    frequencyMenuId(frequency),
+                    index,
+                    frequencyLabel(frequency)
+                )
+            }
+            frequencyMenu.setGroupCheckable(FREQUENCY_MENU_GROUP, true, true)
+            frequencyMenu.findItem(frequencyMenuId(captureSettings.frequency))?.isChecked = true
+
+            val bufferMenu = menu.addSubMenu(
+                CAPTURE_SETTINGS_MENU_GROUP,
+                CAPTURE_SETTINGS_MENU_BUFFER,
+                3,
+                R.string.active_screenshot_buffer_group
+            )
+            LiveFrameBufferMode.entries.forEachIndexed { index, mode ->
+                bufferMenu.add(
+                    BUFFER_MENU_GROUP,
+                    bufferMenuId(mode),
+                    index,
+                    bufferLabel(mode)
+                )
+            }
+            bufferMenu.setGroupCheckable(BUFFER_MENU_GROUP, true, true)
+            bufferMenu.findItem(bufferMenuId(captureSettings.bufferMode))?.isChecked = true
+
+            val segmentationMenu = menu.addSubMenu(
+                CAPTURE_SETTINGS_MENU_GROUP,
+                CAPTURE_SETTINGS_MENU_SEGMENTATION,
+                4,
+                R.string.active_screenshot_segmentation_group
+            )
+            LiveRecognitionSegmentation.entries.forEachIndexed { index, segmentation ->
+                segmentationMenu.add(
+                    SEGMENTATION_MENU_GROUP,
+                    segmentationMenuId(segmentation),
+                    index,
+                    segmentationLabel(segmentation)
+                )
+            }
+            segmentationMenu.setGroupCheckable(SEGMENTATION_MENU_GROUP, true, true)
+            segmentationMenu.findItem(
+                segmentationMenuId(captureSettings.segmentation)
+            )?.isChecked = true
+
+            setOnMenuItemClickListener { item ->
+                val preset = LiveCaptureScenePreset.entries.firstOrNull {
+                    sceneMenuId(it) == item.itemId
+                }
+                if (preset != null && preset != LiveCaptureScenePreset.CUSTOM) {
+                    updateCaptureSettings(LiveCaptureSettingsPolicy.forPreset(preset))
+                    return@setOnMenuItemClickListener true
+                }
+                val frequency = LiveCaptureFrequency.entries.firstOrNull {
+                    frequencyMenuId(it) == item.itemId
+                }
+                if (frequency != null) {
+                    updateCaptureSettings(
+                        LiveCaptureSettingsPolicy.customize(
+                            captureSettings,
+                            frequency = frequency
+                        )
+                    )
+                    return@setOnMenuItemClickListener true
+                }
+                val bufferMode = LiveFrameBufferMode.entries.firstOrNull {
+                    bufferMenuId(it) == item.itemId
+                }
+                if (bufferMode != null) {
+                    updateCaptureSettings(
+                        LiveCaptureSettingsPolicy.customize(
+                            captureSettings,
+                            bufferMode = bufferMode
+                        )
+                    )
+                    return@setOnMenuItemClickListener true
+                }
+                val segmentation = LiveRecognitionSegmentation.entries.firstOrNull {
+                    segmentationMenuId(it) == item.itemId
+                }
+                if (segmentation != null) {
+                    updateCaptureSettings(
+                        LiveCaptureSettingsPolicy.customize(
+                            captureSettings,
+                            segmentation = segmentation
+                        )
+                    )
+                    return@setOnMenuItemClickListener true
+                }
+                false
+            }
+            show()
+        }
+    }
+
+    private fun updateCaptureSettings(settings: LiveCaptureSettings) {
+        if (settings == captureSettings) return
+        captureSettings = settings
+        listener.onCaptureSettingsChanged(settings)
+    }
+
+    private fun sceneLabel(preset: LiveCaptureScenePreset): String = appContext.getString(
+        when (preset) {
+            LiveCaptureScenePreset.ADAPTIVE -> R.string.active_screenshot_scene_adaptive
+            LiveCaptureScenePreset.READING -> R.string.active_screenshot_scene_reading
+            LiveCaptureScenePreset.DENSE_TEXT -> R.string.active_screenshot_scene_dense_text
+            LiveCaptureScenePreset.CODE -> R.string.active_screenshot_scene_code
+            LiveCaptureScenePreset.DYNAMIC -> R.string.active_screenshot_scene_dynamic
+            LiveCaptureScenePreset.CUSTOM -> R.string.active_screenshot_scene_custom
+        }
+    )
+
+    private fun frequencyLabel(frequency: LiveCaptureFrequency): String = appContext.getString(
+        when (frequency) {
+            LiveCaptureFrequency.LOW -> R.string.active_screenshot_frequency_low
+            LiveCaptureFrequency.MEDIUM -> R.string.active_screenshot_frequency_medium
+            LiveCaptureFrequency.NORMAL -> R.string.active_screenshot_frequency_normal
+            LiveCaptureFrequency.HIGH -> R.string.active_screenshot_frequency_high
+            LiveCaptureFrequency.VERY_HIGH -> R.string.active_screenshot_frequency_very_high
+        }
+    )
+
+    private fun bufferLabel(mode: LiveFrameBufferMode): String = appContext.getString(
+        when (mode) {
+            LiveFrameBufferMode.SINGLE -> R.string.active_screenshot_buffer_single
+            LiveFrameBufferMode.MULTI -> R.string.active_screenshot_buffer_multi
+        }
+    )
+
+    private fun segmentationLabel(segmentation: LiveRecognitionSegmentation): String =
+        appContext.getString(
+            when (segmentation) {
+                LiveRecognitionSegmentation.ADAPTIVE ->
+                    R.string.active_screenshot_segmentation_adaptive
+                LiveRecognitionSegmentation.FULL_FRAME ->
+                    R.string.active_screenshot_segmentation_full
+                LiveRecognitionSegmentation.VERTICAL_BANDS ->
+                    R.string.active_screenshot_segmentation_bands
+            }
+        )
+
+    private fun sceneMenuId(preset: LiveCaptureScenePreset): Int =
+        SCENE_MENU_ID_BASE + preset.ordinal
+
+    private fun frequencyMenuId(frequency: LiveCaptureFrequency): Int =
+        FREQUENCY_MENU_ID_BASE + frequency.ordinal
+
+    private fun bufferMenuId(mode: LiveFrameBufferMode): Int = BUFFER_MENU_ID_BASE + mode.ordinal
+
+    private fun segmentationMenuId(segmentation: LiveRecognitionSegmentation): Int =
+        SEGMENTATION_MENU_ID_BASE + segmentation.ordinal
 
     private fun updateCompactStatus(textRes: Int, showProgress: Boolean) {
         binding.tvCollapsedOverlayStatus.setText(textRes)
@@ -678,5 +891,20 @@ internal class ActiveScreenCaptureOverlayController(
         const val EXPERIENCE_MENU_GROUP = 3
         const val EXPERIENCE_MENU_DEFAULT = 301
         const val EXPERIENCE_MENU_ENHANCED = 302
+        const val CAPTURE_SETTINGS_MENU_GROUP = 4
+        const val CAPTURE_SETTINGS_MENU_SUMMARY = 400
+        const val CAPTURE_SETTINGS_MENU_SCENE = 401
+        const val CAPTURE_SETTINGS_MENU_FREQUENCY = 402
+        const val CAPTURE_SETTINGS_MENU_BUFFER = 403
+        const val CAPTURE_SETTINGS_MENU_SEGMENTATION = 404
+        const val CAPTURE_SETTINGS_MENU_OPEN = 405
+        const val SCENE_MENU_GROUP = 5
+        const val SCENE_MENU_ID_BASE = 500
+        const val FREQUENCY_MENU_GROUP = 6
+        const val FREQUENCY_MENU_ID_BASE = 600
+        const val BUFFER_MENU_GROUP = 7
+        const val BUFFER_MENU_ID_BASE = 700
+        const val SEGMENTATION_MENU_GROUP = 8
+        const val SEGMENTATION_MENU_ID_BASE = 800
     }
 }

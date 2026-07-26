@@ -225,6 +225,17 @@ internal class ScreenFrameChangeDetector(
         pendingCapturePlan = null
     }
 
+    fun isAwaitingStableFrames(): Boolean = dirty
+
+    fun forceCaptureAfterQuietPeriod(nowMs: Long): Boolean {
+        if (!dirty) return false
+        dirty = false
+        movementReported = false
+        lastCaptureAt = nowMs
+        pendingCapturePlan = latestMotionPlan
+        return true
+    }
+
     fun currentMotionPlan(): ScrollCapturePlan? = latestMotionPlan
 
     private fun rememberStableFrame(signature: ScreenFrameSignature, reset: Boolean = false) {

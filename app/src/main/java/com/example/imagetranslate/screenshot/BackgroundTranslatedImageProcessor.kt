@@ -164,16 +164,25 @@ internal class BackgroundTranslatedImageProcessor(
         bitmap: Bitmap,
         mode: TranslationMode,
         capturePlan: ScrollCapturePlan? = null,
-        overlayAlpha: Float = ScreenThemeColorEstimator.DEFAULT_OVERLAY_ALPHA
+        overlayAlpha: Float = ScreenThemeColorEstimator.DEFAULT_OVERLAY_ALPHA,
+        segmentation: LiveRecognitionSegmentation = LiveRecognitionSegmentation.ADAPTIVE
     ): BackgroundTranslatedOverlayResult {
         check(!closed) { "Image processor is closed" }
         return try {
             val recognitionStartedAt = SystemClock.elapsedRealtime()
-            val differential = capturePlan?.let { plan ->
-                recognizeDifferentialViewport(bitmap, mode, plan)
+            val differential = if (segmentation == LiveRecognitionSegmentation.ADAPTIVE) {
+                capturePlan?.let { plan -> recognizeDifferentialViewport(bitmap, mode, plan) }
+            } else {
+                null
             }
             val batch = differential?.batch
-                ?: recognizeAndTranslate(bitmap, mode, fastOcr = true)
+                ?: when (segmentation) {
+                    LiveRecognitionSegmentation.VERTICAL_BANDS ->
+                        recognizeVerticalBandsAndTranslate(bitmap, mode)
+                    LiveRecognitionSegmentation.ADAPTIVE,
+                    LiveRecognitionSegmentation.FULL_FRAME ->
+                        recognizeAndTranslate(bitmap, mode, fastOcr = true)
+                }
             val recognitionAndTranslationMs = SystemClock.elapsedRealtime() - recognitionStartedAt
             val renderingStartedAt = SystemClock.elapsedRealtime()
             val fallbackSurface = ScreenThemeColorEstimator.compositableSurface(
@@ -321,6 +330,49 @@ internal class BackgroundTranslatedImageProcessor(
             null
         }
         return TranslationOutcome(region = region)
+    }
+
+    private suspend fun recognizeVerticalBandsAndTranslate(
+        bitmap: Bitmap,
+        mode: TranslationMode
+    ): BackgroundTranslationBatch {
+        val batches = LiveCaptureSettingsPolicy.verticalBands(bitmap.width, bitmap.height).map { band ->
+            recognizeAndTranslate(
+                bitmap = bitmap,
+                mode = mode,
+                fastOcr = true,
+                recognitionBounds = Rect(band.left, band.top, band.right, band.bottom)
+            )
+        }
+        val mergedRegions = mutableListOf<BackgroundImageRegion>()
+        batches.flatMap(BackgroundTranslationBatch::regions)
+            .sortedWith(compareBy({ it.source.bounds.top }, { it.source.bounds.left }))
+            .forEach { candidate ->
+                if (mergedRegions.none { existing -> sameSegmentedRegion(existing, candidate) }) {
+                    mergedRegions += candidate
+                }
+            }
+        return BackgroundTranslationBatch(
+            recognizedCount = batches.sumOf(BackgroundTranslationBatch::recognizedCount),
+            regions = mergedRegions.take(MAX_LIVE_TRANSLATION_TEXTS),
+            failedCount = batches.sumOf(BackgroundTranslationBatch::failedCount)
+        )
+    }
+
+    private fun sameSegmentedRegion(
+        first: BackgroundImageRegion,
+        second: BackgroundImageRegion
+    ): Boolean {
+        val firstBounds = first.source.bounds
+        val secondBounds = second.source.bounds
+        val intersection = Rect()
+        if (!intersection.setIntersect(firstBounds, secondBounds)) return false
+        val minimumArea = minOf(
+            firstBounds.width().toLong() * firstBounds.height(),
+            secondBounds.width().toLong() * secondBounds.height()
+        ).coerceAtLeast(1L)
+        return intersection.width().toLong() * intersection.height() /
+            minimumArea.toFloat() >= SEGMENTED_REGION_DUPLICATE_OVERLAP
     }
 
     private suspend fun recognizeDifferentialViewport(
@@ -720,6 +772,7 @@ internal class BackgroundTranslatedImageProcessor(
         const val FINGERPRINT_VERTICAL_SEARCH_PX = 32
         const val FINGERPRINT_VERTICAL_SEARCH_STEP_PX = 8
         const val MAXIMUM_FINGERPRINT_ERROR = 38f
+        const val SEGMENTED_REGION_DUPLICATE_OVERLAP = 0.6f
         val CACHE_WHITESPACE_REGEX = Regex("\\s+")
     }
 }

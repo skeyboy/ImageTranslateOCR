@@ -1,10 +1,36 @@
 package com.example.imagetranslate.screenshot
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ScreenFrameChangeDetectorTest {
+    @Test
+    fun reportsWhenMovementStillNeedsStableFrames() {
+        val detector = ScreenFrameChangeDetector()
+
+        assertFalse(detector.isAwaitingStableFrames())
+        detector.onFrame(frame(10), 0L)
+        detector.onFrame(frame(180), 100L)
+        assertTrue(detector.isAwaitingStableFrames())
+
+        detector.reset()
+        assertFalse(detector.isAwaitingStableFrames())
+    }
+
+    @Test
+    fun quietPeriodFallbackConsumesPendingMovementOnce() {
+        val detector = ScreenFrameChangeDetector()
+        detector.onFrame(frame(10), 0L)
+        detector.onFrame(frame(180), 100L)
+
+        assertTrue(detector.forceCaptureAfterQuietPeriod(1_000L))
+        assertFalse(detector.isAwaitingStableFrames())
+        assertFalse(detector.forceCaptureAfterQuietPeriod(1_100L))
+    }
+
     private val detector = ScreenFrameChangeDetector(
         stableDelayMs = 400L,
         minimumCaptureIntervalMs = 800L,
