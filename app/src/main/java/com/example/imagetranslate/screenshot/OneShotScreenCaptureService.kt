@@ -32,6 +32,11 @@ import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.IntentCompat
 import com.example.imagetranslate.R
+import com.example.imagetranslate.ocr.OcrModel
+import com.example.imagetranslate.ocr.OcrModelDownloadException
+import com.example.imagetranslate.ocr.OcrModelState
+import com.example.imagetranslate.ocr.OcrRecognitionMode
+import com.google.android.gms.common.moduleinstall.ModuleInstallStatusCodes
 import com.example.imagetranslate.ui.ImageTranslateActivity
 import com.example.imagetranslate.translate.TranslationMode
 import kotlinx.coroutines.CancellationException
@@ -74,6 +79,7 @@ class OneShotScreenCaptureService : Service() {
     private var captureHandler: Handler? = null
     private var timeoutJob: Job? = null
     private var processingJob: Job? = null
+    private var ocrPreparationJob: Job? = null
     private var activeCapturePlan: ScrollCapturePlan? = null
     @Volatile
     private var lastAcceptedCaptureSignature: ScreenFrameSignature? = null
@@ -102,8 +108,10 @@ class OneShotScreenCaptureService : Service() {
     private var experienceMode = LiveOverlayExperienceMode.DEFAULT
     @Volatile
     private var captureSettings = LiveCaptureSettingsPolicy.default
+    @Volatile
+    private var recognitionMode = OcrRecognitionMode.AUTO
     private val liveProcessorDelegate = lazy {
-        BackgroundTranslatedImageProcessor(reuseResources = true)
+        BackgroundTranslatedImageProcessor(applicationContext, reuseResources = true)
     }
     private val liveProcessor by liveProcessorDelegate
     private lateinit var overlayController: ActiveScreenCaptureOverlayController
@@ -143,10 +151,12 @@ class OneShotScreenCaptureService : Service() {
         isRunning = true
         experienceMode = resolvedExperienceMode()
         captureSettings = LiveCaptureSettingsPreferences.get(this)
+        recognitionMode = LiveOcrRecognitionPreferences.get(this)
         overlayController = ActiveScreenCaptureOverlayController(
             this,
             experienceMode,
             captureSettings,
+            recognitionMode,
             object : ActiveScreenCaptureOverlayController.Listener {
                 override fun onCapture() {
                     beginCaptureFromUser()
@@ -180,6 +190,21 @@ class OneShotScreenCaptureService : Service() {
 
                 override fun onCaptureSettingsChanged(settings: LiveCaptureSettings) {
                     applyCaptureSettings(settings)
+                }
+
+                override fun onOcrSettingsOpened() {
+                    refreshOcrModelStates()
+                }
+
+                override fun onOcrRecognitionModeChanged(mode: OcrRecognitionMode) {
+                    recognitionMode = mode
+                    LiveOcrRecognitionPreferences.set(this@OneShotScreenCaptureService, mode)
+                    liveProcessor.clearLiveOverlaySnapshot()
+                    if (continuousTranslationEnabled.get()) beginCaptureFromUser()
+                }
+
+                override fun onOcrModelDownloadRequested(model: OcrModel) {
+                    downloadOcrModel(model)
                 }
             }
         )
@@ -294,13 +319,82 @@ class OneShotScreenCaptureService : Service() {
     }
 
     private fun beginCaptureFromUser() {
+        if (ocrPreparationJob?.isActive == true) return
+        overlayController.showPreparingOcrModels()
+        ocrPreparationJob = serviceScope.launch {
+            runCatching {
+                liveProcessor.prepareOcrModels(recognitionMode, overlayController::updateOcrModelState)
+            }.onSuccess {
+                continueCaptureFromUser()
+            }.onFailure { error ->
+                Log.w(TAG, "Unable to prepare OCR models", error)
+                overlayController.showReadyExpanded()
+                showOcrModelFailure("OCR 模型", error)
+            }
+        }
+    }
+
+    private fun continueCaptureFromUser() {
         if (projection == null) {
             overlayController.hideForCapture()
             ScreenCapturePermissionActivity.request(this)
             return
         }
-        continuousTranslationEnabled.set(true)
+        val wasContinuous = continuousTranslationEnabled.getAndSet(true)
+        if (wasContinuous) cancelActiveCapture(keepContinuousMode = true)
         requestScreenshot()
+    }
+
+    private fun refreshOcrModelStates() {
+        serviceScope.launch {
+            OcrModel.entries.forEach {
+                overlayController.updateOcrModelState(it, OcrModelState.CHECKING)
+            }
+            liveProcessor.ocrModelStates().forEach(overlayController::updateOcrModelState)
+        }
+    }
+
+    private fun downloadOcrModel(model: OcrModel) {
+        val label = ocrModelLabel(model)
+        showToast(R.string.active_screenshot_ocr_model_download_started, label)
+        serviceScope.launch {
+            runCatching {
+                liveProcessor.downloadOcrModel(model, overlayController::updateOcrModelState)
+            }.onSuccess {
+                showToast(R.string.active_screenshot_ocr_model_downloaded, label)
+            }.onFailure { error ->
+                Log.w(TAG, "Unable to download $model OCR model", error)
+                showOcrModelFailure(label, error)
+            }
+        }
+    }
+
+    private fun ocrModelLabel(model: OcrModel): String = getString(
+        when (model) {
+            OcrModel.CHINESE -> R.string.active_screenshot_ocr_model_chinese
+            OcrModel.ENGLISH -> R.string.active_screenshot_ocr_model_english
+        }
+    )
+
+    private fun showToast(messageRes: Int, argument: String) {
+        mainHandler.post {
+            Toast.makeText(this, getString(messageRes, argument), Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun showOcrModelFailure(label: String, error: Throwable) {
+        val messageRes = when ((error as? OcrModelDownloadException)?.statusCode) {
+            ModuleInstallStatusCodes.INSUFFICIENT_STORAGE ->
+                R.string.active_screenshot_ocr_model_download_failed_storage
+            ModuleInstallStatusCodes.METERED_NETWORK_NOT_ALLOWED ->
+                R.string.active_screenshot_ocr_model_download_failed_wifi
+            ModuleInstallStatusCodes.UNKNOWN_MODULE,
+            ModuleInstallStatusCodes.MODULE_NOT_FOUND,
+            ModuleInstallStatusCodes.NOT_ALLOWED_MODULE ->
+                R.string.active_screenshot_ocr_model_download_failed_unsupported
+            else -> R.string.active_screenshot_ocr_model_download_failed
+        }
+        showToast(messageRes, label)
     }
 
     private fun startCaptureSession(resultData: Intent, startImmediately: Boolean) {
@@ -637,6 +731,7 @@ class OneShotScreenCaptureService : Service() {
                 timeoutJob?.cancel()
                 timeoutJob = null
                 val activeMode = translationMode
+                val activeRecognitionMode = recognitionMode
                 val activeExperienceMode = experienceMode
                 val result = withTimeout(LiveCaptureTimingPolicy.TRANSLATION_TIMEOUT_MS) {
                     translationMutex.withLock {
@@ -648,6 +743,7 @@ class OneShotScreenCaptureService : Service() {
                         liveProcessor.translateForOverlay(
                             bitmap = bitmap,
                             mode = activeMode,
+                            recognitionMode = activeRecognitionMode,
                             capturePlan = capturePlan,
                             overlayAlpha = LiveOverlayExperiencePolicy.translationWindowAlpha(
                                 activeExperienceMode,

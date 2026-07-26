@@ -386,6 +386,24 @@ sequenceDiagram
 
 ## 10. 实验追加记录
 
+### 2026-07-26：OCR 模型按需下载与识别语言选择
+
+- 状态：保留
+- 基线 Git：`557db8c docs: add live screen translation experiment ledger`
+- 实验代码 Git：当前工作区，尚未提交
+- 记录 Git：当前工作区，尚未提交
+- 回退 Git：无
+- 假设：中英文 OCR 模型改由 Google Play services 按需安装，可以移除 APK 中重复的 bundled 模型；独立的识别语言设置可减少固定语言场景的误识别和无效模型加载。
+- 修改范围：Android bundled OCR 依赖替换为 unbundled 中英文模块；移除未使用的 Language ID；增加自动/中文/英文识别模式、持久化、模型状态与显式下载入口；识别前准备必需模型；细分下载错误提示。
+- 设备与系统：Xiaomi `23113RKC6C`，1440×3200，纵向，亮色系统模式。
+- 悬浮配置：默认模式、自适应、高频、单缓冲、自动差分。
+- 自动化结果：`testDebugUnitTest` 与 `assembleDebug` 通过；新增 OCR 模式/模型映射单元测试；最终 Debug APK 已 ADB 覆盖安装。`lintDebug` 因 Lifecycle lint 检查器与 Kotlin 分析 API 二进制不兼容而崩溃，不是源码告警。
+- 正确性观察：设置菜单及两级子菜单在真机无溢出或遮挡；自动、仅中文、仅英文选项和中文/英文模型状态均可见；模型失败路径可恢复操作且不启动空 OCR。
+- 截图/视频/日志：本轮临时截图位于 `/tmp/imagetranslate-ocr-settings.png`、`/tmp/imagetranslate-ocr-language-menu.png`、`/tmp/imagetranslate-ocr-model-menu.png`；构建产物为 `app/build/outputs/apk/debug/app-debug.apk`。
+- 风险与异常：当前真机的中文模块下载被 Google Play services 拒绝，界面按失败路径提示；unbundled OCR 依赖 Google 认证设备、可用的 Google Play services 与网络，国内或无 GMS 设备不能保证下载成功。
+- 决策及原因：Android 保留按需下载和中英文模式，收益与官方支持路径明确；不扩展日文/韩文等当前无法翻译的 OCR；iOS ML Kit 只支持构建期静态链接，macOS Vision 模型由系统提供，均不做伪动态下载。
+- 下一步：在 Google 认证 Pixel 设备上补充中英文模块首次下载成功、冷启动复用与无网复用测试；发布前根据目标渠道决定是否提供 bundled OCR 产品变体。
+
 ### 2026-07-26：大幅滚动差分复用修正
 
 - 状态：保留

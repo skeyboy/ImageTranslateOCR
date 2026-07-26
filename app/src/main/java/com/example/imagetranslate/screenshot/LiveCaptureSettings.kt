@@ -1,6 +1,7 @@
 package com.example.imagetranslate.screenshot
 
 import android.content.Context
+import com.example.imagetranslate.ocr.OcrRecognitionMode
 
 internal enum class LiveCaptureFrequency(val frameSampleIntervalMs: Long) {
     LOW(150L),
@@ -150,4 +151,23 @@ internal object LiveCaptureSettingsPreferences {
 
     private inline fun <reified T : Enum<T>> enumValue(value: String?, fallback: T): T =
         runCatching { enumValueOf<T>(value.orEmpty()) }.getOrDefault(fallback)
+}
+
+internal object LiveOcrRecognitionPreferences {
+    private const val PREFERENCES = "live_ocr_settings"
+    private const val RECOGNITION_MODE = "recognition_mode"
+
+    fun get(context: Context): OcrRecognitionMode = runCatching {
+        OcrRecognitionMode.valueOf(
+            context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
+                .getString(RECOGNITION_MODE, null).orEmpty()
+        )
+    }.getOrDefault(OcrRecognitionMode.AUTO)
+
+    fun set(context: Context, mode: OcrRecognitionMode) {
+        context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
+            .edit()
+            .putString(RECOGNITION_MODE, mode.name)
+            .apply()
+    }
 }

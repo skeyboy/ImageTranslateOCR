@@ -71,7 +71,7 @@ class ImageTranslateActivity : AppCompatActivity() {
     }
 
     private lateinit var binding: ActivityImageTranslateBinding
-    private val ocrManager = OCRManager()
+    private val ocrManager by lazy { OCRManager(applicationContext) }
     private val translateManager = TranslateManager()
     private val inpainter = ImageInpainter()
     private var translationMode = TranslationMode.AUTO_BIDIRECTIONAL

@@ -360,7 +360,7 @@ class ScreenshotMonitorService : Service() {
     }
 
     private suspend fun translateScreenshot(uri: Uri, key: String, notificationId: Int) {
-        val translator = BackgroundScreenshotTranslator()
+        val translator = BackgroundScreenshotTranslator(applicationContext)
         try {
             val bitmap = contentResolver.openInputStream(uri)?.use(BitmapFactory::decodeStream)
                 ?: error("Unable to decode screenshot")
@@ -462,7 +462,7 @@ class ScreenshotMonitorService : Service() {
                 ?: error("Unable to decode screenshot")
             try {
                 val result = withTimeout(BACKGROUND_IMAGE_TRANSLATION_TIMEOUT_MS) {
-                    BackgroundTranslatedImageProcessor().translate(sourceBitmap)
+                    BackgroundTranslatedImageProcessor(applicationContext).translate(sourceBitmap)
                 }
                 val savedUri = try {
                     TranslatedImageGallerySaver(this).save(result.bitmap)

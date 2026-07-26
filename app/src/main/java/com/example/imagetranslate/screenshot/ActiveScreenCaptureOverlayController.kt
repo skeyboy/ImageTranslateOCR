@@ -19,6 +19,9 @@ import android.view.animation.DecelerateInterpolator
 import android.widget.PopupMenu
 import com.example.imagetranslate.R
 import com.example.imagetranslate.databinding.OverlayActiveScreenCaptureBinding
+import com.example.imagetranslate.ocr.OcrModel
+import com.example.imagetranslate.ocr.OcrModelState
+import com.example.imagetranslate.ocr.OcrRecognitionMode
 import com.example.imagetranslate.translate.TranslationMode
 import kotlin.math.abs
 
@@ -26,6 +29,7 @@ internal class ActiveScreenCaptureOverlayController(
     context: Context,
     initialExperienceMode: LiveOverlayExperienceMode,
     initialCaptureSettings: LiveCaptureSettings,
+    initialRecognitionMode: OcrRecognitionMode,
     private val listener: Listener
 ) {
     interface Listener {
@@ -36,6 +40,9 @@ internal class ActiveScreenCaptureOverlayController(
         fun onTranslationVisibilityChanged()
         fun onExperienceModeRequested(mode: LiveOverlayExperienceMode)
         fun onCaptureSettingsChanged(settings: LiveCaptureSettings)
+        fun onOcrSettingsOpened()
+        fun onOcrRecognitionModeChanged(mode: OcrRecognitionMode)
+        fun onOcrModelDownloadRequested(model: OcrModel)
     }
 
     private val appContext = context.applicationContext
@@ -58,6 +65,10 @@ internal class ActiveScreenCaptureOverlayController(
     private var translationMode = TranslationMode.AUTO_BIDIRECTIONAL
     private var experienceMode = initialExperienceMode
     private var captureSettings = initialCaptureSettings
+    private var recognitionMode = initialRecognitionMode
+    private val ocrModelStates = OcrModel.entries.associateWith {
+        OcrModelState.UNKNOWN
+    }.toMutableMap()
     private var attachedWindowManager: WindowManager? = null
     private var sessionActive = false
     private var processing = false
@@ -76,6 +87,7 @@ internal class ActiveScreenCaptureOverlayController(
             showOverlayMenu()
         }
         binding.btnActiveOverlaySettings.setOnClickListener {
+            listener.onOcrSettingsOpened()
             showCaptureSettingsMenu()
         }
         binding.btnToggleActiveTranslation.addOnCheckedChangeListener { _, checked ->
@@ -131,6 +143,23 @@ internal class ActiveScreenCaptureOverlayController(
         updateCompactStatus(R.string.active_screenshot_compact_processing, showProgress = true)
     }
 
+    fun showPreparingOcrModels() = onMainThread {
+        if (!ensureControlAttachedNow()) return@onMainThread
+        binding.root.visibility = View.VISIBLE
+        binding.btnActiveOverlayCapture.visibility = View.GONE
+        binding.activeOverlayStatusGroup.visibility = View.VISIBLE
+        binding.activeOverlayProgress.visibility = View.VISIBLE
+        binding.tvActiveOverlayStatus.setText(R.string.active_screenshot_ocr_model_preparing)
+        binding.btnCancelActivePreview.visibility = View.GONE
+        binding.btnActiveOverlayMode.isEnabled = false
+        binding.btnActiveOverlaySettings.isEnabled = false
+        updateCompactStatus(R.string.active_screenshot_ocr_model_preparing_short, showProgress = true)
+    }
+
+    fun updateOcrModelState(model: OcrModel, state: OcrModelState) = onMainThread {
+        ocrModelStates[model] = state
+    }
+
     fun showWaitingForStable() = onMainThread {
         translationView.hideForViewportMovement()
         sessionActive = true
@@ -171,6 +200,7 @@ internal class ActiveScreenCaptureOverlayController(
         }
         binding.btnCancelActivePreview.visibility = View.VISIBLE
         binding.btnActiveOverlayMode.isEnabled = true
+        binding.btnActiveOverlaySettings.isEnabled = true
         binding.btnToggleActiveTranslation.isEnabled = hasTranslationResult
         binding.btnToggleActiveTranslation.isChecked = translationVisible
         updateCompactStatus(
@@ -238,6 +268,7 @@ internal class ActiveScreenCaptureOverlayController(
         binding.activeOverlayStatusGroup.visibility = View.GONE
         binding.btnCancelActivePreview.visibility = View.GONE
         binding.btnActiveOverlayMode.isEnabled = true
+        binding.btnActiveOverlaySettings.isEnabled = true
         binding.btnToggleActiveTranslation.isEnabled = false
         binding.btnToggleActiveTranslation.isChecked = true
         updateCompactStatus(R.string.active_screenshot_compact_ready, showProgress = false)
@@ -512,10 +543,46 @@ internal class ActiveScreenCaptureOverlayController(
                 )
             ).isEnabled = false
 
+            val recognitionMenu = menu.addSubMenu(
+                CAPTURE_SETTINGS_MENU_GROUP,
+                CAPTURE_SETTINGS_MENU_OCR_MODE,
+                1,
+                R.string.active_screenshot_ocr_mode_group
+            )
+            OcrRecognitionMode.entries.forEachIndexed { index, mode ->
+                recognitionMenu.add(
+                    OCR_MODE_MENU_GROUP,
+                    ocrModeMenuId(mode),
+                    index,
+                    ocrModeLabel(mode)
+                )
+            }
+            recognitionMenu.setGroupCheckable(OCR_MODE_MENU_GROUP, true, true)
+            recognitionMenu.findItem(ocrModeMenuId(recognitionMode))?.isChecked = true
+
+            val modelMenu = menu.addSubMenu(
+                CAPTURE_SETTINGS_MENU_GROUP,
+                CAPTURE_SETTINGS_MENU_OCR_MODELS,
+                2,
+                R.string.active_screenshot_ocr_models_group
+            )
+            OcrModel.entries.forEachIndexed { index, model ->
+                modelMenu.add(
+                    OCR_MODEL_MENU_GROUP,
+                    ocrModelMenuId(model),
+                    index,
+                    appContext.getString(
+                        R.string.active_screenshot_ocr_model_status,
+                        ocrModelLabel(model),
+                        ocrModelStateLabel(ocrModelStates.getValue(model))
+                    )
+                ).isEnabled = ocrModelStates[model] != OcrModelState.DOWNLOADING
+            }
+
             val sceneMenu = menu.addSubMenu(
                 CAPTURE_SETTINGS_MENU_GROUP,
                 CAPTURE_SETTINGS_MENU_SCENE,
-                1,
+                3,
                 R.string.active_screenshot_scene_group
             )
             LiveCaptureScenePreset.entries
@@ -536,7 +603,7 @@ internal class ActiveScreenCaptureOverlayController(
             val frequencyMenu = menu.addSubMenu(
                 CAPTURE_SETTINGS_MENU_GROUP,
                 CAPTURE_SETTINGS_MENU_FREQUENCY,
-                2,
+                4,
                 R.string.active_screenshot_frequency_group
             )
             LiveCaptureFrequency.entries.forEachIndexed { index, frequency ->
@@ -553,7 +620,7 @@ internal class ActiveScreenCaptureOverlayController(
             val bufferMenu = menu.addSubMenu(
                 CAPTURE_SETTINGS_MENU_GROUP,
                 CAPTURE_SETTINGS_MENU_BUFFER,
-                3,
+                5,
                 R.string.active_screenshot_buffer_group
             )
             LiveFrameBufferMode.entries.forEachIndexed { index, mode ->
@@ -570,7 +637,7 @@ internal class ActiveScreenCaptureOverlayController(
             val segmentationMenu = menu.addSubMenu(
                 CAPTURE_SETTINGS_MENU_GROUP,
                 CAPTURE_SETTINGS_MENU_SEGMENTATION,
-                4,
+                6,
                 R.string.active_screenshot_segmentation_group
             )
             LiveRecognitionSegmentation.entries.forEachIndexed { index, segmentation ->
@@ -587,6 +654,23 @@ internal class ActiveScreenCaptureOverlayController(
             )?.isChecked = true
 
             setOnMenuItemClickListener { item ->
+                val selectedRecognitionMode = OcrRecognitionMode.entries.firstOrNull {
+                    ocrModeMenuId(it) == item.itemId
+                }
+                if (selectedRecognitionMode != null) {
+                    if (selectedRecognitionMode != recognitionMode) {
+                        recognitionMode = selectedRecognitionMode
+                        listener.onOcrRecognitionModeChanged(selectedRecognitionMode)
+                    }
+                    return@setOnMenuItemClickListener true
+                }
+                val selectedModel = OcrModel.entries.firstOrNull {
+                    ocrModelMenuId(it) == item.itemId
+                }
+                if (selectedModel != null) {
+                    listener.onOcrModelDownloadRequested(selectedModel)
+                    return@setOnMenuItemClickListener true
+                }
                 val preset = LiveCaptureScenePreset.entries.firstOrNull {
                     sceneMenuId(it) == item.itemId
                 }
@@ -692,6 +776,37 @@ internal class ActiveScreenCaptureOverlayController(
 
     private fun segmentationMenuId(segmentation: LiveRecognitionSegmentation): Int =
         SEGMENTATION_MENU_ID_BASE + segmentation.ordinal
+
+    private fun ocrModeMenuId(mode: OcrRecognitionMode): Int =
+        OCR_MODE_MENU_ID_BASE + mode.ordinal
+
+    private fun ocrModelMenuId(model: OcrModel): Int = OCR_MODEL_MENU_ID_BASE + model.ordinal
+
+    private fun ocrModeLabel(mode: OcrRecognitionMode): String = appContext.getString(
+        when (mode) {
+            OcrRecognitionMode.AUTO -> R.string.active_screenshot_ocr_mode_auto
+            OcrRecognitionMode.CHINESE -> R.string.active_screenshot_ocr_mode_chinese
+            OcrRecognitionMode.ENGLISH -> R.string.active_screenshot_ocr_mode_english
+        }
+    )
+
+    private fun ocrModelLabel(model: OcrModel): String = appContext.getString(
+        when (model) {
+            OcrModel.CHINESE -> R.string.active_screenshot_ocr_model_chinese
+            OcrModel.ENGLISH -> R.string.active_screenshot_ocr_model_english
+        }
+    )
+
+    private fun ocrModelStateLabel(state: OcrModelState): String = appContext.getString(
+        when (state) {
+            OcrModelState.UNKNOWN -> R.string.active_screenshot_ocr_model_tap_to_check
+            OcrModelState.CHECKING -> R.string.active_screenshot_ocr_model_checking
+            OcrModelState.NOT_DOWNLOADED -> R.string.active_screenshot_ocr_model_tap_to_download
+            OcrModelState.DOWNLOADING -> R.string.active_screenshot_ocr_model_downloading
+            OcrModelState.READY -> R.string.active_screenshot_ocr_model_ready
+            OcrModelState.FAILED -> R.string.active_screenshot_ocr_model_retry
+        }
+    )
 
     private fun updateCompactStatus(textRes: Int, showProgress: Boolean) {
         binding.tvCollapsedOverlayStatus.setText(textRes)
@@ -898,6 +1013,8 @@ internal class ActiveScreenCaptureOverlayController(
         const val CAPTURE_SETTINGS_MENU_BUFFER = 403
         const val CAPTURE_SETTINGS_MENU_SEGMENTATION = 404
         const val CAPTURE_SETTINGS_MENU_OPEN = 405
+        const val CAPTURE_SETTINGS_MENU_OCR_MODE = 406
+        const val CAPTURE_SETTINGS_MENU_OCR_MODELS = 407
         const val SCENE_MENU_GROUP = 5
         const val SCENE_MENU_ID_BASE = 500
         const val FREQUENCY_MENU_GROUP = 6
@@ -906,5 +1023,9 @@ internal class ActiveScreenCaptureOverlayController(
         const val BUFFER_MENU_ID_BASE = 700
         const val SEGMENTATION_MENU_GROUP = 8
         const val SEGMENTATION_MENU_ID_BASE = 800
+        const val OCR_MODE_MENU_GROUP = 9
+        const val OCR_MODE_MENU_ID_BASE = 900
+        const val OCR_MODEL_MENU_GROUP = 10
+        const val OCR_MODEL_MENU_ID_BASE = 1000
     }
 }

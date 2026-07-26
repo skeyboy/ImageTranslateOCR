@@ -1,5 +1,6 @@
 package com.example.imagetranslate.screenshot
 
+import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
@@ -15,6 +16,9 @@ import android.text.TextPaint
 import com.example.imagetranslate.App
 import com.example.imagetranslate.inpaint.ImageInpainter
 import com.example.imagetranslate.ocr.OCRManager
+import com.example.imagetranslate.ocr.OcrModel
+import com.example.imagetranslate.ocr.OcrModelState
+import com.example.imagetranslate.ocr.OcrRecognitionMode
 import com.example.imagetranslate.ocr.RecognizedText
 import com.example.imagetranslate.ocr.RecognizerScript
 import com.example.imagetranslate.translate.TranslateManager
@@ -67,6 +71,7 @@ private data class LiveOverlaySnapshot(
     val width: Int,
     val height: Int,
     val mode: TranslationMode,
+    val recognitionMode: OcrRecognitionMode,
     val regions: List<CachedLiveRegion>
 )
 
@@ -90,9 +95,10 @@ private data class BackgroundTextStyle(
 )
 
 internal class BackgroundTranslatedImageProcessor(
+    context: Context,
     private val reuseResources: Boolean = false
 ) {
-    private val ocrManager = OCRManager()
+    private val ocrManager = OCRManager(context.applicationContext)
     private val translateManager = TranslateManager()
     private val translationCache = object : LinkedHashMap<String, String>(64, 0.75f, true) {
         override fun removeEldestEntry(
@@ -107,6 +113,27 @@ internal class BackgroundTranslatedImageProcessor(
         translateManager.downloadModelIfNeeded()
     }
 
+    suspend fun prepareOcrModels(
+        recognitionMode: OcrRecognitionMode,
+        onState: (OcrModel, OcrModelState) -> Unit = { _, _ -> }
+    ) {
+        check(!closed) { "Image processor is closed" }
+        ocrManager.ensureModels(recognitionMode.requiredModels, onState)
+    }
+
+    suspend fun ocrModelStates(): Map<OcrModel, OcrModelState> {
+        check(!closed) { "Image processor is closed" }
+        return ocrManager.modelStates()
+    }
+
+    suspend fun downloadOcrModel(
+        model: OcrModel,
+        onState: (OcrModel, OcrModelState) -> Unit = { _, _ -> }
+    ) {
+        check(!closed) { "Image processor is closed" }
+        ocrManager.downloadModel(model, onState)
+    }
+
     fun clearLiveOverlaySnapshot() {
         liveOverlaySnapshot = null
     }
@@ -115,11 +142,12 @@ internal class BackgroundTranslatedImageProcessor(
         bitmap: Bitmap,
         mode: TranslationMode = TranslationMode.AUTO_BIDIRECTIONAL,
         fastOcr: Boolean = false,
-        allowEmpty: Boolean = false
+        allowEmpty: Boolean = false,
+        recognitionMode: OcrRecognitionMode = OcrRecognitionMode.AUTO
     ): BackgroundTranslatedImageResult {
         check(!closed) { "Image processor is closed" }
         return try {
-            val batch = recognizeAndTranslate(bitmap, mode, fastOcr)
+            val batch = recognizeAndTranslate(bitmap, mode, fastOcr, recognitionMode)
             if (batch.regions.isEmpty()) {
                 require(allowEmpty) { "No translatable text found" }
                 return BackgroundTranslatedImageResult(
@@ -163,6 +191,7 @@ internal class BackgroundTranslatedImageProcessor(
     suspend fun translateForOverlay(
         bitmap: Bitmap,
         mode: TranslationMode,
+        recognitionMode: OcrRecognitionMode = OcrRecognitionMode.AUTO,
         capturePlan: ScrollCapturePlan? = null,
         overlayAlpha: Float = ScreenThemeColorEstimator.DEFAULT_OVERLAY_ALPHA,
         segmentation: LiveRecognitionSegmentation = LiveRecognitionSegmentation.ADAPTIVE
@@ -171,17 +200,24 @@ internal class BackgroundTranslatedImageProcessor(
         return try {
             val recognitionStartedAt = SystemClock.elapsedRealtime()
             val differential = if (segmentation == LiveRecognitionSegmentation.ADAPTIVE) {
-                capturePlan?.let { plan -> recognizeDifferentialViewport(bitmap, mode, plan) }
+                capturePlan?.let { plan ->
+                    recognizeDifferentialViewport(bitmap, mode, recognitionMode, plan)
+                }
             } else {
                 null
             }
             val batch = differential?.batch
                 ?: when (segmentation) {
                     LiveRecognitionSegmentation.VERTICAL_BANDS ->
-                        recognizeVerticalBandsAndTranslate(bitmap, mode)
+                        recognizeVerticalBandsAndTranslate(bitmap, mode, recognitionMode)
                     LiveRecognitionSegmentation.ADAPTIVE,
                     LiveRecognitionSegmentation.FULL_FRAME ->
-                        recognizeAndTranslate(bitmap, mode, fastOcr = true)
+                        recognizeAndTranslate(
+                            bitmap,
+                            mode,
+                            fastOcr = true,
+                            recognitionMode = recognitionMode
+                        )
                 }
             val recognitionAndTranslationMs = SystemClock.elapsedRealtime() - recognitionStartedAt
             val renderingStartedAt = SystemClock.elapsedRealtime()
@@ -209,7 +245,7 @@ internal class BackgroundTranslatedImageProcessor(
                         translatedRegionCount = batch.regions.size
                     )
                 ) {
-                    updateLiveOverlaySnapshot(bitmap, mode, batch.regions)
+                    updateLiveOverlaySnapshot(bitmap, mode, recognitionMode, batch.regions)
                 }
             }
         } finally {
@@ -226,18 +262,13 @@ internal class BackgroundTranslatedImageProcessor(
         liveOverlaySnapshot = null
     }
 
-    private fun recognizerFor(mode: TranslationMode): RecognizerScript = when (mode) {
-        TranslationMode.ENGLISH_TO_CHINESE -> RecognizerScript.LATIN
-        TranslationMode.CHINESE_TO_ENGLISH -> RecognizerScript.CHINESE
-        TranslationMode.AUTO_BIDIRECTIONAL -> RecognizerScript.FUSED
-    }
-
     private suspend fun recognizeAndTranslate(
         bitmap: Bitmap,
         mode: TranslationMode,
         fastOcr: Boolean,
+        recognitionMode: OcrRecognitionMode = OcrRecognitionMode.AUTO,
         recognitionBounds: Rect? = null,
-        preferredRecognizer: RecognizerScript? = null
+        preferredRecognitionMode: OcrRecognitionMode? = null
     ): BackgroundTranslationBatch {
         val croppedBitmap = recognitionBounds?.let { bounds ->
             Bitmap.createBitmap(bitmap, bounds.left, bounds.top, bounds.width(), bounds.height())
@@ -255,9 +286,9 @@ internal class BackgroundTranslatedImageProcessor(
         }
         val rawRecognized = try {
             val localRecognized = if (fastOcr) {
-                ocrManager.recognizeFast(ocrBitmap, preferredRecognizer ?: recognizerFor(mode))
+                ocrManager.recognizeFast(ocrBitmap, preferredRecognitionMode ?: recognitionMode)
             } else {
-                ocrManager.recognize(ocrBitmap)
+                ocrManager.recognize(ocrBitmap, recognitionMode)
             }
             localRecognized.map { item ->
                 val sourceBounds = if (inputSize != sourceSize) {
@@ -334,13 +365,15 @@ internal class BackgroundTranslatedImageProcessor(
 
     private suspend fun recognizeVerticalBandsAndTranslate(
         bitmap: Bitmap,
-        mode: TranslationMode
+        mode: TranslationMode,
+        recognitionMode: OcrRecognitionMode
     ): BackgroundTranslationBatch {
         val batches = LiveCaptureSettingsPolicy.verticalBands(bitmap.width, bitmap.height).map { band ->
             recognizeAndTranslate(
                 bitmap = bitmap,
                 mode = mode,
                 fastOcr = true,
+                recognitionMode = recognitionMode,
                 recognitionBounds = Rect(band.left, band.top, band.right, band.bottom)
             )
         }
@@ -378,11 +411,13 @@ internal class BackgroundTranslatedImageProcessor(
     private suspend fun recognizeDifferentialViewport(
         bitmap: Bitmap,
         mode: TranslationMode,
+        recognitionMode: OcrRecognitionMode,
         capturePlan: ScrollCapturePlan
     ): DifferentialTranslationBatch? {
         val snapshot = liveOverlaySnapshot ?: return null
         if (snapshot.width != bitmap.width || snapshot.height != bitmap.height ||
-            snapshot.mode != mode || snapshot.regions.isEmpty() ||
+            snapshot.mode != mode || snapshot.recognitionMode != recognitionMode ||
+            snapshot.regions.isEmpty() ||
             !LiveDifferentialRecognitionPolicy.canAttempt(capturePlan, bitmap.height)
         ) return null
 
@@ -445,8 +480,9 @@ internal class BackgroundTranslatedImageProcessor(
             bitmap = bitmap,
             mode = mode,
             fastOcr = true,
+            recognitionMode = recognitionMode,
             recognitionBounds = recognitionBounds,
-            preferredRecognizer = preferredRecognizer(snapshot)
+            preferredRecognitionMode = preferredRecognitionMode(snapshot, recognitionMode)
         )
         val combined = reused + newBatch.regions.filterNot { candidate ->
             reused.any { existing -> Rect.intersects(existing.source.bounds, candidate.source.bounds) }
@@ -466,21 +502,30 @@ internal class BackgroundTranslatedImageProcessor(
         )
     }
 
-    private fun preferredRecognizer(snapshot: LiveOverlaySnapshot): RecognizerScript {
+    private fun preferredRecognitionMode(
+        snapshot: LiveOverlaySnapshot,
+        requestedMode: OcrRecognitionMode
+    ): OcrRecognitionMode {
+        if (requestedMode != OcrRecognitionMode.AUTO) return requestedMode
         val scripts = snapshot.regions.map { it.region.source.recognizerScript }.distinct()
-        return scripts.singleOrNull()?.takeUnless { it == RecognizerScript.FUSED }
-            ?: RecognizerScript.FUSED
+        return when (scripts.singleOrNull()) {
+            RecognizerScript.CHINESE -> OcrRecognitionMode.CHINESE
+            RecognizerScript.LATIN -> OcrRecognitionMode.ENGLISH
+            else -> OcrRecognitionMode.AUTO
+        }
     }
 
     private fun updateLiveOverlaySnapshot(
         bitmap: Bitmap,
         mode: TranslationMode,
+        recognitionMode: OcrRecognitionMode,
         regions: List<BackgroundImageRegion>
     ) {
         liveOverlaySnapshot = LiveOverlaySnapshot(
             width = bitmap.width,
             height = bitmap.height,
             mode = mode,
+            recognitionMode = recognitionMode,
             regions = regions.mapNotNull { region ->
                 val bounds = region.source.bounds.clampedTo(bitmap) ?: return@mapNotNull null
                 CachedLiveRegion(

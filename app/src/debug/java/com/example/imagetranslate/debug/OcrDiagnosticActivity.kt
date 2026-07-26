@@ -18,7 +18,7 @@ import kotlinx.coroutines.launch
 
 class OcrDiagnosticActivity : Activity() {
     private val scope = MainScope()
-    private val ocrManager = OCRManager()
+    private val ocrManager by lazy { OCRManager(applicationContext) }
     private val translateManager = TranslateManager()
     private val inpainter = ImageInpainter()
 

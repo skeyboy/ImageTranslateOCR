@@ -1,5 +1,6 @@
 package com.example.imagetranslate.ocr
 
+import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
@@ -7,6 +8,13 @@ import android.graphics.ColorMatrix
 import android.graphics.ColorMatrixColorFilter
 import android.graphics.Paint
 import android.graphics.Rect
+import com.google.android.gms.common.moduleinstall.InstallStatusListener
+import com.google.android.gms.common.moduleinstall.ModuleInstall
+import com.google.android.gms.common.moduleinstall.ModuleInstallRequest
+import com.google.android.gms.common.moduleinstall.ModuleInstallStatusUpdate
+import com.google.android.gms.common.moduleinstall.ModuleInstallStatusUpdate.InstallState.STATE_CANCELED
+import com.google.android.gms.common.moduleinstall.ModuleInstallStatusUpdate.InstallState.STATE_COMPLETED
+import com.google.android.gms.common.moduleinstall.ModuleInstallStatusUpdate.InstallState.STATE_FAILED
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.Text
 import com.google.mlkit.vision.text.TextRecognition
@@ -14,7 +22,14 @@ import com.google.mlkit.vision.text.TextRecognizer
 import com.google.mlkit.vision.text.chinese.ChineseTextRecognizerOptions
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withTimeout
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 import androidx.core.graphics.createBitmap
 import androidx.core.graphics.get
 import kotlin.math.ceil
@@ -35,7 +50,7 @@ data class RecognizedText(
     val recognizerScript: RecognizerScript = RecognizerScript.CHINESE
 )
 
-class OCRManager {
+internal class OCRManager(context: Context) {
     private data class OcrCandidate(
         val result: RecognizedText,
         val pass: Int,
@@ -59,10 +74,20 @@ class OCRManager {
     private val latinRecognizer = TextRecognition.getClient(
         TextRecognizerOptions.DEFAULT_OPTIONS
     )
+    private val moduleInstallClient = ModuleInstall.getClient(context.applicationContext)
+    private val modelMutex = Mutex()
+    private val readyModels = ConcurrentHashMap.newKeySet<OcrModel>()
 
-    suspend fun recognize(bitmap: Bitmap): List<RecognizedText> {
-        val initialResults = recognizeFullImage(bitmap)
-        val refinedResults = if (maxOf(bitmap.width, bitmap.height) >= LOCAL_REFINEMENT_LONG_SIDE) {
+    suspend fun recognize(
+        bitmap: Bitmap,
+        recognitionMode: OcrRecognitionMode = OcrRecognitionMode.AUTO
+    ): List<RecognizedText> {
+        ensureModels(recognitionMode.requiredModels)
+        val script = recognitionMode.recognizerScript
+        val initialResults = recognizeFullImage(bitmap, script)
+        val refinedResults = if (script != RecognizerScript.LATIN &&
+            maxOf(bitmap.width, bitmap.height) >= LOCAL_REFINEMENT_LONG_SIDE
+        ) {
             refineSmallHanCandidates(bitmap, initialResults)
         } else {
             initialResults
@@ -72,8 +97,10 @@ class OCRManager {
 
     suspend fun recognizeFast(
         bitmap: Bitmap,
-        script: RecognizerScript
+        recognitionMode: OcrRecognitionMode
     ): List<RecognizedText> {
+        ensureModels(recognitionMode.requiredModels)
+        val script = recognitionMode.recognizerScript
         val candidates = mutableListOf<OcrCandidate>()
         when (script) {
             RecognizerScript.CHINESE -> recognizeWith(
@@ -123,6 +150,101 @@ class OCRManager {
             .sortedWith(compareBy({ it.bounds.top }, { it.bounds.left }))
     }
 
+    suspend fun modelStates(): Map<OcrModel, OcrModelState> = OcrModel.entries.associateWith {
+        modelState(it)
+    }
+
+    suspend fun modelState(model: OcrModel): OcrModelState = try {
+        val available = suspendCancellableCoroutine { continuation ->
+            moduleInstallClient.areModulesAvailable(recognizerFor(model))
+                .addOnSuccessListener { response ->
+                    if (continuation.isActive) {
+                        continuation.resume(response.areModulesAvailable())
+                    }
+                }
+                .addOnFailureListener { error ->
+                    if (continuation.isActive) continuation.resumeWithException(error)
+                }
+        }
+        if (available) {
+            readyModels += model
+            OcrModelState.READY
+        } else {
+            readyModels -= model
+            OcrModelState.NOT_DOWNLOADED
+        }
+    } catch (error: CancellationException) {
+        throw error
+    } catch (_: Exception) {
+        OcrModelState.FAILED
+    }
+
+    suspend fun downloadModel(
+        model: OcrModel,
+        onState: (OcrModel, OcrModelState) -> Unit = { _, _ -> }
+    ) = ensureModels(setOf(model), onState)
+
+    suspend fun ensureModels(
+        models: Set<OcrModel>,
+        onState: (OcrModel, OcrModelState) -> Unit = { _, _ -> }
+    ) = modelMutex.withLock {
+        val missingModels = mutableSetOf<OcrModel>()
+        for (model in models) {
+            if (model in readyModels) continue
+            onState(model, OcrModelState.CHECKING)
+            if (modelState(model) != OcrModelState.READY) missingModels += model
+        }
+        if (missingModels.isEmpty()) return@withLock
+
+        missingModels.forEach { onState(it, OcrModelState.DOWNLOADING) }
+        try {
+            installModels(missingModels)
+            readyModels += missingModels
+            missingModels.forEach { onState(it, OcrModelState.READY) }
+        } catch (error: Exception) {
+            missingModels.forEach { onState(it, OcrModelState.FAILED) }
+            throw error
+        }
+    }
+
+    private suspend fun installModels(models: Set<OcrModel>) = withTimeout(MODEL_DOWNLOAD_TIMEOUT_MS) {
+        suspendCancellableCoroutine { continuation ->
+            val completed = AtomicBoolean(false)
+            lateinit var listener: InstallStatusListener
+            fun finish(error: Throwable? = null) {
+                if (!completed.compareAndSet(false, true)) return
+                moduleInstallClient.unregisterListener(listener)
+                if (!continuation.isActive) return
+                if (error == null) continuation.resume(Unit)
+                else continuation.resumeWithException(error)
+            }
+            listener = InstallStatusListener { update: ModuleInstallStatusUpdate ->
+                when (update.installState) {
+                    STATE_COMPLETED -> finish()
+                    STATE_CANCELED -> finish(IllegalStateException("OCR model download canceled"))
+                    STATE_FAILED -> finish(OcrModelDownloadException(update.errorCode))
+                }
+            }
+            val requestBuilder = ModuleInstallRequest.newBuilder().setListener(listener)
+            models.forEach { requestBuilder.addApi(recognizerFor(it)) }
+            moduleInstallClient.installModules(requestBuilder.build())
+                .addOnSuccessListener { response ->
+                    if (response.areModulesAlreadyInstalled()) finish()
+                }
+                .addOnFailureListener(::finish)
+            continuation.invokeOnCancellation {
+                if (completed.compareAndSet(false, true)) {
+                    moduleInstallClient.unregisterListener(listener)
+                }
+            }
+        }
+    }
+
+    private fun recognizerFor(model: OcrModel): TextRecognizer = when (model) {
+        OcrModel.CHINESE -> chineseRecognizer
+        OcrModel.ENGLISH -> latinRecognizer
+    }
+
     private fun hasSufficientLatinCoverage(candidates: List<OcrCandidate>): Boolean {
         val text = candidates.joinToString(" ") { it.result.text }
         val latinCount = text.count { it in 'A'..'Z' || it in 'a'..'z' }
@@ -132,13 +254,16 @@ class OCRManager {
             latinCount >= hanCount * MINIMUM_AUTO_LATIN_DOMINANCE
     }
 
-    private suspend fun recognizeFullImage(bitmap: Bitmap): List<RecognizedText> {
+    private suspend fun recognizeFullImage(
+        bitmap: Bitmap,
+        script: RecognizerScript
+    ): List<RecognizedText> {
         val candidates = mutableListOf<OcrCandidate>()
-        addRecognitionPass(bitmap, PASS_ORIGINAL, 0.25f, candidates)
+        addRecognitionPass(bitmap, script, PASS_ORIGINAL, 0.25f, candidates)
 
         val contrasted = createContrastedBitmap(bitmap)
         try {
-            addRecognitionPass(contrasted, PASS_CONTRAST, 0.15f, candidates)
+            addRecognitionPass(contrasted, script, PASS_CONTRAST, 0.15f, candidates)
         } catch (_: Exception) {
             // The original pass remains usable if an enhancement pass fails.
         } finally {
@@ -149,6 +274,7 @@ class OCRManager {
         try {
             addRecognitionPass(
                 inverted,
+                script,
                 PASS_INVERTED,
                 0.1f,
                 candidates
@@ -342,29 +468,34 @@ class OCRManager {
 
     private suspend fun addRecognitionPass(
         bitmap: Bitmap,
+        script: RecognizerScript,
         pass: Int,
         baseReliability: Float,
         candidates: MutableList<OcrCandidate>,
         extraFilter: (RecognizedText) -> Boolean = { true }
     ) {
-        recognizeWith(
-            bitmap,
-            chineseRecognizer,
-            RecognizerScript.CHINESE,
-            pass,
-            baseReliability,
-            candidates,
-            extraFilter
-        )
-        recognizeWith(
-            bitmap,
-            latinRecognizer,
-            RecognizerScript.LATIN,
-            pass,
-            baseReliability,
-            candidates,
-            extraFilter
-        )
+        if (script != RecognizerScript.LATIN) {
+            recognizeWith(
+                bitmap,
+                chineseRecognizer,
+                RecognizerScript.CHINESE,
+                pass,
+                baseReliability,
+                candidates,
+                extraFilter
+            )
+        }
+        if (script != RecognizerScript.CHINESE) {
+            recognizeWith(
+                bitmap,
+                latinRecognizer,
+                RecognizerScript.LATIN,
+                pass,
+                baseReliability,
+                candidates,
+                extraFilter
+            )
+        }
     }
 
     private suspend fun recognizeWith(
@@ -947,6 +1078,7 @@ class OCRManager {
     }
 
     private companion object {
+        const val MODEL_DOWNLOAD_TIMEOUT_MS = 120_000L
         const val LOCAL_REFINEMENT_LONG_SIDE = 1600
         const val LOCAL_REFINEMENT_SCALE = 3f
         const val LOCAL_REFINEMENT_MAX_SIDE = 1536

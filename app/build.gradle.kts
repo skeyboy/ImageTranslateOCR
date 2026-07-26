@@ -35,7 +35,9 @@ dependencies {
         version { strictly("1.16.0") }
     }
     implementation("androidx.appcompat:appcompat:1.7.1")
+    implementation("com.google.android.gms:play-services-base:18.10.0")
     implementation("com.google.android.gms:play-services-mlkit-text-recognition:19.0.1")
+    implementation("com.google.android.gms:play-services-mlkit-text-recognition-chinese:16.0.1")
     implementation("com.google.android.material:material:1.14.0")
     implementation("androidx.constraintlayout:constraintlayout:2.2.1")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx") {
@@ -44,9 +46,6 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android") {
         version { strictly("1.8.1") }
     }
-    implementation("com.google.mlkit:text-recognition:16.0.1")
-    implementation("com.google.mlkit:text-recognition-chinese:16.0.1")
-    implementation("com.google.mlkit:language-id:17.0.6")
     implementation("com.google.mlkit:translate:17.0.3")
     //noinspection Aligned16KB
     implementation("com.quickbirdstudios:opencv:4.5.3.0")

@@ -1,6 +1,7 @@
 package com.example.imagetranslate.screenshot
 
 import android.graphics.Bitmap
+import android.content.Context
 import com.example.imagetranslate.ocr.OCRManager
 import com.example.imagetranslate.translate.TranslateManager
 import com.example.imagetranslate.translate.TranslationMode
@@ -57,9 +58,11 @@ internal object BackgroundTranslationFormatter {
         .take(MAX_NOTIFICATION_CHARACTERS)
 }
 
-internal class BackgroundScreenshotTranslator {
+internal class BackgroundScreenshotTranslator(context: Context) {
+    private val appContext = context.applicationContext
+
     suspend fun translate(bitmap: Bitmap): BackgroundTranslationResult {
-        val ocrManager = OCRManager()
+        val ocrManager = OCRManager(appContext)
         val translateManager = TranslateManager()
         return try {
             val recognizedTexts = ocrManager.recognize(bitmap).map { it.text }
