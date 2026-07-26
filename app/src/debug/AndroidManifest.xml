@@ -4,5 +4,8 @@
         <activity
             android:name=".debug.OcrDiagnosticActivity"
             android:exported="true" />
+        <activity
+            android:name=".debug.LiveRecognitionBenchmarkActivity"
+            android:exported="true" />
     </application>
 </manifest>

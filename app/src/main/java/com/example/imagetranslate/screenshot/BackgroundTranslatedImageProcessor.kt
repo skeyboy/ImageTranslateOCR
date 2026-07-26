@@ -44,12 +44,32 @@ internal data class BackgroundTranslatedOverlayResult(
     val sourceWidth: Int,
     val sourceHeight: Int,
     val recognizedCount: Int,
+    val translatedRegionCount: Int,
     val failedCount: Int,
+    val requestedSegmentation: LiveRecognitionSegmentation,
+    val appliedStrategy: LiveRecognitionAppliedStrategy,
+    val translatedBounds: List<LiveCoverageBounds>,
+    val sourceCoverage: LiveCoverageMetrics,
+    val patchCoverage: LiveCoverageMetrics,
     val differentialApplied: Boolean = false,
     val reusedRegionCount: Int = 0,
     val recognitionAndTranslationMs: Long = 0L,
     val renderingMs: Long = 0L
-)
+) {
+    fun metrics(): LiveRecognitionRunMetrics = LiveRecognitionRunMetrics(
+        requestedSegmentation = requestedSegmentation,
+        appliedStrategy = appliedStrategy,
+        recognizedCount = recognizedCount,
+        translatedRegionCount = translatedRegionCount,
+        patchCount = patches.size,
+        failedCount = failedCount,
+        reusedRegionCount = reusedRegionCount,
+        sourceCoverage = sourceCoverage,
+        patchCoverage = patchCoverage,
+        recognitionAndTranslationMs = recognitionAndTranslationMs,
+        renderingMs = renderingMs
+    )
+}
 
 private data class BackgroundImageRegion(
     val source: RecognizedText,
@@ -229,12 +249,34 @@ internal class BackgroundTranslatedImageProcessor(
                 createOverlayPatch(bitmap, region, fallbackSurface, overlayAlpha)
             }
             val patches = mergeOverlappingPatches(renderedPatches)
+            val translatedBounds = batch.regions.map { region ->
+                region.source.bounds.toCoverageBounds()
+            }
             BackgroundTranslatedOverlayResult(
                 patches = patches,
                 sourceWidth = bitmap.width,
                 sourceHeight = bitmap.height,
                 recognizedCount = batch.recognizedCount,
+                translatedRegionCount = batch.regions.size,
                 failedCount = batch.failedCount + (batch.regions.size - renderedPatches.size),
+                requestedSegmentation = segmentation,
+                appliedStrategy = when {
+                    differential != null -> LiveRecognitionAppliedStrategy.DIFFERENTIAL
+                    segmentation == LiveRecognitionSegmentation.VERTICAL_BANDS ->
+                        LiveRecognitionAppliedStrategy.VERTICAL_BANDS
+                    else -> LiveRecognitionAppliedStrategy.FULL_FRAME
+                },
+                translatedBounds = translatedBounds,
+                sourceCoverage = LiveRecognitionMetricsPolicy.measure(
+                    translatedBounds,
+                    bitmap.width,
+                    bitmap.height
+                ),
+                patchCoverage = LiveRecognitionMetricsPolicy.measure(
+                    patches.map { it.bounds.toCoverageBounds() },
+                    bitmap.width,
+                    bitmap.height
+                ),
                 differentialApplied = differential != null,
                 reusedRegionCount = differential?.reusedRegionCount ?: 0,
                 recognitionAndTranslationMs = recognitionAndTranslationMs,
@@ -834,6 +876,13 @@ private fun Rect.clampedTo(bitmap: Bitmap): Rect? {
     )
     return clamped.takeIf { it.width() > 0 && it.height() > 0 }
 }
+
+private fun Rect.toCoverageBounds(): LiveCoverageBounds = LiveCoverageBounds(
+    left = left,
+    top = top,
+    right = right,
+    bottom = bottom
+)
 
 private object BackgroundTranslatedImageRenderer {
     fun render(

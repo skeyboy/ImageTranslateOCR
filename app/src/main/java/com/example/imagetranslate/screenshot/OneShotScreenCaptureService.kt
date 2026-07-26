@@ -780,16 +780,25 @@ class OneShotScreenCaptureService : Service() {
                         scheduleEmptyResultRetry(generation)
                         return@launch
                     }
+                    val totalMs = SystemClock.elapsedRealtime() - processingStartedAt
                     Log.i(
                         TAG,
-                        "Overlay translation completed: totalMs=" +
-                            "${SystemClock.elapsedRealtime() - processingStartedAt}, " +
+                        "Overlay translation completed: totalMs=$totalMs, " +
                             "differential=${result.differentialApplied}, " +
                             "shiftY=${capturePlan?.contentShiftY ?: 0}, " +
                             "reused=${result.reusedRegionCount}, " +
                             "recognized=${result.recognizedCount}, patches=${result.patches.size}, " +
                             "ocrTranslateMs=${result.recognitionAndTranslationMs}, " +
                             "renderMs=${result.renderingMs}"
+                    )
+                    Log.i(
+                        METRICS_TAG,
+                        LiveRecognitionTelemetry.completion(
+                            generation = generation,
+                            totalMs = totalMs,
+                            capturePlan = capturePlan,
+                            metrics = result.metrics()
+                        )
                     )
                     finishScreenshot(result, generation, captureSignature)
                     translatedResult = null
@@ -1295,6 +1304,7 @@ class OneShotScreenCaptureService : Service() {
         private const val MOVEMENT_SETTLE_FALLBACK_MS = 850L
         private val CAPTURE_FRAME_PULSE_DELAYS_MS = longArrayOf(250L, 650L, 1_050L)
         private const val TAG = "ScreenCaptureSession"
+        private const val METRICS_TAG = "LiveOcrMetrics"
 
         @Volatile
         var isRunning: Boolean = false
