@@ -25,7 +25,7 @@ internal data class LivePatchBounds(
 )
 
 internal object LiveOverlayLayoutPolicy {
-    private const val MAXIMUM_LINES_PER_BLOCK = 4
+    private const val MAXIMUM_LINES_PER_BLOCK = 3
     private const val MINIMUM_HEIGHT_RATIO = 0.72f
     private const val MINIMUM_HORIZONTAL_OVERLAP = 0.55f
     private const val MAXIMUM_VERTICAL_GAP_RATIO = 0.68f
@@ -115,11 +115,11 @@ internal object LiveOverlayLayoutPolicy {
         val compactLength = sourceText.count { !it.isWhitespace() }
         val prominentSingleLine = lineCount == 1 && compactLength <= 80
         val horizontalPadding = if (prominentSingleLine) {
-            maxOf(8, lineHeight / 2)
+            minOf(24, maxOf(8, lineHeight / 3))
         } else {
-            maxOf(5, lineHeight / 6)
+            maxOf(4, lineHeight / 8)
         }
-        val verticalPadding = maxOf(4, minOf(16, lineHeight / 7))
+        val verticalPadding = maxOf(4, minOf(12, lineHeight / 7))
         return LivePatchBounds(
             index = textBounds.index,
             left = (textBounds.left - horizontalPadding).coerceAtLeast(0),

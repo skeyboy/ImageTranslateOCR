@@ -20,6 +20,13 @@ internal enum class OcrRecognitionMode {
             CHINESE -> setOf(OcrModel.CHINESE)
             ENGLISH -> setOf(OcrModel.ENGLISH)
         }
+
+    val startupModels: Set<OcrModel>
+        get() = when (this) {
+            AUTO -> setOf(OcrModel.ENGLISH)
+            CHINESE -> setOf(OcrModel.CHINESE)
+            ENGLISH -> setOf(OcrModel.ENGLISH)
+        }
 }
 
 internal enum class OcrModel {

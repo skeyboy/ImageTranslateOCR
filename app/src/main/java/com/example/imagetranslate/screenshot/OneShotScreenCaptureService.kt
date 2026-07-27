@@ -52,6 +52,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeout
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
 
 class OneShotScreenCaptureService : Service() {
@@ -66,7 +67,11 @@ class OneShotScreenCaptureService : Service() {
     private val continuousTranslationEnabled = AtomicBoolean(false)
     private val sessionStopping = AtomicBoolean(false)
     private val rotationPermissionRestart = AtomicBoolean(false)
+    private val rotationCaptureRecoveryPending = AtomicBoolean(false)
     private val captureGeneration = AtomicInteger(0)
+    private val firstMotionAtMs = AtomicLong(0L)
+    private val lastMotionAtMs = AtomicLong(0L)
+    private val captureTriggeredAtMs = AtomicLong(0L)
     private val changeDetector = ScreenFrameChangeDetector()
     private val initialStabilityGate = InitialViewportStabilityGate()
     private val initialCapturePending = AtomicBoolean(false)
@@ -339,16 +344,26 @@ class OneShotScreenCaptureService : Service() {
     }
 
     private fun beginCaptureFromUser() {
+        if (projection == null) {
+            prepareOcrModels(continueAfterPreparation = false)
+            overlayController.hideForCapture()
+            ScreenCapturePermissionActivity.request(this)
+            return
+        }
+        prepareOcrModels(continueAfterPreparation = true)
+    }
+
+    private fun prepareOcrModels(continueAfterPreparation: Boolean) {
         if (ocrPreparationJob?.isActive == true) return
         overlayController.showPreparingOcrModels()
         ocrPreparationJob = serviceScope.launch {
             runCatching {
                 liveProcessor.prepareOcrModels(recognitionMode, overlayController::updateOcrModelState)
             }.onSuccess {
-                continueCaptureFromUser()
+                if (continueAfterPreparation) continueCaptureFromUser()
             }.onFailure { error ->
                 Log.w(TAG, "Unable to prepare OCR models", error)
-                overlayController.showReadyExpanded()
+                if (projection == null) overlayController.showReadyExpanded()
                 showOcrModelFailure("OCR 模型", error)
             }
         }
@@ -420,6 +435,7 @@ class OneShotScreenCaptureService : Service() {
     private fun startCaptureSession(resultData: Intent, startImmediately: Boolean) {
         runCatching {
             rotationPermissionRestart.set(false)
+            rotationCaptureRecoveryPending.set(false)
             val thread = HandlerThread("screen-capture-session").apply { start() }
             captureThread = thread
             val handler = Handler(thread.looper)
@@ -463,14 +479,20 @@ class OneShotScreenCaptureService : Service() {
             ) ?: error("MediaProjection ended before the capture surface was created")
         } else {
             val oldReader = imageReader
+            currentDisplay.surface = null
             currentDisplay.resize(
                 metrics.widthPixels,
                 metrics.heightPixels,
                 metrics.densityDpi
             )
-            oldReader?.setOnImageAvailableListener(null, null)
-            oldReader?.close()
             currentDisplay.surface = newReader.surface
+            oldReader?.setOnImageAvailableListener(null, null)
+            if (oldReader != null) {
+                handler.postDelayed(
+                    { runCatching(oldReader::close) },
+                    CAPTURE_SURFACE_RETIRE_DELAY_MS
+                )
+            }
         }
         val oldReader = imageReader.takeIf { currentDisplay == null }
         imageReader = newReader
@@ -512,6 +534,7 @@ class OneShotScreenCaptureService : Service() {
                     "Capture surface resized to ${metrics.widthPixels}x${metrics.heightPixels}"
                 )
                 if (resumeContinuousCapture) {
+                    rotationCaptureRecoveryPending.set(true)
                     awaitStableViewport("display rotation")
                     handler.postDelayed(
                         {
@@ -564,6 +587,7 @@ class OneShotScreenCaptureService : Service() {
 
     private fun restartProjectionPermissionAfterRotation() {
         if (!rotationPermissionRestart.compareAndSet(false, true)) return
+        rotationCaptureRecoveryPending.set(false)
         Log.w(TAG, "Capture stream did not stabilize after rotation; requiring renewed permission")
         cancelActiveCapture(keepContinuousMode = false)
         imageReader?.setOnImageAvailableListener(null, null)
@@ -583,11 +607,12 @@ class OneShotScreenCaptureService : Service() {
         captureHeight = 0
         captureDensityDpi = 0
         overlayController.onDisplayGeometryChanged(clearTranslations = true)
-        overlayController.showReadyExpanded()
+        overlayController.hideForCapture()
         getSystemService(NotificationManager::class.java).notify(
             NOTIFICATION_ID,
             buildSessionNotification(capturing = false)
         )
+        mainHandler.post { ScreenCapturePermissionActivity.request(this) }
     }
 
     private fun onImageAvailable(reader: ImageReader) {
@@ -659,11 +684,16 @@ class OneShotScreenCaptureService : Service() {
         when (changeDetector.onFrame(signature, nowMs)) {
             ScreenFrameAction.NONE -> Unit
             ScreenFrameAction.MOVING -> {
+                firstMotionAtMs.compareAndSet(0L, nowMs)
+                lastMotionAtMs.set(nowMs)
                 overlayController.showWaitingForStable()
                 discardStaleCaptureForMovement()
                 scheduleMovementSettleFallback()
             }
-            ScreenFrameAction.MOVING_UPDATE -> scheduleMovementSettleFallback()
+            ScreenFrameAction.MOVING_UPDATE -> {
+                lastMotionAtMs.set(nowMs)
+                scheduleMovementSettleFallback()
+            }
             ScreenFrameAction.RESTORE -> restoreUnchangedSettledViewport("stable_frames")
             ScreenFrameAction.CAPTURE -> {
                 captureHandler?.removeCallbacks(movementSettleFallback)
@@ -699,6 +729,7 @@ class OneShotScreenCaptureService : Service() {
         }
         overlayController.restoreAfterSkippedCapture()
         changeDetector.onTranslationRendered(SystemClock.elapsedRealtime())
+        resetInteractionTiming()
         Log.i(
             TAG,
             "Restored unchanged settled viewport: trigger=$trigger, " +
@@ -721,6 +752,7 @@ class OneShotScreenCaptureService : Service() {
         emptyResultRetryCount.set(0)
         processingFrameCaptured.set(true)
         val generation = captureGeneration.incrementAndGet()
+        captureTriggeredAtMs.set(SystemClock.elapsedRealtime())
         changeDetector.onCaptureStarted(signature, SystemClock.elapsedRealtime())
         overlayController.hideForCapture()
         getSystemService(NotificationManager::class.java).notify(
@@ -828,7 +860,8 @@ class OneShotScreenCaptureService : Service() {
                         scheduleEmptyResultRetry(generation)
                         return@launch
                     }
-                    val totalMs = SystemClock.elapsedRealtime() - processingStartedAt
+                    val completedAt = SystemClock.elapsedRealtime()
+                    val totalMs = completedAt - processingStartedAt
                     Log.i(
                         TAG,
                         "Overlay translation completed: totalMs=$totalMs, " +
@@ -855,7 +888,8 @@ class OneShotScreenCaptureService : Service() {
                             generation = generation,
                             totalMs = totalMs,
                             capturePlan = capturePlan,
-                            metrics = result.metrics()
+                            metrics = result.metrics(),
+                            interaction = interactionTiming(completedAt)
                         )
                     )
                     finishScreenshot(result, generation, captureSignature)
@@ -883,6 +917,7 @@ class OneShotScreenCaptureService : Service() {
         emptyResultRetryCount.set(0)
         processingFrameCaptured.set(false)
         val generation = captureGeneration.incrementAndGet()
+        captureTriggeredAtMs.set(SystemClock.elapsedRealtime())
         overlayController.hideForCapture()
         if (ScreenshotMonitorService.isRunning) {
             startService(
@@ -1009,7 +1044,9 @@ class OneShotScreenCaptureService : Service() {
         captureInProgress.set(false)
         processingFrameCaptured.set(false)
         activeCapturePlan = null
+        resetInteractionTiming()
         if (result.patches.isNotEmpty()) {
+            rotationCaptureRecoveryPending.set(false)
             lastAcceptedCaptureSignature = captureSignature
             canRestoreLastResult.set(true)
         }
@@ -1042,6 +1079,7 @@ class OneShotScreenCaptureService : Service() {
         canRestoreLastResult.set(false)
         activeCapturePlan = null
         continuousTranslationEnabled.set(false)
+        resetInteractionTiming()
         getSystemService(NotificationManager::class.java).notify(
             NOTIFICATION_ID,
             buildSessionNotification(capturing = false)
@@ -1072,6 +1110,7 @@ class OneShotScreenCaptureService : Service() {
         pendingInitialFrame.getAndSet(null)?.image?.close()
         activeCapturePlan = null
         lastSignatureSampleAt = Long.MIN_VALUE
+        resetInteractionTiming()
         captureHandler?.removeCallbacks(movementSettleFallback)
         if (!keepContinuousMode) continuousTranslationEnabled.set(false)
         timeoutJob?.cancel()
@@ -1117,13 +1156,18 @@ class OneShotScreenCaptureService : Service() {
                 return@launch
             }
             captureRequested.set(true)
+            overlayController.pulseTransparentCaptureSurface()
             drainLatestImage()
             kotlinx.coroutines.delay(CAPTURE_TIMEOUT_MS)
             if (generation == captureGeneration.get()) {
-                failScreenshot(
-                    IllegalStateException("Timed out waiting for an OCR retry frame"),
-                    generation
-                )
+                if (rotationCaptureRecoveryPending.get()) {
+                    restartProjectionPermissionAfterRotation()
+                } else {
+                    failScreenshot(
+                        IllegalStateException("Timed out waiting for an OCR retry frame"),
+                        generation
+                    )
+                }
             }
         }
     }
@@ -1142,11 +1186,28 @@ class OneShotScreenCaptureService : Service() {
             buildSessionNotification(capturing = false)
         )
         overlayController.restoreAfterSkippedCapture()
+        resetInteractionTiming()
         captureHandler?.postDelayed(
             { resumeFrameObservation(generation) },
             LiveCaptureTimingPolicy.PRESENTATION_GATE_TIMEOUT_MS
         )
         Log.i(TAG, "Skipped duplicate settled viewport before OCR")
+    }
+
+    private fun interactionTiming(completedAtMs: Long): LiveInteractionTimingMetrics =
+        LiveInteractionTimingMetrics(
+            firstMotionToCommitMs = elapsedSince(firstMotionAtMs.get(), completedAtMs),
+            lastMotionToCommitMs = elapsedSince(lastMotionAtMs.get(), completedAtMs),
+            captureToCommitMs = elapsedSince(captureTriggeredAtMs.get(), completedAtMs)
+        )
+
+    private fun elapsedSince(startedAtMs: Long, completedAtMs: Long): Long =
+        if (startedAtMs <= 0L || completedAtMs < startedAtMs) -1L else completedAtMs - startedAtMs
+
+    private fun resetInteractionTiming() {
+        firstMotionAtMs.set(0L)
+        lastMotionAtMs.set(0L)
+        captureTriggeredAtMs.set(0L)
     }
 
     private fun resumeFrameObservation(generation: Int) {
@@ -1286,6 +1347,7 @@ class OneShotScreenCaptureService : Service() {
 
     private fun releaseCaptureResources() {
         cancelActiveCapture(keepContinuousMode = false)
+        rotationCaptureRecoveryPending.set(false)
         timeoutJob?.cancel()
         timeoutJob = null
         imageReader?.setOnImageAvailableListener(null, null)
@@ -1368,13 +1430,14 @@ class OneShotScreenCaptureService : Service() {
         private const val BLACK_PIXEL_THRESHOLD = 8
         private const val SIGNATURE_COLUMNS = 48
         private const val SIGNATURE_ROWS = 72
-        private const val SIGNATURE_TOP_CROP_RATIO = 0.08f
-        private const val SIGNATURE_BOTTOM_RATIO = 0.94f
+        private const val SIGNATURE_TOP_CROP_RATIO = 0.12f
+        private const val SIGNATURE_BOTTOM_RATIO = 0.92f
         private const val DISPLAY_CHANGE_SETTLE_MS = 900L
         private const val MEDIA_PROJECTION_RESIZE_SETTLE_MS = 120L
-        private const val ROTATION_FRAME_RECOVERY_TIMEOUT_MS = 3_000L
+        private const val CAPTURE_SURFACE_RETIRE_DELAY_MS = 500L
+        private const val ROTATION_FRAME_RECOVERY_TIMEOUT_MS = 3_500L
         private const val INITIAL_STABILITY_MAX_WAIT_MS = 1_800L
-        private const val MOVEMENT_SETTLE_FALLBACK_MS = 850L
+        private const val MOVEMENT_SETTLE_FALLBACK_MS = 650L
         private val CAPTURE_FRAME_PULSE_DELAYS_MS = longArrayOf(250L, 650L, 1_050L)
         private const val TAG = "ScreenCaptureSession"
         private const val METRICS_TAG = "LiveOcrMetrics"

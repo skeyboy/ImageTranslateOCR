@@ -61,7 +61,12 @@ internal data class LiveRecognitionRunMetrics(
     val sourceCoverage: LiveCoverageMetrics,
     val patchCoverage: LiveCoverageMetrics,
     val recognitionAndTranslationMs: Long,
-    val renderingMs: Long
+    val renderingMs: Long,
+    val sourceLatinTokenCount: Int = 0,
+    val retainedLatinTokenCount: Int = 0,
+    val retainedLatinRatio: Float = 0f,
+    val suspiciousJoinCount: Int = 0,
+    val largestPatchAreaRatio: Float = 0f
 ) {
     val totalProcessingMs: Long
         get() = recognitionAndTranslationMs + renderingMs

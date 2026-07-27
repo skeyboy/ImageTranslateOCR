@@ -32,7 +32,7 @@ class LiveOverlayLayoutPolicyTest {
             }
         )
 
-        assertEquals(listOf(listOf(0, 1, 2, 3), listOf(4, 5)), groups)
+        assertEquals(listOf(listOf(0, 1, 2), listOf(3, 4, 5)), groups)
     }
 
     @Test
@@ -110,7 +110,21 @@ class LiveOverlayLayoutPolicyTest {
             sourceHeight = 2400
         )
 
-        assertEquals(LivePatchBounds(0, 68, 191, 532, 273), expanded)
+        assertEquals(LivePatchBounds(0, 79, 191, 521, 273), expanded)
+    }
+
+    @Test
+    fun limitsAContinuousParagraphToThreeLinePatches() {
+        val groups = LiveOverlayLayoutPolicy.groupTextLines(
+            listOf(
+                line(0, 40, 100, 500, 130, "Line one continues"),
+                line(1, 40, 136, 500, 166, "Line two continues"),
+                line(2, 40, 172, 500, 202, "Line three continues"),
+                line(3, 40, 208, 500, 238, "Line four continues")
+            )
+        )
+
+        assertEquals(listOf(listOf(0, 1, 2), listOf(3)), groups)
     }
 
     private fun line(

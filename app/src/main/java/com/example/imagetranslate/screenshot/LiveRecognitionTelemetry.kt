@@ -7,7 +7,8 @@ internal object LiveRecognitionTelemetry {
         generation: Int,
         totalMs: Long,
         capturePlan: ScrollCapturePlan?,
-        metrics: LiveRecognitionRunMetrics
+        metrics: LiveRecognitionRunMetrics,
+        interaction: LiveInteractionTimingMetrics = LiveInteractionTimingMetrics()
     ): String = JSONObject()
         .put("schema", SCHEMA_VERSION)
         .put("event", "overlay_translation_completed")
@@ -47,6 +48,14 @@ internal object LiveRecognitionTelemetry {
         .put("source_covered_area_px", metrics.sourceCoverage.coveredAreaPx)
         .put("patch_coverage_ratio", metrics.patchCoverage.coverageRatio.toDouble())
         .put("patch_covered_area_px", metrics.patchCoverage.coveredAreaPx)
+        .put("source_latin_tokens", metrics.sourceLatinTokenCount)
+        .put("retained_latin_tokens", metrics.retainedLatinTokenCount)
+        .put("retained_latin_ratio", metrics.retainedLatinRatio.toDouble())
+        .put("suspicious_joins", metrics.suspiciousJoinCount)
+        .put("largest_patch_area_ratio", metrics.largestPatchAreaRatio.toDouble())
+        .put("first_motion_to_commit_ms", interaction.firstMotionToCommitMs)
+        .put("last_motion_to_commit_ms", interaction.lastMotionToCommitMs)
+        .put("capture_to_commit_ms", interaction.captureToCommitMs)
         .toString()
 
     fun abReport(report: LiveRecognitionAbReport): String = JSONObject()
@@ -105,6 +114,15 @@ internal object LiveRecognitionTelemetry {
         )
         .put("source_coverage_ratio", metrics.sourceCoverage.coverageRatio.toDouble())
         .put("patch_coverage_ratio", metrics.patchCoverage.coverageRatio.toDouble())
+        .put("retained_latin_ratio", metrics.retainedLatinRatio.toDouble())
+        .put("suspicious_joins", metrics.suspiciousJoinCount)
+        .put("largest_patch_area_ratio", metrics.largestPatchAreaRatio.toDouble())
 
-    private const val SCHEMA_VERSION = 5
+    private const val SCHEMA_VERSION = 6
 }
+
+internal data class LiveInteractionTimingMetrics(
+    val firstMotionToCommitMs: Long = -1L,
+    val lastMotionToCommitMs: Long = -1L,
+    val captureToCommitMs: Long = -1L
+)

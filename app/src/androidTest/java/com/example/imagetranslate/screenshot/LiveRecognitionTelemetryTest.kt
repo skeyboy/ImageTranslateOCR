@@ -33,6 +33,11 @@ class LiveRecognitionTelemetryTest {
             renderedTrackCacheMissCount = 3,
             themeSurfacePatchCount = 5,
             blurTintPatchCount = 2,
+            sourceLatinTokenCount = 20,
+            retainedLatinTokenCount = 2,
+            retainedLatinRatio = 0.1f,
+            suspiciousJoinCount = 1,
+            largestPatchAreaRatio = 0.08f,
             sourceCoverage = LiveCoverageMetrics(10, 1_200L, 10_000L, 0.12f),
             patchCoverage = LiveCoverageMetrics(8, 2_000L, 10_000L, 0.2f),
             recognitionAndTranslationMs = 620L,
@@ -44,7 +49,8 @@ class LiveRecognitionTelemetryTest {
                 generation = 7,
                 totalMs = 850L,
                 capturePlan = ScrollCapturePlan(-1_100, 0.8f, 0.6f, 18f, 1f),
-                metrics = metrics
+                metrics = metrics,
+                interaction = LiveInteractionTimingMetrics(2_100L, 1_450L, 820L)
             )
         )
 
@@ -70,6 +76,11 @@ class LiveRecognitionTelemetryTest {
         assertEquals(3, json.getInt("rendered_track_cache_misses"))
         assertEquals(5, json.getInt("theme_surface_patches"))
         assertEquals(2, json.getInt("blur_tint_patches"))
+        assertEquals(0.1, json.getDouble("retained_latin_ratio"), 0.0001)
+        assertEquals(1, json.getInt("suspicious_joins"))
+        assertEquals(0.08, json.getDouble("largest_patch_area_ratio"), 0.0001)
+        assertEquals(1_450L, json.getLong("last_motion_to_commit_ms"))
+        assertEquals(820L, json.getLong("capture_to_commit_ms"))
         assertTrue(json.has("registration_confidence"))
     }
 }

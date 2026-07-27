@@ -78,7 +78,12 @@ internal data class BackgroundTranslatedOverlayResult(
     val renderedTrackCacheHitCount: Int = 0,
     val renderedTrackCacheMissCount: Int = 0,
     val themeSurfacePatchCount: Int = 0,
-    val blurTintPatchCount: Int = 0
+    val blurTintPatchCount: Int = 0,
+    val sourceLatinTokenCount: Int = 0,
+    val retainedLatinTokenCount: Int = 0,
+    val retainedLatinRatio: Float = 0f,
+    val suspiciousJoinCount: Int = 0,
+    val largestPatchAreaRatio: Float = 0f
 ) {
     fun metrics(): LiveRecognitionRunMetrics = LiveRecognitionRunMetrics(
         requestedSegmentation = requestedSegmentation,
@@ -105,7 +110,12 @@ internal data class BackgroundTranslatedOverlayResult(
         renderedTrackCacheHitCount = renderedTrackCacheHitCount,
         renderedTrackCacheMissCount = renderedTrackCacheMissCount,
         themeSurfacePatchCount = themeSurfacePatchCount,
-        blurTintPatchCount = blurTintPatchCount
+        blurTintPatchCount = blurTintPatchCount,
+        sourceLatinTokenCount = sourceLatinTokenCount,
+        retainedLatinTokenCount = retainedLatinTokenCount,
+        retainedLatinRatio = retainedLatinRatio,
+        suspiciousJoinCount = suspiciousJoinCount,
+        largestPatchAreaRatio = largestPatchAreaRatio
     )
 }
 
@@ -269,7 +279,7 @@ internal class BackgroundTranslatedImageProcessor(
         onState: (OcrModel, OcrModelState) -> Unit = { _, _ -> }
     ) {
         check(!closed) { "Image processor is closed" }
-        ocrManager.ensureModels(recognitionMode.requiredModels, onState)
+        ocrManager.ensureModels(recognitionMode.startupModels, onState)
     }
 
     suspend fun ocrModelStates(): Map<OcrModel, OcrModelState> {
@@ -424,6 +434,17 @@ internal class BackgroundTranslatedImageProcessor(
             val translatedBounds = displayRegions.map { region ->
                 region.source.bounds.toCoverageBounds()
             }
+            val textQuality = LiveTextQualityPolicy.measure(
+                displayRegions.map { region -> region.source.text to region.translation }
+            )
+            val viewportArea = bitmap.width.toLong() * bitmap.height.toLong()
+            val largestPatchAreaRatio = if (viewportArea <= 0L) {
+                0f
+            } else {
+                patches.maxOfOrNull { patch ->
+                    patch.bounds.width().toLong() * patch.bounds.height().toLong()
+                }?.toFloat()?.div(viewportArea) ?: 0f
+            }
             BackgroundTranslatedOverlayResult(
                 patches = patches,
                 sourceWidth = bitmap.width,
@@ -487,7 +508,12 @@ internal class BackgroundTranslatedImageProcessor(
                 },
                 blurTintPatchCount = renderedPatches.count {
                     it.backgroundMode == LivePatchBackgroundMode.BLUR_TINT
-                }
+                },
+                sourceLatinTokenCount = textQuality.sourceLatinTokenCount,
+                retainedLatinTokenCount = textQuality.retainedLatinTokenCount,
+                retainedLatinRatio = textQuality.retainedLatinRatio,
+                suspiciousJoinCount = textQuality.suspiciousJoinCount,
+                largestPatchAreaRatio = largestPatchAreaRatio
             ).also { result ->
                 if (LiveCaptureTimingPolicy.shouldUpdateLiveSnapshot(
                         patchCount = result.patches.size,

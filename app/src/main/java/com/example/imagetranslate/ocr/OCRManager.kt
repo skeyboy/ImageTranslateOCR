@@ -101,9 +101,13 @@ internal class OCRManager(context: Context) {
         bitmap: Bitmap,
         recognitionMode: OcrRecognitionMode = OcrRecognitionMode.AUTO
     ): List<RecognizedText> {
-        ensureModels(recognitionMode.requiredModels)
+        ensureModels(recognitionMode.startupModels)
         val script = recognitionMode.recognizerScript
-        val initialResults = recognizeFullImage(bitmap, script)
+        val initialResults = if (script == RecognizerScript.FUSED) {
+            recognizeAutoFullImage(bitmap)
+        } else {
+            recognizeFullImage(bitmap, script)
+        }
         val refinedResults = if (script != RecognizerScript.LATIN &&
             maxOf(bitmap.width, bitmap.height) >= LOCAL_REFINEMENT_LONG_SIDE
         ) {
@@ -118,7 +122,7 @@ internal class OCRManager(context: Context) {
         bitmap: Bitmap,
         recognitionMode: OcrRecognitionMode
     ): List<RecognizedText> {
-        ensureModels(recognitionMode.requiredModels)
+        ensureModels(recognitionMode.startupModels)
         val script = recognitionMode.recognizerScript
         val candidates = mutableListOf<OcrCandidate>()
         when (script) {
@@ -151,16 +155,25 @@ internal class OCRManager(context: Context) {
                     extraFilter = { true }
                 )
                 if (!hasSufficientLatinCoverage(candidates)) {
-                    candidates.clear()
-                    recognizeWith(
-                        bitmap,
-                        chineseRecognizer,
-                        RecognizerScript.CHINESE,
-                        PASS_ORIGINAL,
-                        0.43f,
-                        candidates,
-                        extraFilter = { true }
-                    )
+                    val chineseCandidates = mutableListOf<OcrCandidate>()
+                    try {
+                        ensureModels(setOf(OcrModel.CHINESE))
+                        recognizeWith(
+                            bitmap,
+                            chineseRecognizer,
+                            RecognizerScript.CHINESE,
+                            PASS_ORIGINAL,
+                            0.43f,
+                            chineseCandidates,
+                            extraFilter = { true }
+                        )
+                        if (chineseCandidates.isNotEmpty()) {
+                            candidates.clear()
+                            candidates += chineseCandidates
+                        }
+                    } catch (error: Exception) {
+                        if (candidates.isEmpty()) throw error
+                    }
                 }
             }
         }
@@ -271,6 +284,26 @@ internal class OCRManager(context: Context) {
         return candidates.size >= MINIMUM_AUTO_LATIN_RESULTS &&
             latinCount >= MINIMUM_AUTO_LATIN_CHARACTERS &&
             latinCount >= hanCount * MINIMUM_AUTO_LATIN_DOMINANCE
+    }
+
+    private fun hasSufficientLatinCoverage(results: Collection<RecognizedText>): Boolean {
+        val text = results.joinToString(" ") { it.text }
+        val latinCount = text.count { it in 'A'..'Z' || it in 'a'..'z' }
+        val hanCount = text.count(::isHanCharacter)
+        return results.size >= MINIMUM_AUTO_LATIN_RESULTS &&
+            latinCount >= MINIMUM_AUTO_LATIN_CHARACTERS &&
+            latinCount >= hanCount * MINIMUM_AUTO_LATIN_DOMINANCE
+    }
+
+    private suspend fun recognizeAutoFullImage(bitmap: Bitmap): List<RecognizedText> {
+        val latinResults = recognizeFullImage(bitmap, RecognizerScript.LATIN)
+        if (hasSufficientLatinCoverage(latinResults)) return latinResults
+        return try {
+            ensureModels(setOf(OcrModel.CHINESE))
+            recognizeFullImage(bitmap, RecognizerScript.CHINESE).ifEmpty { latinResults }
+        } catch (error: Exception) {
+            if (latinResults.isNotEmpty()) latinResults else throw error
+        }
     }
 
     private suspend fun recognizeFullImage(
