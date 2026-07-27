@@ -1,0 +1,45 @@
+{
+  "schema": 1,
+  "date": "2026-07-27",
+  "device": {
+    "serial": "8c9cf729",
+    "model": "23113RKC6C",
+    "android": 16,
+    "viewport": "1440x3200"
+  },
+  "question": "Does the A/B benchmark render real OCR translation patches, and is the previous performance conclusion reliable?",
+  "answer": {
+    "rendering_revalidation_required": true,
+    "previous_timing_and_geometry_data_usable": true,
+    "previous_final_visual_claim_reliable": false,
+    "semantic_accuracy_evaluated": false
+  },
+  "strict_guard_runs": 8,
+  "strict_guard_results": {
+    "visual_render_pass_rate": 1.0,
+    "coverage_pass_rate": 1.0,
+    "patch_coverage_pass_rate": 1.0,
+    "differential_hit_rate": 0.125,
+    "region_recall_p10": 1.0,
+    "area_recall_p10": 0.9141349196434021,
+    "patch_area_recall_p10": 0.9246777296066284,
+    "candidate_p50_ms": 1087,
+    "reference_p50_ms": 1016,
+    "speedup_p50": -0.04969574138522148,
+    "safe_differential_ms": 450,
+    "safe_differential_reference_ms": 1016,
+    "safe_differential_speedup": 0.5570865869522095,
+    "fallback_reasons": {
+      "MULTI_REGION_ACCURACY_GUARD": 7,
+      "NONE": 1
+    }
+  },
+  "failed_sample": {
+    "candidate_ms": 618,
+    "reference_ms": 1059,
+    "area_recall": 0.7557,
+    "patch_area_recall": 0.7784,
+    "decision": "ACCURACY_REGRESSION"
+  },
+  "decision": "Keep visible rendering validation and strict accuracy guards. Treat differential OCR as opportunistic acceleration; do not claim default P50 acceleration. Add golden-text CER/WER before claiming semantic OCR accuracy."
+}

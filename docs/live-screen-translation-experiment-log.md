@@ -2,7 +2,7 @@
 
 > 建立日期：2026-07-26
 >
-> 当前代码基线：`60820c5 perf: stabilize adaptive OCR and parallel rendering`
+> 当前代码基线：`3dcc7ca test: validate visible OCR rendering`
 >
 > 适用范围：Android 录屏采集、页面运动检测、OCR、翻译、译文贴片与悬浮窗交互
 
@@ -250,6 +250,7 @@ sequenceDiagram
 | 2026-07-26 | `b5e4c4d` | 同视口 A/B、结构化性能日志与覆盖率指标 | 建立可重复基准；严格 A/B 发现差分虽快约 36%，面积召回仅约 78% | 基准设施保留，差分结论降级为受保护实验路径 |
 | 2026-07-26 | `b4565b0` | A/B 调试页生命周期与译文层触摸透传回归 | A/B 完成后自动返回原页面，不再遗留全屏调试任务；透传 flag 纳入测试 | 保留 |
 | 2026-07-27 | `60820c5` | 自适应上下文硬回退与并行贴片渲染 | 混合策略面积召回 P10 超过 92%，并行渲染 P50 降低约 66% | 保留 12%/60% 混合策略与并行渲染；舍弃 12%/80% 激进方案 |
+| 2026-07-27 | `3dcc7ca` | OCR 可见渲染复核与严格准确率保护 | 真实贴片预览已生成且 20/20 仪器测试通过；严格 8 轮面积召回 P10 91.41%，但整体 P50 无加速 | 保留视觉验证和严格回退；撤销默认模式 P50 显著加速的泛化结论 |
 
 ### 7.1 `7b028b7` 受控实机结果
 
@@ -406,9 +407,29 @@ sequenceDiagram
 
 ## 10. 实验追加记录
 
+### 2026-07-27：OCR 可见渲染复核与严格准确率保护
+
+- 状态：部分保留；修正上一轮性能结论
+- 基线 Git：`23dadec docs: record adaptive OCR rendering experiment`
+- 实验代码 Git：`3dcc7ca test: validate visible OCR rendering`
+- 记录 Git：由本次文档提交建立
+- 回退 Git：无；无效的不透明测试合成样本未纳入证据
+- 复核原因：此前同视口 A/B 确实执行了 OCR、翻译和贴片生成，也能用于比较耗时与文字框几何，但没有把真实贴片合成到当前截图并验证最终像素。因此它不能证明用户已经看到 OCR 渲染结果，也不能评估译文语义正确性。
+- 修改范围：Debug A/B 强制生成候选/整屏参考预览图；使用生产浮层透明度合成真实 `ScreenTranslationPatch`；增加补丁内像素变化、补丁外零变化和文件非空门；可选在设备全屏展示候选预览；脚本拉取输入、预览和设备截图；视觉失败返回非零；覆盖回归返回非零；批量报告增加可见渲染通过率和语义评估状态。
+- 准确率保护：自动覆盖门由 80% 提升到 90%；准确模式最多接受一个差分 ROI 且脏单元不超过 60，否则分别以 `MULTI_REGION_ACCURACY_GUARD` 或 `ACCURACY_DIRTY_GRID_GUARD` 回退整屏。
+- 设备与系统：Xiaomi `23113RKC6C`，Android 16，1440x3200，USB ADB `8c9cf729`；Rust Book Introduction 纵向暗色正文，英文 OCR、英译中。
+- 失败样本：候选 618ms、整屏参考 1059ms，但源区域面积召回仅约 75.57%、贴片面积召回约 77.84%，正确判定为 `ACCURACY_REGRESSION`。该样本证明原 80% 门与零退出码不够严格，失败预览和报告均保留。
+- 严格 8 轮结果：可见渲染、源区域覆盖和贴片覆盖均 8/8 通过；区域召回 P10/P50 均 100%，源面积召回 P10/P50 为 91.41%/100%，贴片面积召回 P10/P50 为 92.47%/100%。差分仅命中 1/8，其余 7 次因多 ROI 回退整屏。
+- 性能结果：唯一安全差分为 450ms 对 1016ms，提速 55.71%；但严格矩阵候选/参考 P50 为 1087/1016ms，P50 约慢 4.97%。因此差分只能定义为“满足严格条件时的机会性加速”，不能继续宣称默认模式 P50 提速 39.38%。
+- 可见结果：生产透明度预览确认译文背景和文本已经实际绘制，且补丁外没有像素污染；同时肉眼可见 `RURE/RUDE`、英文词组粘连、乱码行和少量原文残留。候选与整屏参考均存在这些问题，属于绝对 OCR/翻译质量问题，不应由相对 A/B 覆盖率掩盖。
+- 自动化结果：Java 17 环境下 `testDebugUnitTest`、`assembleDebug`、`assembleDebugAndroidTest` 通过；主/测试 APK 均通过 ADB 覆盖安装；安装后非系统转场仪器测试 20/20 通过。首次使用机器默认 Java 11 的构建被 AGP 拒绝，切换 Android Studio JBR 后重跑成功，不计为源码失败。
+- 证据：严格矩阵见 [`experiments/live-recognition-strict-guard-2026-07-27.jsonl`](experiments/live-recognition-strict-guard-2026-07-27.jsonl)，结构化摘要见 [`experiments/live-recognition-visual-revalidation-summary-2026-07-27.json`](experiments/live-recognition-visual-revalidation-summary-2026-07-27.json)，差分成功预览见 [`experiments/live-recognition-visual-2026-07-27/run-3/candidate-preview.png`](experiments/live-recognition-visual-2026-07-27/run-3/candidate-preview.png)，覆盖失败预览和报告见 [`experiments/live-recognition-visual-2026-07-27/final-differential/candidate-preview.png`](experiments/live-recognition-visual-2026-07-27/final-differential/candidate-preview.png) 与 [`report.json`](experiments/live-recognition-visual-2026-07-27/final-differential/report.json)。
+- 决策及原因：保留真实预览、像素门、非零失败退出、90% 双覆盖门和准确模式回退保护；保留并行贴片渲染本身，但撤销“当前默认差分策略具备稳定 P50 加速”的结论。当前自动化只证明渲染存在和相对几何安全，`semantic_quality_evaluated=false` 是强制事实字段。
+- 下一步：建立固定截图与人工黄金文本，按文字区域计算 OCR CER/WER、翻译缺失率和残留原文面积；只有语义门、像素覆盖门和性能门同时通过，才允许扩大差分命中范围。
+
 ### 2026-07-27：自适应上下文、贴片覆盖门与并行渲染
 
-- 状态：部分保留后转为默认
+- 状态：部分保留；性能泛化结论已被后续可见渲染复核修正
 - 基线 Git：`80eaf7c docs: record track-aware OCR experiment`
 - 实验代码 Git：`60820c5 perf: stabilize adaptive OCR and parallel rendering`
 - 记录 Git：由本次文档提交建立
@@ -424,7 +445,7 @@ sequenceDiagram
 - 自动化结果：JVM 全量测试和 Debug/AndroidTest 构建通过；主/测试 APK 均经 ADB 覆盖安装；非系统转场仪器测试 19/19 通过。MIUI 在 `ActivityScenario` 启动入口测试时卡在 `Transition-OPEN`，因此入口改用 ADB/UIAutomator 实机校验：冷启动 687ms，入口可见可点，点击后直接显示底部悬浮条并启动前台服务；浮窗存在时内容区滑动仍能滚动底层页面。
 - 日志证据：[`experiments/live-recognition-accuracy-context-2026-07-27.jsonl`](experiments/live-recognition-accuracy-context-2026-07-27.jsonl)、[`experiments/live-recognition-balanced-context-2026-07-27.jsonl`](experiments/live-recognition-balanced-context-2026-07-27.jsonl)、[`experiments/live-recognition-hybrid-context-2026-07-27.jsonl`](experiments/live-recognition-hybrid-context-2026-07-27.jsonl)、[`experiments/live-recognition-parallel-render-2026-07-27.jsonl`](experiments/live-recognition-parallel-render-2026-07-27.jsonl) 和 [`experiments/live-recognition-adaptive-render-summary-2026-07-27.json`](experiments/live-recognition-adaptive-render-summary-2026-07-27.json)。
 - 风险与异常：自动参考仍是整屏 ML Kit，不是人工黄金文本；当前 32 次新矩阵集中在纵向亮色英文页面。并行绘制验证了区域与面积一致性，但尚未建立逐像素图像相似度门。
-- 决策及原因：保留结构化配置、双覆盖否决、12%/60% 混合策略和并行渲染；舍弃 12%/80% 激进方案。前者同时达到 P10 超过 90%、显著提速和触摸透传目标，后者尾部准确率不可接受。
+- 决策及原因：保留结构化配置、双覆盖否决、12%/60% 混合策略和并行渲染；舍弃 12%/80% 激进方案。该轮 P10 覆盖结论仍有效，但其 P50 加速结论已被后续严格可见渲染矩阵推翻，不能再泛化到默认模式。
 - 下一步：建立带人工文本真值的固定截图集，新增字符错误率/词错误率和贴片像素差指标；对横屏正文、暗黑页面和中译英各执行至少 10 次同视口矩阵，再决定是否按场景动态调整 60% 面积门。
 
 ### 2026-07-27：脏区网格、Track ID、续接 ROI 与宿主入口恢复
@@ -538,12 +559,12 @@ sequenceDiagram
 
 | 项目 | 状态 |
 | --- | --- |
-| 代码节点 | `60820c5` |
-| 默认配置 | 自适应 / 高频 / 单缓冲 / 12% 上下文 + 60% 面积回退 / 并行贴片渲染 |
+| 代码节点 | `3dcc7ca` |
+| 默认配置 | 自适应 / 高频 / 单缓冲 / 12% 上下文 + 60% 面积回退 + 单 ROI/60 脏单元准确保护 / 并行贴片渲染 |
 | 主 APK | 已通过 ADB 覆盖安装 |
 | 测试 APK | 已通过 ADB 覆盖安装 |
 | JVM/构建 | 通过 |
-| 仪器测试 | 19/19 通过（排除系统录屏授权入口用例） |
+| 仪器测试 | 20/20 通过（排除 MIUI 系统录屏授权转场用例） |
 | 录屏会话 | 验证结束后关闭 |
 | 无障碍增强 | 验证结束后关闭 |
-| 当前推荐下一项 | 人工黄金视口 + 横屏/暗黑/中译英矩阵，引入 CER/WER 与贴片像素差 |
+| 当前推荐下一项 | 人工黄金视口 + 横屏/暗黑/中译英矩阵，引入 CER/WER、翻译缺失率与残留原文面积 |
