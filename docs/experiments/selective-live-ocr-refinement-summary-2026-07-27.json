@@ -1,0 +1,47 @@
+{
+  "schema": 1,
+  "date": "2026-07-27",
+  "status": "REJECTED_AND_REMOVED",
+  "baseline_git": "5468889",
+  "device": {
+    "serial": "8c9cf729",
+    "model": "23113RKC6C",
+    "android": 16,
+    "viewport": "1440x3200"
+  },
+  "candidate": "Fast full-frame OCR plus at most three confidence- and anomaly-selected local OCR retries",
+  "reference": "Fast full-frame OCR without local retries",
+  "python_document": {
+    "url": "https://docs.python.org/3/tutorial/introduction.html",
+    "title": "An Informal Introduction to Python",
+    "runs": 8,
+    "candidate_p50_ms": 1529,
+    "candidate_p90_ms": 1628,
+    "reference_p50_ms": 1210,
+    "reference_p90_ms": 1370,
+    "speedup_p50": -0.2454545497894287,
+    "refinement_p50_ms": 289,
+    "refinement_p90_ms": 310,
+    "refinement_attempts": 24,
+    "accepted_replacements": 0,
+    "suspicious_regions_before": 27,
+    "suspicious_regions_after": 27,
+    "source_coverage_pass_rate": 1.0,
+    "patch_coverage_pass_rate": 1.0,
+    "visual_output_changed": false
+  },
+  "rust_failure_viewport": {
+    "candidate_ms": 2254,
+    "reference_ms": 1200,
+    "speedup": -0.878333330154419,
+    "refinement_ms": 561,
+    "refinement_attempts": 3,
+    "accepted_replacements": 2,
+    "suspicious_regions_before": 3,
+    "suspicious_regions_after": 3,
+    "mean_confidence_before": 0.8316319584846497,
+    "mean_confidence_after": 0.8345601558685303,
+    "visible_result": "The top text changed into different gibberish while RUDE and joined words remained incorrect."
+  },
+  "decision": "Remove the candidate completely. Repeating the same OCR engine on local enhanced crops produced correlated errors, no measurable quality gain, and unacceptable latency."
+}
