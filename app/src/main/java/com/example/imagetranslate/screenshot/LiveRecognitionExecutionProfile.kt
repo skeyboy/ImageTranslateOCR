@@ -26,6 +26,7 @@ internal enum class LivePatchRenderingMode {
 }
 
 internal enum class LivePatchBackgroundMode {
+    ADAPTIVE,
     THEME_SURFACE,
     BLUR_TINT
 }
@@ -39,7 +40,7 @@ internal data class LiveRecognitionExecutionProfile(
         val CURRENT = LiveRecognitionExecutionProfile(
             contextProfile = LiveDifferentialContextProfile.ACCURACY,
             renderingMode = LivePatchRenderingMode.PARALLEL,
-            backgroundMode = LivePatchBackgroundMode.BLUR_TINT
+            backgroundMode = LivePatchBackgroundMode.ADAPTIVE
         )
 
         val CANDIDATE = LiveRecognitionExecutionProfile(

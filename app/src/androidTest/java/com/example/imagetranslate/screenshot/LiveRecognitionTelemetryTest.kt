@@ -29,6 +29,10 @@ class LiveRecognitionTelemetryTest {
             renderingMode = LivePatchRenderingMode.PARALLEL,
             backgroundMode = LivePatchBackgroundMode.BLUR_TINT,
             backgroundDetailRetentionRatio = 0.03f,
+            renderedTrackCacheHitCount = 4,
+            renderedTrackCacheMissCount = 3,
+            themeSurfacePatchCount = 5,
+            blurTintPatchCount = 2,
             sourceCoverage = LiveCoverageMetrics(10, 1_200L, 10_000L, 0.12f),
             patchCoverage = LiveCoverageMetrics(8, 2_000L, 10_000L, 0.2f),
             recognitionAndTranslationMs = 620L,
@@ -62,6 +66,10 @@ class LiveRecognitionTelemetryTest {
         assertEquals("PARALLEL", json.getString("rendering_mode"))
         assertEquals("BLUR_TINT", json.getString("background_mode"))
         assertEquals(0.03, json.getDouble("background_detail_retention_ratio"), 0.0001)
+        assertEquals(4, json.getInt("rendered_track_cache_hits"))
+        assertEquals(3, json.getInt("rendered_track_cache_misses"))
+        assertEquals(5, json.getInt("theme_surface_patches"))
+        assertEquals(2, json.getInt("blur_tint_patches"))
         assertTrue(json.has("registration_confidence"))
     }
 }

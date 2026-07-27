@@ -1,0 +1,63 @@
+{
+  "schema": 1,
+  "event": "live_semantic_quality",
+  "device": {
+    "serial": "192.168.0.46:42233",
+    "model": "23113RKC6C",
+    "android": 16,
+    "viewport": "1440x3200"
+  },
+  "sample_count": 5,
+  "mean_cer": 0.0,
+  "mean_wer": 0.0,
+  "mean_translation_similarity": 1.0,
+  "exact_translation_rate": 1.0,
+  "mean_bounds_iou": 0.8912412524,
+  "samples": [
+    {
+      "id": "wikipedia",
+      "cer": 0.0,
+      "wer": 0.0,
+      "translation_similarity": 1.0,
+      "bounds_iou": 0.8828140497,
+      "actual_ocr": "Welcome to Wikipedia",
+      "actual_translation": "欢迎来到维基百科"
+    },
+    {
+      "id": "save",
+      "cer": 0.0,
+      "wer": 0.0,
+      "translation_similarity": 1.0,
+      "bounds_iou": 0.9121954441,
+      "actual_ocr": "Save changes",
+      "actual_translation": "保存更改"
+    },
+    {
+      "id": "privacy",
+      "cer": 0.0,
+      "wer": 0.0,
+      "translation_similarity": 1.0,
+      "bounds_iou": 0.9824447036,
+      "actual_ocr": "Privacy and security",
+      "actual_translation": "隐私和安全"
+    },
+    {
+      "id": "open-source",
+      "cer": 0.0,
+      "wer": 0.0,
+      "translation_similarity": 1.0,
+      "bounds_iou": 0.8567919731,
+      "actual_ocr": "Open source software",
+      "actual_translation": "开源软件"
+    },
+    {
+      "id": "scroll",
+      "cer": 0.0,
+      "wer": 0.0,
+      "translation_similarity": 1.0,
+      "bounds_iou": 0.8219602704,
+      "actual_ocr": "Scroll and translate",
+      "actual_translation": "滚动并翻译"
+    }
+  ]
+}

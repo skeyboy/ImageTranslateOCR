@@ -35,6 +35,10 @@ internal object LiveRecognitionTelemetry {
         .put("context_profile", metrics.contextProfile.name)
         .put("rendering_mode", metrics.renderingMode.name)
         .put("background_mode", metrics.backgroundMode.name)
+        .put("rendered_track_cache_hits", metrics.renderedTrackCacheHitCount)
+        .put("rendered_track_cache_misses", metrics.renderedTrackCacheMissCount)
+        .put("theme_surface_patches", metrics.themeSurfacePatchCount)
+        .put("blur_tint_patches", metrics.blurTintPatchCount)
         .put(
             "background_detail_retention_ratio",
             metrics.backgroundDetailRetentionRatio.toDouble()
@@ -91,6 +95,10 @@ internal object LiveRecognitionTelemetry {
         .put("context_profile", metrics.contextProfile.name)
         .put("rendering_mode", metrics.renderingMode.name)
         .put("background_mode", metrics.backgroundMode.name)
+        .put("rendered_track_cache_hits", metrics.renderedTrackCacheHitCount)
+        .put("rendered_track_cache_misses", metrics.renderedTrackCacheMissCount)
+        .put("theme_surface_patches", metrics.themeSurfacePatchCount)
+        .put("blur_tint_patches", metrics.blurTintPatchCount)
         .put(
             "background_detail_retention_ratio",
             metrics.backgroundDetailRetentionRatio.toDouble()
@@ -98,5 +106,5 @@ internal object LiveRecognitionTelemetry {
         .put("source_coverage_ratio", metrics.sourceCoverage.coverageRatio.toDouble())
         .put("patch_coverage_ratio", metrics.patchCoverage.coverageRatio.toDouble())
 
-    private const val SCHEMA_VERSION = 4
+    private const val SCHEMA_VERSION = 5
 }

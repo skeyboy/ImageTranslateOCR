@@ -1,0 +1,19 @@
+{
+  "name": "invalid-out-of-bounds",
+  "viewport": { "width": 1080, "height": 2400 },
+  "tracks": [
+    {
+      "id": 91,
+      "text": "This box extends beyond the viewport.",
+      "bounds": { "left": 60, "top": 2350, "right": 900, "bottom": 2450 },
+      "script": "LATIN",
+      "consensusScore": 0.9
+    }
+  ],
+  "expected": {
+    "scene": "UNKNOWN",
+    "minimumGroupCount": 0,
+    "maximumGroupCount": 0,
+    "protectedTrackIds": []
+  }
+}

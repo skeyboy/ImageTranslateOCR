@@ -56,6 +56,14 @@ jq -s '
         reference_rendering_mode: (.[0].reference.rendering_mode // "UNKNOWN"),
         candidate_background_mode: (.[0].candidate.background_mode // "UNKNOWN"),
         reference_background_mode: (.[0].reference.background_mode // "UNKNOWN"),
+        candidate_smart_assist: (.[0].candidate_smart_assist // false),
+        reference_smart_assist: (.[0].reference_smart_assist // false),
+        rendered_track_cache_hits_total:
+            (map(.candidate.rendered_track_cache_hits // 0) | add),
+        rendered_track_cache_misses_total:
+            (map(.candidate.rendered_track_cache_misses // 0) | add),
+        theme_surface_patches_total: (map(.candidate.theme_surface_patches // 0) | add),
+        blur_tint_patches_total: (map(.candidate.blur_tint_patches // 0) | add),
         differential_hit_rate: ((map(select(.candidate.applied_strategy == "DIFFERENTIAL")) |
             length) / length),
         visual_render_pass_rate: ((map(select(.visual_render_pass == true)) | length) / length),

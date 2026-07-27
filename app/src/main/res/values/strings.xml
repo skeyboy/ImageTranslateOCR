@@ -100,7 +100,7 @@
     <string name="active_screenshot_ocr_model_download_failed_wifi">%1$s需要连接 Wi-Fi 后下载</string>
     <string name="active_screenshot_ocr_model_download_failed_unsupported">当前设备无法下载%1$s，请更新 Google Play 服务</string>
     <string name="active_screenshot_scene_group">场景预设</string>
-    <string name="active_screenshot_scene_adaptive">AI 自适应</string>
+    <string name="active_screenshot_scene_adaptive">自动适配</string>
     <string name="active_screenshot_scene_reading">文章阅读</string>
     <string name="active_screenshot_scene_dense_text">密集小字</string>
     <string name="active_screenshot_scene_code">代码文档</string>
@@ -119,6 +119,7 @@
     <string name="active_screenshot_segmentation_adaptive">自动差分</string>
     <string name="active_screenshot_segmentation_full">整屏识别</string>
     <string name="active_screenshot_segmentation_bands">上下分块</string>
+    <string name="active_screenshot_smart_assist">离线智能辅助</string>
     <string name="active_screenshot_minimize">收起识别控制</string>
     <string name="active_screenshot_expand">展开录屏识别</string>
     <string name="active_screenshot_compact_ready">录屏识别</string>

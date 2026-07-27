@@ -1,0 +1,40 @@
+{
+  "name": "settings-menu",
+  "viewport": { "width": 1080, "height": 2400 },
+  "tracks": [
+    {
+      "id": 11,
+      "text": "Display",
+      "bounds": { "left": 72, "top": 220, "right": 310, "bottom": 274 },
+      "script": "LATIN",
+      "consensusScore": 0.96
+    },
+    {
+      "id": 12,
+      "text": "Notifications",
+      "bounds": { "left": 72, "top": 340, "right": 410, "bottom": 394 },
+      "script": "LATIN",
+      "consensusScore": 0.95
+    },
+    {
+      "id": 13,
+      "text": "Privacy",
+      "bounds": { "left": 72, "top": 460, "right": 290, "bottom": 514 },
+      "script": "LATIN",
+      "consensusScore": 0.93
+    },
+    {
+      "id": 14,
+      "text": "About",
+      "bounds": { "left": 72, "top": 580, "right": 250, "bottom": 634 },
+      "script": "LATIN",
+      "consensusScore": 0.97
+    }
+  ],
+  "expected": {
+    "scene": "SETTINGS",
+    "minimumGroupCount": 4,
+    "maximumGroupCount": 4,
+    "protectedTrackIds": []
+  }
+}

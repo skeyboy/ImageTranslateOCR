@@ -1,0 +1,40 @@
+{
+  "name": "mixed-navigation",
+  "viewport": { "width": 1080, "height": 2400 },
+  "tracks": [
+    {
+      "id": 21,
+      "text": "实时翻译",
+      "bounds": { "left": 72, "top": 180, "right": 320, "bottom": 238 },
+      "script": "HAN",
+      "consensusScore": 0.9
+    },
+    {
+      "id": 22,
+      "text": "Offline mode",
+      "bounds": { "left": 72, "top": 310, "right": 390, "bottom": 366 },
+      "script": "LATIN",
+      "consensusScore": 0.94
+    },
+    {
+      "id": 23,
+      "text": "https://example.com/docs",
+      "bounds": { "left": 72, "top": 440, "right": 720, "bottom": 496 },
+      "script": "LATIN",
+      "consensusScore": 0.89
+    },
+    {
+      "id": 24,
+      "text": "模型设置",
+      "bounds": { "left": 72, "top": 570, "right": 310, "bottom": 626 },
+      "script": "HAN",
+      "consensusScore": 0.92
+    }
+  ],
+  "expected": {
+    "scene": "SETTINGS",
+    "minimumGroupCount": 4,
+    "maximumGroupCount": 4,
+    "protectedTrackIds": [23]
+  }
+}

@@ -33,6 +33,7 @@ internal class ActiveScreenCaptureOverlayController(
     initialExperienceMode: LiveOverlayExperienceMode,
     initialCaptureSettings: LiveCaptureSettings,
     initialRecognitionMode: OcrRecognitionMode,
+    initialSmartAssistEnabled: Boolean,
     private val listener: Listener
 ) {
     interface Listener {
@@ -46,6 +47,7 @@ internal class ActiveScreenCaptureOverlayController(
         fun onOcrSettingsOpened()
         fun onOcrRecognitionModeChanged(mode: OcrRecognitionMode)
         fun onOcrModelDownloadRequested(model: OcrModel)
+        fun onSmartAssistEnabledChanged(enabled: Boolean)
     }
 
     private val appContext = context.applicationContext
@@ -69,6 +71,7 @@ internal class ActiveScreenCaptureOverlayController(
     private var experienceMode = initialExperienceMode
     private var captureSettings = initialCaptureSettings
     private var recognitionMode = initialRecognitionMode
+    private var smartAssistEnabled = initialSmartAssistEnabled
     private val ocrModelStates = OcrModel.entries.associateWith {
         OcrModelState.UNKNOWN
     }.toMutableMap()
@@ -677,7 +680,23 @@ internal class ActiveScreenCaptureOverlayController(
                 segmentationMenuId(captureSettings.segmentation)
             )?.isChecked = true
 
+            menu.add(
+                SMART_ASSIST_MENU_GROUP,
+                SMART_ASSIST_MENU_ENABLED,
+                7,
+                R.string.active_screenshot_smart_assist
+            ).apply {
+                isCheckable = true
+                isChecked = smartAssistEnabled
+            }
+
             setOnMenuItemClickListener { item ->
+                if (item.itemId == SMART_ASSIST_MENU_ENABLED) {
+                    smartAssistEnabled = !smartAssistEnabled
+                    item.isChecked = smartAssistEnabled
+                    listener.onSmartAssistEnabledChanged(smartAssistEnabled)
+                    return@setOnMenuItemClickListener true
+                }
                 val selectedRecognitionMode = OcrRecognitionMode.entries.firstOrNull {
                     ocrModeMenuId(it) == item.itemId
                 }
@@ -1051,5 +1070,7 @@ internal class ActiveScreenCaptureOverlayController(
         const val OCR_MODE_MENU_ID_BASE = 900
         const val OCR_MODEL_MENU_GROUP = 10
         const val OCR_MODEL_MENU_ID_BASE = 1000
+        const val SMART_ASSIST_MENU_GROUP = 11
+        const val SMART_ASSIST_MENU_ENABLED = 1101
     }
 }

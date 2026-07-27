@@ -1,0 +1,99 @@
+{
+  "schema": 1,
+  "date": "2026-07-27",
+  "device": {
+    "serial": "192.168.0.46:42233",
+    "model": "23113RKC6C",
+    "android": 16,
+    "viewport": "1440x3200"
+  },
+  "semantic_golden": {
+    "samples": 5,
+    "mean_cer": 0.0,
+    "mean_wer": 0.0,
+    "mean_translation_similarity": 1.0,
+    "exact_translation_rate": 1.0,
+    "mean_bounds_iou": 0.8912412524,
+    "decision": "PASS"
+  },
+  "smart_assist_and_adaptive_background": {
+    "runs": 4,
+    "candidate": "FULL_FRAME + SMART_ASSIST + ADAPTIVE_BACKGROUND",
+    "reference": "FULL_FRAME + NO_SMART_ASSIST + THEME_SURFACE",
+    "visual_render_pass_rate": 1.0,
+    "coverage_pass_rate": 1.0,
+    "patch_coverage_pass_rate": 1.0,
+    "candidate_p50_ms": 1011,
+    "candidate_p90_ms": 1094,
+    "reference_p50_ms": 1059,
+    "reference_p90_ms": 1181,
+    "candidate_render_p50_ms": 124,
+    "reference_render_p50_ms": 118,
+    "theme_surface_patches": 33,
+    "blur_tint_patches": 0,
+    "semantic_quality_evaluated_in_ab": false,
+    "decision": "KEEP_ADAPTIVE_BACKGROUND_AND_KEEP_SMART_ASSIST_OPT_IN"
+  },
+  "strict_default_differential": {
+    "runs": 4,
+    "differential_hits": 0,
+    "full_frame_fallbacks": 4,
+    "fallbacks": {
+      "REGION_PLAN_REJECTED": 2,
+      "EXCESSIVE_DIRTY_GRID": 2
+    },
+    "coverage_pass_rate": 1.0,
+    "patch_coverage_pass_rate": 1.0,
+    "candidate_p50_ms": 1078,
+    "reference_p50_ms": 1055,
+    "speedup_p50": -0.0174588,
+    "rendered_track_cache_hits": 0,
+    "rendered_track_cache_misses": 42,
+    "decision": "KEEP_STRICT_FULL_FRAME_FALLBACK"
+  },
+  "balanced_cache_mechanism": {
+    "runs": 1,
+    "candidate_total_ms": 788,
+    "reference_total_ms": 1046,
+    "speedup_ratio": 0.2466539145,
+    "reused_tracks": 3,
+    "rendered_track_cache_hits": 3,
+    "rendered_track_cache_misses": 7,
+    "area_recall": 0.8094207644,
+    "patch_area_recall": 0.8198288083,
+    "decision": "REJECT_BALANCED_PROFILE_FOR_ACCURACY_REGRESSION"
+  },
+  "final_runtime_smoke": {
+    "candidate": "FULL_FRAME + SMART_ASSIST + ADAPTIVE_BACKGROUND",
+    "reference": "FULL_FRAME + NO_SMART_ASSIST + THEME_SURFACE",
+    "candidate_total_ms": 302,
+    "reference_total_ms": 308,
+    "coverage_pass": true,
+    "patch_coverage_pass": true,
+    "visual_render_pass": true,
+    "theme_surface_patches": 1,
+    "blur_tint_patches": 1,
+    "background_detail_gate_pass": true,
+    "background_performance_gate_pass": true,
+    "decision": "PASS"
+  },
+  "automated_validation": {
+    "app_jvm_tests": "117/117 PASS",
+    "smart_assist_core_tests": "16/16 PASS",
+    "semantic_instrumentation_tests": "1/1 PASS",
+    "debug_apk": "PASS",
+    "android_test_apk": "PASS",
+    "main_apk_adb_install": "PASS",
+    "test_apk_adb_install": "PASS"
+  },
+  "final_decisions": [
+    "KEEP_SEMANTIC_GOLDEN_GATE",
+    "KEEP_GEOMETRIC_WORD_SPACING_REPAIR",
+    "KEEP_TRACK_RENDER_CACHE_WITH_STRICT_IDENTITY",
+    "KEEP_ADAPTIVE_BACKGROUND",
+    "KEEP_SMART_ASSIST_OPT_IN",
+    "KEEP_ACCURACY_PROFILE_AS_DEFAULT",
+    "REJECT_FAKE_TRANSLATION_PROMPTS",
+    "REJECT_RELAXED_DIFFERENTIAL_COVERAGE"
+  ]
+}

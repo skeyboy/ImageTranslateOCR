@@ -1,0 +1,33 @@
+{
+  "name": "reading-article",
+  "viewport": { "width": 1080, "height": 2400 },
+  "tracks": [
+    {
+      "id": 1,
+      "text": "A stable viewport should be translated before optional assistance starts.",
+      "bounds": { "left": 64, "top": 180, "right": 996, "bottom": 236 },
+      "script": "LATIN",
+      "consensusScore": 0.94
+    },
+    {
+      "id": 2,
+      "text": "Context grouping keeps adjacent lines in the same reading paragraph.",
+      "bounds": { "left": 64, "top": 246, "right": 996, "bottom": 302 },
+      "script": "LATIN",
+      "consensusScore": 0.91
+    },
+    {
+      "id": 3,
+      "text": "The deterministic provider remains available when no model can run.",
+      "bounds": { "left": 64, "top": 312, "right": 996, "bottom": 368 },
+      "script": "LATIN",
+      "consensusScore": 0.9
+    }
+  ],
+  "expected": {
+    "scene": "READING",
+    "minimumGroupCount": 1,
+    "maximumGroupCount": 1,
+    "protectedTrackIds": []
+  }
+}

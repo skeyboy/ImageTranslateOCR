@@ -14,6 +14,8 @@ reference_background="${AB_REFERENCE_BACKGROUND:-THEME_SURFACE}"
 recognition_mode="${AB_RECOGNITION_MODE:-ENGLISH}"
 translation_mode="${AB_TRANSLATION_MODE:-ENGLISH_TO_CHINESE}"
 candidate_first="${AB_CANDIDATE_FIRST:-true}"
+candidate_smart_assist="${AB_CANDIDATE_SMART_ASSIST:-false}"
+reference_smart_assist="${AB_REFERENCE_SMART_ASSIST:-false}"
 visual_output_directory="${AB_VISUAL_OUTPUT_DIR:-}"
 visual_preview=false
 if [[ -n "$visual_output_directory" ]]; then
@@ -76,6 +78,8 @@ sleep "${AB_SETTLE_SECONDS:-1}"
     --es recognition_mode "$recognition_mode" \
     --es translation_mode "$translation_mode" \
     --ez candidate_first "$candidate_first" \
+    --ez candidate_smart_assist "$candidate_smart_assist" \
+    --ez reference_smart_assist "$reference_smart_assist" \
     --ez visual_preview "$visual_preview" >/dev/null
 
 for _ in $(seq 1 120); do

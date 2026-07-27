@@ -14,4 +14,4 @@ dependencyResolutionManagement {
 }
 rootProject.name = "ImageTranslateOCR"
 include(":app")
-
+include(":smart-assist-core")

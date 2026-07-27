@@ -122,6 +122,8 @@ class OneShotScreenCaptureService : Service() {
     private var captureSettings = LiveCaptureSettingsPolicy.default
     @Volatile
     private var recognitionMode = OcrRecognitionMode.AUTO
+    @Volatile
+    private var smartAssistEnabled = LiveSmartAssistSettingsPolicy.DEFAULT_ENABLED
     private val liveProcessorDelegate = lazy {
         BackgroundTranslatedImageProcessor(applicationContext, reuseResources = true)
     }
@@ -164,11 +166,13 @@ class OneShotScreenCaptureService : Service() {
         experienceMode = resolvedExperienceMode()
         captureSettings = LiveCaptureSettingsPreferences.get(this)
         recognitionMode = LiveOcrRecognitionPreferences.get(this)
+        smartAssistEnabled = LiveSmartAssistPreferences.isEnabled(this)
         overlayController = ActiveScreenCaptureOverlayController(
             this,
             experienceMode,
             captureSettings,
             recognitionMode,
+            smartAssistEnabled,
             object : ActiveScreenCaptureOverlayController.Listener {
                 override fun onCapture() {
                     beginCaptureFromUser()
@@ -217,6 +221,10 @@ class OneShotScreenCaptureService : Service() {
 
                 override fun onOcrModelDownloadRequested(model: OcrModel) {
                     downloadOcrModel(model)
+                }
+
+                override fun onSmartAssistEnabledChanged(enabled: Boolean) {
+                    applySmartAssistEnabled(enabled)
                 }
             }
         )
@@ -771,6 +779,7 @@ class OneShotScreenCaptureService : Service() {
                 val activeMode = translationMode
                 val activeRecognitionMode = recognitionMode
                 val activeExperienceMode = experienceMode
+                val activeSmartAssistEnabled = smartAssistEnabled
                 val result = withTimeout(LiveCaptureTimingPolicy.TRANSLATION_TIMEOUT_MS) {
                     translationMutex.withLock {
                         if (generation != captureGeneration.get()) {
@@ -787,7 +796,8 @@ class OneShotScreenCaptureService : Service() {
                                 activeExperienceMode,
                                 ScreenThemeColorEstimator.DEFAULT_OVERLAY_ALPHA
                             ),
-                            segmentation = captureSettings.segmentation
+                            segmentation = captureSettings.segmentation,
+                            smartAssistEnabled = activeSmartAssistEnabled
                         )
                     }
                 }
@@ -827,7 +837,17 @@ class OneShotScreenCaptureService : Service() {
                             "reused=${result.reusedRegionCount}, " +
                             "recognized=${result.recognizedCount}, patches=${result.patches.size}, " +
                             "ocrTranslateMs=${result.recognitionAndTranslationMs}, " +
-                            "renderMs=${result.renderingMs}"
+                            "renderMs=${result.renderingMs}, " +
+                            "smartAssist=${result.smartAssistApplied}, " +
+                            "assistScene=${result.smartAssistScene}, " +
+                            "assistGroups=${result.smartAssistGroupCount}, " +
+                            "assistProtected=${result.smartAssistProtectedCount}, " +
+                            "assistLayout=${result.smartAssistLayoutHintCount}, " +
+                            "assistMs=${result.smartAssistMs}, " +
+                            "trackCacheHits=${result.renderedTrackCacheHitCount}, " +
+                            "trackCacheMisses=${result.renderedTrackCacheMissCount}, " +
+                            "themePatches=${result.themeSurfacePatchCount}, " +
+                            "blurPatches=${result.blurTintPatchCount}"
                     )
                     Log.i(
                         METRICS_TAG,
@@ -1186,6 +1206,17 @@ class OneShotScreenCaptureService : Service() {
             cancelActiveCapture(keepContinuousMode = true)
             requestScreenshot()
         }
+    }
+
+    private fun applySmartAssistEnabled(enabled: Boolean) {
+        if (smartAssistEnabled == enabled) return
+        smartAssistEnabled = enabled
+        LiveSmartAssistPreferences.setEnabled(this, enabled)
+        Log.i(TAG, "Offline smart assist enabled=$enabled")
+        if (projection == null || !continuousTranslationEnabled.get()) return
+        liveProcessor.clearLiveOverlaySnapshot()
+        cancelActiveCapture(keepContinuousMode = true)
+        requestScreenshot()
     }
 
     private fun reconfigureCaptureForSettings() {

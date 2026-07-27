@@ -31,6 +31,7 @@ android {
 }
 
 dependencies {
+    implementation(project(":smart-assist-core"))
     implementation("androidx.core:core-ktx") {
         version { strictly("1.16.0") }
     }

@@ -152,6 +152,8 @@ class LiveRecognitionBenchmarkActivity : Activity() {
             TranslationMode.ENGLISH_TO_CHINESE
         )
         val candidateRanFirst = intent.getBooleanExtra(EXTRA_CANDIDATE_FIRST, true)
+        val candidateSmartAssist = intent.getBooleanExtra(EXTRA_CANDIDATE_SMART_ASSIST, false)
+        val referenceSmartAssist = intent.getBooleanExtra(EXTRA_REFERENCE_SMART_ASSIST, false)
         val overlayAlpha = ScreenThemeColorEstimator.DEFAULT_OVERLAY_ALPHA
         val candidate = BackgroundTranslatedImageProcessor(applicationContext, reuseResources = true)
         val reference = BackgroundTranslatedImageProcessor(applicationContext, reuseResources = true)
@@ -189,7 +191,8 @@ class LiveRecognitionBenchmarkActivity : Activity() {
                     capturePlan = capturePlan,
                     overlayAlpha = overlayAlpha,
                     segmentation = candidateSegmentation,
-                    executionProfile = candidateExecutionProfile
+                    executionProfile = candidateExecutionProfile,
+                    smartAssistEnabled = candidateSmartAssist
                 )
                 referenceResult = reference.translateForOverlay(
                     bitmap = currentBitmap,
@@ -198,7 +201,8 @@ class LiveRecognitionBenchmarkActivity : Activity() {
                     capturePlan = capturePlan,
                     overlayAlpha = overlayAlpha,
                     segmentation = referenceSegmentation,
-                    executionProfile = referenceExecutionProfile
+                    executionProfile = referenceExecutionProfile,
+                    smartAssistEnabled = referenceSmartAssist
                 )
             } else {
                 referenceResult = reference.translateForOverlay(
@@ -208,7 +212,8 @@ class LiveRecognitionBenchmarkActivity : Activity() {
                     capturePlan = capturePlan,
                     overlayAlpha = overlayAlpha,
                     segmentation = referenceSegmentation,
-                    executionProfile = referenceExecutionProfile
+                    executionProfile = referenceExecutionProfile,
+                    smartAssistEnabled = referenceSmartAssist
                 )
                 candidateResult = candidate.translateForOverlay(
                     bitmap = currentBitmap,
@@ -217,7 +222,8 @@ class LiveRecognitionBenchmarkActivity : Activity() {
                     capturePlan = capturePlan,
                     overlayAlpha = overlayAlpha,
                     segmentation = candidateSegmentation,
-                    executionProfile = candidateExecutionProfile
+                    executionProfile = candidateExecutionProfile,
+                    smartAssistEnabled = candidateSmartAssist
                 )
             }
             try {
@@ -271,6 +277,8 @@ class LiveRecognitionBenchmarkActivity : Activity() {
                                 candidateBytes > 0L && referenceBytes > 0L
                         )
                         .put("semantic_quality_evaluated", false)
+                        .put("candidate_smart_assist", candidateSmartAssist)
+                        .put("reference_smart_assist", referenceSmartAssist)
                         .put(
                             "background_render_overhead_ratio",
                             renderOverheadRatio(candidateResult, referenceResult).toDouble()
@@ -381,6 +389,8 @@ class LiveRecognitionBenchmarkActivity : Activity() {
         const val EXTRA_RECOGNITION_MODE = "recognition_mode"
         const val EXTRA_TRANSLATION_MODE = "translation_mode"
         const val EXTRA_CANDIDATE_FIRST = "candidate_first"
+        const val EXTRA_CANDIDATE_SMART_ASSIST = "candidate_smart_assist"
+        const val EXTRA_REFERENCE_SMART_ASSIST = "reference_smart_assist"
         const val EXTRA_VISUAL_PREVIEW = "visual_preview"
         const val CANDIDATE_PREVIEW_FILE = "candidate-preview.png"
         const val REFERENCE_PREVIEW_FILE = "reference-preview.png"

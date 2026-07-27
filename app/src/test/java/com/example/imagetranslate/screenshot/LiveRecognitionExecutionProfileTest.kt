@@ -5,9 +5,13 @@ import org.junit.Test
 
 class LiveRecognitionExecutionProfileTest {
     @Test
-    fun currentProfileUsesValidatedBlurTintBackground() {
+    fun currentProfileSelectsBackgroundFromLocalTexture() {
         assertEquals(
-            LivePatchBackgroundMode.BLUR_TINT,
+            LiveDifferentialContextProfile.ACCURACY,
+            LiveRecognitionExecutionProfile.CURRENT.contextProfile
+        )
+        assertEquals(
+            LivePatchBackgroundMode.ADAPTIVE,
             LiveRecognitionExecutionProfile.CURRENT.backgroundMode
         )
     }

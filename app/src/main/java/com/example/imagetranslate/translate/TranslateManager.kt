@@ -69,15 +69,7 @@ class TranslateManager {
             targetLanguage == TranslateLanguage.ENGLISH && inputText.length <= 12
         val requiresChineseOutput = sourceLanguage == TranslateLanguage.ENGLISH &&
             targetLanguage == TranslateLanguage.CHINESE && inputText.length <= 32
-        if (!isValidTranslation(
-                result,
-                targetLanguage,
-                requiresCompleteEnglish,
-                requiresChineseOutput
-            ) && (requiresCompleteEnglish || requiresChineseOutput)
-        ) {
-            result = translateShortUiTextWithContext(translator, inputText, targetLanguage)
-        } else if (!isValidTranslation(result, targetLanguage) && inputText.length >= 16) {
+        if (!isValidTranslation(result, targetLanguage) && inputText.length >= 16) {
             result = translateInSegments(translator, inputText)
         }
         require(
@@ -91,25 +83,6 @@ class TranslateManager {
             "翻译结果包含异常字符"
         }
         return result
-    }
-
-    private suspend fun translateShortUiTextWithContext(
-        translator: Translator,
-        text: String,
-        targetLanguage: String
-    ): String {
-        val context = if (targetLanguage == TranslateLanguage.ENGLISH) {
-            "界面设置选项：$text"
-        } else {
-            "UI setting option: $text"
-        }
-        val translated = translateWithModel(translator, context).trim()
-        val separatorIndex = maxOf(translated.lastIndexOf(':'), translated.lastIndexOf('：'))
-        return if (separatorIndex >= 0 && separatorIndex < translated.lastIndex) {
-            translated.substring(separatorIndex + 1).trim()
-        } else {
-            translated
-        }
     }
 
     private fun shouldPreserveSourceText(text: String): Boolean {

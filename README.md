@@ -38,6 +38,14 @@ JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" ./gradle
 JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" ./gradlew :app:connectedDebugAndroidTest
 ```
 
+真实 OCR 与翻译语义冒烟门可单独运行；报告会写入设备应用目录的 `files/benchmark/semantic-quality.json`：
+
+```bash
+ANDROID_SERIAL=<device-serial> JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" \
+  ./gradlew :app:connectedDebugAndroidTest \
+  -Pandroid.testInstrumentationRunnerArguments.class=com.example.imagetranslate.screenshot.LiveSemanticGoldenBenchmarkTest
+```
+
 连接实机后，可对同一稳定视口执行差分/分块与整屏识别 A/B。脚本会固定页面和滑动手势、交替执行顺序，并输出单行 JSON 与 P50/P90 汇总：
 
 ```bash
@@ -56,5 +64,9 @@ AB_CANDIDATE=VERTICAL_BANDS ANDROID_SERIAL=<device-serial> scripts/live-recognit
 - 实时录屏识别、差分、缓冲、切分、悬浮交互、性能数据和 Git 实验节点见 [实时屏幕识别与悬浮翻译实验账本](docs/live-screen-translation-experiment-log.md)。
 - OCR、翻译、擦除和译文排版的历史问题、效果截图及提交记录见 [图片文字翻译与替换调校记录](docs/translation-tuning-log.md)。
 - 系统截图监听、主动截屏入口和平台权限边界见 [OCR 与截图识别完整报告](docs/ocr-and-screenshot-recognition-complete-report.md)。
+- 可选、离线优先的智能复核、上下文增强和外部自动操作实验路线见 [离线优先智能辅助规划实施文档](docs/offline-smart-assist-implementation-plan.md)。
+- 已完成的 Library First M0/M1 范围、测试和性能基线见 [Smart Assist Core M0/M1 实施报告](docs/smart-assist-core-m0-m1-implementation-report.md)。
+- 悬浮窗“离线智能辅助”开关、宿主 Adapter 和回退行为见 [离线智能辅助 App 接入报告](docs/smart-assist-app-integration-report.md)。
+- Google 式屏幕翻译能力边界、语义黄金门、Track 缓存和自适应背景实测见 [实时屏幕识别与悬浮翻译实验账本](docs/live-screen-translation-experiment-log.md#2026-07-27google-式屏幕翻译优化语义门与-track-缓存)。
 
 后续修改实时屏幕识别链路时，必须同步更新实验账本，记录基线 Git、实验代码 Git、设备与配置、自动化和实机数据、证据路径以及保留/部分保留/回退结论。

@@ -50,6 +50,25 @@ data class RecognizedText(
     val recognizerScript: RecognizerScript = RecognizerScript.CHINESE
 )
 
+internal object OcrWordSpacingPolicy {
+    fun shouldInsertSeparator(
+        previousText: String,
+        currentText: String,
+        horizontalGap: Int,
+        lineHeight: Int
+    ): Boolean {
+        val previous = previousText.lastOrNull { !it.isWhitespace() } ?: return false
+        val current = currentText.firstOrNull { !it.isWhitespace() } ?: return false
+        val hasLatinWordBoundaries = previous.isLatinLetterOrDigit() &&
+            current.isLatinLetterOrDigit()
+        val minimumGap = maxOf(1, (lineHeight.coerceAtLeast(1) * 0.02f).toInt())
+        return hasLatinWordBoundaries && horizontalGap >= minimumGap
+    }
+
+    private fun Char.isLatinLetterOrDigit(): Boolean = isDigit() ||
+        this in 'A'..'Z' || this in 'a'..'z'
+}
+
 internal class OCRManager(context: Context) {
     private data class OcrCandidate(
         val result: RecognizedText,
@@ -859,11 +878,12 @@ internal class OCRManager(context: Context) {
         previous: ElementCandidate,
         current: ElementCandidate,
         lineHeight: Int
-    ): Boolean {
-        val containsLatin = previous.text.any { it.isLetterOrDigit() && !isHanCharacter(it) } ||
-            current.text.any { it.isLetterOrDigit() && !isHanCharacter(it) }
-        return containsLatin && current.bounds.left - previous.bounds.right > lineHeight * 0.08f
-    }
+    ): Boolean = OcrWordSpacingPolicy.shouldInsertSeparator(
+        previousText = previous.text,
+        currentText = current.text,
+        horizontalGap = current.bounds.left - previous.bounds.right,
+        lineHeight = lineHeight
+    )
 
     private fun createInvertedBitmap(bitmap: Bitmap): Bitmap {
         val output = createBitmap(bitmap.width, bitmap.height)
