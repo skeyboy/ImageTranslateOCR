@@ -62,6 +62,8 @@ internal data class BackgroundTranslatedOverlayResult(
     val contextProfile: LiveDifferentialContextProfile =
         LiveDifferentialContextProfile.BALANCED,
     val renderingMode: LivePatchRenderingMode = LivePatchRenderingMode.SEQUENTIAL,
+    val backgroundMode: LivePatchBackgroundMode = LivePatchBackgroundMode.THEME_SURFACE,
+    val backgroundDetailRetentionRatio: Float = 0f,
     val differentialFallbackReason: String? = null,
     val recognitionAndTranslationMs: Long = 0L,
     val renderingMs: Long = 0L
@@ -82,6 +84,8 @@ internal data class BackgroundTranslatedOverlayResult(
         differentialFallbackReason = differentialFallbackReason,
         contextProfile = contextProfile,
         renderingMode = renderingMode,
+        backgroundMode = backgroundMode,
+        backgroundDetailRetentionRatio = backgroundDetailRetentionRatio,
         sourceCoverage = sourceCoverage,
         patchCoverage = patchCoverage,
         recognitionAndTranslationMs = recognitionAndTranslationMs,
@@ -128,6 +132,11 @@ private data class DifferentialTranslationBatch(
 private data class TranslationOutcome(
     val region: BackgroundImageRegion? = null,
     val failed: Boolean = false
+)
+
+private data class RenderedOverlayPatch(
+    val patch: ScreenTranslationPatch,
+    val backgroundDetailRetentionRatio: Float
 )
 
 private data class BackgroundTextStyle(
@@ -285,9 +294,17 @@ internal class BackgroundTranslatedImageProcessor(
                 regions = batch.regions,
                 fallbackSurface = fallbackSurface,
                 overlayAlpha = overlayAlpha,
-                renderingMode = executionProfile.renderingMode
+                renderingMode = executionProfile.renderingMode,
+                backgroundMode = executionProfile.backgroundMode
             )
-            val patches = mergeOverlappingPatches(renderedPatches)
+            val patches = mergeOverlappingPatches(renderedPatches.map(RenderedOverlayPatch::patch))
+            val renderedArea = renderedPatches.sumOf { rendered ->
+                rendered.patch.bounds.width().toLong() * rendered.patch.bounds.height()
+            }.coerceAtLeast(1L)
+            val backgroundDetailRetentionRatio = renderedPatches.sumOf { rendered ->
+                val area = rendered.patch.bounds.width().toLong() * rendered.patch.bounds.height()
+                rendered.backgroundDetailRetentionRatio.toDouble() * area
+            }.toFloat() / renderedArea.toFloat()
             val translatedBounds = batch.regions.map { region ->
                 region.source.bounds.toCoverageBounds()
             }
@@ -325,6 +342,8 @@ internal class BackgroundTranslatedImageProcessor(
                 restoredBoundaryTrackCount = differential?.restoredBoundaryTrackCount ?: 0,
                 contextProfile = executionProfile.contextProfile,
                 renderingMode = executionProfile.renderingMode,
+                backgroundMode = executionProfile.backgroundMode,
+                backgroundDetailRetentionRatio = backgroundDetailRetentionRatio,
                 differentialFallbackReason = if (
                     segmentation == LiveRecognitionSegmentation.ADAPTIVE &&
                     capturePlan != null && differential == null
@@ -711,15 +730,22 @@ internal class BackgroundTranslatedImageProcessor(
         regions: List<BackgroundImageRegion>,
         fallbackSurface: Int,
         overlayAlpha: Float,
-        renderingMode: LivePatchRenderingMode
-    ): List<ScreenTranslationPatch> = when (renderingMode) {
+        renderingMode: LivePatchRenderingMode,
+        backgroundMode: LivePatchBackgroundMode
+    ): List<RenderedOverlayPatch> = when (renderingMode) {
         LivePatchRenderingMode.SEQUENTIAL -> regions.mapNotNull { region ->
-            createOverlayPatch(bitmap, region, fallbackSurface, overlayAlpha)
+            createOverlayPatch(bitmap, region, fallbackSurface, overlayAlpha, backgroundMode)
         }
         LivePatchRenderingMode.PARALLEL -> coroutineScope {
             regions.map { region ->
                 async(Dispatchers.Default) {
-                    createOverlayPatch(bitmap, region, fallbackSurface, overlayAlpha)
+                    createOverlayPatch(
+                        bitmap,
+                        region,
+                        fallbackSurface,
+                        overlayAlpha,
+                        backgroundMode
+                    )
                 }
             }.awaitAll().filterNotNull()
         }
@@ -840,8 +866,9 @@ internal class BackgroundTranslatedImageProcessor(
         bitmap: Bitmap,
         region: BackgroundImageRegion,
         fallbackSurface: Int,
-        overlayAlpha: Float
-    ): ScreenTranslationPatch? {
+        overlayAlpha: Float,
+        backgroundMode: LivePatchBackgroundMode
+    ): RenderedOverlayPatch? {
         val sourceBounds = region.source.bounds.clampedTo(bitmap) ?: return null
         val material = LiveOverlayLayoutPolicy.translationMaterialBounds(
             textBounds = LivePatchBounds(
@@ -883,6 +910,7 @@ internal class BackgroundTranslatedImageProcessor(
         )
         val localMaterialBounds = Rect(0, 0, cropBounds.width(), cropBounds.height())
         var output: Bitmap? = null
+        var preparedBackground: LivePatchBackground? = null
         return try {
             val patchBitmap = Bitmap.createBitmap(
                 cropBounds.width(),
@@ -890,6 +918,24 @@ internal class BackgroundTranslatedImageProcessor(
                 Bitmap.Config.ARGB_8888
             )
             output = patchBitmap
+            preparedBackground = if (
+                backgroundMode == LivePatchBackgroundMode.BLUR_TINT && App.isOpenCVReady
+            ) {
+                LivePatchBackgroundComposer.createBlurTintTarget(
+                    source = crop,
+                    themeSurface = localSurface,
+                    overlayAlpha = overlayAlpha
+                ).also { background ->
+                    LivePatchBackgroundComposer.drawCompensatedTarget(
+                        output = patchBitmap,
+                        target = background.bitmap,
+                        source = crop,
+                        overlayAlpha = overlayAlpha
+                    )
+                }
+            } else {
+                null
+            }
             val localRegion = region.copy(
                 source = region.source.copy(bounds = localBounds)
             )
@@ -899,19 +945,25 @@ internal class BackgroundTranslatedImageProcessor(
                 styleSourceBitmap = crop,
                 overlayBackgroundColor = localSurface,
                 overlayAlpha = overlayAlpha,
-                overlayMaterialBounds = localMaterialBounds
+                overlayMaterialBounds = localMaterialBounds,
+                drawOverlayBackground = preparedBackground == null
             )
             if (rendered.isEmpty()) {
                 patchBitmap.recycle()
                 output = null
                 null
             } else {
-                ScreenTranslationPatch(Rect(cropBounds), patchBitmap).also { output = null }
+                RenderedOverlayPatch(
+                    patch = ScreenTranslationPatch(Rect(cropBounds), patchBitmap),
+                    backgroundDetailRetentionRatio =
+                        preparedBackground?.detailRetentionRatio ?: 0f
+                ).also { output = null }
             }
         } catch (_: Exception) {
             output?.takeIf { !it.isRecycled }?.recycle()
             null
         } finally {
+            preparedBackground?.bitmap?.takeIf { !it.isRecycled }?.recycle()
             if (crop !== bitmap && !crop.isRecycled) crop.recycle()
         }
     }
@@ -1105,7 +1157,8 @@ private object BackgroundTranslatedImageRenderer {
         styleSourceBitmap: Bitmap = bitmap,
         overlayBackgroundColor: Int? = null,
         overlayAlpha: Float = ScreenThemeColorEstimator.DEFAULT_OVERLAY_ALPHA,
-        overlayMaterialBounds: Rect? = null
+        overlayMaterialBounds: Rect? = null,
+        drawOverlayBackground: Boolean = true
     ): List<Rect> {
         val canvas = Canvas(bitmap)
         val renderedRegions = mutableListOf<Rect>()
@@ -1128,7 +1181,7 @@ private object BackgroundTranslatedImageRenderer {
                     isDarkBackground = isDarkTheme
                 )
             }
-            if (overlayBackgroundColor != null) {
+            if (overlayBackgroundColor != null && drawOverlayBackground) {
                 drawCompensatedBackground(
                     canvas,
                     bitmap,

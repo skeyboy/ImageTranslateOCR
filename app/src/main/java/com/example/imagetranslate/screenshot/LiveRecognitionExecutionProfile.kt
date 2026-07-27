@@ -25,19 +25,27 @@ internal enum class LivePatchRenderingMode {
     PARALLEL
 }
 
+internal enum class LivePatchBackgroundMode {
+    THEME_SURFACE,
+    BLUR_TINT
+}
+
 internal data class LiveRecognitionExecutionProfile(
     val contextProfile: LiveDifferentialContextProfile,
-    val renderingMode: LivePatchRenderingMode
+    val renderingMode: LivePatchRenderingMode,
+    val backgroundMode: LivePatchBackgroundMode = LivePatchBackgroundMode.THEME_SURFACE
 ) {
     companion object {
         val CURRENT = LiveRecognitionExecutionProfile(
             contextProfile = LiveDifferentialContextProfile.ACCURACY,
-            renderingMode = LivePatchRenderingMode.PARALLEL
+            renderingMode = LivePatchRenderingMode.PARALLEL,
+            backgroundMode = LivePatchBackgroundMode.BLUR_TINT
         )
 
         val CANDIDATE = LiveRecognitionExecutionProfile(
             contextProfile = LiveDifferentialContextProfile.ACCURACY,
-            renderingMode = LivePatchRenderingMode.PARALLEL
+            renderingMode = LivePatchRenderingMode.PARALLEL,
+            backgroundMode = LivePatchBackgroundMode.BLUR_TINT
         )
     }
 }

@@ -54,9 +54,15 @@ jq -s '
         reference_context_profile: (.[0].reference.context_profile // "UNKNOWN"),
         candidate_rendering_mode: (.[0].candidate.rendering_mode // "UNKNOWN"),
         reference_rendering_mode: (.[0].reference.rendering_mode // "UNKNOWN"),
+        candidate_background_mode: (.[0].candidate.background_mode // "UNKNOWN"),
+        reference_background_mode: (.[0].reference.background_mode // "UNKNOWN"),
         differential_hit_rate: ((map(select(.candidate.applied_strategy == "DIFFERENTIAL")) |
             length) / length),
         visual_render_pass_rate: ((map(select(.visual_render_pass == true)) | length) / length),
+        background_detail_gate_pass_rate:
+            ((map(select(.background_detail_gate_pass == true)) | length) / length),
+        background_performance_gate_pass_rate:
+            ((map(select(.background_performance_gate_pass == true)) | length) / length),
         semantic_quality_evaluated: all(.semantic_quality_evaluated == true),
         coverage_pass_rate: ((map(select(.coverage_pass == true)) | length) / length),
         patch_coverage_pass_rate: ((map(select(.patch_coverage_pass == true)) | length) / length),
@@ -69,6 +75,10 @@ jq -s '
         candidate_render_p90_ms: (map(.candidate.render_ms) | percentile(0.9)),
         reference_render_p50_ms: (map(.reference.render_ms) | percentile(0.5)),
         reference_render_p90_ms: (map(.reference.render_ms) | percentile(0.9)),
+        background_render_overhead_p50:
+            (map(.background_render_overhead_ratio) | percentile(0.5)),
+        candidate_background_detail_retention_p50:
+            (map(.candidate.background_detail_retention_ratio // 0) | percentile(0.5)),
         speedup_p50: (map(.speedup_ratio) | percentile(0.5)),
         region_recall_p10: (map(.region_recall) | percentile(0.1)),
         region_recall_p50: (map(.region_recall) | percentile(0.5)),

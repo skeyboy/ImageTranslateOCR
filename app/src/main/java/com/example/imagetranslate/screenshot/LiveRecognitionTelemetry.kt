@@ -34,6 +34,11 @@ internal object LiveRecognitionTelemetry {
         .put("differential_fallback_reason", metrics.differentialFallbackReason)
         .put("context_profile", metrics.contextProfile.name)
         .put("rendering_mode", metrics.renderingMode.name)
+        .put("background_mode", metrics.backgroundMode.name)
+        .put(
+            "background_detail_retention_ratio",
+            metrics.backgroundDetailRetentionRatio.toDouble()
+        )
         .put("source_coverage_ratio", metrics.sourceCoverage.coverageRatio.toDouble())
         .put("source_covered_area_px", metrics.sourceCoverage.coveredAreaPx)
         .put("patch_coverage_ratio", metrics.patchCoverage.coverageRatio.toDouble())
@@ -85,8 +90,13 @@ internal object LiveRecognitionTelemetry {
         .put("differential_fallback_reason", metrics.differentialFallbackReason)
         .put("context_profile", metrics.contextProfile.name)
         .put("rendering_mode", metrics.renderingMode.name)
+        .put("background_mode", metrics.backgroundMode.name)
+        .put(
+            "background_detail_retention_ratio",
+            metrics.backgroundDetailRetentionRatio.toDouble()
+        )
         .put("source_coverage_ratio", metrics.sourceCoverage.coverageRatio.toDouble())
         .put("patch_coverage_ratio", metrics.patchCoverage.coverageRatio.toDouble())
 
-    private const val SCHEMA_VERSION = 3
+    private const val SCHEMA_VERSION = 4
 }

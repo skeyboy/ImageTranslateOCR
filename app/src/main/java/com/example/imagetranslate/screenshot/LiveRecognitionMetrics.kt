@@ -52,6 +52,8 @@ internal data class LiveRecognitionRunMetrics(
     val differentialFallbackReason: String? = null,
     val contextProfile: LiveDifferentialContextProfile = LiveDifferentialContextProfile.BALANCED,
     val renderingMode: LivePatchRenderingMode = LivePatchRenderingMode.SEQUENTIAL,
+    val backgroundMode: LivePatchBackgroundMode = LivePatchBackgroundMode.THEME_SURFACE,
+    val backgroundDetailRetentionRatio: Float = 0f,
     val sourceCoverage: LiveCoverageMetrics,
     val patchCoverage: LiveCoverageMetrics,
     val recognitionAndTranslationMs: Long,

@@ -27,6 +27,8 @@ class LiveRecognitionTelemetryTest {
             differentialFallbackReason = "INSUFFICIENT_TRACK_REUSE",
             contextProfile = LiveDifferentialContextProfile.ACCURACY,
             renderingMode = LivePatchRenderingMode.PARALLEL,
+            backgroundMode = LivePatchBackgroundMode.BLUR_TINT,
+            backgroundDetailRetentionRatio = 0.03f,
             sourceCoverage = LiveCoverageMetrics(10, 1_200L, 10_000L, 0.12f),
             patchCoverage = LiveCoverageMetrics(8, 2_000L, 10_000L, 0.2f),
             recognitionAndTranslationMs = 620L,
@@ -58,6 +60,8 @@ class LiveRecognitionTelemetryTest {
         assertEquals(0.12, json.getDouble("source_coverage_ratio"), 0.0001)
         assertEquals("ACCURACY", json.getString("context_profile"))
         assertEquals("PARALLEL", json.getString("rendering_mode"))
+        assertEquals("BLUR_TINT", json.getString("background_mode"))
+        assertEquals(0.03, json.getDouble("background_detail_retention_ratio"), 0.0001)
         assertTrue(json.has("registration_confidence"))
     }
 }

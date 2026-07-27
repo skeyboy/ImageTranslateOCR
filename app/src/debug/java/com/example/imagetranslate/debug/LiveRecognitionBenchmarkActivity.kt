@@ -13,6 +13,7 @@ import com.example.imagetranslate.ocr.OcrRecognitionMode
 import com.example.imagetranslate.screenshot.BackgroundTranslatedImageProcessor
 import com.example.imagetranslate.screenshot.LiveCoverageBounds
 import com.example.imagetranslate.screenshot.LiveDifferentialContextProfile
+import com.example.imagetranslate.screenshot.LivePatchBackgroundMode
 import com.example.imagetranslate.screenshot.LivePatchRenderingMode
 import com.example.imagetranslate.screenshot.LiveRecognitionExecutionProfile
 import com.example.imagetranslate.screenshot.LiveRecognitionMetricsPolicy
@@ -125,6 +126,10 @@ class LiveRecognitionBenchmarkActivity : Activity() {
             renderingMode = enumExtra(
                 EXTRA_CANDIDATE_RENDERING_MODE,
                 LivePatchRenderingMode.SEQUENTIAL
+            ),
+            backgroundMode = enumExtra(
+                EXTRA_CANDIDATE_BACKGROUND_MODE,
+                LivePatchBackgroundMode.THEME_SURFACE
             )
         )
         val referenceExecutionProfile = LiveRecognitionExecutionProfile(
@@ -135,6 +140,10 @@ class LiveRecognitionBenchmarkActivity : Activity() {
             renderingMode = enumExtra(
                 EXTRA_REFERENCE_RENDERING_MODE,
                 LivePatchRenderingMode.SEQUENTIAL
+            ),
+            backgroundMode = enumExtra(
+                EXTRA_REFERENCE_BACKGROUND_MODE,
+                LivePatchBackgroundMode.THEME_SURFACE
             )
         )
         val recognitionMode = enumExtra(EXTRA_RECOGNITION_MODE, OcrRecognitionMode.ENGLISH)
@@ -262,6 +271,20 @@ class LiveRecognitionBenchmarkActivity : Activity() {
                                 candidateBytes > 0L && referenceBytes > 0L
                         )
                         .put("semantic_quality_evaluated", false)
+                        .put(
+                            "background_render_overhead_ratio",
+                            renderOverheadRatio(candidateResult, referenceResult).toDouble()
+                        )
+                        .put(
+                            "background_detail_gate_pass",
+                            candidateResult.backgroundDetailRetentionRatio <=
+                                MAXIMUM_BACKGROUND_DETAIL_RETENTION_RATIO
+                        )
+                        .put(
+                            "background_performance_gate_pass",
+                            renderOverheadRatio(candidateResult, referenceResult) <=
+                                MAXIMUM_BACKGROUND_RENDER_OVERHEAD_RATIO
+                        )
                         .put("candidate_visual", visualJson(candidateVisual, candidateBytes))
                         .put("reference_visual", visualJson(referenceVisual, referenceBytes))
                         .toString()
@@ -294,6 +317,12 @@ class LiveRecognitionBenchmarkActivity : Activity() {
         .put("changed_outside_patch_samples", evidence.changedOutsidePatchCount)
         .put("artifact_bytes", artifactBytes)
         .put("render_pass", evidence.passesVisualGate && artifactBytes > 0L)
+
+    private fun renderOverheadRatio(
+        candidate: com.example.imagetranslate.screenshot.BackgroundTranslatedOverlayResult,
+        reference: com.example.imagetranslate.screenshot.BackgroundTranslatedOverlayResult
+    ): Float = (candidate.renderingMs - reference.renderingMs).toFloat() /
+        reference.renderingMs.coerceAtLeast(1L).toFloat()
 
     private fun saveVisualArtifact(name: String, bitmap: Bitmap): Long {
         val file = visualArtifactFile(name)
@@ -347,6 +376,8 @@ class LiveRecognitionBenchmarkActivity : Activity() {
         const val EXTRA_REFERENCE_CONTEXT_PROFILE = "reference_context_profile"
         const val EXTRA_CANDIDATE_RENDERING_MODE = "candidate_rendering_mode"
         const val EXTRA_REFERENCE_RENDERING_MODE = "reference_rendering_mode"
+        const val EXTRA_CANDIDATE_BACKGROUND_MODE = "candidate_background_mode"
+        const val EXTRA_REFERENCE_BACKGROUND_MODE = "reference_background_mode"
         const val EXTRA_RECOGNITION_MODE = "recognition_mode"
         const val EXTRA_TRANSLATION_MODE = "translation_mode"
         const val EXTRA_CANDIDATE_FIRST = "candidate_first"
@@ -356,6 +387,8 @@ class LiveRecognitionBenchmarkActivity : Activity() {
         private const val BENCHMARK_TIMEOUT_MS = 120_000L
         private const val PREVIEW_DRAW_SETTLE_MS = 500L
         private const val PREVIEW_HOLD_MS = 5_000L
+        private const val MAXIMUM_BACKGROUND_DETAIL_RETENTION_RATIO = 0.2f
+        private const val MAXIMUM_BACKGROUND_RENDER_OVERHEAD_RATIO = 0.2f
     }
 }
 

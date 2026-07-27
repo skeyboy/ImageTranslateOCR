@@ -9,6 +9,8 @@ candidate_context="${AB_CANDIDATE_CONTEXT:-BALANCED}"
 reference_context="${AB_REFERENCE_CONTEXT:-BALANCED}"
 candidate_rendering="${AB_CANDIDATE_RENDERING:-SEQUENTIAL}"
 reference_rendering="${AB_REFERENCE_RENDERING:-SEQUENTIAL}"
+candidate_background="${AB_CANDIDATE_BACKGROUND:-THEME_SURFACE}"
+reference_background="${AB_REFERENCE_BACKGROUND:-THEME_SURFACE}"
 recognition_mode="${AB_RECOGNITION_MODE:-ENGLISH}"
 translation_mode="${AB_TRANSLATION_MODE:-ENGLISH_TO_CHINESE}"
 candidate_first="${AB_CANDIDATE_FIRST:-true}"
@@ -69,6 +71,8 @@ sleep "${AB_SETTLE_SECONDS:-1}"
     --es reference_context_profile "$reference_context" \
     --es candidate_rendering_mode "$candidate_rendering" \
     --es reference_rendering_mode "$reference_rendering" \
+    --es candidate_background_mode "$candidate_background" \
+    --es reference_background_mode "$reference_background" \
     --es recognition_mode "$recognition_mode" \
     --es translation_mode "$translation_mode" \
     --ez candidate_first "$candidate_first" \
