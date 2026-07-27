@@ -1,0 +1,41 @@
+{
+  "schema": 2,
+  "event": "live_recognition_track_aware_matrix",
+  "date": "2026-07-27",
+  "baseline_git": "8b30e0e",
+  "experiment_git": "6950fe3",
+  "device": {
+    "model": "23113RKC6C",
+    "android": 16,
+    "resolution": "1440x3200",
+    "adb_serial": "8c9cf729"
+  },
+  "runs": 30,
+  "differential_hit_rate": 0.5333333333,
+  "coverage_pass_rate": 1.0,
+  "decisions": {
+    "KEEP_CANDIDATE": 20,
+    "NO_MEANINGFUL_SPEEDUP": 10
+  },
+  "candidate_p50_ms": 1049,
+  "candidate_p90_ms": 1248,
+  "reference_p50_ms": 1290,
+  "reference_p90_ms": 1466,
+  "speedup_p50": 0.1390489936,
+  "region_recall_p10": 0.9090909362,
+  "region_recall_p50": 1.0,
+  "area_recall_p10": 0.8210824728,
+  "area_recall_p50": 0.9155059457,
+  "restored_boundary_tracks_total": 4,
+  "fallback_reasons": {
+    "CAPTURE_PLAN_REJECTED": 8,
+    "EXCESSIVE_DIRTY_GRID": 2,
+    "INEFFICIENT_SHORT_SCROLL_ROI": 4,
+    "NONE": 16
+  },
+  "evidence": [
+    "live-recognition-track-aware-intro-2026-07-27.jsonl",
+    "live-recognition-track-aware-variables-2026-07-27.jsonl",
+    "live-recognition-track-aware-generics-2026-07-27.jsonl"
+  ]
+}

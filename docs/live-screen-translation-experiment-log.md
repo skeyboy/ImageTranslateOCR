@@ -405,6 +405,28 @@ sequenceDiagram
 
 ## 10. 实验追加记录
 
+### 2026-07-27：脏区网格、Track ID、续接 ROI 与宿主入口恢复
+
+- 状态：部分保留
+- 基线 Git：`8b30e0e docs: record A/B interaction fix`
+- 实验代码 Git：`6950fe3 perf: add track-aware differential OCR`
+- 记录 Git：由本次文档提交建立
+- 回退 Git：无；串行双 ROI、无条件扩大 ROI 和缺少脏区一致性门的中间方案未保留
+- 假设：滚动后漏译主要来自单一滚入 ROI 裁断段落、滚出边缘的部分可见 Track 被丢弃，以及错误位移估计仍进入差分。低分辨率脏区网格、稳定 Track ID、边缘续接 ROI 和同帧并行 OCR 可以在保留速度收益的同时改善覆盖。
+- 修改范围：48×80 亮度网格与 12×20 脏区检测；最多三个 ROI 的上下文规划；文字块 Track ID 延续、候选优先合并和已验证边界 Track 补回；主 ROI/续接 ROI 并行 OCR；短滚动大 ROI、脏区比例超过 40%、捕获计划异常时整屏回退；结构化回退原因和 ROI/Track 指标；批量脚本 P10/P50/P90、命中率和结果落盘；宿主 App 的“开启识别悬浮窗”从底部面板移到标题下方常驻区域。
+- 设备与系统：Xiaomi `23113RKC6C`，Android 16，1440×3200，USB ADB `8c9cf729`；A/B 为纵向亮色模式，宿主入口额外验证竖屏和横屏。
+- 页面与固定操作：Rust Book Introduction 中等滚动 10 次；Variables and Mutability 短滚动 10 次；Generics Syntax 页面大滑动/错误注册保护 10 次；每组候选和参考交替先运行。
+- 悬浮配置：英文 OCR、英译中、候选 `ADAPTIVE`，参考 `FULL_FRAME`。
+- 自动化结果：JVM 全量测试通过；Debug/AndroidTest 构建通过；主/测试 APK 均 ADB 覆盖安装；仪器测试 `19/19` 通过；宿主入口经 UIAutomator 确认可见、可点击，点击后 `OneShotScreenCaptureService` 进入前台并显示悬浮条；横屏入口仍可见。
+- 对照组数据：30 次整屏参考 P50 `1290ms`、P90 `1466ms`。
+- 实验组数据：候选 P50 `1049ms`、P90 `1248ms`，整体 P50 提速 `13.90%`；差分命中 `16/30`，其余 14 次自动回退；区域召回 P10 `90.91%`、P50 `100%`，面积召回 P10 `82.11%`、P50 `91.55%`，覆盖门通过 `30/30`；Track 边界补回共 4 次。
+- 正确性观察：Introduction 10/10 通过；短滚动初版有 2 次约 75% 面积召回，增加“小位移且 ROI 超过 58%”回退门后复测 10/10 通过；Generics 页面运动估计把大滑动误判为约 271px，脏单元达到 85，新增 40% 脏区比例门后 10/10 回退整屏并保持 100% 覆盖。
+- 性能观察：续接 ROI 串行执行时 P50 提速只有 `2.75%`，因此不保留；两个裁剪并行后同场景小样本 P50 提速约 `19.88%`，最终 30 次混合场景 P50 提速 `13.90%`。安全回退场景不追求候选速度优势。
+- 截图/视频/日志：汇总见 [`experiments/live-recognition-track-aware-summary-2026-07-27.json`](experiments/live-recognition-track-aware-summary-2026-07-27.json)；原始结果见 [`experiments/live-recognition-track-aware-intro-2026-07-27.jsonl`](experiments/live-recognition-track-aware-intro-2026-07-27.jsonl)、[`experiments/live-recognition-track-aware-variables-2026-07-27.jsonl`](experiments/live-recognition-track-aware-variables-2026-07-27.jsonl)、[`experiments/live-recognition-track-aware-generics-2026-07-27.jsonl`](experiments/live-recognition-track-aware-generics-2026-07-27.jsonl)。
+- 风险与异常：整屏 ML Kit 仍只是自动参考，不是人工黄金真值；面积召回 P10 `82.11%` 达到当前 80% 自动门但未达到上一阶段提出的 90% 产品目标，因此本轮只能部分保留，不能放宽回退条件。当前 A/B 尚未覆盖暗黑模式和横屏正文识别。
+- 决策及原因：保留网格、Track、续接 ROI、并行识别、结构化指标、三类回退门和宿主常驻入口；不保留串行双 ROI，也不为了命中率绕过捕获计划或脏区一致性检查。相对旧差分约 78% 面积召回已改善，且 30/30 通过当前覆盖门，但继续以整屏回退保护尾部场景。
+- 下一步：建立人工标注黄金视口，优先把面积召回 P10 提升到至少 90%；补充横屏正文和暗黑页面各 10 次矩阵，并把 `comparedCellCount` 纳入遥测以继续校准 40% 脏区门。
+
 ### 2026-07-26：A/B 后 UI 无法继续交互
 
 - 状态：保留
@@ -490,11 +512,11 @@ sequenceDiagram
 
 ## 11. 当前实验基线
 
-截至 2026-07-26，本轮结束状态：
+截至 2026-07-27，本轮结束状态：
 
 | 项目 | 状态 |
 | --- | --- |
-| 代码节点 | `b4565b0` |
+| 代码节点 | `6950fe3` |
 | 默认配置 | 自适应 / 高频 / 单缓冲 / 自动差分 |
 | 主 APK | 已通过 ADB 覆盖安装 |
 | 测试 APK | 已通过 ADB 覆盖安装 |
@@ -502,4 +524,4 @@ sequenceDiagram
 | 仪器测试 | 19/19 通过（排除系统录屏授权入口用例） |
 | 录屏会话 | 验证结束后关闭 |
 | 无障碍增强 | 验证结束后关闭 |
-| 当前推荐下一项 | 30 次多场景基线 + 脏区网格/Track ID/ROI 上下文 A/B |
+| 当前推荐下一项 | 人工黄金视口 + 横屏/暗黑矩阵，将面积召回 P10 提升到 90% |
