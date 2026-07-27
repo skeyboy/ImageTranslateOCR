@@ -26,6 +26,12 @@ internal object LiveRecognitionTelemetry {
         .put("patches", metrics.patchCount)
         .put("failed", metrics.failedCount)
         .put("reused", metrics.reusedRegionCount)
+        .put("recognition_regions", metrics.recognitionRegionCount)
+        .put("recognition_area_ratio", metrics.recognitionAreaRatio.toDouble())
+        .put("dirty_cells", metrics.dirtyCellCount)
+        .put("boundary_tracks", metrics.boundaryTrackCount)
+        .put("restored_boundary_tracks", metrics.restoredBoundaryTrackCount)
+        .put("differential_fallback_reason", metrics.differentialFallbackReason)
         .put("source_coverage_ratio", metrics.sourceCoverage.coverageRatio.toDouble())
         .put("source_covered_area_px", metrics.sourceCoverage.coveredAreaPx)
         .put("patch_coverage_ratio", metrics.patchCoverage.coverageRatio.toDouble())
@@ -66,8 +72,14 @@ internal object LiveRecognitionTelemetry {
         .put("patches", metrics.patchCount)
         .put("failed", metrics.failedCount)
         .put("reused", metrics.reusedRegionCount)
+        .put("recognition_regions", metrics.recognitionRegionCount)
+        .put("recognition_area_ratio", metrics.recognitionAreaRatio.toDouble())
+        .put("dirty_cells", metrics.dirtyCellCount)
+        .put("boundary_tracks", metrics.boundaryTrackCount)
+        .put("restored_boundary_tracks", metrics.restoredBoundaryTrackCount)
+        .put("differential_fallback_reason", metrics.differentialFallbackReason)
         .put("source_coverage_ratio", metrics.sourceCoverage.coverageRatio.toDouble())
         .put("patch_coverage_ratio", metrics.patchCoverage.coverageRatio.toDouble())
 
-    private const val SCHEMA_VERSION = 1
+    private const val SCHEMA_VERSION = 2
 }

@@ -65,4 +65,36 @@ class LiveDifferentialRecognitionPolicyTest {
         assertTrue(LiveDifferentialRecognitionPolicy.hasSufficientReuse(13, 10))
         assertTrue(LiveDifferentialRecognitionPolicy.hasSufficientOutput(13, 11))
     }
+
+    @Test
+    fun shortScrollFallsBackWhenDirtyRegionsExpandMostOfTheViewport() {
+        assertFalse(
+            LiveDifferentialRecognitionPolicy.hasEfficientRecognitionArea(
+                shiftY = -581,
+                viewportHeight = 3_200,
+                recognitionAreaRatio = 0.62f
+            )
+        )
+        assertTrue(
+            LiveDifferentialRecognitionPolicy.hasEfficientRecognitionArea(
+                shiftY = -620,
+                viewportHeight = 3_200,
+                recognitionAreaRatio = 0.32f
+            )
+        )
+        assertTrue(
+            LiveDifferentialRecognitionPolicy.hasEfficientRecognitionArea(
+                shiftY = -1_519,
+                viewportHeight = 3_200,
+                recognitionAreaRatio = 0.69f
+            )
+        )
+    }
+
+    @Test
+    fun dirtyGridRejectsAConfidentButVisuallyMisregisteredScroll() {
+        assertFalse(LiveDifferentialRecognitionPolicy.hasReliableDirtyGrid(85, 192))
+        assertTrue(LiveDifferentialRecognitionPolicy.hasReliableDirtyGrid(59, 192))
+        assertFalse(LiveDifferentialRecognitionPolicy.hasReliableDirtyGrid(0, 0))
+    }
 }

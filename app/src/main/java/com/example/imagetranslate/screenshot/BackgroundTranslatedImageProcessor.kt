@@ -53,6 +53,12 @@ internal data class BackgroundTranslatedOverlayResult(
     val patchCoverage: LiveCoverageMetrics,
     val differentialApplied: Boolean = false,
     val reusedRegionCount: Int = 0,
+    val recognitionRegionCount: Int = 0,
+    val recognitionAreaRatio: Float = 1f,
+    val dirtyCellCount: Int = 0,
+    val boundaryTrackCount: Int = 0,
+    val restoredBoundaryTrackCount: Int = 0,
+    val differentialFallbackReason: String? = null,
     val recognitionAndTranslationMs: Long = 0L,
     val renderingMs: Long = 0L
 ) {
@@ -64,6 +70,12 @@ internal data class BackgroundTranslatedOverlayResult(
         patchCount = patches.size,
         failedCount = failedCount,
         reusedRegionCount = reusedRegionCount,
+        recognitionRegionCount = recognitionRegionCount,
+        recognitionAreaRatio = recognitionAreaRatio,
+        dirtyCellCount = dirtyCellCount,
+        boundaryTrackCount = boundaryTrackCount,
+        restoredBoundaryTrackCount = restoredBoundaryTrackCount,
+        differentialFallbackReason = differentialFallbackReason,
         sourceCoverage = sourceCoverage,
         patchCoverage = patchCoverage,
         recognitionAndTranslationMs = recognitionAndTranslationMs,
@@ -73,7 +85,8 @@ internal data class BackgroundTranslatedOverlayResult(
 
 private data class BackgroundImageRegion(
     val source: RecognizedText,
-    val translation: String
+    val translation: String,
+    val trackId: Long? = null
 )
 
 private data class BackgroundTranslationBatch(
@@ -92,12 +105,18 @@ private data class LiveOverlaySnapshot(
     val height: Int,
     val mode: TranslationMode,
     val recognitionMode: OcrRecognitionMode,
-    val regions: List<CachedLiveRegion>
+    val regions: List<CachedLiveRegion>,
+    val luminanceGrid: LiveLuminanceGrid
 )
 
 private data class DifferentialTranslationBatch(
     val batch: BackgroundTranslationBatch,
-    val reusedRegionCount: Int
+    val reusedRegionCount: Int,
+    val recognitionRegionCount: Int,
+    val recognitionAreaRatio: Float,
+    val dirtyCellCount: Int,
+    val boundaryTrackCount: Int,
+    val restoredBoundaryTrackCount: Int
 )
 
 private data class TranslationOutcome(
@@ -127,6 +146,8 @@ internal class BackgroundTranslatedImageProcessor(
     }
     private var closed = false
     private var liveOverlaySnapshot: LiveOverlaySnapshot? = null
+    private var nextTrackId = 1L
+    private var lastDifferentialFallbackReason: String? = null
 
     suspend fun prepareForLiveTranslation() {
         check(!closed) { "Image processor is closed" }
@@ -218,6 +239,7 @@ internal class BackgroundTranslatedImageProcessor(
     ): BackgroundTranslatedOverlayResult {
         check(!closed) { "Image processor is closed" }
         return try {
+            lastDifferentialFallbackReason = null
             val recognitionStartedAt = SystemClock.elapsedRealtime()
             val differential = if (segmentation == LiveRecognitionSegmentation.ADAPTIVE) {
                 capturePlan?.let { plan ->
@@ -279,6 +301,19 @@ internal class BackgroundTranslatedImageProcessor(
                 ),
                 differentialApplied = differential != null,
                 reusedRegionCount = differential?.reusedRegionCount ?: 0,
+                recognitionRegionCount = differential?.recognitionRegionCount ?: 1,
+                recognitionAreaRatio = differential?.recognitionAreaRatio ?: 1f,
+                dirtyCellCount = differential?.dirtyCellCount ?: 0,
+                boundaryTrackCount = differential?.boundaryTrackCount ?: 0,
+                restoredBoundaryTrackCount = differential?.restoredBoundaryTrackCount ?: 0,
+                differentialFallbackReason = if (
+                    segmentation == LiveRecognitionSegmentation.ADAPTIVE &&
+                    capturePlan != null && differential == null
+                ) {
+                    lastDifferentialFallbackReason ?: "UNKNOWN"
+                } else {
+                    null
+                },
                 recognitionAndTranslationMs = recognitionAndTranslationMs,
                 renderingMs = SystemClock.elapsedRealtime() - renderingStartedAt
             ).also { result ->
@@ -456,36 +491,48 @@ internal class BackgroundTranslatedImageProcessor(
         recognitionMode: OcrRecognitionMode,
         capturePlan: ScrollCapturePlan
     ): DifferentialTranslationBatch? {
-        val snapshot = liveOverlaySnapshot ?: return null
+        val snapshot = liveOverlaySnapshot ?: return rejectDifferential("NO_SNAPSHOT")
         if (snapshot.width != bitmap.width || snapshot.height != bitmap.height ||
-            snapshot.mode != mode || snapshot.recognitionMode != recognitionMode ||
-            snapshot.regions.isEmpty() ||
-            !LiveDifferentialRecognitionPolicy.canAttempt(capturePlan, bitmap.height)
-        ) return null
+            snapshot.mode != mode || snapshot.recognitionMode != recognitionMode
+        ) return rejectDifferential("SNAPSHOT_MISMATCH")
+        if (snapshot.regions.isEmpty()) return rejectDifferential("EMPTY_SNAPSHOT")
+        if (!LiveDifferentialRecognitionPolicy.canAttempt(capturePlan, bitmap.height)) {
+            return rejectDifferential("CAPTURE_PLAN_REJECTED")
+        }
 
         val shiftY = capturePlan.contentShiftY
         val contentTop = (bitmap.height * LIVE_CONTENT_TOP_RATIO).toInt()
         val contentBottom = (bitmap.height * LIVE_CONTENT_BOTTOM_RATIO).toInt()
-        val overlapMargin = maxOf(DIFFERENTIAL_MINIMUM_MARGIN_PX, bitmap.height / 18)
-        val recognitionBounds = if (shiftY < 0) {
-            Rect(
-                0,
-                (contentBottom + shiftY - overlapMargin).coerceAtLeast(contentTop),
-                bitmap.width,
-                contentBottom
+        val hasClippedContinuation = snapshot.regions.any { cached ->
+            val shiftedBounds = Rect(cached.region.source.bounds).apply { offset(0, shiftY) }
+            shiftedBounds.bottom > contentTop && shiftedBounds.top < contentBottom &&
+                (shiftedBounds.top < contentTop || shiftedBounds.bottom > contentBottom)
+        }
+        val continuationBounds = if (hasClippedContinuation) {
+            val continuationHeight = maxOf(
+                DIFFERENTIAL_MINIMUM_CONTINUATION_PX,
+                ((contentBottom - contentTop) * MAXIMUM_CONTINUATION_HEIGHT_RATIO).toInt()
+            )
+            listOf(
+                if (shiftY < 0) {
+                    LiveDifferentialBounds(
+                        0,
+                        contentTop,
+                        bitmap.width,
+                        (contentTop + continuationHeight).coerceAtMost(contentBottom)
+                    )
+                } else {
+                    LiveDifferentialBounds(
+                        0,
+                        (contentBottom - continuationHeight).coerceAtLeast(contentTop),
+                        bitmap.width,
+                        contentBottom
+                    )
+                }
             )
         } else {
-            Rect(
-                0,
-                contentTop,
-                bitmap.width,
-                (contentTop + shiftY + overlapMargin).coerceAtMost(contentBottom)
-            )
+            emptyList()
         }
-        if (recognitionBounds.height() <= 0 ||
-            recognitionBounds.height() > bitmap.height * MAXIMUM_DIFFERENTIAL_ROI_RATIO
-        ) return null
-
         val expectedSurvivors = snapshot.regions.mapNotNull { cached ->
             val shiftedBounds = Rect(cached.region.source.bounds).apply { offset(0, shiftY) }
             if (shiftedBounds.left < 0 || shiftedBounds.top < contentTop ||
@@ -509,39 +556,127 @@ internal class BackgroundTranslatedImageProcessor(
                 expectedSurvivorCount = expectedSurvivors.size,
                 matchedCount = shifted.size
             )
-        ) return null
+        ) return rejectDifferential("INSUFFICIENT_TRACK_REUSE")
         val validationRatio = shifted.size.toFloat() / expectedSurvivors.size.coerceAtLeast(1)
 
-        val invalidOutsideRecognitionArea = expectedSurvivors.size - shifted.size > 0 &&
-            shifted.none { Rect.intersects(it.source.bounds, recognitionBounds) }
-        if (invalidOutsideRecognitionArea && validationRatio < STRONG_REUSED_REGION_RATIO) {
-            return null
-        }
-        val reused = shifted.filterNot { Rect.intersects(it.source.bounds, recognitionBounds) }
-        val newBatch = recognizeAndTranslate(
-            bitmap = bitmap,
-            mode = mode,
-            fastOcr = true,
-            recognitionMode = recognitionMode,
-            recognitionBounds = recognitionBounds,
-            preferredRecognitionMode = preferredRecognitionMode(snapshot, recognitionMode)
+        val dirtyGrid = LiveDirtyGridPolicy.detect(
+            previous = snapshot.luminanceGrid,
+            current = captureLuminanceGrid(bitmap),
+            shiftY = shiftY,
+            viewportWidth = bitmap.width,
+            viewportHeight = bitmap.height,
+            contentTop = contentTop,
+            contentBottom = contentBottom
         )
-        val combined = reused + newBatch.regions.filterNot { candidate ->
-            reused.any { existing -> Rect.intersects(existing.source.bounds, candidate.source.bounds) }
+        if (!LiveDifferentialRecognitionPolicy.hasReliableDirtyGrid(
+                dirtyCellCount = dirtyGrid.dirtyCellCount,
+                comparedCellCount = dirtyGrid.comparedCellCount
+            )
+        ) return rejectDifferential("EXCESSIVE_DIRTY_GRID")
+        val regionPlan = LiveDifferentialRegionPlanner.plan(
+            viewportWidth = bitmap.width,
+            viewportHeight = bitmap.height,
+            shiftY = shiftY,
+            dirtyGrid = dirtyGrid,
+            shiftedTracks = shifted.map { it.source.bounds.toDifferentialBounds() },
+            continuationBounds = continuationBounds
+        ) ?: return rejectDifferential("REGION_PLAN_REJECTED")
+        if (!LiveDifferentialRecognitionPolicy.hasEfficientRecognitionArea(
+                shiftY = shiftY,
+                viewportHeight = bitmap.height,
+                recognitionAreaRatio = regionPlan.recognitionAreaRatio
+            )
+        ) return rejectDifferential("INEFFICIENT_SHORT_SCROLL_ROI")
+        val recognitionBounds = regionPlan.recognitionBounds.map { bounds ->
+            Rect(bounds.left, bounds.top, bounds.right, bounds.bottom)
+        }
+
+        val invalidOutsideRecognitionArea = expectedSurvivors.size - shifted.size > 0 &&
+            shifted.none { region ->
+                recognitionBounds.any { bounds -> Rect.intersects(region.source.bounds, bounds) }
+            }
+        if (invalidOutsideRecognitionArea && validationRatio < STRONG_REUSED_REGION_RATIO) {
+            return rejectDifferential("UNVALIDATED_OUTSIDE_ROI")
+        }
+        val boundaryTracks = shifted.filter { region ->
+            recognitionBounds.any { bounds -> Rect.intersects(region.source.bounds, bounds) }
+        }
+        val reused = shifted - boundaryTracks.toSet()
+        val recognitionBatches = coroutineScope {
+            recognitionBounds.map { bounds ->
+                async {
+                    recognizeAndTranslate(
+                        bitmap = bitmap,
+                        mode = mode,
+                        fastOcr = true,
+                        recognitionMode = recognitionMode,
+                        recognitionBounds = bounds,
+                        preferredRecognitionMode = preferredRecognitionMode(
+                            snapshot,
+                            recognitionMode
+                        )
+                    )
+                }
+            }.awaitAll()
+        }
+        val candidates = mutableListOf<BackgroundImageRegion>()
+        recognitionBatches.flatMap(BackgroundTranslationBatch::regions)
+            .sortedWith(compareBy({ it.source.bounds.top }, { it.source.bounds.left }))
+            .forEach { candidate ->
+                if (candidates.none { existing -> sameSegmentedRegion(existing, candidate) }) {
+                    candidates += candidate
+                }
+            }
+        val trackPlan = LiveTrackMergePolicy.plan(
+            boundaryTracks = boundaryTracks.mapNotNull { region ->
+                region.trackId?.let { trackId ->
+                    LiveTrackedRegion(trackId, region.source.bounds.toDifferentialBounds())
+                }
+            },
+            candidates = candidates.map { it.source.bounds.toDifferentialBounds() }
+        )
+        val trackedCandidates = candidates.mapIndexed { index, candidate ->
+            candidate.copy(trackId = trackPlan.candidateTrackIds[index])
+        }
+        val restoredBoundary = boundaryTracks.filter { it.trackId in trackPlan.restoredTrackIds }
+        val combined = mutableListOf<BackgroundImageRegion>()
+        (trackedCandidates + reused + restoredBoundary).forEach { candidate ->
+            if (combined.none { existing ->
+                    LiveTrackMergePolicy.isDuplicate(
+                        existing.source.bounds.toDifferentialBounds(),
+                        candidate.source.bounds.toDifferentialBounds()
+                    )
+                }
+            ) {
+                combined += candidate
+            }
         }
         if (!LiveDifferentialRecognitionPolicy.hasSufficientOutput(
                 snapshotCount = snapshot.regions.size,
                 outputCount = combined.size
             )
-        ) return null
+        ) return rejectDifferential("INSUFFICIENT_OUTPUT")
         return DifferentialTranslationBatch(
             batch = BackgroundTranslationBatch(
-                recognizedCount = reused.size + newBatch.recognizedCount,
-                regions = combined,
-                failedCount = newBatch.failedCount
+                recognizedCount = reused.size + restoredBoundary.size +
+                    recognitionBatches.sumOf(BackgroundTranslationBatch::recognizedCount),
+                regions = combined.sortedWith(
+                    compareBy({ it.source.bounds.top }, { it.source.bounds.left })
+                ).take(MAX_LIVE_TRANSLATION_TEXTS),
+                failedCount = recognitionBatches.sumOf(BackgroundTranslationBatch::failedCount)
             ),
-            reusedRegionCount = reused.size
+            reusedRegionCount = reused.size + restoredBoundary.size,
+            recognitionRegionCount = recognitionBounds.size,
+            recognitionAreaRatio = regionPlan.recognitionAreaRatio,
+            dirtyCellCount = regionPlan.dirtyCellCount,
+            boundaryTrackCount = regionPlan.boundaryTrackCount,
+            restoredBoundaryTrackCount = restoredBoundary.size
         )
+    }
+
+    private fun rejectDifferential(reason: String): DifferentialTranslationBatch? {
+        lastDifferentialFallbackReason = reason
+        return null
     }
 
     private fun preferredRecognitionMode(
@@ -570,12 +705,37 @@ internal class BackgroundTranslatedImageProcessor(
             recognitionMode = recognitionMode,
             regions = regions.mapNotNull { region ->
                 val bounds = region.source.bounds.clampedTo(bitmap) ?: return@mapNotNull null
+                val trackedRegion = if (region.trackId == null) {
+                    region.copy(trackId = nextTrackId++)
+                } else {
+                    region
+                }
                 CachedLiveRegion(
-                    region = region.copy(source = region.source.copy(bounds = Rect(bounds))),
+                    region = trackedRegion.copy(
+                        source = trackedRegion.source.copy(bounds = Rect(bounds))
+                    ),
                     fingerprint = fingerprint(bitmap, bounds)
                 )
-            }
+            },
+            luminanceGrid = captureLuminanceGrid(bitmap)
         )
+    }
+
+    private fun captureLuminanceGrid(bitmap: Bitmap): LiveLuminanceGrid {
+        val values = IntArray(LUMINANCE_GRID_COLUMNS * LUMINANCE_GRID_ROWS)
+        var index = 0
+        repeat(LUMINANCE_GRID_ROWS) { row ->
+            val y = ((row + 0.5f) * bitmap.height / LUMINANCE_GRID_ROWS)
+                .toInt().coerceIn(0, bitmap.height - 1)
+            repeat(LUMINANCE_GRID_COLUMNS) { column ->
+                val x = ((column + 0.5f) * bitmap.width / LUMINANCE_GRID_COLUMNS)
+                    .toInt().coerceIn(0, bitmap.width - 1)
+                val color = bitmap.getPixel(x, y)
+                values[index++] = (Color.red(color) * 54 + Color.green(color) * 183 +
+                    Color.blue(color) * 19) shr 8
+            }
+        }
+        return LiveLuminanceGrid(LUMINANCE_GRID_COLUMNS, LUMINANCE_GRID_ROWS, values)
     }
 
     private fun fingerprint(bitmap: Bitmap, bounds: Rect): IntArray {
@@ -854,9 +1014,11 @@ internal class BackgroundTranslatedImageProcessor(
         const val LOCAL_SURFACE_MINIMUM_SAMPLES = 16
         const val LIVE_CONTENT_TOP_RATIO = 0.08f
         const val LIVE_CONTENT_BOTTOM_RATIO = 0.94f
-        const val DIFFERENTIAL_MINIMUM_MARGIN_PX = 72
-        const val MAXIMUM_DIFFERENTIAL_ROI_RATIO = 0.72f
         const val STRONG_REUSED_REGION_RATIO = 0.72f
+        const val LUMINANCE_GRID_COLUMNS = 48
+        const val LUMINANCE_GRID_ROWS = 80
+        const val DIFFERENTIAL_MINIMUM_CONTINUATION_PX = 96
+        const val MAXIMUM_CONTINUATION_HEIGHT_RATIO = 0.07f
         const val FINGERPRINT_COLUMNS = 6
         const val FINGERPRINT_ROWS = 4
         const val FINGERPRINT_VERTICAL_SEARCH_PX = 32
@@ -878,6 +1040,13 @@ private fun Rect.clampedTo(bitmap: Bitmap): Rect? {
 }
 
 private fun Rect.toCoverageBounds(): LiveCoverageBounds = LiveCoverageBounds(
+    left = left,
+    top = top,
+    right = right,
+    bottom = bottom
+)
+
+private fun Rect.toDifferentialBounds(): LiveDifferentialBounds = LiveDifferentialBounds(
     left = left,
     top = top,
     right = right,

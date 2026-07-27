@@ -5,6 +5,7 @@ run_count="${AB_RUNS:-4}"
 page_url="${AB_PAGE_URL:-https://doc.rust-lang.org/book/ch00-00-introduction.html}"
 page_package="${AB_PAGE_PACKAGE:-com.android.browser}"
 serial="${ANDROID_SERIAL:-}"
+results_file="${AB_RESULTS_FILE:-}"
 
 adb_command=(adb)
 if [[ -n "$serial" ]]; then
@@ -38,12 +39,19 @@ for run in $(seq 1 "$run_count"); do
     fi
 done
 
+if [[ -n "$results_file" ]]; then
+    mkdir -p "$(dirname "$results_file")"
+    cp "$json_lines" "$results_file"
+fi
+
 jq -s '
     def percentile(p): sort | .[((length * p | ceil) - 1)];
     {
         event: "live_recognition_ab_batch",
         runs: length,
         candidate_strategy: (.[0].candidate_strategy // "UNKNOWN"),
+        differential_hit_rate: ((map(select(.candidate.applied_strategy == "DIFFERENTIAL")) |
+            length) / length),
         coverage_pass_rate: ((map(select(.coverage_pass == true)) | length) / length),
         decisions: (group_by(.decision) | map({key: .[0].decision, value: length}) | from_entries),
         candidate_p50_ms: (map(.candidate_total_ms) | percentile(0.5)),
@@ -51,7 +59,15 @@ jq -s '
         reference_p50_ms: (map(.reference_total_ms) | percentile(0.5)),
         reference_p90_ms: (map(.reference_total_ms) | percentile(0.9)),
         speedup_p50: (map(.speedup_ratio) | percentile(0.5)),
+        region_recall_p10: (map(.region_recall) | percentile(0.1)),
         region_recall_p50: (map(.region_recall) | percentile(0.5)),
-        area_recall_p50: (map(.area_recall) | percentile(0.5))
+        area_recall_p10: (map(.area_recall) | percentile(0.1)),
+        area_recall_p50: (map(.area_recall) | percentile(0.5)),
+        recognition_area_ratio_p50: (map(.candidate.recognition_area_ratio // 1) |
+            percentile(0.5)),
+        dirty_cells_p50: (map(.candidate.dirty_cells // 0) | percentile(0.5)),
+        restored_boundary_tracks_total: (map(.candidate.restored_boundary_tracks // 0) | add),
+        fallback_reasons: (map(.candidate.differential_fallback_reason // "NONE") |
+            group_by(.) | map({key: .[0], value: length}) | from_entries)
     }
 ' "$json_lines"

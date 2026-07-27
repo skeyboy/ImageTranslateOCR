@@ -28,6 +28,21 @@ internal object LiveDifferentialRecognitionPolicy {
         return outputCount.toFloat() / snapshotCount >= MINIMUM_OUTPUT_RETENTION_RATIO
     }
 
+    fun hasEfficientRecognitionArea(
+        shiftY: Int,
+        viewportHeight: Int,
+        recognitionAreaRatio: Float
+    ): Boolean {
+        if (viewportHeight <= 0) return false
+        val isShortScroll = abs(shiftY) < viewportHeight * SHORT_SCROLL_MAXIMUM_RATIO
+        return !isShortScroll || recognitionAreaRatio <= SHORT_SCROLL_MAXIMUM_AREA_RATIO
+    }
+
+    fun hasReliableDirtyGrid(dirtyCellCount: Int, comparedCellCount: Int): Boolean {
+        if (comparedCellCount <= 0 || dirtyCellCount < 0) return false
+        return dirtyCellCount.toFloat() / comparedCellCount <= MAXIMUM_DIRTY_CELL_RATIO
+    }
+
     private const val MINIMUM_SHIFT_PX = 80
     private const val MINIMUM_SHIFT_HEIGHT_DIVISOR = 32
     private const val MAXIMUM_SHIFT_RATIO = 0.62f
@@ -42,4 +57,7 @@ internal object LiveDifferentialRecognitionPolicy {
     private const val MINIMUM_REUSED_REGION_COUNT = 3
     private const val MINIMUM_REUSED_REGION_RATIO = 0.72f
     private const val MINIMUM_OUTPUT_RETENTION_RATIO = 0.8f
+    private const val SHORT_SCROLL_MAXIMUM_RATIO = 0.2f
+    private const val SHORT_SCROLL_MAXIMUM_AREA_RATIO = 0.58f
+    private const val MAXIMUM_DIRTY_CELL_RATIO = 0.4f
 }

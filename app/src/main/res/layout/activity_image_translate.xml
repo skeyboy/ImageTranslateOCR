@@ -92,11 +92,28 @@
             app:iconSize="20dp" />
     </LinearLayout>
 
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnCaptureScreenshot"
+        style="@style/Widget.ImageTranslate.Button.Primary"
+        android:layout_width="0dp"
+        android:layout_height="48dp"
+        android:layout_marginStart="20dp"
+        android:layout_marginTop="12dp"
+        android:layout_marginEnd="20dp"
+        android:text="@string/action_capture_screenshot"
+        app:icon="@drawable/ic_screenshot"
+        app:iconGravity="textStart"
+        app:iconPadding="6dp"
+        app:iconSize="19dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/appHeader" />
+
     <androidx.core.widget.NestedScrollView
         android:id="@+id/imageWorkspace"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        android:layout_marginTop="18dp"
+        android:layout_marginTop="12dp"
         android:clipToPadding="false"
         android:fillViewport="true"
         android:overScrollMode="ifContentScrolls"
@@ -106,7 +123,7 @@
         app:layout_constraintBottom_toTopOf="@id/bottomPanel"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/appHeader">
+        app:layout_constraintTop_toBottomOf="@id/btnCaptureScreenshot">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -277,21 +294,9 @@
             android:layout_height="wrap_content"
             android:orientation="vertical">
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnCaptureScreenshot"
-                style="@style/Widget.ImageTranslate.Button.Primary"
-                android:layout_width="match_parent"
-                android:layout_height="48dp"
-                android:text="@string/action_capture_screenshot"
-                app:icon="@drawable/ic_screenshot"
-                app:iconGravity="textStart"
-                app:iconPadding="6dp"
-                app:iconSize="19dp" />
-
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="48dp"
-                android:layout_marginTop="4dp"
                 android:orientation="horizontal">
 
                 <com.google.android.material.switchmaterial.SwitchMaterial
