@@ -4,6 +4,11 @@ set -euo pipefail
 package_name="com.example.imagetranslate"
 component="$package_name/.debug.LiveRecognitionBenchmarkActivity"
 candidate="${AB_CANDIDATE:-ADAPTIVE}"
+reference="${AB_REFERENCE:-FULL_FRAME}"
+candidate_context="${AB_CANDIDATE_CONTEXT:-BALANCED}"
+reference_context="${AB_REFERENCE_CONTEXT:-BALANCED}"
+candidate_rendering="${AB_CANDIDATE_RENDERING:-SEQUENTIAL}"
+reference_rendering="${AB_REFERENCE_RENDERING:-SEQUENTIAL}"
 recognition_mode="${AB_RECOGNITION_MODE:-ENGLISH}"
 translation_mode="${AB_TRANSLATION_MODE:-ENGLISH_TO_CHINESE}"
 candidate_first="${AB_CANDIDATE_FIRST:-true}"
@@ -54,6 +59,11 @@ sleep "${AB_SETTLE_SECONDS:-1}"
     --es baseline_image_path "$baseline_internal" \
     --es current_image_path "$current_internal" \
     --es candidate_segmentation "$candidate" \
+    --es reference_segmentation "$reference" \
+    --es candidate_context_profile "$candidate_context" \
+    --es reference_context_profile "$reference_context" \
+    --es candidate_rendering_mode "$candidate_rendering" \
+    --es reference_rendering_mode "$reference_rendering" \
     --es recognition_mode "$recognition_mode" \
     --es translation_mode "$translation_mode" \
     --ez candidate_first "$candidate_first" >/dev/null

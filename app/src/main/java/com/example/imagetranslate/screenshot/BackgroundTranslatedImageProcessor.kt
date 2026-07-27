@@ -24,6 +24,7 @@ import com.example.imagetranslate.ocr.RecognizerScript
 import com.example.imagetranslate.translate.TranslateManager
 import com.example.imagetranslate.translate.TranslationMode
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -58,6 +59,9 @@ internal data class BackgroundTranslatedOverlayResult(
     val dirtyCellCount: Int = 0,
     val boundaryTrackCount: Int = 0,
     val restoredBoundaryTrackCount: Int = 0,
+    val contextProfile: LiveDifferentialContextProfile =
+        LiveDifferentialContextProfile.BALANCED,
+    val renderingMode: LivePatchRenderingMode = LivePatchRenderingMode.SEQUENTIAL,
     val differentialFallbackReason: String? = null,
     val recognitionAndTranslationMs: Long = 0L,
     val renderingMs: Long = 0L
@@ -76,6 +80,8 @@ internal data class BackgroundTranslatedOverlayResult(
         boundaryTrackCount = boundaryTrackCount,
         restoredBoundaryTrackCount = restoredBoundaryTrackCount,
         differentialFallbackReason = differentialFallbackReason,
+        contextProfile = contextProfile,
+        renderingMode = renderingMode,
         sourceCoverage = sourceCoverage,
         patchCoverage = patchCoverage,
         recognitionAndTranslationMs = recognitionAndTranslationMs,
@@ -235,7 +241,8 @@ internal class BackgroundTranslatedImageProcessor(
         recognitionMode: OcrRecognitionMode = OcrRecognitionMode.AUTO,
         capturePlan: ScrollCapturePlan? = null,
         overlayAlpha: Float = ScreenThemeColorEstimator.DEFAULT_OVERLAY_ALPHA,
-        segmentation: LiveRecognitionSegmentation = LiveRecognitionSegmentation.ADAPTIVE
+        segmentation: LiveRecognitionSegmentation = LiveRecognitionSegmentation.ADAPTIVE,
+        executionProfile: LiveRecognitionExecutionProfile = LiveRecognitionExecutionProfile.CURRENT
     ): BackgroundTranslatedOverlayResult {
         check(!closed) { "Image processor is closed" }
         return try {
@@ -243,7 +250,13 @@ internal class BackgroundTranslatedImageProcessor(
             val recognitionStartedAt = SystemClock.elapsedRealtime()
             val differential = if (segmentation == LiveRecognitionSegmentation.ADAPTIVE) {
                 capturePlan?.let { plan ->
-                    recognizeDifferentialViewport(bitmap, mode, recognitionMode, plan)
+                    recognizeDifferentialViewport(
+                        bitmap,
+                        mode,
+                        recognitionMode,
+                        plan,
+                        executionProfile.contextProfile
+                    )
                 }
             } else {
                 null
@@ -267,9 +280,13 @@ internal class BackgroundTranslatedImageProcessor(
                 ScreenThemeColorEstimator.estimate(bitmap),
                 overlayAlpha
             )
-            val renderedPatches = batch.regions.mapNotNull { region ->
-                createOverlayPatch(bitmap, region, fallbackSurface, overlayAlpha)
-            }
+            val renderedPatches = renderOverlayPatches(
+                bitmap = bitmap,
+                regions = batch.regions,
+                fallbackSurface = fallbackSurface,
+                overlayAlpha = overlayAlpha,
+                renderingMode = executionProfile.renderingMode
+            )
             val patches = mergeOverlappingPatches(renderedPatches)
             val translatedBounds = batch.regions.map { region ->
                 region.source.bounds.toCoverageBounds()
@@ -306,6 +323,8 @@ internal class BackgroundTranslatedImageProcessor(
                 dirtyCellCount = differential?.dirtyCellCount ?: 0,
                 boundaryTrackCount = differential?.boundaryTrackCount ?: 0,
                 restoredBoundaryTrackCount = differential?.restoredBoundaryTrackCount ?: 0,
+                contextProfile = executionProfile.contextProfile,
+                renderingMode = executionProfile.renderingMode,
                 differentialFallbackReason = if (
                     segmentation == LiveRecognitionSegmentation.ADAPTIVE &&
                     capturePlan != null && differential == null
@@ -489,7 +508,8 @@ internal class BackgroundTranslatedImageProcessor(
         bitmap: Bitmap,
         mode: TranslationMode,
         recognitionMode: OcrRecognitionMode,
-        capturePlan: ScrollCapturePlan
+        capturePlan: ScrollCapturePlan,
+        contextProfile: LiveDifferentialContextProfile
     ): DifferentialTranslationBatch? {
         val snapshot = liveOverlaySnapshot ?: return rejectDifferential("NO_SNAPSHOT")
         if (snapshot.width != bitmap.width || snapshot.height != bitmap.height ||
@@ -511,7 +531,7 @@ internal class BackgroundTranslatedImageProcessor(
         val continuationBounds = if (hasClippedContinuation) {
             val continuationHeight = maxOf(
                 DIFFERENTIAL_MINIMUM_CONTINUATION_PX,
-                ((contentBottom - contentTop) * MAXIMUM_CONTINUATION_HEIGHT_RATIO).toInt()
+                ((contentBottom - contentTop) * contextProfile.continuationHeightRatio).toInt()
             )
             listOf(
                 if (shiftY < 0) {
@@ -579,7 +599,8 @@ internal class BackgroundTranslatedImageProcessor(
             shiftY = shiftY,
             dirtyGrid = dirtyGrid,
             shiftedTracks = shifted.map { it.source.bounds.toDifferentialBounds() },
-            continuationBounds = continuationBounds
+            continuationBounds = continuationBounds,
+            maximumRecognitionAreaRatio = contextProfile.maximumRecognitionAreaRatio
         ) ?: return rejectDifferential("REGION_PLAN_REJECTED")
         if (!LiveDifferentialRecognitionPolicy.hasEfficientRecognitionArea(
                 shiftY = shiftY,
@@ -677,6 +698,25 @@ internal class BackgroundTranslatedImageProcessor(
     private fun rejectDifferential(reason: String): DifferentialTranslationBatch? {
         lastDifferentialFallbackReason = reason
         return null
+    }
+
+    private suspend fun renderOverlayPatches(
+        bitmap: Bitmap,
+        regions: List<BackgroundImageRegion>,
+        fallbackSurface: Int,
+        overlayAlpha: Float,
+        renderingMode: LivePatchRenderingMode
+    ): List<ScreenTranslationPatch> = when (renderingMode) {
+        LivePatchRenderingMode.SEQUENTIAL -> regions.mapNotNull { region ->
+            createOverlayPatch(bitmap, region, fallbackSurface, overlayAlpha)
+        }
+        LivePatchRenderingMode.PARALLEL -> coroutineScope {
+            regions.map { region ->
+                async(Dispatchers.Default) {
+                    createOverlayPatch(bitmap, region, fallbackSurface, overlayAlpha)
+                }
+            }.awaitAll().filterNotNull()
+        }
     }
 
     private fun preferredRecognitionMode(
@@ -1018,7 +1058,6 @@ internal class BackgroundTranslatedImageProcessor(
         const val LUMINANCE_GRID_COLUMNS = 48
         const val LUMINANCE_GRID_ROWS = 80
         const val DIFFERENTIAL_MINIMUM_CONTINUATION_PX = 96
-        const val MAXIMUM_CONTINUATION_HEIGHT_RATIO = 0.07f
         const val FINGERPRINT_COLUMNS = 6
         const val FINGERPRINT_ROWS = 4
         const val FINGERPRINT_VERTICAL_SEARCH_PX = 32

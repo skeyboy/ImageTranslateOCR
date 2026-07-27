@@ -82,6 +82,36 @@ class LiveDifferentialRegionPlannerTest {
     }
 
     @Test
+    fun accuracyProfileUsesMoreContextButFallsBackAtASmallerArea() {
+        assertEquals(
+            0.12f,
+            LiveDifferentialContextProfile.ACCURACY.continuationHeightRatio,
+            0.0001f
+        )
+        assertEquals(
+            0.6f,
+            LiveDifferentialContextProfile.ACCURACY.maximumRecognitionAreaRatio,
+            0.0001f
+        )
+        assertTrue(
+            LiveDifferentialContextProfile.ACCURACY.continuationHeightRatio >
+                LiveDifferentialContextProfile.BALANCED.continuationHeightRatio
+        )
+        assertTrue(
+            LiveDifferentialContextProfile.ACCURACY.maximumRecognitionAreaRatio <
+                LiveDifferentialContextProfile.BALANCED.maximumRecognitionAreaRatio
+        )
+        assertEquals(
+            LivePatchRenderingMode.PARALLEL,
+            LiveRecognitionExecutionProfile.CURRENT.renderingMode
+        )
+        assertEquals(
+            LiveDifferentialContextProfile.ACCURACY,
+            LiveRecognitionExecutionProfile.CURRENT.contextProfile
+        )
+    }
+
+    @Test
     fun plannerUsesBoundedContextWhenAGroupedTrackIsTooTall() {
         val plan = LiveDifferentialRegionPlanner.plan(
             viewportWidth = 1_200,

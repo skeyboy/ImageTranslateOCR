@@ -32,6 +32,8 @@ internal object LiveRecognitionTelemetry {
         .put("boundary_tracks", metrics.boundaryTrackCount)
         .put("restored_boundary_tracks", metrics.restoredBoundaryTrackCount)
         .put("differential_fallback_reason", metrics.differentialFallbackReason)
+        .put("context_profile", metrics.contextProfile.name)
+        .put("rendering_mode", metrics.renderingMode.name)
         .put("source_coverage_ratio", metrics.sourceCoverage.coverageRatio.toDouble())
         .put("source_covered_area_px", metrics.sourceCoverage.coveredAreaPx)
         .put("patch_coverage_ratio", metrics.patchCoverage.coverageRatio.toDouble())
@@ -53,6 +55,9 @@ internal object LiveRecognitionTelemetry {
         .put("reference_regions", report.coverage.referenceRegionCount)
         .put("candidate_regions", report.coverage.candidateRegionCount)
         .put("coverage_pass", report.coverage.passesCoverageGate)
+        .put("patch_region_recall", report.patchCoverage.regionRecall.toDouble())
+        .put("patch_area_recall", report.patchCoverage.areaRecall.toDouble())
+        .put("patch_coverage_pass", report.patchCoverage.passesCoverageGate)
         .put("decision", report.decision.name)
         .put("shift_y", report.capturePlan?.contentShiftY ?: 0)
         .put("registration_confidence", report.capturePlan?.confidence?.toDouble())
@@ -78,8 +83,10 @@ internal object LiveRecognitionTelemetry {
         .put("boundary_tracks", metrics.boundaryTrackCount)
         .put("restored_boundary_tracks", metrics.restoredBoundaryTrackCount)
         .put("differential_fallback_reason", metrics.differentialFallbackReason)
+        .put("context_profile", metrics.contextProfile.name)
+        .put("rendering_mode", metrics.renderingMode.name)
         .put("source_coverage_ratio", metrics.sourceCoverage.coverageRatio.toDouble())
         .put("patch_coverage_ratio", metrics.patchCoverage.coverageRatio.toDouble())
 
-    private const val SCHEMA_VERSION = 2
+    private const val SCHEMA_VERSION = 3
 }

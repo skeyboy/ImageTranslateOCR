@@ -50,6 +50,8 @@ internal data class LiveRecognitionRunMetrics(
     val boundaryTrackCount: Int = 0,
     val restoredBoundaryTrackCount: Int = 0,
     val differentialFallbackReason: String? = null,
+    val contextProfile: LiveDifferentialContextProfile = LiveDifferentialContextProfile.BALANCED,
+    val renderingMode: LivePatchRenderingMode = LivePatchRenderingMode.SEQUENTIAL,
     val sourceCoverage: LiveCoverageMetrics,
     val patchCoverage: LiveCoverageMetrics,
     val recognitionAndTranslationMs: Long,
@@ -69,6 +71,7 @@ internal data class LiveRecognitionAbReport(
     val reference: LiveRecognitionRunMetrics,
     val candidate: LiveRecognitionRunMetrics,
     val coverage: LiveCoverageComparison,
+    val patchCoverage: LiveCoverageComparison,
     val speedupRatio: Float,
     val decision: LiveRecognitionAbDecision,
     val capturePlan: ScrollCapturePlan?,
@@ -142,13 +145,15 @@ internal object LiveRecognitionMetricsPolicy {
         reference: LiveRecognitionRunMetrics,
         candidate: LiveRecognitionRunMetrics,
         coverage: LiveCoverageComparison,
+        patchCoverage: LiveCoverageComparison = coverage,
         capturePlan: ScrollCapturePlan?,
         candidateRanFirst: Boolean
     ): LiveRecognitionAbReport {
         val referenceMs = reference.totalProcessingMs.coerceAtLeast(1L)
         val speedupRatio = (referenceMs - candidate.totalProcessingMs).toFloat() / referenceMs
         val decision = when {
-            !coverage.passesCoverageGate -> LiveRecognitionAbDecision.ACCURACY_REGRESSION
+            !coverage.passesCoverageGate || !patchCoverage.passesCoverageGate ->
+                LiveRecognitionAbDecision.ACCURACY_REGRESSION
             speedupRatio >= MINIMUM_MEANINGFUL_SPEEDUP_RATIO ->
                 LiveRecognitionAbDecision.KEEP_CANDIDATE
             else -> LiveRecognitionAbDecision.NO_MEANINGFUL_SPEEDUP
@@ -157,6 +162,7 @@ internal object LiveRecognitionMetricsPolicy {
             reference = reference,
             candidate = candidate,
             coverage = coverage,
+            patchCoverage = patchCoverage,
             speedupRatio = speedupRatio,
             decision = decision,
             capturePlan = capturePlan,

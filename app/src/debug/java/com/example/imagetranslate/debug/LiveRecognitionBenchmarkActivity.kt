@@ -9,9 +9,13 @@ import android.widget.ScrollView
 import android.widget.TextView
 import com.example.imagetranslate.ocr.OcrRecognitionMode
 import com.example.imagetranslate.screenshot.BackgroundTranslatedImageProcessor
+import com.example.imagetranslate.screenshot.LiveCoverageBounds
+import com.example.imagetranslate.screenshot.LiveDifferentialContextProfile
+import com.example.imagetranslate.screenshot.LivePatchRenderingMode
+import com.example.imagetranslate.screenshot.LiveRecognitionExecutionProfile
 import com.example.imagetranslate.screenshot.LiveRecognitionMetricsPolicy
-import com.example.imagetranslate.screenshot.LiveRecognitionTelemetry
 import com.example.imagetranslate.screenshot.LiveRecognitionSegmentation
+import com.example.imagetranslate.screenshot.LiveRecognitionTelemetry
 import com.example.imagetranslate.screenshot.ScreenFrameSignature
 import com.example.imagetranslate.screenshot.ScreenThemeColorEstimator
 import com.example.imagetranslate.screenshot.ScrollCapturePlan
@@ -82,6 +86,30 @@ class LiveRecognitionBenchmarkActivity : Activity() {
             EXTRA_CANDIDATE_SEGMENTATION,
             LiveRecognitionSegmentation.ADAPTIVE
         )
+        val referenceSegmentation = enumExtra(
+            EXTRA_REFERENCE_SEGMENTATION,
+            LiveRecognitionSegmentation.FULL_FRAME
+        )
+        val candidateExecutionProfile = LiveRecognitionExecutionProfile(
+            contextProfile = enumExtra(
+                EXTRA_CANDIDATE_CONTEXT_PROFILE,
+                LiveDifferentialContextProfile.BALANCED
+            ),
+            renderingMode = enumExtra(
+                EXTRA_CANDIDATE_RENDERING_MODE,
+                LivePatchRenderingMode.SEQUENTIAL
+            )
+        )
+        val referenceExecutionProfile = LiveRecognitionExecutionProfile(
+            contextProfile = enumExtra(
+                EXTRA_REFERENCE_CONTEXT_PROFILE,
+                LiveDifferentialContextProfile.BALANCED
+            ),
+            renderingMode = enumExtra(
+                EXTRA_REFERENCE_RENDERING_MODE,
+                LivePatchRenderingMode.SEQUENTIAL
+            )
+        )
         val recognitionMode = enumExtra(EXTRA_RECOGNITION_MODE, OcrRecognitionMode.ENGLISH)
         val translationMode = enumExtra(
             EXTRA_TRANSLATION_MODE,
@@ -104,7 +132,9 @@ class LiveRecognitionBenchmarkActivity : Activity() {
                 seedSnapshot(reference, baseline, translationMode, recognitionMode, overlayAlpha)
                 BitmapSignatureSampler.estimateScroll(baseline, currentBitmap)
             }
-            if (candidateSegmentation == LiveRecognitionSegmentation.ADAPTIVE) {
+            if (candidateSegmentation == LiveRecognitionSegmentation.ADAPTIVE ||
+                referenceSegmentation == LiveRecognitionSegmentation.ADAPTIVE
+            ) {
                 requireNotNull(baselineBitmap) {
                     "Adaptive A/B requires a baseline image"
                 }
@@ -122,22 +152,27 @@ class LiveRecognitionBenchmarkActivity : Activity() {
                     recognitionMode = recognitionMode,
                     capturePlan = capturePlan,
                     overlayAlpha = overlayAlpha,
-                    segmentation = candidateSegmentation
+                    segmentation = candidateSegmentation,
+                    executionProfile = candidateExecutionProfile
                 )
                 referenceResult = reference.translateForOverlay(
                     bitmap = currentBitmap,
                     mode = translationMode,
                     recognitionMode = recognitionMode,
+                    capturePlan = capturePlan,
                     overlayAlpha = overlayAlpha,
-                    segmentation = LiveRecognitionSegmentation.FULL_FRAME
+                    segmentation = referenceSegmentation,
+                    executionProfile = referenceExecutionProfile
                 )
             } else {
                 referenceResult = reference.translateForOverlay(
                     bitmap = currentBitmap,
                     mode = translationMode,
                     recognitionMode = recognitionMode,
+                    capturePlan = capturePlan,
                     overlayAlpha = overlayAlpha,
-                    segmentation = LiveRecognitionSegmentation.FULL_FRAME
+                    segmentation = referenceSegmentation,
+                    executionProfile = referenceExecutionProfile
                 )
                 candidateResult = candidate.translateForOverlay(
                     bitmap = currentBitmap,
@@ -145,7 +180,8 @@ class LiveRecognitionBenchmarkActivity : Activity() {
                     recognitionMode = recognitionMode,
                     capturePlan = capturePlan,
                     overlayAlpha = overlayAlpha,
-                    segmentation = candidateSegmentation
+                    segmentation = candidateSegmentation,
+                    executionProfile = candidateExecutionProfile
                 )
             }
             try {
@@ -159,6 +195,16 @@ class LiveRecognitionBenchmarkActivity : Activity() {
                     reference = referenceResult.metrics(),
                     candidate = candidateResult.metrics(),
                     coverage = coverage,
+                    patchCoverage = LiveRecognitionMetricsPolicy.compare(
+                        reference = referenceResult.patches.map { patch ->
+                            patch.bounds.run { LiveCoverageBounds(left, top, right, bottom) }
+                        },
+                        candidate = candidateResult.patches.map { patch ->
+                            patch.bounds.run { LiveCoverageBounds(left, top, right, bottom) }
+                        },
+                        viewportWidth = currentBitmap.width,
+                        viewportHeight = currentBitmap.height
+                    ),
                     capturePlan = capturePlan,
                     candidateRanFirst = candidateRanFirst
                 )
@@ -209,6 +255,11 @@ class LiveRecognitionBenchmarkActivity : Activity() {
         const val EXTRA_CURRENT_IMAGE_PATH = "current_image_path"
         const val EXTRA_BASELINE_IMAGE_PATH = "baseline_image_path"
         const val EXTRA_CANDIDATE_SEGMENTATION = "candidate_segmentation"
+        const val EXTRA_REFERENCE_SEGMENTATION = "reference_segmentation"
+        const val EXTRA_CANDIDATE_CONTEXT_PROFILE = "candidate_context_profile"
+        const val EXTRA_REFERENCE_CONTEXT_PROFILE = "reference_context_profile"
+        const val EXTRA_CANDIDATE_RENDERING_MODE = "candidate_rendering_mode"
+        const val EXTRA_REFERENCE_RENDERING_MODE = "reference_rendering_mode"
         const val EXTRA_RECOGNITION_MODE = "recognition_mode"
         const val EXTRA_TRANSLATION_MODE = "translation_mode"
         const val EXTRA_CANDIDATE_FIRST = "candidate_first"

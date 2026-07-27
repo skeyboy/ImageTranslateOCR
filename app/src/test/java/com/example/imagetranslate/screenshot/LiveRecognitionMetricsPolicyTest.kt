@@ -83,6 +83,23 @@ class LiveRecognitionMetricsPolicyTest {
         assertEquals(LiveRecognitionAbDecision.ACCURACY_REGRESSION, report.decision)
     }
 
+    @Test
+    fun abDecisionRejectsMissingRenderedPatchesEvenWhenOcrCoveragePasses() {
+        val sourceCoverage = LiveCoverageComparison(10, 10, 10, 1f, 1f, true)
+        val patchCoverage = LiveCoverageComparison(10, 7, 7, 0.7f, 0.6f, false)
+
+        val report = LiveRecognitionMetricsPolicy.abReport(
+            reference = runMetrics(100L),
+            candidate = runMetrics(40L),
+            coverage = sourceCoverage,
+            patchCoverage = patchCoverage,
+            capturePlan = null,
+            candidateRanFirst = true
+        )
+
+        assertEquals(LiveRecognitionAbDecision.ACCURACY_REGRESSION, report.decision)
+    }
+
     private fun runMetrics(totalMs: Long): LiveRecognitionRunMetrics =
         LiveRecognitionRunMetrics(
             requestedSegmentation = LiveRecognitionSegmentation.FULL_FRAME,

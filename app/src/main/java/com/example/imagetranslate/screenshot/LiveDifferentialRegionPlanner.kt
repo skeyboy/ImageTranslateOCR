@@ -173,7 +173,8 @@ internal object LiveDifferentialRegionPlanner {
         shiftY: Int,
         dirtyGrid: LiveDirtyGridResult,
         shiftedTracks: List<LiveDifferentialBounds>,
-        continuationBounds: List<LiveDifferentialBounds> = emptyList()
+        continuationBounds: List<LiveDifferentialBounds> = emptyList(),
+        maximumRecognitionAreaRatio: Float = DEFAULT_MAXIMUM_RECOGNITION_AREA_RATIO
     ): LiveDifferentialRegionPlan? {
         if (viewportWidth <= 0 || viewportHeight <= 0 || shiftY == 0) return null
         val contentTop = (viewportHeight * CONTENT_TOP_RATIO).toInt()
@@ -231,28 +232,32 @@ internal object LiveDifferentialRegionPlanner {
             contentTop = contentTop,
             contentBottom = contentBottom,
             shiftedTracks = shiftedTracks,
-            dirtyGrid = dirtyGrid
+            dirtyGrid = dirtyGrid,
+            maximumRecognitionAreaRatio = maximumRecognitionAreaRatio
         ) ?: createPlan(
             bounds = mergeNearby(listOf(expandedIncoming) + expandedContinuations, overlapMargin / 2),
             viewportWidth = viewportWidth,
             contentTop = contentTop,
             contentBottom = contentBottom,
             shiftedTracks = shiftedTracks,
-            dirtyGrid = dirtyGrid
+            dirtyGrid = dirtyGrid,
+            maximumRecognitionAreaRatio = maximumRecognitionAreaRatio
         ) ?: createPlan(
             bounds = mergeNearby(listOf(incoming) + continuationBounds, overlapMargin / 2),
             viewportWidth = viewportWidth,
             contentTop = contentTop,
             contentBottom = contentBottom,
             shiftedTracks = shiftedTracks,
-            dirtyGrid = dirtyGrid
+            dirtyGrid = dirtyGrid,
+            maximumRecognitionAreaRatio = maximumRecognitionAreaRatio
         ) ?: createPlan(
             bounds = listOf(incoming),
             viewportWidth = viewportWidth,
             contentTop = contentTop,
             contentBottom = contentBottom,
             shiftedTracks = shiftedTracks,
-            dirtyGrid = dirtyGrid
+            dirtyGrid = dirtyGrid,
+            maximumRecognitionAreaRatio = maximumRecognitionAreaRatio
         )
     }
 
@@ -262,13 +267,14 @@ internal object LiveDifferentialRegionPlanner {
         contentTop: Int,
         contentBottom: Int,
         shiftedTracks: List<LiveDifferentialBounds>,
-        dirtyGrid: LiveDirtyGridResult
+        dirtyGrid: LiveDirtyGridResult,
+        maximumRecognitionAreaRatio: Float
     ): LiveDifferentialRegionPlan? {
         if (bounds.isEmpty() || bounds.size > MAXIMUM_RECOGNITION_REGIONS) return null
         val contentArea = viewportWidth.toLong() * (contentBottom - contentTop)
         val areaRatio = bounds.sumOf(LiveDifferentialBounds::area).toFloat() /
             contentArea.coerceAtLeast(1L)
-        if (areaRatio > MAXIMUM_RECOGNITION_AREA_RATIO) return null
+        if (areaRatio > maximumRecognitionAreaRatio.coerceIn(0f, 1f)) return null
         val boundaryTracks = shiftedTracks.count { track -> bounds.any(track::intersects) }
         return LiveDifferentialRegionPlan(
             recognitionBounds = bounds,
@@ -339,7 +345,7 @@ internal object LiveDifferentialRegionPlanner {
     private const val CONTEXT_HEIGHT_DIVISOR = 18
     private const val MAXIMUM_CONTINUATION_REGIONS = 1
     private const val MAXIMUM_RECOGNITION_REGIONS = 3
-    private const val MAXIMUM_RECOGNITION_AREA_RATIO = 0.72f
+    private const val DEFAULT_MAXIMUM_RECOGNITION_AREA_RATIO = 0.72f
 }
 
 internal data class LiveTrackedRegion(

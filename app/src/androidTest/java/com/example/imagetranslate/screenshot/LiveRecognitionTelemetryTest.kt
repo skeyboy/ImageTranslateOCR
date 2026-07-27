@@ -25,6 +25,8 @@ class LiveRecognitionTelemetryTest {
             boundaryTrackCount = 5,
             restoredBoundaryTrackCount = 1,
             differentialFallbackReason = "INSUFFICIENT_TRACK_REUSE",
+            contextProfile = LiveDifferentialContextProfile.ACCURACY,
+            renderingMode = LivePatchRenderingMode.PARALLEL,
             sourceCoverage = LiveCoverageMetrics(10, 1_200L, 10_000L, 0.12f),
             patchCoverage = LiveCoverageMetrics(8, 2_000L, 10_000L, 0.2f),
             recognitionAndTranslationMs = 620L,
@@ -54,6 +56,8 @@ class LiveRecognitionTelemetryTest {
             json.getString("differential_fallback_reason")
         )
         assertEquals(0.12, json.getDouble("source_coverage_ratio"), 0.0001)
+        assertEquals("ACCURACY", json.getString("context_profile"))
+        assertEquals("PARALLEL", json.getString("rendering_mode"))
         assertTrue(json.has("registration_confidence"))
     }
 }
