@@ -2,7 +2,7 @@
 
 > 建立日期：2026-07-26
 >
-> 当前代码基线：`3dcc7ca test: validate visible OCR rendering`
+> 当前代码基线：`79867e6 feat: add validated blur tint overlay backgrounds`
 >
 > 适用范围：Android 录屏采集、页面运动检测、OCR、翻译、译文贴片与悬浮窗交互
 
@@ -408,6 +408,24 @@ sequenceDiagram
 
 ## 10. 实验追加记录
 
+### 2026-07-27：局部主题色高斯模糊背景
+
+- 状态：保留 OpenCV 实现；舍弃纯 Kotlin 全像素实现
+- 基线 Git：`55f269d docs: record rejected selective OCR experiment`
+- 实验代码 Git：`79867e6 feat: add validated blur tint overlay backgrounds`
+- 记录 Git：由本次文档提交建立
+- 假设：从采集帧的译文区域估算局部主题色，并把降采样高斯模糊结果以 18% 权重混入主题色，可降低原文和译文视觉混杂；只修改不可触摸译文贴片的像素，不改变 Window flag，因此不会占用底层点击、滑动或滚动。
+- 合成方式：OCR 材质区域裁剪为 1/4 尺寸，按文字区高度选择 4-12px 等效高斯半径；模糊结果压缩到透明窗可补偿色域后，与局部主题色按 18%/82% 混合；再根据 0.72 窗口透明度逐像素反向补偿，确保最终与底层页面合成后仍得到目标模糊色调。OpenCV 未就绪时自动回退原有纯主题色背景。
+- 自动门：背景高频细节残留不超过 20%；候选渲染开销不超过同帧纯主题色参考的 20%；OCR 区域覆盖、贴片覆盖和最终可见像素门全部通过。候选与参考使用同一当前截图、同一 OCR/翻译/并行策略，并交替先运行。
+- 失败原型：纯 Kotlin 全分辨率像素循环 6 轮虽然细节残留 P50 仅 1.60%，但渲染 P50 从 205ms 增至 1332ms，开销约 506%，明确舍弃。
+- 暗色结果：Rust Ownership 页面最终无并发混杂版本 6/6 通过全部门；候选/参考渲染 P50 为 121/120ms，P90 为 130/145ms，细节残留 P50 为 2.42%。
+- 浅色结果：Python Control Flow 页面 4/4 通过全部门；候选/参考渲染 P50 为 132/125ms，P90 为 149/155ms，细节残留 P50 为 3.04%。
+- 交互结果：译文 Window 继续使用 `FLAG_NOT_TOUCHABLE | FLAG_NOT_FOCUSABLE | FLAG_NOT_TOUCH_MODAL`；本轮未修改 Window 创建、控制条触摸或拖动逻辑。JVM 触摸策略回归通过，像素合成仪器测试验证透明窗重建目标色各通道误差不超过 3。
+- 自动化结果：Java 17 下 JVM 全量测试、Debug/AndroidTest 构建通过；主/测试 APK 通过 ADB 覆盖安装；新增背景合成、遥测与可见预览仪器测试 4/4 通过。MIUI 宿主入口 ActivityScenario 仍受第三方前台 Activity 干扰，本轮未把该已知环境挂起计入背景实现结果。
+- 决策及原因：生产 `CURRENT` 配置启用 `BLUR_TINT`，保留 `THEME_SURFACE` 作为运行时回退和 A/B 参考；限制只作用于 OCR 贴片，不做全屏 `FLAG_BLUR_BEHIND`。结果改善了背景纹理过渡且没有可测的稳定渲染回归。
+- 证据：结构化摘要见 [`experiments/live-patch-background-blur-summary-2026-07-27.json`](experiments/live-patch-background-blur-summary-2026-07-27.json)。原始最终批次保存在执行机 `/tmp/live-background-ab-final.jsonl` 与 `/tmp/live-background-ab-final-light.jsonl`。
+- 下一步：在横屏、中译英、图片型背景和滚动中断场景增加同样矩阵；加入基于 OCR 字形掩码的原文残留指标，替代当前通用高频细节指标。
+
 ### 2026-07-27：可疑区域选择性二次 OCR
 
 - 状态：舍弃，候选代码已完整移除
@@ -578,8 +596,8 @@ sequenceDiagram
 
 | 项目 | 状态 |
 | --- | --- |
-| 代码节点 | `3dcc7ca` |
-| 默认配置 | 自适应 / 高频 / 单缓冲 / 12% 上下文 + 60% 面积回退 + 单 ROI/60 脏单元准确保护 / 并行贴片渲染 |
+| 代码节点 | `79867e6` |
+| 默认配置 | 自适应 / 高频 / 单缓冲 / 12% 上下文 + 60% 面积回退 + 单 ROI/60 脏单元准确保护 / 并行贴片渲染 / 局部模糊主题背景 |
 | 主 APK | 已通过 ADB 覆盖安装 |
 | 测试 APK | 已通过 ADB 覆盖安装 |
 | JVM/构建 | 通过 |

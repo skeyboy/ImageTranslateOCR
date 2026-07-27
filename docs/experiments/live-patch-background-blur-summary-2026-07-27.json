@@ -1,0 +1,60 @@
+{
+  "schema": 1,
+  "date": "2026-07-27",
+  "baseline_git": "55f269d",
+  "experiment_git": "79867e6",
+  "device": {
+    "serial": "8c9cf729",
+    "model": "23113RKC6C",
+    "android": 16,
+    "viewport": "1440x3200"
+  },
+  "candidate": "BLUR_TINT",
+  "reference": "THEME_SURFACE",
+  "gates": {
+    "maximum_background_detail_retention_ratio": 0.2,
+    "maximum_render_overhead_ratio": 0.2
+  },
+  "rejected_cpu_prototype": {
+    "runs": 6,
+    "candidate_render_p50_ms": 1332,
+    "reference_render_p50_ms": 205,
+    "render_overhead_p50": 5.06278038,
+    "detail_retention_p50": 0.0160354432,
+    "decision": "REJECT"
+  },
+  "opencv_dark_page": {
+    "url": "https://doc.rust-lang.org/book/ch04-01-what-is-ownership.html",
+    "runs": 6,
+    "visual_render_pass_rate": 1.0,
+    "coverage_pass_rate": 1.0,
+    "patch_coverage_pass_rate": 1.0,
+    "background_detail_gate_pass_rate": 1.0,
+    "background_performance_gate_pass_rate": 1.0,
+    "candidate_render_p50_ms": 121,
+    "candidate_render_p90_ms": 130,
+    "reference_render_p50_ms": 120,
+    "reference_render_p90_ms": 145,
+    "detail_retention_p50": 0.0241873171
+  },
+  "opencv_light_page": {
+    "url": "https://docs.python.org/3/tutorial/controlflow.html",
+    "runs": 4,
+    "visual_render_pass_rate": 1.0,
+    "coverage_pass_rate": 1.0,
+    "patch_coverage_pass_rate": 1.0,
+    "background_detail_gate_pass_rate": 1.0,
+    "background_performance_gate_pass_rate": 1.0,
+    "candidate_render_p50_ms": 132,
+    "candidate_render_p90_ms": 149,
+    "reference_render_p50_ms": 125,
+    "reference_render_p90_ms": 155,
+    "detail_retention_p50": 0.0304144695
+  },
+  "interaction": {
+    "translation_window_not_touchable": true,
+    "translation_window_not_focusable": true,
+    "window_flags_changed": false
+  },
+  "decision": "KEEP_OPENCV_BLUR_TINT_WITH_THEME_SURFACE_FALLBACK"
+}
