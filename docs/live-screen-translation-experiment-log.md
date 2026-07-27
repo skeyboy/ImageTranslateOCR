@@ -2,7 +2,7 @@
 
 > 建立日期：2026-07-26
 >
-> 当前代码基线：`b4565b0 fix: release benchmark UI after A/B`
+> 当前代码基线：`60820c5 perf: stabilize adaptive OCR and parallel rendering`
 >
 > 适用范围：Android 录屏采集、页面运动检测、OCR、翻译、译文贴片与悬浮窗交互
 
@@ -249,6 +249,7 @@ sequenceDiagram
 | 2026-07-26 | `7b028b7` | 大幅滚动差分准入与理论存活区域复用率 | 两次连续实机滚动均命中差分且未见大面积漏译 | 保留 |
 | 2026-07-26 | `b5e4c4d` | 同视口 A/B、结构化性能日志与覆盖率指标 | 建立可重复基准；严格 A/B 发现差分虽快约 36%，面积召回仅约 78% | 基准设施保留，差分结论降级为受保护实验路径 |
 | 2026-07-26 | `b4565b0` | A/B 调试页生命周期与译文层触摸透传回归 | A/B 完成后自动返回原页面，不再遗留全屏调试任务；透传 flag 纳入测试 | 保留 |
+| 2026-07-27 | `60820c5` | 自适应上下文硬回退与并行贴片渲染 | 混合策略面积召回 P10 超过 92%，并行渲染 P50 降低约 66% | 保留 12%/60% 混合策略与并行渲染；舍弃 12%/80% 激进方案 |
 
 ### 7.1 `7b028b7` 受控实机结果
 
@@ -405,6 +406,27 @@ sequenceDiagram
 
 ## 10. 实验追加记录
 
+### 2026-07-27：自适应上下文、贴片覆盖门与并行渲染
+
+- 状态：部分保留后转为默认
+- 基线 Git：`80eaf7c docs: record track-aware OCR experiment`
+- 实验代码 Git：`60820c5 perf: stabilize adaptive OCR and parallel rendering`
+- 记录 Git：由本次文档提交建立
+- 回退 Git：无；12% 上下文配合 80% 面积上限的激进参数未进入最终默认配置
+- 假设：边缘续接上下文不足是短滚动漏译的主要来源，但大面积差分会同时失去准确性与速度优势；贴片绘制互不依赖，可以并行执行并显著缩短提交前等待。
+- 修改范围：将上下文和贴片渲染拆为独立执行配置；候选/参考均可指定分块、上下文和渲染模式；A/B 同时比较 OCR 文本区域与最终译文贴片覆盖；结构化日志升级为 schema 3；批量摘要新增贴片覆盖 P10/P50 与渲染 P50/P90；默认采用 12% 边缘上下文、60% 识别面积硬回退和并行贴片渲染。
+- 设备与系统：Xiaomi `23113RKC6C`，Android 16，1440×3200，USB ADB `8c9cf729`；Rust Book Introduction 纵向亮色页面，每组 8 次，候选/参考交替先运行。
+- 对照设计：上下文组两侧均固定并行渲染，候选 `ADAPTIVE`、参考 `FULL_FRAME`；渲染组两侧均固定 `FULL_FRAME`，仅比较 `PARALLEL` 与 `SEQUENTIAL`。
+- 初始实验：12%/80% 候选差分命中 75%，P50 700ms、面积召回 P50 95.00%，但源区域/贴片通过率均仅 87.5%，面积召回 P10 77.75%，出现一次明确准确率回归，因此否定该组合。
+- 同期旧参数：7%/72% 候选覆盖通过率 100%，但差分命中仅 37.5%，P50 1013ms，面积召回 P10 83.00%，说明只扩大上限不能解决尾部稳定性。
+- 最终混合实验：12%/60% 候选差分命中 87.5%，源区域与贴片覆盖均 8/8 通过；候选/整屏 P50 为 632/1093ms，P50 提速 39.38%；源区域面积召回 P10/P50 为 93.00%/94.49%，贴片面积召回 P10/P50 为 94.25%/94.92%。长滚动被 `REGION_PLAN_REJECTED` 自动回退整屏并获得 100% 覆盖。
+- 并行渲染实验：8/8 次源区域和贴片覆盖完全一致；并行/串行渲染 P50 为 125/364ms，渲染阶段降低 65.66%，总链路 P50 提速 20.92%，8 次决策均为 `KEEP_CANDIDATE`。
+- 自动化结果：JVM 全量测试和 Debug/AndroidTest 构建通过；主/测试 APK 均经 ADB 覆盖安装；非系统转场仪器测试 19/19 通过。MIUI 在 `ActivityScenario` 启动入口测试时卡在 `Transition-OPEN`，因此入口改用 ADB/UIAutomator 实机校验：冷启动 687ms，入口可见可点，点击后直接显示底部悬浮条并启动前台服务；浮窗存在时内容区滑动仍能滚动底层页面。
+- 日志证据：[`experiments/live-recognition-accuracy-context-2026-07-27.jsonl`](experiments/live-recognition-accuracy-context-2026-07-27.jsonl)、[`experiments/live-recognition-balanced-context-2026-07-27.jsonl`](experiments/live-recognition-balanced-context-2026-07-27.jsonl)、[`experiments/live-recognition-hybrid-context-2026-07-27.jsonl`](experiments/live-recognition-hybrid-context-2026-07-27.jsonl)、[`experiments/live-recognition-parallel-render-2026-07-27.jsonl`](experiments/live-recognition-parallel-render-2026-07-27.jsonl) 和 [`experiments/live-recognition-adaptive-render-summary-2026-07-27.json`](experiments/live-recognition-adaptive-render-summary-2026-07-27.json)。
+- 风险与异常：自动参考仍是整屏 ML Kit，不是人工黄金文本；当前 32 次新矩阵集中在纵向亮色英文页面。并行绘制验证了区域与面积一致性，但尚未建立逐像素图像相似度门。
+- 决策及原因：保留结构化配置、双覆盖否决、12%/60% 混合策略和并行渲染；舍弃 12%/80% 激进方案。前者同时达到 P10 超过 90%、显著提速和触摸透传目标，后者尾部准确率不可接受。
+- 下一步：建立带人工文本真值的固定截图集，新增字符错误率/词错误率和贴片像素差指标；对横屏正文、暗黑页面和中译英各执行至少 10 次同视口矩阵，再决定是否按场景动态调整 60% 面积门。
+
 ### 2026-07-27：脏区网格、Track ID、续接 ROI 与宿主入口恢复
 
 - 状态：部分保留
@@ -516,12 +538,12 @@ sequenceDiagram
 
 | 项目 | 状态 |
 | --- | --- |
-| 代码节点 | `6950fe3` |
-| 默认配置 | 自适应 / 高频 / 单缓冲 / 自动差分 |
+| 代码节点 | `60820c5` |
+| 默认配置 | 自适应 / 高频 / 单缓冲 / 12% 上下文 + 60% 面积回退 / 并行贴片渲染 |
 | 主 APK | 已通过 ADB 覆盖安装 |
 | 测试 APK | 已通过 ADB 覆盖安装 |
 | JVM/构建 | 通过 |
 | 仪器测试 | 19/19 通过（排除系统录屏授权入口用例） |
 | 录屏会话 | 验证结束后关闭 |
 | 无障碍增强 | 验证结束后关闭 |
-| 当前推荐下一项 | 人工黄金视口 + 横屏/暗黑矩阵，将面积召回 P10 提升到 90% |
+| 当前推荐下一项 | 人工黄金视口 + 横屏/暗黑/中译英矩阵，引入 CER/WER 与贴片像素差 |

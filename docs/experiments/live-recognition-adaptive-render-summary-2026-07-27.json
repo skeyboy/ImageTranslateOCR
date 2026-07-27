@@ -1,0 +1,59 @@
+{
+  "schema": 1,
+  "date": "2026-07-27",
+  "device": {
+    "serial": "8c9cf729",
+    "model": "23113RKC6C",
+    "android": 16,
+    "viewport": "1440x3200"
+  },
+  "baseline_git": "80eaf7c",
+  "experiment_git": "60820c5",
+  "groups": {
+    "accuracy_12pct_80pct": {
+      "runs": 8,
+      "coverage_pass_rate": 0.875,
+      "patch_coverage_pass_rate": 0.875,
+      "area_recall_p10": 0.7774600983,
+      "candidate_p50_ms": 700,
+      "decision": "REJECT"
+    },
+    "balanced_7pct_72pct": {
+      "runs": 8,
+      "coverage_pass_rate": 1.0,
+      "patch_coverage_pass_rate": 1.0,
+      "area_recall_p10": 0.8300451636,
+      "candidate_p50_ms": 1013,
+      "decision": "CONTROL_ONLY"
+    },
+    "hybrid_12pct_60pct": {
+      "runs": 8,
+      "differential_hit_rate": 0.875,
+      "coverage_pass_rate": 1.0,
+      "patch_coverage_pass_rate": 1.0,
+      "candidate_p50_ms": 632,
+      "reference_p50_ms": 1093,
+      "speedup_p50": 0.3937729001,
+      "area_recall_p10": 0.929995954,
+      "patch_area_recall_p10": 0.9425250888,
+      "decision": "KEEP_DEFAULT"
+    },
+    "parallel_rendering": {
+      "runs": 8,
+      "coverage_pass_rate": 1.0,
+      "patch_coverage_pass_rate": 1.0,
+      "parallel_render_p50_ms": 125,
+      "sequential_render_p50_ms": 364,
+      "total_speedup_p50": 0.2091503292,
+      "decision": "KEEP_DEFAULT"
+    }
+  },
+  "automated_validation": {
+    "jvm_tests": "PASS",
+    "instrumentation_tests": "19/19 PASS",
+    "adb_install": "PASS",
+    "host_entry_cold_start_ms": 687,
+    "overlay_started_directly": true,
+    "underlay_scroll_passthrough": true
+  }
+}
