@@ -12,6 +12,11 @@ reference_rendering="${AB_REFERENCE_RENDERING:-SEQUENTIAL}"
 recognition_mode="${AB_RECOGNITION_MODE:-ENGLISH}"
 translation_mode="${AB_TRANSLATION_MODE:-ENGLISH_TO_CHINESE}"
 candidate_first="${AB_CANDIDATE_FIRST:-true}"
+visual_output_directory="${AB_VISUAL_OUTPUT_DIR:-}"
+visual_preview=false
+if [[ -n "$visual_output_directory" ]]; then
+    visual_preview=true
+fi
 serial="${ANDROID_SERIAL:-}"
 
 adb_command=(adb)
@@ -66,14 +71,38 @@ sleep "${AB_SETTLE_SECONDS:-1}"
     --es reference_rendering_mode "$reference_rendering" \
     --es recognition_mode "$recognition_mode" \
     --es translation_mode "$translation_mode" \
-    --ez candidate_first "$candidate_first" >/dev/null
+    --ez candidate_first "$candidate_first" \
+    --ez visual_preview "$visual_preview" >/dev/null
 
 for _ in $(seq 1 120); do
     report=$("${adb_command[@]}" logcat -d -v raw -s LIVE_OCR_AB:I 2>/dev/null |
         rg '"event":"live_recognition_ab(_failed)?"' | tail -n 1 || true)
     if [[ "$report" == *'"event":"live_recognition_ab"'* || \
           "$report" == *'"event":"live_recognition_ab_failed"'* ]]; then
+        if [[ -n "$visual_output_directory" ]]; then
+            mkdir -p "$visual_output_directory"
+            cp "$baseline_local" "$visual_output_directory/baseline.png"
+            cp "$current_local" "$visual_output_directory/current.png"
+            "${adb_command[@]}" exec-out run-as "$package_name" cat \
+                files/benchmark/candidate-preview.png \
+                > "$visual_output_directory/candidate-preview.png"
+            "${adb_command[@]}" exec-out run-as "$package_name" cat \
+                files/benchmark/reference-preview.png \
+                > "$visual_output_directory/reference-preview.png"
+            "${adb_command[@]}" exec-out screencap -p \
+                > "$visual_output_directory/candidate-displayed.png"
+            printf '%s\n' "$report" > "$visual_output_directory/report.json"
+        fi
         printf '%s\n' "$report"
+        if [[ "$report" == *'"event":"live_recognition_ab"'* && \
+              "$report" != *'"visual_render_pass":true'* ]]; then
+            echo "Visual OCR rendering validation failed" >&2
+            exit 2
+        fi
+        if [[ "$report" == *'"decision":"ACCURACY_REGRESSION"'* ]]; then
+            echo "OCR coverage regression detected" >&2
+            exit 3
+        fi
         exit 0
     fi
     sleep 1

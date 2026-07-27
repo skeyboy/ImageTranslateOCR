@@ -5,6 +5,8 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.Bundle
 import android.util.Log
+import android.view.ViewGroup
+import android.widget.ImageView
 import android.widget.ScrollView
 import android.widget.TextView
 import com.example.imagetranslate.ocr.OcrRecognitionMode
@@ -27,11 +29,14 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
 import org.json.JSONObject
+import java.io.File
+import java.io.FileOutputStream
 
 class LiveRecognitionBenchmarkActivity : Activity() {
     private val scope = MainScope()
     private var candidateProcessor: BackgroundTranslatedImageProcessor? = null
     private var referenceProcessor: BackgroundTranslatedImageProcessor? = null
+    private var displayedPreview: Bitmap? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -45,9 +50,17 @@ class LiveRecognitionBenchmarkActivity : Activity() {
         scope.launch {
             runCatching { runBenchmark() }
                 .onSuccess { json ->
-                    output.text = JSONObject(json).toString(2)
-                    Log.i(LOG_TAG, json)
-                    finishBenchmarkTask()
+                    if (intent.getBooleanExtra(EXTRA_VISUAL_PREVIEW, false)) {
+                        showVisualPreview()
+                        window.decorView.postDelayed({
+                            Log.i(LOG_TAG, json)
+                            finishBenchmarkTask(PREVIEW_HOLD_MS)
+                        }, PREVIEW_DRAW_SETTLE_MS)
+                    } else {
+                        output.text = JSONObject(json).toString(2)
+                        Log.i(LOG_TAG, json)
+                        finishBenchmarkTask(0L)
+                    }
                 }
                 .onFailure { error ->
                     val json = JSONObject()
@@ -58,15 +71,29 @@ class LiveRecognitionBenchmarkActivity : Activity() {
                         .toString()
                     output.text = JSONObject(json).toString(2)
                     Log.e(LOG_TAG, json, error)
-                    finishBenchmarkTask()
+                    finishBenchmarkTask(0L)
                 }
         }
     }
 
-    private fun finishBenchmarkTask() {
-        window.decorView.post {
+    private fun finishBenchmarkTask(delayMs: Long) {
+        window.decorView.postDelayed({
             if (!isFinishing) finishAndRemoveTask()
-        }
+        }, delayMs)
+    }
+
+    private fun showVisualPreview() {
+        displayedPreview = BitmapFactory.decodeFile(visualArtifactFile(CANDIDATE_PREVIEW_FILE).path)
+        setContentView(ImageView(this).apply {
+            setBackgroundColor(android.graphics.Color.BLACK)
+            scaleType = ImageView.ScaleType.FIT_CENTER
+            layoutParams = ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+            )
+            setImageBitmap(displayedPreview)
+            contentDescription = "Candidate OCR translation preview"
+        })
     }
 
     private suspend fun runBenchmark(): String = withTimeout(BENCHMARK_TIMEOUT_MS) {
@@ -191,24 +218,57 @@ class LiveRecognitionBenchmarkActivity : Activity() {
                     viewportWidth = currentBitmap.width,
                     viewportHeight = currentBitmap.height
                 )
-                val report = LiveRecognitionMetricsPolicy.abReport(
-                    reference = referenceResult.metrics(),
-                    candidate = candidateResult.metrics(),
-                    coverage = coverage,
-                    patchCoverage = LiveRecognitionMetricsPolicy.compare(
-                        reference = referenceResult.patches.map { patch ->
-                            patch.bounds.run { LiveCoverageBounds(left, top, right, bottom) }
-                        },
-                        candidate = candidateResult.patches.map { patch ->
-                            patch.bounds.run { LiveCoverageBounds(left, top, right, bottom) }
-                        },
-                        viewportWidth = currentBitmap.width,
-                        viewportHeight = currentBitmap.height
-                    ),
-                    capturePlan = capturePlan,
-                    candidateRanFirst = candidateRanFirst
+                val candidateVisual = LiveRecognitionVisualArtifactRenderer.render(
+                    currentBitmap,
+                    candidateResult.patches,
+                    overlayAlpha
                 )
-                LiveRecognitionTelemetry.abReport(report)
+                val referenceVisual = LiveRecognitionVisualArtifactRenderer.render(
+                    currentBitmap,
+                    referenceResult.patches,
+                    overlayAlpha
+                )
+                try {
+                    val candidateBytes = saveVisualArtifact(
+                        CANDIDATE_PREVIEW_FILE,
+                        candidateVisual.bitmap
+                    )
+                    val referenceBytes = saveVisualArtifact(
+                        REFERENCE_PREVIEW_FILE,
+                        referenceVisual.bitmap
+                    )
+                    val report = LiveRecognitionMetricsPolicy.abReport(
+                        reference = referenceResult.metrics(),
+                        candidate = candidateResult.metrics(),
+                        coverage = coverage,
+                        patchCoverage = LiveRecognitionMetricsPolicy.compare(
+                            reference = referenceResult.patches.map { patch ->
+                                patch.bounds.run { LiveCoverageBounds(left, top, right, bottom) }
+                            },
+                            candidate = candidateResult.patches.map { patch ->
+                                patch.bounds.run { LiveCoverageBounds(left, top, right, bottom) }
+                            },
+                            viewportWidth = currentBitmap.width,
+                            viewportHeight = currentBitmap.height
+                        ),
+                        capturePlan = capturePlan,
+                        candidateRanFirst = candidateRanFirst
+                    )
+                    JSONObject(LiveRecognitionTelemetry.abReport(report))
+                        .put(
+                            "visual_render_pass",
+                            candidateVisual.passesVisualGate &&
+                                referenceVisual.passesVisualGate &&
+                                candidateBytes > 0L && referenceBytes > 0L
+                        )
+                        .put("semantic_quality_evaluated", false)
+                        .put("candidate_visual", visualJson(candidateVisual, candidateBytes))
+                        .put("reference_visual", visualJson(referenceVisual, referenceBytes))
+                        .toString()
+                } finally {
+                    candidateVisual.bitmap.recycle()
+                    referenceVisual.bitmap.recycle()
+                }
             } finally {
                 candidateResult.patches.recyclePatchBitmaps()
                 referenceResult.patches.recyclePatchBitmaps()
@@ -222,6 +282,31 @@ class LiveRecognitionBenchmarkActivity : Activity() {
             referenceProcessor = null
         }
     }
+
+    private fun visualJson(
+        evidence: LiveRecognitionVisualEvidence,
+        artifactBytes: Long
+    ): JSONObject = JSONObject()
+        .put("patches", evidence.patchCount)
+        .put("changed_patches", evidence.changedPatchCount)
+        .put("changed_patch_ratio", evidence.changedPatchRatio.toDouble())
+        .put("changed_sample_ratio", evidence.changedSampleRatio.toDouble())
+        .put("changed_outside_patch_samples", evidence.changedOutsidePatchCount)
+        .put("artifact_bytes", artifactBytes)
+        .put("render_pass", evidence.passesVisualGate && artifactBytes > 0L)
+
+    private fun saveVisualArtifact(name: String, bitmap: Bitmap): Long {
+        val file = visualArtifactFile(name)
+        file.parentFile?.mkdirs()
+        FileOutputStream(file).use { output ->
+            check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, output)) {
+                "Unable to encode visual artifact: $name"
+            }
+        }
+        return file.length()
+    }
+
+    private fun visualArtifactFile(name: String): File = File(filesDir, "benchmark/$name")
 
     private suspend fun seedSnapshot(
         processor: BackgroundTranslatedImageProcessor,
@@ -247,6 +332,8 @@ class LiveRecognitionBenchmarkActivity : Activity() {
         scope.cancel()
         candidateProcessor?.close()
         referenceProcessor?.close()
+        displayedPreview?.takeIf { !it.isRecycled }?.recycle()
+        displayedPreview = null
         super.onDestroy()
     }
 
@@ -263,7 +350,12 @@ class LiveRecognitionBenchmarkActivity : Activity() {
         const val EXTRA_RECOGNITION_MODE = "recognition_mode"
         const val EXTRA_TRANSLATION_MODE = "translation_mode"
         const val EXTRA_CANDIDATE_FIRST = "candidate_first"
+        const val EXTRA_VISUAL_PREVIEW = "visual_preview"
+        const val CANDIDATE_PREVIEW_FILE = "candidate-preview.png"
+        const val REFERENCE_PREVIEW_FILE = "reference-preview.png"
         private const val BENCHMARK_TIMEOUT_MS = 120_000L
+        private const val PREVIEW_DRAW_SETTLE_MS = 500L
+        private const val PREVIEW_HOLD_MS = 5_000L
     }
 }
 

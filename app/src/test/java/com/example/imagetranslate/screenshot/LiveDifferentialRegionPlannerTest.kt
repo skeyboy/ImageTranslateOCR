@@ -109,6 +109,8 @@ class LiveDifferentialRegionPlannerTest {
             LiveDifferentialContextProfile.ACCURACY,
             LiveRecognitionExecutionProfile.CURRENT.contextProfile
         )
+        assertEquals(1, LiveDifferentialContextProfile.ACCURACY.maximumRecognitionRegionCount)
+        assertEquals(60, LiveDifferentialContextProfile.ACCURACY.maximumDirtyCellCount)
     }
 
     @Test

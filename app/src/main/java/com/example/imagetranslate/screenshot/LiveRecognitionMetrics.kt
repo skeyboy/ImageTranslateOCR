@@ -236,7 +236,7 @@ internal object LiveRecognitionMetricsPolicy {
     private const val CONTENT_TOP_RATIO = 0.08f
     private const val CONTENT_BOTTOM_RATIO = 0.94f
     private const val MINIMUM_REGION_OVERLAP_RATIO = 0.35f
-    private const val MINIMUM_AB_REGION_RECALL = 0.8f
-    private const val MINIMUM_AB_AREA_RECALL = 0.8f
+    private const val MINIMUM_AB_REGION_RECALL = 0.9f
+    private const val MINIMUM_AB_AREA_RECALL = 0.9f
     private const val MINIMUM_MEANINGFUL_SPEEDUP_RATIO = 0.05f
 }

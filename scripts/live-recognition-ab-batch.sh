@@ -56,6 +56,8 @@ jq -s '
         reference_rendering_mode: (.[0].reference.rendering_mode // "UNKNOWN"),
         differential_hit_rate: ((map(select(.candidate.applied_strategy == "DIFFERENTIAL")) |
             length) / length),
+        visual_render_pass_rate: ((map(select(.visual_render_pass == true)) | length) / length),
+        semantic_quality_evaluated: all(.semantic_quality_evaluated == true),
         coverage_pass_rate: ((map(select(.coverage_pass == true)) | length) / length),
         patch_coverage_pass_rate: ((map(select(.patch_coverage_pass == true)) | length) / length),
         decisions: (group_by(.decision) | map({key: .[0].decision, value: length}) | from_entries),

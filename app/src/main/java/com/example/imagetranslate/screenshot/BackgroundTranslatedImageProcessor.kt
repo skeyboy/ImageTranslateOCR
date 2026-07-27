@@ -593,6 +593,9 @@ internal class BackgroundTranslatedImageProcessor(
                 comparedCellCount = dirtyGrid.comparedCellCount
             )
         ) return rejectDifferential("EXCESSIVE_DIRTY_GRID")
+        if (dirtyGrid.dirtyCellCount > contextProfile.maximumDirtyCellCount) {
+            return rejectDifferential("ACCURACY_DIRTY_GRID_GUARD")
+        }
         val regionPlan = LiveDifferentialRegionPlanner.plan(
             viewportWidth = bitmap.width,
             viewportHeight = bitmap.height,
@@ -608,6 +611,9 @@ internal class BackgroundTranslatedImageProcessor(
                 recognitionAreaRatio = regionPlan.recognitionAreaRatio
             )
         ) return rejectDifferential("INEFFICIENT_SHORT_SCROLL_ROI")
+        if (regionPlan.recognitionBounds.size > contextProfile.maximumRecognitionRegionCount) {
+            return rejectDifferential("MULTI_REGION_ACCURACY_GUARD")
+        }
         val recognitionBounds = regionPlan.recognitionBounds.map { bounds ->
             Rect(bounds.left, bounds.top, bounds.right, bounds.bottom)
         }

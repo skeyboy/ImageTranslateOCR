@@ -55,6 +55,28 @@ class LiveRecognitionMetricsPolicyTest {
     }
 
     @Test
+    fun abDecisionRejectsAreaRecallBelowTheProductAccuracyTarget() {
+        val comparison = LiveCoverageComparison(
+            referenceRegionCount = 10,
+            candidateRegionCount = 10,
+            matchedReferenceRegions = 10,
+            regionRecall = 1f,
+            areaRecall = 0.89f,
+            passesCoverageGate = false
+        )
+
+        val report = LiveRecognitionMetricsPolicy.abReport(
+            reference = runMetrics(100L),
+            candidate = runMetrics(40L),
+            coverage = comparison,
+            capturePlan = null,
+            candidateRanFirst = true
+        )
+
+        assertEquals(LiveRecognitionAbDecision.ACCURACY_REGRESSION, report.decision)
+    }
+
+    @Test
     fun abDecisionKeepsOnlyAFasterCandidateThatPassesCoverage() {
         val coverage = LiveCoverageComparison(10, 10, 10, 1f, 1f, true)
         val report = LiveRecognitionMetricsPolicy.abReport(
