@@ -91,14 +91,26 @@ class OneShotScreenCaptureService : Service() {
     private var lastSignatureSampleAt = Long.MIN_VALUE
     private val movementSettleFallback = Runnable {
         if (!continuousTranslationEnabled.get() || projection == null ||
-            captureInProgress.get() || initialCapturePending.get() ||
-            !changeDetector.forceCaptureAfterQuietPeriod(SystemClock.elapsedRealtime())
+            captureInProgress.get() || initialCapturePending.get()
         ) {
             return@Runnable
         }
-        val capturePlan = changeDetector.consumeCapturePlan()
-        Log.i(TAG, "Settled viewport from quiet-period fallback")
-        requestScreenshot(capturePlan)
+        when (changeDetector.forceActionAfterQuietPeriod(SystemClock.elapsedRealtime())) {
+            ScreenFrameAction.NONE,
+            ScreenFrameAction.MOVING,
+            ScreenFrameAction.MOVING_UPDATE -> Unit
+            ScreenFrameAction.RESTORE -> restoreUnchangedSettledViewport("quiet_period")
+            ScreenFrameAction.CAPTURE -> {
+                val capturePlan = changeDetector.consumeCapturePlan()
+                val differenceRatio = changeDetector.consumeSettledDifferenceRatio()
+                Log.i(
+                    TAG,
+                    "Settled viewport from quiet-period fallback: " +
+                        "differenceRatio=${differenceRatio ?: -1f}"
+                )
+                requestScreenshot(capturePlan)
+            }
+        }
     }
     private val translationMutex = Mutex()
     private var foregroundServiceTypes = 0
@@ -644,16 +656,19 @@ class OneShotScreenCaptureService : Service() {
                 scheduleMovementSettleFallback()
             }
             ScreenFrameAction.MOVING_UPDATE -> scheduleMovementSettleFallback()
+            ScreenFrameAction.RESTORE -> restoreUnchangedSettledViewport("stable_frames")
             ScreenFrameAction.CAPTURE -> {
                 captureHandler?.removeCallbacks(movementSettleFallback)
                 val capturePlan = changeDetector.consumeCapturePlan()
+                val differenceRatio = changeDetector.consumeSettledDifferenceRatio()
                 Log.i(
                     TAG,
                     "Settled viewport: shiftY=${capturePlan?.contentShiftY ?: 0}, " +
                         "confidence=${capturePlan?.confidence ?: 0f}, " +
                         "overlap=${capturePlan?.overlapRatio ?: 0f}, " +
                         "error=${capturePlan?.registrationError ?: 0f}, " +
-                        "consensus=${capturePlan?.consensusRatio ?: 0f}"
+                        "consensus=${capturePlan?.consensusRatio ?: 0f}, " +
+                        "differenceRatio=${differenceRatio ?: -1f}"
                 )
                 requestScreenshot(capturePlan)
             }
@@ -664,6 +679,29 @@ class OneShotScreenCaptureService : Service() {
         val handler = captureHandler ?: return
         handler.removeCallbacks(movementSettleFallback)
         handler.postDelayed(movementSettleFallback, MOVEMENT_SETTLE_FALLBACK_MS)
+    }
+
+    private fun restoreUnchangedSettledViewport(trigger: String) {
+        captureHandler?.removeCallbacks(movementSettleFallback)
+        val differenceRatio = changeDetector.consumeSettledDifferenceRatio()
+        if (!canRestoreLastResult.get()) {
+            Log.i(TAG, "No previous translation to restore; capturing the settled viewport")
+            requestScreenshot()
+            return
+        }
+        overlayController.restoreAfterSkippedCapture()
+        changeDetector.onTranslationRendered(SystemClock.elapsedRealtime())
+        Log.i(
+            TAG,
+            "Restored unchanged settled viewport: trigger=$trigger, " +
+                "differenceRatio=${differenceRatio ?: -1f}"
+        )
+        Log.i(
+            METRICS_TAG,
+            "{\"schema\":4,\"event\":\"settled_viewport_restored\"," +
+                "\"generation\":${captureGeneration.get()},\"trigger\":\"$trigger\"," +
+                "\"difference_ratio\":${differenceRatio ?: -1f}}"
+        )
     }
 
     private fun processInitialStableFrame(image: Image, signature: ScreenFrameSignature) {
@@ -892,6 +930,8 @@ class OneShotScreenCaptureService : Service() {
         val plane = image.planes.first()
         val buffer = plane.buffer.duplicate()
         val samples = IntArray(SIGNATURE_COLUMNS * SIGNATURE_ROWS)
+        val ignoredSamples = BooleanArray(samples.size)
+        val controlBounds = overlayController.signatureOcclusionBounds()
         val top = (image.height * SIGNATURE_TOP_CROP_RATIO).toInt()
         val bottom = (image.height * SIGNATURE_BOTTOM_RATIO).toInt().coerceAtLeast(top + 1)
         var sampleIndex = 0
@@ -899,6 +939,7 @@ class OneShotScreenCaptureService : Service() {
             val y = top + ((bottom - top - 1) * row / (SIGNATURE_ROWS - 1).coerceAtLeast(1))
             repeat(SIGNATURE_COLUMNS) { column ->
                 val x = (image.width - 1) * column / (SIGNATURE_COLUMNS - 1).coerceAtLeast(1)
+                ignoredSamples[sampleIndex] = controlBounds?.contains(x, y) == true
                 val offset = y * plane.rowStride + x * plane.pixelStride
                 if (offset + 2 < buffer.limit()) {
                     val red = buffer.get(offset).toInt() and 0xFF
@@ -914,7 +955,8 @@ class OneShotScreenCaptureService : Service() {
             columns = SIGNATURE_COLUMNS,
             rows = SIGNATURE_ROWS,
             sampleTopPx = top,
-            sampleBottomPx = bottom
+            sampleBottomPx = bottom,
+            ignoredSamples = ignoredSamples
         )
     }
 

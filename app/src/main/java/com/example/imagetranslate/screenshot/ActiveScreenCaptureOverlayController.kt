@@ -2,6 +2,7 @@ package com.example.imagetranslate.screenshot
 
 import android.content.Context
 import android.graphics.PixelFormat
+import android.graphics.Rect
 import android.hardware.input.InputManager
 import android.os.Build
 import android.os.Handler
@@ -24,6 +25,8 @@ import com.example.imagetranslate.ocr.OcrModelState
 import com.example.imagetranslate.ocr.OcrRecognitionMode
 import com.example.imagetranslate.translate.TranslationMode
 import kotlin.math.abs
+
+private const val SIGNATURE_OCCLUSION_PADDING_DP = 8
 
 internal class ActiveScreenCaptureOverlayController(
     context: Context,
@@ -127,6 +130,18 @@ internal class ActiveScreenCaptureOverlayController(
         }
     }
 
+    fun signatureOcclusionBounds(): Rect? {
+        val params = controlParams ?: return null
+        if (binding.root.parent == null) return null
+        val padding = dp(SIGNATURE_OCCLUSION_PADDING_DP)
+        return Rect(
+            params.x - padding,
+            params.y - padding,
+            params.x + params.width + padding,
+            params.y + params.height + padding
+        )
+    }
+
     fun showProcessing() = onMainThread {
         if (!ensureControlAttachedNow()) return@onMainThread
         processing = true
@@ -217,8 +232,20 @@ internal class ActiveScreenCaptureOverlayController(
     fun showCaptureFailed() = onMainThread(::showReadyNow)
 
     fun restoreAfterSkippedCapture() = onMainThread {
+        processing = false
         binding.root.visibility = View.VISIBLE
         translationView.setPatchesVisible(translationVisible, animateChange = false)
+        binding.activeOverlayProgress.visibility = View.GONE
+        binding.btnActiveOverlayMode.isEnabled = true
+        binding.btnActiveOverlaySettings.isEnabled = true
+        binding.btnToggleActiveTranslation.isEnabled = hasTranslationResult
+        if (hasTranslationResult) {
+            binding.tvActiveOverlayStatus.setText(R.string.active_screenshot_compact_translated)
+            updateCompactStatus(
+                R.string.active_screenshot_compact_translated,
+                showProgress = false
+            )
+        }
     }
 
     fun clearTranslations() = onMainThread {

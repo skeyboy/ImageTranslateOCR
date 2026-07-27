@@ -7,13 +7,15 @@ internal data class ScreenFrameSignature(
     val columns: Int = samples.size,
     val rows: Int = 1,
     val sampleTopPx: Int = 0,
-    val sampleBottomPx: Int = rows
+    val sampleBottomPx: Int = rows,
+    val ignoredSamples: BooleanArray? = null
 )
 
 internal enum class ScreenFrameAction {
     NONE,
     MOVING,
     MOVING_UPDATE,
+    RESTORE,
     CAPTURE
 }
 
@@ -25,10 +27,15 @@ internal object ScreenFrameSignaturePolicy {
     ): Float {
         if (first.samples.isEmpty() || first.samples.size != second.samples.size) return 1f
         var changed = 0
+        var compared = 0
         first.samples.indices.forEach { index ->
+            if (first.ignoredSamples.isIgnored(index) || second.ignoredSamples.isIgnored(index)) {
+                return@forEach
+            }
+            compared++
             if (abs(first.samples[index] - second.samples[index]) >= luminanceDelta) changed++
         }
-        return changed.toFloat() / first.samples.size
+        return if (compared == 0) 1f else changed.toFloat() / compared
     }
 
     fun isDuplicateCapture(
@@ -47,6 +54,9 @@ internal object ScreenFrameSignaturePolicy {
     private const val DUPLICATE_CHANGED_SAMPLE_RATIO = 0.012f
     private const val VIEWPORT_LUMINANCE_DELTA = 18
     private const val VIEWPORT_CHANGED_SAMPLE_RATIO = 0.045f
+
+    private fun BooleanArray?.isIgnored(index: Int): Boolean =
+        this != null && index < size && this[index]
 }
 
 internal class InitialViewportStabilityGate(
@@ -128,6 +138,7 @@ internal class ScreenFrameChangeDetector(
     private var captureBaseline: ScreenFrameSignature? = null
     private var pendingCapturePlan: ScrollCapturePlan? = null
     private var latestMotionPlan: ScrollCapturePlan? = null
+    private var pendingSettledDifferenceRatio: Float? = null
     private val stableFrames = ArrayDeque<ScreenFrameSignature>(STABLE_FRAME_BUFFER_CAPACITY)
 
     fun onFrame(signature: ScreenFrameSignature, nowMs: Long): ScreenFrameAction {
@@ -173,11 +184,7 @@ internal class ScreenFrameChangeDetector(
             captureIntervalSatisfied &&
             stableFrames.size >= minimumStableFrameSamples
         ) {
-            dirty = false
-            movementReported = false
-            lastCaptureAt = nowMs
-            pendingCapturePlan = bufferedCapturePlan()
-            return ScreenFrameAction.CAPTURE
+            return settleMovement(nowMs, bufferedCapturePlan())
         }
         return ScreenFrameAction.NONE
     }
@@ -201,6 +208,7 @@ internal class ScreenFrameChangeDetector(
         peakMovementRatio = 0f
         pendingCapturePlan = null
         latestMotionPlan = null
+        pendingSettledDifferenceRatio = null
         rememberStableFrame(signature, reset = true)
         lastMovementAt = nowMs
         lastCaptureAt = nowMs
@@ -218,6 +226,7 @@ internal class ScreenFrameChangeDetector(
         captureBaseline = null
         pendingCapturePlan = null
         latestMotionPlan = null
+        pendingSettledDifferenceRatio = null
         stableFrames.clear()
     }
 
@@ -227,13 +236,11 @@ internal class ScreenFrameChangeDetector(
 
     fun isAwaitingStableFrames(): Boolean = dirty
 
-    fun forceCaptureAfterQuietPeriod(nowMs: Long): Boolean {
-        if (!dirty) return false
-        dirty = false
-        movementReported = false
-        lastCaptureAt = nowMs
-        pendingCapturePlan = latestMotionPlan
-        return true
+    fun forceActionAfterQuietPeriod(nowMs: Long): ScreenFrameAction =
+        if (dirty) settleMovement(nowMs, latestMotionPlan) else ScreenFrameAction.NONE
+
+    fun consumeSettledDifferenceRatio(): Float? = pendingSettledDifferenceRatio.also {
+        pendingSettledDifferenceRatio = null
     }
 
     fun currentMotionPlan(): ScrollCapturePlan? = latestMotionPlan
@@ -257,6 +264,36 @@ internal class ScreenFrameChangeDetector(
         return agreeing.last()
     }
 
+    private fun settleMovement(
+        nowMs: Long,
+        capturePlan: ScrollCapturePlan?
+    ): ScreenFrameAction {
+        val baseline = captureBaseline
+        val settled = stableFrames.lastOrNull() ?: previous
+        val baselineDifference = if (baseline != null && settled != null) {
+            ScreenFrameSignaturePolicy.differenceRatio(baseline, settled, luminanceDelta)
+        } else {
+            null
+        }
+        pendingSettledDifferenceRatio = baselineDifference
+        dirty = false
+        movementReported = false
+        peakMovementRatio = 0f
+        lastCaptureAt = nowMs
+
+        if (baselineDifference != null &&
+            baselineDifference < changedSampleRatio * RETURN_TO_BASELINE_RATIO_FACTOR
+        ) {
+            pendingCapturePlan = null
+            latestMotionPlan = null
+            stableFrames.clear()
+            return ScreenFrameAction.RESTORE
+        }
+
+        pendingCapturePlan = capturePlan
+        return ScreenFrameAction.CAPTURE
+    }
+
     private companion object {
         const val DEFAULT_STABLE_DELAY_MS = 520L
         const val DEFAULT_SLOW_MOVEMENT_STABLE_DELAY_MS = 420L
@@ -267,6 +304,7 @@ internal class ScreenFrameChangeDetector(
         const val POST_RENDER_IGNORE_MS = 280L
         const val STABLE_FRAME_BUFFER_CAPACITY = 5
         const val DEFAULT_MINIMUM_STABLE_FRAME_SAMPLES = 4
+        const val RETURN_TO_BASELINE_RATIO_FACTOR = 0.5f
         const val MINIMUM_TEMPORAL_PLAN_SAMPLES = 2
         const val MINIMUM_TEMPORAL_SHIFT_TOLERANCE_PX = 72
     }

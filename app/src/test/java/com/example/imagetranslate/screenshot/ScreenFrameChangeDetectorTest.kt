@@ -21,14 +21,14 @@ class ScreenFrameChangeDetectorTest {
     }
 
     @Test
-    fun quietPeriodFallbackConsumesPendingMovementOnce() {
+    fun quietPeriodFallbackCapturesChangedViewportOnce() {
         val detector = ScreenFrameChangeDetector()
         detector.onFrame(frame(10), 0L)
         detector.onFrame(frame(180), 100L)
 
-        assertTrue(detector.forceCaptureAfterQuietPeriod(1_000L))
+        assertEquals(ScreenFrameAction.CAPTURE, detector.forceActionAfterQuietPeriod(1_000L))
         assertFalse(detector.isAwaitingStableFrames())
-        assertFalse(detector.forceCaptureAfterQuietPeriod(1_100L))
+        assertEquals(ScreenFrameAction.NONE, detector.forceActionAfterQuietPeriod(1_100L))
     }
 
     private val detector = ScreenFrameChangeDetector(
@@ -77,6 +77,33 @@ class ScreenFrameChangeDetectorTest {
         assertEquals(ScreenFrameAction.NONE, detector.onFrame(frame(180), 900L))
         assertEquals(ScreenFrameAction.NONE, detector.onFrame(frame(180), 1_300L))
         assertEquals(ScreenFrameAction.MOVING, detector.onFrame(frame(40), 1_400L))
+    }
+
+    @Test
+    fun presentationChangeReturningToCapturedViewportRestoresExistingResult() {
+        detector.onCaptureStarted(frame(40), 0L)
+        detector.onTranslationRendered(500L)
+        detector.onFrame(frame(180), 501L)
+        detector.onFrame(frame(180), 900L)
+
+        assertEquals(ScreenFrameAction.MOVING, detector.onFrame(frame(210), 1_000L))
+        assertEquals(ScreenFrameAction.MOVING_UPDATE, detector.onFrame(frame(40), 1_450L))
+        assertEquals(ScreenFrameAction.NONE, detector.onFrame(frame(40), 1_550L))
+        assertEquals(ScreenFrameAction.NONE, detector.onFrame(frame(40), 1_650L))
+        assertEquals(ScreenFrameAction.NONE, detector.onFrame(frame(40), 1_750L))
+        assertEquals(ScreenFrameAction.RESTORE, detector.onFrame(frame(40), 1_850L))
+        assertEquals(0f, detector.consumeSettledDifferenceRatio())
+    }
+
+    @Test
+    fun quietPeriodFallbackRestoresViewportThatReturnedToCaptureBaseline() {
+        detector.onCaptureStarted(frame(40), 0L)
+        assertEquals(ScreenFrameAction.MOVING, detector.onFrame(frame(180), 100L))
+        assertEquals(ScreenFrameAction.MOVING_UPDATE, detector.onFrame(frame(40), 300L))
+
+        assertEquals(ScreenFrameAction.RESTORE, detector.forceActionAfterQuietPeriod(1_200L))
+        assertEquals(0f, detector.consumeSettledDifferenceRatio())
+        assertFalse(detector.isAwaitingStableFrames())
     }
 
     @Test
@@ -136,6 +163,22 @@ class ScreenFrameChangeDetectorTest {
 
         assertEquals(true, ScreenFrameSignaturePolicy.isDuplicateCapture(baseline, minorNoise))
         assertEquals(false, ScreenFrameSignaturePolicy.isDuplicateCapture(baseline, changed))
+    }
+
+    @Test
+    fun signatureDifferenceIgnoresControlOverlayAtEitherPosition() {
+        val baseline = frame(100).copy(
+            ignoredSamples = BooleanArray(100).apply { fill(true, 80, 90) }
+        )
+        val current = frame(100).copy(
+            samples = IntArray(100) { index -> if (index in 80 until 100) 240 else 100 },
+            ignoredSamples = BooleanArray(100).apply { fill(true, 90, 100) }
+        )
+
+        assertEquals(
+            0f,
+            ScreenFrameSignaturePolicy.differenceRatio(baseline, current, luminanceDelta = 10)
+        )
     }
 
     @Test
