@@ -17,10 +17,17 @@ internal object LivePatchBackgroundPolicy {
     ): LivePatchBackgroundMode = when (requested) {
         LivePatchBackgroundMode.STANDARD -> LivePatchBackgroundMode.STANDARD
         LivePatchBackgroundMode.THEME_SURFACE -> LivePatchBackgroundMode.THEME_SURFACE
+        LivePatchBackgroundMode.FEATHERED_THEME_SURFACE ->
+            LivePatchBackgroundMode.FEATHERED_THEME_SURFACE
         LivePatchBackgroundMode.BLUR_TINT -> if (blurAvailable) {
             LivePatchBackgroundMode.BLUR_TINT
         } else {
             LivePatchBackgroundMode.THEME_SURFACE
+        }
+        LivePatchBackgroundMode.FEATHERED_BLUR_TINT -> if (blurAvailable) {
+            LivePatchBackgroundMode.FEATHERED_BLUR_TINT
+        } else {
+            LivePatchBackgroundMode.FEATHERED_THEME_SURFACE
         }
         LivePatchBackgroundMode.ADAPTIVE -> if (
             blurAvailable &&

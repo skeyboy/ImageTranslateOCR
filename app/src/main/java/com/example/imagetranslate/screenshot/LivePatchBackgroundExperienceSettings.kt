@@ -18,9 +18,9 @@ internal object LivePatchBackgroundExperiencePolicy {
         backgroundMode = when (mode) {
             LivePatchBackgroundExperienceMode.OFF -> LivePatchBackgroundMode.STANDARD
             LivePatchBackgroundExperienceMode.THEME_COLOR ->
-                LivePatchBackgroundMode.THEME_SURFACE
+                LivePatchBackgroundMode.FEATHERED_THEME_SURFACE
             LivePatchBackgroundExperienceMode.GAUSSIAN_BLUR ->
-                LivePatchBackgroundMode.BLUR_TINT
+                LivePatchBackgroundMode.FEATHERED_BLUR_TINT
         }
     )
 

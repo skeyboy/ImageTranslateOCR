@@ -228,7 +228,7 @@ class DeterministicOverlayRenderingMatrixTest {
     }
 }
 
-private enum class SceneCategory(val id: String) {
+internal enum class SceneCategory(val id: String) {
     LIGHT_BODY("light-body"),
     DARK_BODY("dark-body"),
     NON_TEXT_MIXED("non-text-mixed"),
@@ -236,7 +236,7 @@ private enum class SceneCategory(val id: String) {
     LENGTH_STRESS("length-stress")
 }
 
-private data class DeterministicScene(
+internal data class DeterministicScene(
     val bitmap: Bitmap,
     val regions: List<LiveDeterministicTranslationRegion>,
     val protectedRegions: List<Rect>,
@@ -285,7 +285,7 @@ private object CurrentCapabilityCalibration {
     private const val RETAINED_SOURCE_INTERVAL = 18
 }
 
-private object DeterministicSceneFactory {
+internal object DeterministicSceneFactory {
     fun create(category: SceneCategory, seed: Int): DeterministicScene {
         val landscape = category == SceneCategory.LANDSCAPE_EDGE
         val width = if (landscape) 1920 else 1080

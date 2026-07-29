@@ -66,4 +66,15 @@ class LivePatchBackgroundPolicyTest {
 
         assertEquals(LivePatchBackgroundMode.THEME_SURFACE, result)
     }
+
+    @Test
+    fun featheredBlurFallsBackToFeatheredThemeWhenUnavailable() {
+        val result = LivePatchBackgroundPolicy.resolve(
+            requested = LivePatchBackgroundMode.FEATHERED_BLUR_TINT,
+            profile = LivePatchTextureProfile(0.1f, 60f, 50),
+            blurAvailable = false
+        )
+
+        assertEquals(LivePatchBackgroundMode.FEATHERED_THEME_SURFACE, result)
+    }
 }

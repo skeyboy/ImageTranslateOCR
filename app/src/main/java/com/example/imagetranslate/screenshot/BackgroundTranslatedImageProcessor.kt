@@ -535,10 +535,12 @@ internal class BackgroundTranslatedImageProcessor(
                 renderedTrackCacheHitCount = renderedPatches.count(RenderedOverlayPatch::cacheHit),
                 renderedTrackCacheMissCount = renderedPatches.count { !it.cacheHit },
                 themeSurfacePatchCount = renderedPatches.count {
-                    it.backgroundMode == LivePatchBackgroundMode.THEME_SURFACE
+                    it.backgroundMode == LivePatchBackgroundMode.THEME_SURFACE ||
+                        it.backgroundMode == LivePatchBackgroundMode.FEATHERED_THEME_SURFACE
                 },
                 blurTintPatchCount = renderedPatches.count {
-                    it.backgroundMode == LivePatchBackgroundMode.BLUR_TINT
+                    it.backgroundMode == LivePatchBackgroundMode.BLUR_TINT ||
+                        it.backgroundMode == LivePatchBackgroundMode.FEATHERED_BLUR_TINT
                 },
                 sourceLatinTokenCount = textQuality.sourceLatinTokenCount,
                 retainedLatinTokenCount = textQuality.retainedLatinTokenCount,
@@ -1346,9 +1348,10 @@ internal class BackgroundTranslatedImageProcessor(
             },
             blurAvailable = App.isOpenCVReady
         )
-        val materialFingerprint = if (
-            resolvedBackgroundMode == LivePatchBackgroundMode.BLUR_TINT
-        ) {
+        val usesVisualFingerprint =
+            resolvedBackgroundMode == LivePatchBackgroundMode.BLUR_TINT ||
+            resolvedBackgroundMode == LivePatchBackgroundMode.FEATHERED_BLUR_TINT
+        val materialFingerprint = if (usesVisualFingerprint) {
             fingerprint(bitmap, cropBounds)
         } else {
             IntArray(0)
@@ -1368,7 +1371,7 @@ internal class BackgroundTranslatedImageProcessor(
             synchronized(renderedTrackCache) {
                 renderedTrackCache[trackId]?.takeIf { candidate ->
                     candidate.key == cacheKey && !candidate.bitmap.isRecycled &&
-                        (resolvedBackgroundMode != LivePatchBackgroundMode.BLUR_TINT ||
+                        (!usesVisualFingerprint ||
                             LiveRenderedTrackReusePolicy.hasMatchingVisualFingerprint(
                                 candidate.materialFingerprint,
                                 materialFingerprint
@@ -1395,6 +1398,7 @@ internal class BackgroundTranslatedImageProcessor(
         val localMaterialBounds = Rect(0, 0, cropBounds.width(), cropBounds.height())
         var output: Bitmap? = null
         var preparedBackground: LivePatchBackground? = null
+        var hasPreparedBackground = false
         return try {
             val patchBitmap = Bitmap.createBitmap(
                 cropBounds.width(),
@@ -1402,24 +1406,44 @@ internal class BackgroundTranslatedImageProcessor(
                 Bitmap.Config.ARGB_8888
             )
             output = patchBitmap
-            preparedBackground = if (
-                drawPatchBackground &&
-                resolvedBackgroundMode == LivePatchBackgroundMode.BLUR_TINT
-            ) {
-                LivePatchBackgroundComposer.createBlurTintTarget(
-                    source = crop,
-                    themeSurface = localSurface,
-                    overlayAlpha = overlayAlpha
-                ).also { background ->
-                    LivePatchBackgroundComposer.drawCompensatedTarget(
+            if (drawPatchBackground) {
+                when (resolvedBackgroundMode) {
+                    LivePatchBackgroundMode.BLUR_TINT,
+                    LivePatchBackgroundMode.FEATHERED_BLUR_TINT -> {
+                        preparedBackground = LivePatchBackgroundComposer.createBlurTintTarget(
+                            source = crop,
+                            themeSurface = localSurface,
+                            overlayAlpha = overlayAlpha
+                        ).also { background ->
+                            LivePatchBackgroundComposer.drawCompensatedTarget(
+                                output = patchBitmap,
+                                target = background.bitmap,
+                                source = crop,
+                                overlayAlpha = overlayAlpha
+                            )
+                        }
+                        hasPreparedBackground = true
+                    }
+                    LivePatchBackgroundMode.FEATHERED_THEME_SURFACE -> {
+                        LivePatchBackgroundComposer.drawCompensatedColorTarget(
+                            output = patchBitmap,
+                            source = crop,
+                            themeSurface = localSurface,
+                            overlayAlpha = overlayAlpha
+                        )
+                        hasPreparedBackground = true
+                    }
+                    else -> Unit
+                }
+                if (
+                    resolvedBackgroundMode == LivePatchBackgroundMode.FEATHERED_THEME_SURFACE ||
+                    resolvedBackgroundMode == LivePatchBackgroundMode.FEATHERED_BLUR_TINT
+                ) {
+                    LivePatchBackgroundComposer.applyFeatheredAlpha(
                         output = patchBitmap,
-                        target = background.bitmap,
-                        source = crop,
-                        overlayAlpha = overlayAlpha
+                        opaqueCore = localBounds
                     )
                 }
-            } else {
-                null
             }
             val localRegion = region.copy(
                 source = region.source.copy(bounds = localBounds)
@@ -1431,7 +1455,7 @@ internal class BackgroundTranslatedImageProcessor(
                 overlayBackgroundColor = localSurface,
                 overlayAlpha = overlayAlpha,
                 overlayMaterialBounds = localMaterialBounds,
-                drawOverlayBackground = drawPatchBackground && preparedBackground == null,
+                drawOverlayBackground = drawPatchBackground && !hasPreparedBackground,
                 evidenceSink = { evidence ->
                     evidenceSink?.invoke(
                         evidence.copy(

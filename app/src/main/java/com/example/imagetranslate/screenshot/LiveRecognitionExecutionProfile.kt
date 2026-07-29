@@ -29,7 +29,9 @@ internal enum class LivePatchBackgroundMode {
     STANDARD,
     ADAPTIVE,
     THEME_SURFACE,
-    BLUR_TINT
+    BLUR_TINT,
+    FEATHERED_THEME_SURFACE,
+    FEATHERED_BLUR_TINT
 }
 
 internal data class LiveRecognitionExecutionProfile(

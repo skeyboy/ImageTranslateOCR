@@ -2,6 +2,7 @@ package com.example.imagetranslate.screenshot
 
 import android.graphics.Bitmap
 import android.graphics.Color
+import android.graphics.Rect
 import com.example.imagetranslate.App
 import org.opencv.android.Utils
 import org.opencv.core.Core
@@ -162,6 +163,82 @@ internal object LivePatchBackgroundComposer {
             sourceMat.release()
             compensated.release()
         }
+    }
+
+    fun drawCompensatedColorTarget(
+        output: Bitmap,
+        source: Bitmap,
+        themeSurface: Int,
+        overlayAlpha: Float
+    ) {
+        require(output.width == source.width && output.height == source.height)
+        val sourcePixels = IntArray(source.width * source.height)
+        val outputPixels = IntArray(sourcePixels.size)
+        source.getPixels(
+            sourcePixels,
+            0,
+            source.width,
+            0,
+            0,
+            source.width,
+            source.height
+        )
+        sourcePixels.forEachIndexed { index, sourceColor ->
+            outputPixels[index] = ScreenThemeColorEstimator.compensationColor(
+                targetSurface = themeSurface,
+                sourceColor = sourceColor,
+                overlayAlpha = overlayAlpha
+            )
+        }
+        output.setPixels(
+            outputPixels,
+            0,
+            output.width,
+            0,
+            0,
+            output.width,
+            output.height
+        )
+    }
+
+    fun applyFeatheredAlpha(output: Bitmap, opaqueCore: Rect) {
+        val core = Rect(
+            opaqueCore.left.coerceIn(0, output.width),
+            opaqueCore.top.coerceIn(0, output.height),
+            opaqueCore.right.coerceIn(0, output.width),
+            opaqueCore.bottom.coerceIn(0, output.height)
+        )
+        require(core.width() > 0 && core.height() > 0)
+        val pixels = IntArray(output.width * output.height)
+        output.getPixels(pixels, 0, output.width, 0, 0, output.width, output.height)
+        for (y in 0 until output.height) {
+            val verticalWeight = featherAxisWeight(y, core.top, core.bottom, output.height)
+            for (x in 0 until output.width) {
+                val horizontalWeight = featherAxisWeight(x, core.left, core.right, output.width)
+                val index = y * output.width + x
+                val color = pixels[index]
+                val alpha = ((color ushr 24) * horizontalWeight * verticalWeight)
+                    .roundToInt()
+                    .coerceIn(0, 255)
+                pixels[index] = color and 0x00FFFFFF or (alpha shl 24)
+            }
+        }
+        output.setPixels(pixels, 0, output.width, 0, 0, output.width, output.height)
+    }
+
+    private fun featherAxisWeight(
+        coordinate: Int,
+        coreStart: Int,
+        coreEndExclusive: Int,
+        size: Int
+    ): Float {
+        val linear = when {
+            coordinate < coreStart && coreStart > 0 -> coordinate.toFloat() / coreStart
+            coordinate >= coreEndExclusive && coreEndExclusive < size ->
+                (size - 1 - coordinate).toFloat() / (size - coreEndExclusive).coerceAtLeast(1)
+            else -> 1f
+        }.coerceIn(0f, 1f)
+        return linear * linear * (3f - 2f * linear)
     }
 
     private fun detailEnergy(source: Mat): Double {

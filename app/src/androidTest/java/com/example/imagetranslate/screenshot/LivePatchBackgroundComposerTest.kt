@@ -126,6 +126,37 @@ class LivePatchBackgroundComposerTest {
         source.recycle()
     }
 
+    @Test
+    fun featheredMaterialKeepsTheTextCoreOpaqueAndRemovesHardPatchEdges() {
+        val source = stripedSource(160, 80)
+        val alpha = TranslationOverlayTouchPolicy.PREFERRED_SINGLE_WINDOW_ALPHA
+        val theme = ScreenThemeColorEstimator.compositableSurface(Color.WHITE, alpha)
+        val patch = Bitmap.createBitmap(source.width, source.height, Bitmap.Config.ARGB_8888)
+        LivePatchBackgroundComposer.drawCompensatedColorTarget(
+            output = patch,
+            source = source,
+            themeSurface = theme,
+            overlayAlpha = alpha
+        )
+
+        LivePatchBackgroundComposer.applyFeatheredAlpha(
+            output = patch,
+            opaqueCore = android.graphics.Rect(20, 12, 140, 68)
+        )
+
+        assertEquals(0, Color.alpha(patch.getPixel(0, 0)))
+        assertEquals(255, Color.alpha(patch.getPixel(80, 40)))
+        val reconstructedCore = composite(
+            patch.getPixel(80, 40),
+            source.getPixel(80, 40),
+            alpha
+        )
+        assertTrue(channelDistance(reconstructedCore, theme) <= 3)
+
+        patch.recycle()
+        source.recycle()
+    }
+
     private fun stripedSource(width: Int, height: Int): Bitmap =
         Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888).apply {
             val pixels = IntArray(width * height) { index ->

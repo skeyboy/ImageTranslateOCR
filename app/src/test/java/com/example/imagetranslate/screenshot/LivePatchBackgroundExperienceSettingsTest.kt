@@ -21,7 +21,7 @@ class LivePatchBackgroundExperienceSettingsTest {
     @Test
     fun themeColorExperienceUsesThemeSurface() {
         assertEquals(
-            LivePatchBackgroundMode.THEME_SURFACE,
+            LivePatchBackgroundMode.FEATHERED_THEME_SURFACE,
             LivePatchBackgroundExperiencePolicy.executionProfile(
                 LivePatchBackgroundExperienceMode.THEME_COLOR
             ).backgroundMode
@@ -31,7 +31,7 @@ class LivePatchBackgroundExperienceSettingsTest {
     @Test
     fun gaussianBlurExperienceUsesBlurTint() {
         assertEquals(
-            LivePatchBackgroundMode.BLUR_TINT,
+            LivePatchBackgroundMode.FEATHERED_BLUR_TINT,
             LivePatchBackgroundExperiencePolicy.executionProfile(
                 LivePatchBackgroundExperienceMode.GAUSSIAN_BLUR
             ).backgroundMode
