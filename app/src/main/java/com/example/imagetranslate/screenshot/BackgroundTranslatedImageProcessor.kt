@@ -32,6 +32,7 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
+import kotlin.math.pow
 import kotlin.math.sqrt
 
 internal data class BackgroundTranslatedImageResult(
@@ -193,6 +194,33 @@ private data class RenderedOverlayPatch(
     val backgroundDetailRetentionRatio: Float,
     val cacheHit: Boolean,
     val backgroundMode: LivePatchBackgroundMode
+)
+
+internal data class LiveDeterministicTranslationRegion(
+    val sourceText: String,
+    val translation: String,
+    val bounds: Rect
+)
+
+internal data class LiveRenderedTextEvidence(
+    val bounds: Rect,
+    val textSizePx: Float,
+    val sourceLineHeightPx: Float,
+    val textScale: Float,
+    val lineCount: Int,
+    val layoutHeightPx: Int,
+    val availableHeightPx: Int,
+    val clipped: Boolean,
+    val contrastRatio: Float
+)
+
+internal data class LiveDeterministicOverlayResult(
+    val patches: List<ScreenTranslationPatch>,
+    val renderedText: List<LiveRenderedTextEvidence>,
+    val expectedRegionCount: Int,
+    val renderedRegionCount: Int,
+    val failedRegionCount: Int,
+    val renderingMs: Long
 )
 
 internal data class RenderedTrackCacheKey(
@@ -529,6 +557,58 @@ internal class BackgroundTranslatedImageProcessor(
         } finally {
             if (!reuseResources) close()
         }
+    }
+
+    suspend fun renderDeterministicOverlay(
+        bitmap: Bitmap,
+        regions: List<LiveDeterministicTranslationRegion>,
+        overlayAlpha: Float = ScreenThemeColorEstimator.DEFAULT_OVERLAY_ALPHA,
+        executionProfile: LiveRecognitionExecutionProfile = LiveRecognitionExecutionProfile.CURRENT,
+        drawPatchBackgrounds: Boolean = true
+    ): LiveDeterministicOverlayResult {
+        check(!closed) { "Image processor is closed" }
+        val renderEvidence = java.util.Collections.synchronizedList(
+            mutableListOf<LiveRenderedTextEvidence>()
+        )
+        val displayRegions = regions.map { region ->
+            BackgroundImageRegion(
+                source = RecognizedText(
+                    text = region.sourceText,
+                    bounds = Rect(region.bounds),
+                    consensusScore = 1f,
+                    passCount = 2,
+                    modelConfidence = 1f,
+                    recognizerScript = RecognizerScript.LATIN
+                ),
+                translation = region.translation
+            )
+        }
+        val startedAtMs = SystemClock.elapsedRealtime()
+        val fallbackSurface = ScreenThemeColorEstimator.compositableSurface(
+            ScreenThemeColorEstimator.estimate(bitmap),
+            overlayAlpha
+        )
+        val rendered = renderOverlayPatches(
+            bitmap = bitmap,
+            regions = displayRegions,
+            fallbackSurface = fallbackSurface,
+            overlayAlpha = overlayAlpha,
+            renderingMode = executionProfile.renderingMode,
+            backgroundMode = executionProfile.backgroundMode,
+            drawPatchBackgrounds = drawPatchBackgrounds,
+            evidenceSink = renderEvidence::add
+        )
+        val patches = mergeOverlappingPatches(rendered.map(RenderedOverlayPatch::patch))
+        return LiveDeterministicOverlayResult(
+            patches = patches,
+            renderedText = renderEvidence.sortedWith(
+                compareBy({ it.bounds.top }, { it.bounds.left })
+            ),
+            expectedRegionCount = regions.size,
+            renderedRegionCount = rendered.size,
+            failedRegionCount = (regions.size - rendered.size).coerceAtLeast(0),
+            renderingMs = SystemClock.elapsedRealtime() - startedAtMs
+        )
     }
 
     fun close() {
@@ -1067,7 +1147,8 @@ internal class BackgroundTranslatedImageProcessor(
         overlayAlpha: Float,
         renderingMode: LivePatchRenderingMode,
         backgroundMode: LivePatchBackgroundMode,
-        drawPatchBackgrounds: Boolean
+        drawPatchBackgrounds: Boolean,
+        evidenceSink: ((LiveRenderedTextEvidence) -> Unit)? = null
     ): List<RenderedOverlayPatch> = when (renderingMode) {
         LivePatchRenderingMode.SEQUENTIAL -> regions.mapNotNull { region ->
             createOverlayPatch(
@@ -1076,7 +1157,8 @@ internal class BackgroundTranslatedImageProcessor(
                 fallbackSurface,
                 overlayAlpha,
                 backgroundMode,
-                drawPatchBackgrounds
+                drawPatchBackgrounds,
+                evidenceSink
             )
         }
         LivePatchRenderingMode.PARALLEL -> coroutineScope {
@@ -1088,7 +1170,8 @@ internal class BackgroundTranslatedImageProcessor(
                         fallbackSurface,
                         overlayAlpha,
                         backgroundMode,
-                        drawPatchBackgrounds
+                        drawPatchBackgrounds,
+                        evidenceSink
                     )
                 }
             }.awaitAll().filterNotNull()
@@ -1212,7 +1295,8 @@ internal class BackgroundTranslatedImageProcessor(
         fallbackSurface: Int,
         overlayAlpha: Float,
         backgroundMode: LivePatchBackgroundMode,
-        drawPatchBackground: Boolean
+        drawPatchBackground: Boolean,
+        evidenceSink: ((LiveRenderedTextEvidence) -> Unit)? = null
     ): RenderedOverlayPatch? {
         val sourceBounds = region.source.bounds.clampedTo(bitmap) ?: return null
         val material = LiveOverlayLayoutPolicy.translationMaterialBounds(
@@ -1347,7 +1431,16 @@ internal class BackgroundTranslatedImageProcessor(
                 overlayBackgroundColor = localSurface,
                 overlayAlpha = overlayAlpha,
                 overlayMaterialBounds = localMaterialBounds,
-                drawOverlayBackground = drawPatchBackground && preparedBackground == null
+                drawOverlayBackground = drawPatchBackground && preparedBackground == null,
+                evidenceSink = { evidence ->
+                    evidenceSink?.invoke(
+                        evidence.copy(
+                            bounds = Rect(evidence.bounds).apply {
+                                offset(cropBounds.left, cropBounds.top)
+                            }
+                        )
+                    )
+                }
             )
             if (rendered.isEmpty()) {
                 patchBitmap.recycle()
@@ -1582,7 +1675,8 @@ private object BackgroundTranslatedImageRenderer {
         overlayBackgroundColor: Int? = null,
         overlayAlpha: Float = ScreenThemeColorEstimator.DEFAULT_OVERLAY_ALPHA,
         overlayMaterialBounds: Rect? = null,
-        drawOverlayBackground: Boolean = true
+        drawOverlayBackground: Boolean = true,
+        evidenceSink: ((LiveRenderedTextEvidence) -> Unit)? = null
     ): List<Rect> {
         val canvas = Canvas(bitmap)
         val renderedRegions = mutableListOf<Rect>()
@@ -1637,6 +1731,28 @@ private object BackgroundTranslatedImageRenderer {
                 alignment,
                 style,
                 region.smartAssistDisplayHints
+            )
+            val sourceLineHeight = bounds.height().toFloat() /
+                style.sourceLineCount.coerceAtLeast(1)
+            val evidenceBackground = overlayBackgroundColor ?: if (style.isDarkBackground) {
+                Color.BLACK
+            } else {
+                Color.WHITE
+            }
+            evidenceSink?.invoke(
+                LiveRenderedTextEvidence(
+                    bounds = Rect(bounds),
+                    textSizePx = paint.textSize,
+                    sourceLineHeightPx = sourceLineHeight,
+                    textScale = paint.textSize / sourceLineHeight.coerceAtLeast(1f),
+                    lineCount = layout.lineCount,
+                    layoutHeightPx = layout.height,
+                    availableHeightPx = bounds.height(),
+                    clipped = layout.height > bounds.height() ||
+                        (layout.lineCount > 0 &&
+                            layout.getLineEnd(layout.lineCount - 1) < region.translation.length),
+                    contrastRatio = contrastRatio(style.foregroundColor, evidenceBackground)
+                )
             )
             canvas.save()
             canvas.clipRect(bounds)
@@ -1941,6 +2057,26 @@ private object BackgroundTranslatedImageRenderer {
 
     private fun luminance(red: Int, green: Int, blue: Int): Int =
         (red * 299 + green * 587 + blue * 114) / 1_000
+
+    private fun contrastRatio(first: Int, second: Int): Float {
+        val lighter = maxOf(relativeLuminance(first), relativeLuminance(second))
+        val darker = minOf(relativeLuminance(first), relativeLuminance(second))
+        return (lighter + 0.05f) / (darker + 0.05f)
+    }
+
+    private fun relativeLuminance(color: Int): Float {
+        fun linear(channel: Int): Float {
+            val value = channel / 255f
+            return if (value <= 0.04045f) {
+                value / 12.92f
+            } else {
+                ((value + 0.055f) / 1.055f).toDouble().pow(2.4).toFloat()
+            }
+        }
+        return linear(Color.red(color)) * 0.2126f +
+            linear(Color.green(color)) * 0.7152f +
+            linear(Color.blue(color)) * 0.0722f
+    }
 
     private const val MINIMUM_TEXT_SIZE_PX = 8f
     private const val MINIMUM_FONT_HEIGHT_RATIO = 0.62f
