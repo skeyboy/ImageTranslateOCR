@@ -1,0 +1,69 @@
+{
+  "event": "live_background_a7_matrix",
+  "runs": 50,
+  "categories": [
+    {
+      "category": "dark-en-zh",
+      "runs": 10,
+      "visual_pass_rate": 1,
+      "coverage_pass_rate": 1,
+      "chrome_preserved_rate": 1,
+      "viewport_fallbacks": 0,
+      "theme_compose_p50_ms": 173,
+      "blur_compose_p50_ms": 268
+    },
+    {
+      "category": "landscape-en-zh",
+      "runs": 10,
+      "visual_pass_rate": 1,
+      "coverage_pass_rate": 1,
+      "chrome_preserved_rate": 1,
+      "viewport_fallbacks": 0,
+      "theme_compose_p50_ms": 185,
+      "blur_compose_p50_ms": 275
+    },
+    {
+      "category": "light-en-zh",
+      "runs": 10,
+      "visual_pass_rate": 1,
+      "coverage_pass_rate": 1,
+      "chrome_preserved_rate": 1,
+      "viewport_fallbacks": 0,
+      "theme_compose_p50_ms": 175,
+      "blur_compose_p50_ms": 256
+    },
+    {
+      "category": "mixed-en-zh",
+      "runs": 10,
+      "visual_pass_rate": 1,
+      "coverage_pass_rate": 1,
+      "chrome_preserved_rate": 1,
+      "viewport_fallbacks": 0,
+      "theme_compose_p50_ms": 192,
+      "blur_compose_p50_ms": 291
+    },
+    {
+      "category": "zh-en",
+      "runs": 10,
+      "visual_pass_rate": 1,
+      "coverage_pass_rate": 1,
+      "chrome_preserved_rate": 1,
+      "viewport_fallbacks": 0,
+      "theme_compose_p50_ms": 179,
+      "blur_compose_p50_ms": 267
+    }
+  ],
+  "visual_pass_rate": 1,
+  "coverage_pass_rate": 1,
+  "patch_coverage_pass_rate": 1,
+  "chrome_preserved_rate": 1,
+  "viewport_fallbacks": 0,
+  "content_area_ratio_p10": 0.7525,
+  "content_area_ratio_p50": 0.78,
+  "theme_compose_p50_ms": 181,
+  "theme_compose_p90_ms": 195,
+  "blur_compose_p50_ms": 269,
+  "blur_compose_p90_ms": 297,
+  "blur_detail_p50": 0.062290009111166,
+  "semantic_quality_evaluated": false
+}

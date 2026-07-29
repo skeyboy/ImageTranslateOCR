@@ -1,0 +1,45 @@
+{
+  "schema": 1,
+  "event": "content_viewport_a7_manual_assessment",
+  "date": "2026-07-29",
+  "device": "Xiaomi 23113RKC6C",
+  "runs": 50,
+  "dataset_kind": "controlled_generated_viewports",
+  "automatic": {
+    "viewport_detection_passes": 50,
+    "viewport_fallbacks": 0,
+    "chrome_preserved_passes": 50,
+    "source_coverage_passes": 50,
+    "patch_coverage_passes": 50,
+    "content_area_ratio_p10": 0.7525,
+    "content_area_ratio_p50": 0.78,
+    "theme_compose_p50_ms": 181,
+    "theme_compose_p90_ms": 195,
+    "blur_compose_p50_ms": 269,
+    "blur_compose_p90_ms": 297,
+    "blur_detail_retention_p50": 0.062290009111166,
+    "semantic_quality_evaluated": false
+  },
+  "manual": {
+    "static_contact_sheets_reviewed": true,
+    "light_dark_readability": "PASS",
+    "persistent_source_translation_mix": "FAIL",
+    "non_text_pollution_theme": "FAIL",
+    "non_text_pollution_blur": "FAIL",
+    "page_hierarchy_theme": "FAIL",
+    "page_hierarchy_blur": "FAIL",
+    "atomic_group_appearance": "NOT_EVALUATED",
+    "overall_a7": "FAIL"
+  },
+  "decision": {
+    "normal_alpha_0_72": "KEEP_LOCAL_BACKGROUND_DEFAULT_OFF",
+    "full_screen_theme": "REJECT",
+    "content_viewport_theme": "TEXT_ONLY_FOCUS_EXPERIMENT_ONLY",
+    "content_viewport_blur": "ENHANCED_DEBUG_EXPERIMENT_ONLY"
+  },
+  "limitations": [
+    "The 50 viewports are controlled fixtures rather than human-labeled real-page golden data.",
+    "Static screenshots cannot validate atomic appearance or scrolling behavior.",
+    "A5 and A6 are not certified because semantic quality was not evaluated."
+  ]
+}

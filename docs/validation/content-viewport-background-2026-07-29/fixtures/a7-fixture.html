@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Atlas Runtime Guide</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --page: #f7f8fa;
+      --surface: #ffffff;
+      --surface-strong: #eef1f4;
+      --text: #17191d;
+      --muted: #5f6772;
+      --border: #c8cdd4;
+      --blue: #0969da;
+      --teal: #087f73;
+      --red: #c83b31;
+      --green: #2e7d32;
+    }
+
+    :root[data-theme="dark"] {
+      color-scheme: dark;
+      --page: #0e1013;
+      --surface: #171a1f;
+      --surface-strong: #22262d;
+      --text: #edf0f4;
+      --muted: #aab1bc;
+      --border: #3a414b;
+      --blue: #78b7ff;
+      --teal: #63d7c8;
+      --red: #ff8b82;
+      --green: #8ed290;
+    }
+
+    * { box-sizing: border-box; }
+
+    html {
+      background: var(--page);
+      font-family: system-ui, sans-serif;
+      letter-spacing: 0;
+    }
+
+    body {
+      margin: 0;
+      background: var(--page);
+      color: var(--text);
+      font-size: 18px;
+      line-height: 1.65;
+    }
+
+    .site-bar {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      align-items: center;
+      min-height: 64px;
+      padding: 10px 18px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 750;
+    }
+
+    .brand-mark {
+      width: 30px;
+      height: 30px;
+      display: grid;
+      place-items: center;
+      border-radius: 6px;
+      color: white;
+      background: var(--teal);
+      font-size: 15px;
+    }
+
+    .section-name {
+      overflow: hidden;
+      padding: 0 16px;
+      color: var(--muted);
+      text-align: center;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .toolbar {
+      display: flex;
+      gap: 8px;
+    }
+
+    button {
+      width: 38px;
+      height: 38px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      background: var(--surface-strong);
+      font: inherit;
+    }
+
+    main {
+      width: min(920px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 34px 0 100px;
+    }
+
+    h1, h2, h3 { line-height: 1.25; }
+    h1 { margin: 0 0 14px; font-size: 34px; }
+    h2 { margin: 42px 0 12px; font-size: 27px; }
+    h3 { margin: 24px 0 8px; font-size: 21px; }
+    p { margin: 0 0 18px; }
+    a { color: var(--blue); }
+    .lead { color: var(--muted); font-size: 20px; }
+
+    .metadata {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 18px;
+      padding: 14px 0 24px;
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    .diagram {
+      width: 100%;
+      aspect-ratio: 16 / 7;
+      display: block;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--surface);
+    }
+
+    .note {
+      margin: 24px 0;
+      padding: 16px 18px;
+      border-left: 5px solid var(--teal);
+      background: var(--surface-strong);
+    }
+
+    pre {
+      overflow: hidden;
+      margin: 22px 0;
+      padding: 18px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--surface);
+      color: var(--text);
+      font: 16px/1.55 ui-monospace, monospace;
+      white-space: pre-wrap;
+    }
+
+    .keyword { color: var(--red); font-weight: 700; }
+    .type { color: var(--blue); }
+    .string { color: var(--green); }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin: 20px 0 28px;
+    }
+
+    .metric {
+      min-height: 104px;
+      padding: 14px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--surface);
+    }
+
+    .metric strong { display: block; font-size: 25px; }
+    .metric span { color: var(--muted); font-size: 14px; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 18px 0 30px;
+      font-size: 16px;
+    }
+
+    th, td {
+      padding: 12px 10px;
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+    }
+
+    @media (orientation: landscape) {
+      body { font-size: 17px; }
+      main { width: min(1100px, calc(100% - 64px)); }
+      .article-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.65fr);
+        gap: 28px;
+        align-items: start;
+      }
+      h1 { font-size: 31px; }
+    }
+
+    @media (max-width: 520px) {
+      .site-bar { grid-template-columns: auto 1fr; }
+      .toolbar { display: none; }
+      .metrics { grid-template-columns: 1fr; }
+      h1 { font-size: 30px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="site-bar">
+    <div class="brand"><span class="brand-mark">A7</span><span>Atlas Docs</span></div>
+    <div class="section-name" id="sectionName">Runtime field guide</div>
+    <div class="toolbar" aria-label="Document tools">
+      <button aria-label="Search">⌕</button>
+      <button aria-label="Bookmark">☆</button>
+      <button aria-label="More">⋮</button>
+    </div>
+  </header>
+  <main>
+    <h1 id="title"></h1>
+    <p class="lead" id="lead"></p>
+    <div class="metadata" id="metadata"></div>
+    <canvas class="diagram" id="diagram" width="960" height="420"></canvas>
+    <div class="article-grid">
+      <article id="article"></article>
+      <aside id="aside"></aside>
+    </div>
+  </main>
+  <script>
+    const query = new URLSearchParams(location.search);
+    const theme = query.get('theme') === 'dark' ? 'dark' : 'light';
+    const language = query.get('lang') === 'zh' ? 'zh' : 'en';
+    const scenario = query.get('scenario') || 'article';
+    const seed = Number(query.get('seed') || 1);
+    document.documentElement.dataset.theme = theme;
+    document.documentElement.lang = language === 'zh' ? 'zh-CN' : 'en';
+
+    const copy = {
+      en: {
+        title: 'Reliable stream processing in constrained runtimes',
+        lead: 'A practical field guide to state, retries, ownership, and observable delivery.',
+        metadata: ['Atlas Runtime', `Revision ${seed}`, '12 minute read'],
+        headings: ['Start with explicit state', 'Preserve context across retries', 'Measure the user-visible result', 'Treat failure as a product state'],
+        paragraphs: [
+          'A robust pipeline begins with a small set of explicit states. Each transition should have one owner, one observable outcome, and a clear stopping condition.',
+          'Retries must preserve the context that made the original request meaningful. Repeating work without checking generation, viewport, or ownership can publish stale results.',
+          'Performance is useful only when the visible result remains correct. Track complete delivery time, coverage, stable layout, and resource pressure together.',
+          'Failure messages are part of the interface. They should identify what happened, what remains available, and the safest next action without hiding the original content.'
+        ],
+        note: 'Keep navigation and system controls visually stable while translated content refreshes as one atomic group.',
+        labels: ['Viewport coverage', 'Stable updates', 'Peak memory'],
+        values: ['96.4%', '30 / 30', '42 MB']
+      },
+      zh: {
+        title: '受限运行环境中的可靠流式处理',
+        lead: '围绕状态、重试、所有权和可观测交付建立可验证的实践方案。',
+        metadata: ['Atlas 运行时', `修订版 ${seed}`, '预计阅读 12 分钟'],
+        headings: ['从明确的状态开始', '重试时保留上下文', '测量用户实际看到的结果', '将失败视为产品状态'],
+        paragraphs: [
+          '可靠的处理链路应从少量明确状态开始。每次状态转换都需要唯一责任方、可观察结果和清晰的停止条件。',
+          '重试必须保留原始请求成立时的上下文。如果不检查代次、视口或所有权，重复工作可能提交已经过期的结果。',
+          '只有可见结果仍然正确时，性能提升才有价值。完整交付时间、覆盖率、布局稳定性和资源压力需要联合评估。',
+          '失败提示也是界面的一部分。它应说明发生了什么、哪些能力仍然可用，以及最安全的下一步，同时保留原始内容。'
+        ],
+        note: '翻译内容应作为一个原子组刷新，同时保持导航栏和系统控件的视觉稳定。',
+        labels: ['视口覆盖率', '稳定更新', '峰值内存'],
+        values: ['96.4%', '30 / 30', '42 MB']
+      }
+    }[language];
+
+    document.getElementById('title').textContent = copy.title;
+    document.getElementById('lead').textContent = copy.lead;
+    document.getElementById('sectionName').textContent = scenario === 'mixed' ? 'Control plane reference' : copy.headings[seed % copy.headings.length];
+    document.getElementById('metadata').innerHTML = copy.metadata.map(item => `<span>${item}</span>`).join('');
+
+    const code = language === 'zh'
+      ? `<span class="keyword">suspend fun</span> publish(frame: <span class="type">Frame</span>) {\n  require(frame.generation == current)\n  commit(<span class="string">"稳定视口"</span>, frame)\n}`
+      : `<span class="keyword">suspend fun</span> publish(frame: <span class="type">Frame</span>) {\n  require(frame.generation == current)\n  commit(<span class="string">"stable viewport"</span>, frame)\n}`;
+
+    document.getElementById('article').innerHTML = copy.headings.map((heading, index) => `
+      <section>
+        <h2>${index + 1}. ${heading}</h2>
+        <p>${copy.paragraphs[(index + seed) % copy.paragraphs.length]}</p>
+        ${index === 0 || scenario === 'code' || scenario === 'mixed' ? `<pre>${code}</pre>` : ''}
+        ${index === 1 ? `<div class="note">${copy.note}</div>` : ''}
+        <p>${copy.paragraphs[(index + seed + 1) % copy.paragraphs.length]}</p>
+      </section>
+    `).join('');
+
+    document.getElementById('aside').innerHTML = `
+      <h3>${language === 'zh' ? '运行快照' : 'Runtime snapshot'}</h3>
+      <div class="metrics">${copy.labels.map((label, index) => `
+        <div class="metric"><strong>${copy.values[index]}</strong><span>${label}</span></div>
+      `).join('')}</div>
+      <table>
+        <thead><tr><th>${language === 'zh' ? '阶段' : 'Stage'}</th><th>${language === 'zh' ? '状态' : 'State'}</th></tr></thead>
+        <tbody>
+          <tr><td>OCR</td><td>${language === 'zh' ? '就绪' : 'Ready'}</td></tr>
+          <tr><td>Render</td><td>${language === 'zh' ? '稳定' : 'Stable'}</td></tr>
+          <tr><td>Touch</td><td>100%</td></tr>
+        </tbody>
+      </table>
+    `;
+
+    const canvas = document.getElementById('diagram');
+    const context = canvas.getContext('2d');
+    const dark = theme === 'dark';
+    context.fillStyle = dark ? '#171a1f' : '#ffffff';
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    const colors = ['#087f73', '#0969da', '#c83b31', '#2e7d32'];
+    const heights = [190, 286, 150, 235];
+    colors.forEach((color, index) => {
+      const x = 95 + index * 205;
+      context.fillStyle = color;
+      context.fillRect(x, 350 - heights[(index + seed) % heights.length], 120, heights[(index + seed) % heights.length]);
+    });
+    context.strokeStyle = dark ? '#aab1bc' : '#5f6772';
+    context.lineWidth = 4;
+    context.beginPath();
+    context.moveTo(60, 352);
+    context.lineTo(900, 352);
+    context.stroke();
+  </script>
+</body>
+</html>

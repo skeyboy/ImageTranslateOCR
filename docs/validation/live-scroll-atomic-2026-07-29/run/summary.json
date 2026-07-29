@@ -1,0 +1,33 @@
+{
+  "event": "live_continuous_scroll_validation",
+  "theme": "light",
+  "background_mode": "OFF",
+  "runs": 30,
+  "expected_runs": 30,
+  "scroll_passes": 30,
+  "touch_passes": 30,
+  "single_completion_passes": 30,
+  "single_hidden_passes": 30,
+  "atomic_presentation_passes": 30,
+  "motion_to_hidden_p50_ms": 18,
+  "motion_to_hidden_p90_ms": 25,
+  "last_motion_to_commit_p50_ms": 1284,
+  "last_motion_to_commit_p90_ms": 1370,
+  "capture_to_commit_p90_ms": 705,
+  "total_p90_ms": 571,
+  "failed_regions_total": 17,
+  "retained_latin_ratio_p90": 0.05714285746216774,
+  "idle_activity_count": 0,
+  "maximum_toggle_anchor_drift_px": 0,
+  "protected_marker_ssim": 1.000000,
+  "browser_chrome_ssim": 1.000000,
+  "gates": {
+    "a3_scroll_stability": true,
+    "a4_result_freshness": true,
+    "a7_atomic_and_non_text": true,
+    "a8_touch_through": true,
+    "a9_source_toggle": true
+  },
+  "semantic_quality_evaluated": false,
+  "automation_pass": true
+}

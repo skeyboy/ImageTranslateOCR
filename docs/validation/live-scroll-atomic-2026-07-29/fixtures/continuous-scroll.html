@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="google" content="notranslate">
+  <title>Atlas Operations Journal</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --page: #f7f8fa;
+      --surface: #ffffff;
+      --ink: #15181d;
+      --muted: #59616d;
+      --line: #d9dee5;
+      --accent: #087f73;
+      --code: #f0f3f6;
+      --shadow: rgba(18, 23, 31, 0.12);
+    }
+    :root[data-theme="dark"] {
+      color-scheme: dark;
+      --page: #101215;
+      --surface: #171a1f;
+      --ink: #f2f4f7;
+      --muted: #aab1bc;
+      --line: #343a43;
+      --accent: #62d2c6;
+      --code: #20242a;
+      --shadow: rgba(0, 0, 0, 0.42);
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: auto; }
+    body {
+      margin: 0;
+      background: var(--page);
+      color: var(--ink);
+      font-family: system-ui, sans-serif;
+      font-size: 17px;
+      line-height: 1.62;
+      letter-spacing: 0;
+    }
+    .site-bar {
+      position: sticky;
+      top: 0;
+      z-index: 4;
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      align-items: center;
+      min-height: 64px;
+      padding: 10px 72px 10px 18px;
+      background: color-mix(in srgb, var(--surface) 92%, transparent);
+      border-bottom: 1px solid var(--line);
+      box-shadow: 0 5px 18px var(--shadow);
+      backdrop-filter: blur(18px) saturate(150%);
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 760;
+      white-space: nowrap;
+    }
+    .brand-mark {
+      display: grid;
+      width: 36px;
+      aspect-ratio: 1;
+      place-items: center;
+      border-radius: 7px;
+      background: var(--accent);
+      color: var(--surface);
+      font-size: 14px;
+    }
+    .section-indicator {
+      overflow: hidden;
+      padding-inline: 18px;
+      color: var(--muted);
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .connection-state {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #2e9d56;
+      box-shadow: 0 0 0 4px color-mix(in srgb, #2e9d56 18%, transparent);
+    }
+    main {
+      width: min(920px, calc(100% - 34px));
+      margin: 0 auto;
+      padding: 58px 0 160px;
+    }
+    .document-header {
+      padding-bottom: 42px;
+      border-bottom: 1px solid var(--line);
+    }
+    h1, h2, h3, p { margin-top: 0; }
+    h1 {
+      max-width: 760px;
+      margin-bottom: 18px;
+      font-size: 42px;
+      line-height: 1.12;
+      letter-spacing: 0;
+    }
+    .lead { max-width: 720px; color: var(--muted); font-size: 20px; }
+    .metadata {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 22px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    article section {
+      min-height: 760px;
+      padding: 58px 0;
+      border-bottom: 1px solid var(--line);
+    }
+    h2 { margin-bottom: 20px; font-size: 30px; line-height: 1.2; letter-spacing: 0; }
+    article p { max-width: 760px; }
+    pre {
+      width: 100%;
+      overflow: hidden;
+      margin: 30px 0;
+      padding: 22px;
+      background: var(--code);
+      border: 1px solid var(--line);
+      border-left: 4px solid #c83b31;
+      border-radius: 6px;
+      color: var(--ink);
+      font: 15px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace;
+      letter-spacing: 0;
+      white-space: pre-wrap;
+    }
+    .keyword { color: #c83b31; font-weight: 700; }
+    .type { color: #0969da; }
+    .string { color: #2e7d32; }
+    figure {
+      margin: 30px 0;
+      padding-block: 20px;
+      border-block: 1px solid var(--line);
+    }
+    canvas { display: block; width: 100%; height: auto; aspect-ratio: 16 / 6; }
+    figcaption { margin-top: 10px; color: var(--muted); font-size: 14px; }
+    .note {
+      max-width: 760px;
+      margin: 28px 0;
+      padding: 18px 20px;
+      background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+      border-left: 4px solid var(--accent);
+    }
+    .probe-rail {
+      position: fixed;
+      z-index: 7;
+      top: 148px;
+      right: 10px;
+      display: grid;
+      width: 48px;
+      gap: 10px;
+    }
+    .visual-marker {
+      display: grid;
+      width: 48px;
+      height: 88px;
+      overflow: hidden;
+      border: 2px solid var(--surface);
+      border-radius: 6px;
+      box-shadow: 0 4px 14px var(--shadow);
+    }
+    .visual-marker span:nth-child(1) { background: #087f73; }
+    .visual-marker span:nth-child(2) { background: #0969da; }
+    .visual-marker span:nth-child(3) { background: #c83b31; }
+    .visual-marker span:nth-child(4) { background: #2e7d32; }
+    .touch-probe {
+      display: grid;
+      width: 48px;
+      height: 48px;
+      padding: 0;
+      place-items: center;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--surface);
+      box-shadow: 0 4px 14px var(--shadow);
+      color: var(--ink);
+      font: 700 23px/1 system-ui, sans-serif;
+    }
+    .touch-probe:active { transform: scale(0.96); }
+    @media (max-width: 640px) {
+      body { font-size: 16px; }
+      .site-bar { padding-left: 14px; }
+      main { width: min(100% - 30px, 920px); padding-top: 38px; }
+      h1 { font-size: 34px; }
+      article section { min-height: 700px; padding-block: 46px; }
+      h2 { font-size: 26px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .touch-probe:active { transform: none; }
+    }
+  </style>
+</head>
+<body translate="no">
+  <header class="site-bar">
+    <div class="brand"><span class="brand-mark">AO</span><span>Atlas Operations</span></div>
+    <div class="section-indicator" id="sectionIndicator">Field journal</div>
+    <span class="connection-state" aria-label="Service available"></span>
+  </header>
+
+  <aside class="probe-rail">
+    <div class="visual-marker" role="img" aria-label="Protected visual marker">
+      <span></span><span></span><span></span><span></span>
+    </div>
+    <button class="touch-probe" id="touchProbe" type="button" title="Acknowledge" aria-label="Touch probe count 0 scroll position 0">✓</button>
+  </aside>
+
+  <main>
+    <header class="document-header">
+      <h1>Operating reliable interfaces under continuous change</h1>
+      <p class="lead">A field journal on stable state, observable delivery, recovery boundaries, and the decisions that remain visible to the person using the system.</p>
+      <div class="metadata"><span>Edition 29</span><span>36 observations</span><span>Atlas Runtime Group</span></div>
+    </header>
+    <article id="journal"></article>
+  </main>
+
+  <script>
+    const query = new URLSearchParams(location.search);
+    const theme = query.get('theme') === 'dark' ? 'dark' : 'light';
+    document.documentElement.dataset.theme = theme;
+
+    const headings = [
+      'State must be explicit before work begins',
+      'A stable viewport is part of the request',
+      'Recovery preserves ownership and context',
+      'Visible completion is the real delivery point',
+      'Boundaries should fail without hiding evidence',
+      'Measurements must describe the human result'
+    ];
+    const paragraphs = [
+      'Reliable systems begin with a small number of explicit states. Every transition has one owner, one visible outcome, and a stopping condition that can be inspected later.',
+      'A request is not only its payload. It also includes the viewport, generation, language direction, protected regions, and the moment at which the result is still useful.',
+      'Retries carry context forward instead of repeating isolated work. A stale result must be discarded even when its computation completed successfully.',
+      'Performance matters after correctness and completeness. Track the time until the whole visible result is committed, not the first partial line that happens to appear.',
+      'Images, diagrams, controls, and code containers are part of meaning. Translation may replace text without erasing the spatial relationships that explain it.',
+      'A calm interface responds immediately to movement, waits for a stable destination, and presents one coherent update that remains easy to reverse.'
+    ];
+    const journal = document.getElementById('journal');
+    const sections = [];
+    for (let index = 0; index < 36; index += 1) {
+      const code = index % 3 === 0 ? `<pre><span class="keyword">suspend fun</span> commit(frame: <span class="type">Frame</span>) {
+  require(frame.generation == current)
+  publish(<span class="string">"stable viewport ${index + 1}"</span>, frame)
+}</pre>` : '';
+      const chart = index % 4 === 1 ? `<figure><canvas width="960" height="360" data-chart="${index}"></canvas><figcaption>Delivery distribution, observation ${index + 1}</figcaption></figure>` : '';
+      const note = index % 5 === 2 ? `<div class="note">The visible result remains reversible while the underlying document keeps its original position.</div>` : '';
+      sections.push(`<section data-index="${index + 1}"><h2>${index + 1}. ${headings[index % headings.length]}</h2><p>${paragraphs[index % paragraphs.length]}</p>${code}${chart}${note}<p>${paragraphs[(index + 2) % paragraphs.length]}</p></section>`);
+    }
+    journal.innerHTML = sections.join('');
+
+    document.querySelectorAll('canvas[data-chart]').forEach(canvas => {
+      const context = canvas.getContext('2d');
+      const seed = Number(canvas.dataset.chart);
+      const dark = theme === 'dark';
+      context.fillStyle = dark ? '#171a1f' : '#ffffff';
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      const colors = ['#087f73', '#0969da', '#c83b31', '#2e7d32'];
+      colors.forEach((color, index) => {
+        const height = 90 + ((seed * 37 + index * 71) % 190);
+        context.fillStyle = color;
+        context.fillRect(95 + index * 205, 315 - height, 120, height);
+      });
+      context.strokeStyle = dark ? '#aab1bc' : '#59616d';
+      context.lineWidth = 4;
+      context.beginPath();
+      context.moveTo(60, 317);
+      context.lineTo(900, 317);
+      context.stroke();
+    });
+
+    let touchCount = 0;
+    const touchProbe = document.getElementById('touchProbe');
+    const sectionIndicator = document.getElementById('sectionIndicator');
+    const updateProbeLabel = () => {
+      touchProbe.setAttribute('aria-label', `Touch probe count ${touchCount} scroll position ${Math.round(window.scrollY)}`);
+    };
+    touchProbe.addEventListener('click', () => {
+      touchCount += 1;
+      updateProbeLabel();
+    });
+    window.addEventListener('scroll', () => {
+      const section = [...document.querySelectorAll('article section')].findLast(item => item.getBoundingClientRect().top <= 180);
+      sectionIndicator.textContent = section ? `Observation ${section.dataset.index}` : 'Field journal';
+      updateProbeLabel();
+    }, { passive: true });
+    updateProbeLabel();
+  </script>
+</body>
+</html>
