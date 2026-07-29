@@ -1,0 +1,6 @@
+
+com.example.imagetranslate.screenshot.FeatheredMaterialRenderingMatrixTest:.
+
+Time: 274.049
+
+OK (1 test)
