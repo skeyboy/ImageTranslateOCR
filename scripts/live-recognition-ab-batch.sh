@@ -56,6 +56,13 @@ jq -s '
         reference_rendering_mode: (.[0].reference.rendering_mode // "UNKNOWN"),
         candidate_background_mode: (.[0].candidate.background_mode // "UNKNOWN"),
         reference_background_mode: (.[0].reference.background_mode // "UNKNOWN"),
+        full_page_background: (.[0].full_page_background // false),
+        full_page_background_scope: (.[0].full_page_background_scope // "FULL_SCREEN"),
+        overlay_alpha: (.[0].overlay_alpha // 0.72),
+        content_viewport_area_ratio_p50:
+            (map(.content_viewport.area_ratio // 1) | percentile(0.5)),
+        content_viewport_fallbacks:
+            (map(select(.content_viewport.used_fallback == true)) | length),
         candidate_smart_assist: (.[0].candidate_smart_assist // false),
         reference_smart_assist: (.[0].reference_smart_assist // false),
         rendered_track_cache_hits_total:
@@ -86,7 +93,19 @@ jq -s '
         background_render_overhead_p50:
             (map(.background_render_overhead_ratio) | percentile(0.5)),
         candidate_background_detail_retention_p50:
-            (map(.candidate.background_detail_retention_ratio // 0) | percentile(0.5)),
+            (map(
+                if .full_page_background then
+                    (.candidate_full_page.detail_retention_ratio // 0)
+                else
+                    (.candidate.background_detail_retention_ratio // 0)
+                end
+            ) | percentile(0.5)),
+        candidate_full_page_compose_p50_ms:
+            (map(.candidate_full_page.compose_ms // 0) | percentile(0.5)),
+        reference_full_page_compose_p50_ms:
+            (map(.reference_full_page.compose_ms // 0) | percentile(0.5)),
+        candidate_full_page_pss_delta_p50_kb:
+            (map(.candidate_full_page.pss_delta_kb // 0) | percentile(0.5)),
         speedup_p50: (map(.speedup_ratio) | percentile(0.5)),
         region_recall_p10: (map(.region_recall) | percentile(0.1)),
         region_recall_p50: (map(.region_recall) | percentile(0.5)),

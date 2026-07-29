@@ -203,6 +203,7 @@ internal data class RenderedTrackCacheKey(
     val backgroundMode: LivePatchBackgroundMode,
     val surfaceColor: Int,
     val overlayAlphaPercent: Int,
+    val drawBackground: Boolean,
     val displayHints: SmartAssistDisplayHints?
 )
 
@@ -358,6 +359,7 @@ internal class BackgroundTranslatedImageProcessor(
         overlayAlpha: Float = ScreenThemeColorEstimator.DEFAULT_OVERLAY_ALPHA,
         segmentation: LiveRecognitionSegmentation = LiveRecognitionSegmentation.ADAPTIVE,
         executionProfile: LiveRecognitionExecutionProfile = LiveRecognitionExecutionProfile.CURRENT,
+        drawPatchBackgrounds: Boolean = true,
         smartAssistEnabled: Boolean = false
     ): BackgroundTranslatedOverlayResult {
         check(!closed) { "Image processor is closed" }
@@ -421,7 +423,8 @@ internal class BackgroundTranslatedImageProcessor(
                 fallbackSurface = fallbackSurface,
                 overlayAlpha = overlayAlpha,
                 renderingMode = executionProfile.renderingMode,
-                backgroundMode = executionProfile.backgroundMode
+                backgroundMode = executionProfile.backgroundMode,
+                drawPatchBackgrounds = drawPatchBackgrounds
             )
             val patches = mergeOverlappingPatches(renderedPatches.map(RenderedOverlayPatch::patch))
             val renderedArea = renderedPatches.sumOf { rendered ->
@@ -1063,10 +1066,18 @@ internal class BackgroundTranslatedImageProcessor(
         fallbackSurface: Int,
         overlayAlpha: Float,
         renderingMode: LivePatchRenderingMode,
-        backgroundMode: LivePatchBackgroundMode
+        backgroundMode: LivePatchBackgroundMode,
+        drawPatchBackgrounds: Boolean
     ): List<RenderedOverlayPatch> = when (renderingMode) {
         LivePatchRenderingMode.SEQUENTIAL -> regions.mapNotNull { region ->
-            createOverlayPatch(bitmap, region, fallbackSurface, overlayAlpha, backgroundMode)
+            createOverlayPatch(
+                bitmap,
+                region,
+                fallbackSurface,
+                overlayAlpha,
+                backgroundMode,
+                drawPatchBackgrounds
+            )
         }
         LivePatchRenderingMode.PARALLEL -> coroutineScope {
             regions.map { region ->
@@ -1076,7 +1087,8 @@ internal class BackgroundTranslatedImageProcessor(
                         region,
                         fallbackSurface,
                         overlayAlpha,
-                        backgroundMode
+                        backgroundMode,
+                        drawPatchBackgrounds
                     )
                 }
             }.awaitAll().filterNotNull()
@@ -1199,7 +1211,8 @@ internal class BackgroundTranslatedImageProcessor(
         region: BackgroundImageRegion,
         fallbackSurface: Int,
         overlayAlpha: Float,
-        backgroundMode: LivePatchBackgroundMode
+        backgroundMode: LivePatchBackgroundMode,
+        drawPatchBackground: Boolean
     ): RenderedOverlayPatch? {
         val sourceBounds = region.source.bounds.clampedTo(bitmap) ?: return null
         val material = LiveOverlayLayoutPolicy.translationMaterialBounds(
@@ -1215,12 +1228,18 @@ internal class BackgroundTranslatedImageProcessor(
             sourceHeight = bitmap.height
         )
         val materialBounds = Rect(material.left, material.top, material.right, material.bottom)
-        val localSurface = estimateLocalSurface(
-            bitmap,
-            materialBounds,
-            fallbackSurface,
-            overlayAlpha
-        )
+        val localSurface = if (
+            backgroundMode == LivePatchBackgroundMode.STANDARD || !drawPatchBackground
+        ) {
+            fallbackSurface
+        } else {
+            estimateLocalSurface(
+                bitmap,
+                materialBounds,
+                fallbackSurface,
+                overlayAlpha
+            )
+        }
         val cropBounds = Rect(
             materialBounds.left,
             materialBounds.top,
@@ -1258,13 +1277,14 @@ internal class BackgroundTranslatedImageProcessor(
             backgroundMode = resolvedBackgroundMode,
             surfaceColor = localSurface,
             overlayAlphaPercent = (overlayAlpha.coerceIn(0f, 1f) * 1_000).toInt(),
+            drawBackground = drawPatchBackground,
             displayHints = region.smartAssistDisplayHints
         )
         val cached = region.trackId?.let { trackId ->
             synchronized(renderedTrackCache) {
                 renderedTrackCache[trackId]?.takeIf { candidate ->
                     candidate.key == cacheKey && !candidate.bitmap.isRecycled &&
-                        (resolvedBackgroundMode == LivePatchBackgroundMode.THEME_SURFACE ||
+                        (resolvedBackgroundMode != LivePatchBackgroundMode.BLUR_TINT ||
                             LiveRenderedTrackReusePolicy.hasMatchingVisualFingerprint(
                                 candidate.materialFingerprint,
                                 materialFingerprint
@@ -1299,6 +1319,7 @@ internal class BackgroundTranslatedImageProcessor(
             )
             output = patchBitmap
             preparedBackground = if (
+                drawPatchBackground &&
                 resolvedBackgroundMode == LivePatchBackgroundMode.BLUR_TINT
             ) {
                 LivePatchBackgroundComposer.createBlurTintTarget(
@@ -1326,7 +1347,7 @@ internal class BackgroundTranslatedImageProcessor(
                 overlayBackgroundColor = localSurface,
                 overlayAlpha = overlayAlpha,
                 overlayMaterialBounds = localMaterialBounds,
-                drawOverlayBackground = preparedBackground == null
+                drawOverlayBackground = drawPatchBackground && preparedBackground == null
             )
             if (rendered.isEmpty()) {
                 patchBitmap.recycle()

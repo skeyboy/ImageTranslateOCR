@@ -119,6 +119,10 @@
     <string name="active_screenshot_segmentation_adaptive">自动差分</string>
     <string name="active_screenshot_segmentation_full">整屏识别</string>
     <string name="active_screenshot_segmentation_bands">上下分块</string>
+    <string name="active_screenshot_background_experience_group">背景效果（体验）</string>
+    <string name="active_screenshot_background_experience_off">关闭（默认）</string>
+    <string name="active_screenshot_background_experience_theme">主题色</string>
+    <string name="active_screenshot_background_experience_blur">高斯模糊</string>
     <string name="active_screenshot_smart_assist">离线智能辅助</string>
     <string name="active_screenshot_minimize">收起识别控制</string>
     <string name="active_screenshot_expand">展开录屏识别</string>

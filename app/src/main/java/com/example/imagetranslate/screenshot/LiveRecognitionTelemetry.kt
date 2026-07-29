@@ -3,6 +3,26 @@ package com.example.imagetranslate.screenshot
 import org.json.JSONObject
 
 internal object LiveRecognitionTelemetry {
+    fun hiddenForMovement(generation: Int, motionToHiddenMs: Long): String = JSONObject()
+        .put("schema", SCHEMA_VERSION)
+        .put("event", "overlay_translation_hidden_for_movement")
+        .put("generation", generation)
+        .put("motion_to_hidden_ms", motionToHiddenMs)
+        .toString()
+
+    fun presented(
+        generation: Int,
+        patchCount: Int,
+        presentationMs: Long
+    ): String = JSONObject()
+        .put("schema", SCHEMA_VERSION)
+        .put("event", "overlay_translation_presented")
+        .put("generation", generation)
+        .put("patches", patchCount)
+        .put("presentation_ms", presentationMs)
+        .put("atomic_group", true)
+        .toString()
+
     fun completion(
         generation: Int,
         totalMs: Long,

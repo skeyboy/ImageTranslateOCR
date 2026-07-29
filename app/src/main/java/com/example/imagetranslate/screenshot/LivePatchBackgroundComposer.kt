@@ -22,6 +22,29 @@ internal object LivePatchBackgroundComposer {
         source: Bitmap,
         themeSurface: Int,
         overlayAlpha: Float
+    ): LivePatchBackground = createBlurTintTarget(
+        source = source,
+        themeSurface = themeSurface,
+        overlayAlpha = overlayAlpha,
+        profile = BlurProfile.PATCH
+    )
+
+    fun createFullPageBlurTintTarget(
+        source: Bitmap,
+        themeSurface: Int,
+        overlayAlpha: Float
+    ): LivePatchBackground = createBlurTintTarget(
+        source = source,
+        themeSurface = themeSurface,
+        overlayAlpha = overlayAlpha,
+        profile = BlurProfile.FULL_PAGE
+    )
+
+    private fun createBlurTintTarget(
+        source: Bitmap,
+        themeSurface: Int,
+        overlayAlpha: Float,
+        profile: BlurProfile
     ): LivePatchBackground {
         check(App.isOpenCVReady) { "OpenCV is not ready for live patch blur" }
         val sourceMat = Mat()
@@ -40,9 +63,9 @@ internal object LivePatchBackgroundComposer {
                 0.0,
                 Imgproc.INTER_AREA
             )
-            val fullResolutionRadius = (source.height * BLUR_RADIUS_HEIGHT_RATIO)
+            val fullResolutionRadius = (source.height * profile.radiusHeightRatio)
                 .roundToInt()
-                .coerceIn(MINIMUM_BLUR_RADIUS_PX, MAXIMUM_BLUR_RADIUS_PX)
+                .coerceIn(profile.minimumRadiusPx, profile.maximumRadiusPx)
             val reducedRadius = (fullResolutionRadius.toFloat() / DOWNSAMPLE_FACTOR)
                 .roundToInt()
                 .coerceAtLeast(1)
@@ -71,14 +94,14 @@ internal object LivePatchBackgroundComposer {
             Core.multiply(
                 target,
                 Scalar(
-                    BLUR_DETAIL_WEIGHT.toDouble(),
-                    BLUR_DETAIL_WEIGHT.toDouble(),
-                    BLUR_DETAIL_WEIGHT.toDouble(),
+                    profile.detailWeight.toDouble(),
+                    profile.detailWeight.toDouble(),
+                    profile.detailWeight.toDouble(),
                     0.0
                 ),
                 target
             )
-            val themeWeight = 1.0 - BLUR_DETAIL_WEIGHT
+            val themeWeight = 1.0 - profile.detailWeight
             Core.add(
                 target,
                 Scalar(
@@ -157,9 +180,27 @@ internal object LivePatchBackgroundComposer {
         }
     }
 
+    private data class BlurProfile(
+        val radiusHeightRatio: Float,
+        val minimumRadiusPx: Int,
+        val maximumRadiusPx: Int,
+        val detailWeight: Float
+    ) {
+        companion object {
+            val PATCH = BlurProfile(
+                radiusHeightRatio = 0.15f,
+                minimumRadiusPx = 4,
+                maximumRadiusPx = 12,
+                detailWeight = 0.18f
+            )
+            val FULL_PAGE = BlurProfile(
+                radiusHeightRatio = 0.015f,
+                minimumRadiusPx = 24,
+                maximumRadiusPx = 48,
+                detailWeight = 0.28f
+            )
+        }
+    }
+
     private const val DOWNSAMPLE_FACTOR = 4
-    private const val BLUR_RADIUS_HEIGHT_RATIO = 0.15f
-    private const val MINIMUM_BLUR_RADIUS_PX = 4
-    private const val MAXIMUM_BLUR_RADIUS_PX = 12
-    private const val BLUR_DETAIL_WEIGHT = 0.18f
 }

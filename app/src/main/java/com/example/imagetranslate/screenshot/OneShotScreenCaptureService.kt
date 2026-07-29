@@ -129,6 +129,8 @@ class OneShotScreenCaptureService : Service() {
     private var recognitionMode = OcrRecognitionMode.AUTO
     @Volatile
     private var smartAssistEnabled = LiveSmartAssistSettingsPolicy.DEFAULT_ENABLED
+    @Volatile
+    private var backgroundExperienceMode = LivePatchBackgroundExperiencePolicy.default
     private val liveProcessorDelegate = lazy {
         BackgroundTranslatedImageProcessor(applicationContext, reuseResources = true)
     }
@@ -172,12 +174,14 @@ class OneShotScreenCaptureService : Service() {
         captureSettings = LiveCaptureSettingsPreferences.get(this)
         recognitionMode = LiveOcrRecognitionPreferences.get(this)
         smartAssistEnabled = LiveSmartAssistPreferences.isEnabled(this)
+        backgroundExperienceMode = LivePatchBackgroundExperiencePreferences.get(this)
         overlayController = ActiveScreenCaptureOverlayController(
             this,
             experienceMode,
             captureSettings,
             recognitionMode,
             smartAssistEnabled,
+            backgroundExperienceMode,
             object : ActiveScreenCaptureOverlayController.Listener {
                 override fun onCapture() {
                     beginCaptureFromUser()
@@ -230,6 +234,12 @@ class OneShotScreenCaptureService : Service() {
 
                 override fun onSmartAssistEnabledChanged(enabled: Boolean) {
                     applySmartAssistEnabled(enabled)
+                }
+
+                override fun onBackgroundExperienceModeChanged(
+                    mode: LivePatchBackgroundExperienceMode
+                ) {
+                    applyBackgroundExperienceMode(mode)
                 }
             }
         )
@@ -686,7 +696,16 @@ class OneShotScreenCaptureService : Service() {
             ScreenFrameAction.MOVING -> {
                 firstMotionAtMs.compareAndSet(0L, nowMs)
                 lastMotionAtMs.set(nowMs)
-                overlayController.showWaitingForStable()
+                overlayController.showWaitingForStable {
+                    val hiddenAtMs = SystemClock.elapsedRealtime()
+                    Log.i(
+                        METRICS_TAG,
+                        LiveRecognitionTelemetry.hiddenForMovement(
+                            generation = captureGeneration.get(),
+                            motionToHiddenMs = (hiddenAtMs - nowMs).coerceAtLeast(0L)
+                        )
+                    )
+                }
                 discardStaleCaptureForMovement()
                 scheduleMovementSettleFallback()
             }
@@ -812,6 +831,7 @@ class OneShotScreenCaptureService : Service() {
                 val activeRecognitionMode = recognitionMode
                 val activeExperienceMode = experienceMode
                 val activeSmartAssistEnabled = smartAssistEnabled
+                val activeBackgroundExperienceMode = backgroundExperienceMode
                 val result = withTimeout(LiveCaptureTimingPolicy.TRANSLATION_TIMEOUT_MS) {
                     translationMutex.withLock {
                         if (generation != captureGeneration.get()) {
@@ -829,6 +849,10 @@ class OneShotScreenCaptureService : Service() {
                                 ScreenThemeColorEstimator.DEFAULT_OVERLAY_ALPHA
                             ),
                             segmentation = captureSettings.segmentation,
+                            executionProfile =
+                                LivePatchBackgroundExperiencePolicy.executionProfile(
+                                    activeBackgroundExperienceMode
+                                ),
                             smartAssistEnabled = activeSmartAssistEnabled
                         )
                     }
@@ -1058,12 +1082,25 @@ class OneShotScreenCaptureService : Service() {
             { resumeFrameObservation(generation) },
             LiveCaptureTimingPolicy.PRESENTATION_GATE_TIMEOUT_MS
         )
+        val presentationStartedAtMs = SystemClock.elapsedRealtime()
         overlayController.showResult(
             patches = result.patches,
             sourceWidth = result.sourceWidth,
             sourceHeight = result.sourceHeight,
             recognizedCount = result.recognizedCount,
-            onPresented = { resumeFrameObservation(generation) }
+            onPresented = {
+                Log.i(
+                    METRICS_TAG,
+                    LiveRecognitionTelemetry.presented(
+                        generation = generation,
+                        patchCount = result.patches.size,
+                        presentationMs = (
+                            SystemClock.elapsedRealtime() - presentationStartedAtMs
+                            ).coerceAtLeast(0L)
+                    )
+                )
+                resumeFrameObservation(generation)
+            }
         )
     }
 
@@ -1276,6 +1313,18 @@ class OneShotScreenCaptureService : Service() {
         Log.i(TAG, "Offline smart assist enabled=$enabled")
         if (projection == null || !continuousTranslationEnabled.get()) return
         liveProcessor.clearLiveOverlaySnapshot()
+        cancelActiveCapture(keepContinuousMode = true)
+        requestScreenshot()
+    }
+
+    private fun applyBackgroundExperienceMode(mode: LivePatchBackgroundExperienceMode) {
+        if (backgroundExperienceMode == mode) return
+        backgroundExperienceMode = mode
+        LivePatchBackgroundExperiencePreferences.set(this, mode)
+        Log.i(TAG, "Live patch background experience changed: ${mode.name}")
+        overlayController.clearTranslations()
+        if (liveProcessorDelegate.isInitialized()) liveProcessor.clearLiveOverlaySnapshot()
+        if (projection == null || !continuousTranslationEnabled.get()) return
         cancelActiveCapture(keepContinuousMode = true)
         requestScreenshot()
     }

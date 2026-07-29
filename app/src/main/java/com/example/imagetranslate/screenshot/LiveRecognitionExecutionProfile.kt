@@ -26,6 +26,7 @@ internal enum class LivePatchRenderingMode {
 }
 
 internal enum class LivePatchBackgroundMode {
+    STANDARD,
     ADAPTIVE,
     THEME_SURFACE,
     BLUR_TINT

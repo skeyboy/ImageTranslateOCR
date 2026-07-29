@@ -16,6 +16,9 @@ translation_mode="${AB_TRANSLATION_MODE:-ENGLISH_TO_CHINESE}"
 candidate_first="${AB_CANDIDATE_FIRST:-true}"
 candidate_smart_assist="${AB_CANDIDATE_SMART_ASSIST:-false}"
 reference_smart_assist="${AB_REFERENCE_SMART_ASSIST:-false}"
+full_page_background="${AB_FULL_PAGE_BACKGROUND:-false}"
+full_page_background_scope="${AB_FULL_PAGE_BACKGROUND_SCOPE:-FULL_SCREEN}"
+overlay_alpha="${AB_OVERLAY_ALPHA:-0.72}"
 visual_output_directory="${AB_VISUAL_OUTPUT_DIR:-}"
 visual_preview=false
 if [[ -n "$visual_output_directory" ]]; then
@@ -80,6 +83,9 @@ sleep "${AB_SETTLE_SECONDS:-1}"
     --ez candidate_first "$candidate_first" \
     --ez candidate_smart_assist "$candidate_smart_assist" \
     --ez reference_smart_assist "$reference_smart_assist" \
+    --ez full_page_background "$full_page_background" \
+    --es full_page_background_scope "$full_page_background_scope" \
+    --ef overlay_alpha "$overlay_alpha" \
     --ez visual_preview "$visual_preview" >/dev/null
 
 for _ in $(seq 1 120); do

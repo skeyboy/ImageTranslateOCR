@@ -10,5 +10,11 @@
             android:exported="true"
             android:noHistory="true"
             android:taskAffinity="" />
+        <activity
+            android:name=".debug.LiveScrollBenchmarkLauncherActivity"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:noHistory="true"
+            android:taskAffinity="" />
     </application>
 </manifest>

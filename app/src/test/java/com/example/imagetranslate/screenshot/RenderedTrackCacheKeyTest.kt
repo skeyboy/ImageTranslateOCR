@@ -14,13 +14,15 @@ class RenderedTrackCacheKeyTest {
         assertNotEquals(baseline, key(backgroundMode = LivePatchBackgroundMode.BLUR_TINT))
         assertNotEquals(baseline, key(width = 301))
         assertNotEquals(baseline, key(surfaceColor = 0xFFF5F5F5.toInt()))
+        assertNotEquals(baseline, key(drawBackground = false))
     }
 
     private fun key(
         translation: String = "欢迎来到维基百科",
         backgroundMode: LivePatchBackgroundMode = LivePatchBackgroundMode.THEME_SURFACE,
         width: Int = 300,
-        surfaceColor: Int = 0xFFFFFFFF.toInt()
+        surfaceColor: Int = 0xFFFFFFFF.toInt(),
+        drawBackground: Boolean = true
     ) = RenderedTrackCacheKey(
         sourceText = "Welcome to Wikipedia",
         translation = translation,
@@ -29,6 +31,7 @@ class RenderedTrackCacheKeyTest {
         backgroundMode = backgroundMode,
         surfaceColor = surfaceColor,
         overlayAlphaPercent = 720,
+        drawBackground = drawBackground,
         displayHints = SmartAssistDisplayHints(2, 0.72f)
     )
 

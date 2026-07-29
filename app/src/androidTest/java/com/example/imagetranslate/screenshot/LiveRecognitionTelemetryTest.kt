@@ -10,6 +10,32 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class LiveRecognitionTelemetryTest {
     @Test
+    fun movementAndPresentationEventsExposeAtomicTiming() {
+        val hidden = JSONObject(
+            LiveRecognitionTelemetry.hiddenForMovement(
+                generation = 8,
+                motionToHiddenMs = 24
+            )
+        )
+        assertEquals("overlay_translation_hidden_for_movement", hidden.getString("event"))
+        assertEquals(8, hidden.getInt("generation"))
+        assertEquals(24, hidden.getLong("motion_to_hidden_ms"))
+
+        val presented = JSONObject(
+            LiveRecognitionTelemetry.presented(
+                generation = 9,
+                patchCount = 12,
+                presentationMs = 17
+            )
+        )
+        assertEquals("overlay_translation_presented", presented.getString("event"))
+        assertEquals(9, presented.getInt("generation"))
+        assertEquals(12, presented.getInt("patches"))
+        assertEquals(17, presented.getLong("presentation_ms"))
+        assertTrue(presented.getBoolean("atomic_group"))
+    }
+
+    @Test
     fun completionLogIsStructuredAndIncludesCoverage() {
         val metrics = LiveRecognitionRunMetrics(
             requestedSegmentation = LiveRecognitionSegmentation.ADAPTIVE,

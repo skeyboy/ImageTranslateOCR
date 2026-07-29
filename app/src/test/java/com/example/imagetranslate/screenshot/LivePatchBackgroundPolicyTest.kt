@@ -5,6 +5,17 @@ import org.junit.Test
 
 class LivePatchBackgroundPolicyTest {
     @Test
+    fun standardBackgroundPassesThroughWithoutEnhancement() {
+        val result = LivePatchBackgroundPolicy.resolve(
+            requested = LivePatchBackgroundMode.STANDARD,
+            profile = LivePatchTextureProfile(0.1f, 60f, 50),
+            blurAvailable = true
+        )
+
+        assertEquals(LivePatchBackgroundMode.STANDARD, result)
+    }
+
+    @Test
     fun uniformWebSurfaceUsesExactThemeFill() {
         val result = LivePatchBackgroundPolicy.resolve(
             requested = LivePatchBackgroundMode.ADAPTIVE,
@@ -38,6 +49,17 @@ class LivePatchBackgroundPolicyTest {
     fun unavailableBlurAlwaysFallsBackToThemeSurface() {
         val result = LivePatchBackgroundPolicy.resolve(
             requested = LivePatchBackgroundMode.ADAPTIVE,
+            profile = LivePatchTextureProfile(0.1f, 60f, 50),
+            blurAvailable = false
+        )
+
+        assertEquals(LivePatchBackgroundMode.THEME_SURFACE, result)
+    }
+
+    @Test
+    fun explicitlyRequestedBlurFallsBackToThemeSurfaceWhenUnavailable() {
+        val result = LivePatchBackgroundPolicy.resolve(
+            requested = LivePatchBackgroundMode.BLUR_TINT,
             profile = LivePatchTextureProfile(0.1f, 60f, 50),
             blurAvailable = false
         )

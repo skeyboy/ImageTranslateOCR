@@ -11,6 +11,28 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class LivePatchBackgroundComposerTest {
     @Test
+    fun bitmapSamplingUsesTheDominantPageTheme() {
+        val pageColor = Color.rgb(247, 248, 250)
+        val source = Bitmap.createBitmap(200, 120, Bitmap.Config.ARGB_8888).apply {
+            eraseColor(pageColor)
+            for (y in 0 until height step 8) {
+                for (x in 0 until width / 5) {
+                    setPixel(x, y, Color.rgb(32, 33, 36))
+                }
+            }
+            for (y in 3 until height step 19) {
+                for (x in width * 3 / 4 until width) {
+                    setPixel(x, y, Color.rgb(66, 133, 244))
+                }
+            }
+        }
+
+        assertEquals(pageColor, ScreenThemeColorEstimator.estimate(source))
+
+        source.recycle()
+    }
+
+    @Test
     fun blurTintReducesSourceDetailAndPreservesDimensions() {
         val source = stripedSource(240, 120)
         val alpha = TranslationOverlayTouchPolicy.PREFERRED_SINGLE_WINDOW_ALPHA
@@ -54,6 +76,56 @@ class LivePatchBackgroundComposerTest {
         source.recycle()
     }
 
+    @Test
+    fun blurTintMovesTheBackgroundTowardTheThemeSurface() {
+        val sourceColor = Color.rgb(210, 72, 64)
+        val theme = ScreenThemeColorEstimator.compositableSurface(
+            Color.rgb(62, 128, 214),
+            TranslationOverlayTouchPolicy.PREFERRED_SINGLE_WINDOW_ALPHA
+        )
+        val source = Bitmap.createBitmap(120, 80, Bitmap.Config.ARGB_8888).apply {
+            eraseColor(sourceColor)
+        }
+
+        val background = LivePatchBackgroundComposer.createBlurTintTarget(
+            source,
+            theme,
+            TranslationOverlayTouchPolicy.PREFERRED_SINGLE_WINDOW_ALPHA
+        )
+        val outputColor = background.bitmap.getPixel(60, 40)
+
+        assertTrue(colorDistance(outputColor, theme) < colorDistance(outputColor, sourceColor))
+
+        background.bitmap.recycle()
+        source.recycle()
+    }
+
+    @Test
+    fun fullPageBlurUsesAThickerMaterialWhilePreservingTheDarkTheme() {
+        val theme = Color.rgb(18, 20, 22)
+        val source = Bitmap.createBitmap(320, 180, Bitmap.Config.ARGB_8888).apply {
+            eraseColor(theme)
+            for (y in 16 until height step 24) {
+                for (x in 12 until width - 12) {
+                    setPixel(x, y, Color.rgb(185, 190, 196))
+                }
+            }
+        }
+
+        val background = LivePatchBackgroundComposer.createFullPageBlurTintTarget(
+            source,
+            theme,
+            1f
+        )
+        val center = background.bitmap.getPixel(source.width / 2, source.height / 2)
+
+        assertTrue(ScreenThemeColorEstimator.isDark(center))
+        assertTrue(background.detailRetentionRatio in 0f..0.2f)
+
+        background.bitmap.recycle()
+        source.recycle()
+    }
+
     private fun stripedSource(width: Int, height: Int): Bitmap =
         Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888).apply {
             val pixels = IntArray(width * height) { index ->
@@ -78,4 +150,9 @@ class LivePatchBackgroundComposerTest {
         kotlin.math.abs(Color.green(first) - Color.green(second)),
         kotlin.math.abs(Color.blue(first) - Color.blue(second))
     )
+
+    private fun colorDistance(first: Int, second: Int): Int =
+        kotlin.math.abs(Color.red(first) - Color.red(second)) +
+            kotlin.math.abs(Color.green(first) - Color.green(second)) +
+            kotlin.math.abs(Color.blue(first) - Color.blue(second))
 }

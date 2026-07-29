@@ -34,6 +34,7 @@ internal class ActiveScreenCaptureOverlayController(
     initialCaptureSettings: LiveCaptureSettings,
     initialRecognitionMode: OcrRecognitionMode,
     initialSmartAssistEnabled: Boolean,
+    initialBackgroundExperienceMode: LivePatchBackgroundExperienceMode,
     private val listener: Listener
 ) {
     interface Listener {
@@ -48,6 +49,7 @@ internal class ActiveScreenCaptureOverlayController(
         fun onOcrRecognitionModeChanged(mode: OcrRecognitionMode)
         fun onOcrModelDownloadRequested(model: OcrModel)
         fun onSmartAssistEnabledChanged(enabled: Boolean)
+        fun onBackgroundExperienceModeChanged(mode: LivePatchBackgroundExperienceMode)
     }
 
     private val appContext = context.applicationContext
@@ -72,6 +74,7 @@ internal class ActiveScreenCaptureOverlayController(
     private var captureSettings = initialCaptureSettings
     private var recognitionMode = initialRecognitionMode
     private var smartAssistEnabled = initialSmartAssistEnabled
+    private var backgroundExperienceMode = initialBackgroundExperienceMode
     private val ocrModelStates = OcrModel.entries.associateWith {
         OcrModelState.UNKNOWN
     }.toMutableMap()
@@ -178,7 +181,7 @@ internal class ActiveScreenCaptureOverlayController(
         ocrModelStates[model] = state
     }
 
-    fun showWaitingForStable() = onMainThread {
+    fun showWaitingForStable(onHidden: (() -> Unit)? = null) = onMainThread {
         translationView.hideForViewportMovement()
         sessionActive = true
         updateCompactStatus(R.string.active_screenshot_compact_waiting, showProgress = false)
@@ -189,6 +192,7 @@ internal class ActiveScreenCaptureOverlayController(
             binding.tvActiveOverlayStatus.setText(R.string.active_screenshot_waiting_stable)
             binding.btnCancelActivePreview.visibility = View.VISIBLE
         }
+        binding.root.postOnAnimation { onHidden?.invoke() }
     }
 
     fun showResult(
@@ -680,10 +684,33 @@ internal class ActiveScreenCaptureOverlayController(
                 segmentationMenuId(captureSettings.segmentation)
             )?.isChecked = true
 
+            val backgroundExperienceMenu = menu.addSubMenu(
+                CAPTURE_SETTINGS_MENU_GROUP,
+                CAPTURE_SETTINGS_MENU_BACKGROUND_EXPERIENCE,
+                7,
+                R.string.active_screenshot_background_experience_group
+            )
+            LivePatchBackgroundExperienceMode.entries.forEachIndexed { index, mode ->
+                backgroundExperienceMenu.add(
+                    BACKGROUND_EXPERIENCE_MENU_GROUP,
+                    backgroundExperienceMenuId(mode),
+                    index,
+                    backgroundExperienceLabel(mode)
+                )
+            }
+            backgroundExperienceMenu.setGroupCheckable(
+                BACKGROUND_EXPERIENCE_MENU_GROUP,
+                true,
+                true
+            )
+            backgroundExperienceMenu.findItem(
+                backgroundExperienceMenuId(backgroundExperienceMode)
+            )?.isChecked = true
+
             menu.add(
                 SMART_ASSIST_MENU_GROUP,
                 SMART_ASSIST_MENU_ENABLED,
-                7,
+                8,
                 R.string.active_screenshot_smart_assist
             ).apply {
                 isCheckable = true
@@ -712,6 +739,17 @@ internal class ActiveScreenCaptureOverlayController(
                 }
                 if (selectedModel != null) {
                     listener.onOcrModelDownloadRequested(selectedModel)
+                    return@setOnMenuItemClickListener true
+                }
+                val selectedBackgroundExperience =
+                    LivePatchBackgroundExperienceMode.entries.firstOrNull {
+                        backgroundExperienceMenuId(it) == item.itemId
+                    }
+                if (selectedBackgroundExperience != null) {
+                    if (selectedBackgroundExperience != backgroundExperienceMode) {
+                        backgroundExperienceMode = selectedBackgroundExperience
+                        listener.onBackgroundExperienceModeChanged(selectedBackgroundExperience)
+                    }
                     return@setOnMenuItemClickListener true
                 }
                 val preset = LiveCaptureScenePreset.entries.firstOrNull {
@@ -824,6 +862,21 @@ internal class ActiveScreenCaptureOverlayController(
         OCR_MODE_MENU_ID_BASE + mode.ordinal
 
     private fun ocrModelMenuId(model: OcrModel): Int = OCR_MODEL_MENU_ID_BASE + model.ordinal
+
+    private fun backgroundExperienceMenuId(mode: LivePatchBackgroundExperienceMode): Int =
+        BACKGROUND_EXPERIENCE_MENU_ID_BASE + mode.ordinal
+
+    private fun backgroundExperienceLabel(mode: LivePatchBackgroundExperienceMode): String =
+        appContext.getString(
+            when (mode) {
+                LivePatchBackgroundExperienceMode.OFF ->
+                    R.string.active_screenshot_background_experience_off
+                LivePatchBackgroundExperienceMode.THEME_COLOR ->
+                    R.string.active_screenshot_background_experience_theme
+                LivePatchBackgroundExperienceMode.GAUSSIAN_BLUR ->
+                    R.string.active_screenshot_background_experience_blur
+            }
+        )
 
     private fun ocrModeLabel(mode: OcrRecognitionMode): String = appContext.getString(
         when (mode) {
@@ -1058,6 +1111,7 @@ internal class ActiveScreenCaptureOverlayController(
         const val CAPTURE_SETTINGS_MENU_OPEN = 405
         const val CAPTURE_SETTINGS_MENU_OCR_MODE = 406
         const val CAPTURE_SETTINGS_MENU_OCR_MODELS = 407
+        const val CAPTURE_SETTINGS_MENU_BACKGROUND_EXPERIENCE = 408
         const val SCENE_MENU_GROUP = 5
         const val SCENE_MENU_ID_BASE = 500
         const val FREQUENCY_MENU_GROUP = 6
@@ -1072,5 +1126,7 @@ internal class ActiveScreenCaptureOverlayController(
         const val OCR_MODEL_MENU_ID_BASE = 1000
         const val SMART_ASSIST_MENU_GROUP = 11
         const val SMART_ASSIST_MENU_ENABLED = 1101
+        const val BACKGROUND_EXPERIENCE_MENU_GROUP = 12
+        const val BACKGROUND_EXPERIENCE_MENU_ID_BASE = 1200
     }
 }

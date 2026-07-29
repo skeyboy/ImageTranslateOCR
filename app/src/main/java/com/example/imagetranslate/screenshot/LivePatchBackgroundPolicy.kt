@@ -15,6 +15,7 @@ internal object LivePatchBackgroundPolicy {
         profile: LivePatchTextureProfile,
         blurAvailable: Boolean
     ): LivePatchBackgroundMode = when (requested) {
+        LivePatchBackgroundMode.STANDARD -> LivePatchBackgroundMode.STANDARD
         LivePatchBackgroundMode.THEME_SURFACE -> LivePatchBackgroundMode.THEME_SURFACE
         LivePatchBackgroundMode.BLUR_TINT -> if (blurAvailable) {
             LivePatchBackgroundMode.BLUR_TINT
