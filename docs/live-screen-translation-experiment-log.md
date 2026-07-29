@@ -882,3 +882,12 @@ sequenceDiagram
 - 根因与边界：普通非可信全屏 Overlay 受 Android 触摸遮挡透明度约束，不能为了恢复白/黑页面直接升为 `alpha=1`；可信 Accessibility Overlay 才允许准确重建局部主题表面。全页主题色和全页高斯仍拒绝。
 - 决策：生产默认保持普通 `alpha=0.72`、背景关闭。Enhanced + 羽化主题色进入下一阶段候选；完成真实 Accessibility、30 次滚动/点击、原文切换和退出清理前不自动启用。普通高斯仅保留人工实验。
 - 证据：[羽化主题与高斯材料 50 视口验证](validation/feathered-material-rendering-2026-07-29/README.md)。
+
+## 18. 2026-07-29 Enhanced 羽化主题 Light/Dark 连续交互
+
+- 场景：Xiaomi Android 16，可信 Accessibility `alpha=1`，羽化局部主题材料，Light/Dark 各 30 次真实滚动和底层点击。
+- 结果：两组滚动、点击、单隐藏、单完成和原子呈现均 30/30；隐藏 P90 均为 18ms，提交 P90 分别为 1520ms 和 1546ms；15 秒静止新增活动均为 0；原文切换锚点漂移 0px；退出窗口均从 2 降为 0。
+- 修复：Enhanced 模式切换后恢复连续捕获；译文 patch 加入签名忽略区防止显隐自激；Accessibility `TYPE_VIEW_SCROLLED` 作为滚动主信号，像素差分保留为非滚动变化兜底；HTTP 页面探针替代会解绑服务的 UIAutomator 逐轮读取。
+- 视觉结论：Light/Dark 代表帧无独立灰色文本底板，图表与浏览器栏保持；全页主题色和全页高斯仍拒绝，普通模式默认不变。
+- 语义边界：当前链路累计失败区域 Light 28、Dark 21，仍有误识别和混排；本轮只通过 A3/A4/A7 材料子项/A8/A9/A11，不替代 A5/A6。
+- 证据：`docs/validation/enhanced-theme-interaction-2026-07-29/README.md`。
