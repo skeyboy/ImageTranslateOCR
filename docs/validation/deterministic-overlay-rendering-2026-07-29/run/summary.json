@@ -1,0 +1,108 @@
+{
+  "event": "deterministic_overlay_rendering_matrix",
+  "cases": 50,
+  "categories": [
+    {
+      "category": "dark-body",
+      "cases": 10,
+      "ideal_passes": 10,
+      "current_calibrated_passes": 8,
+      "ideal_rendering_p90_ms": 41,
+      "ideal_minimum_text_scale": 0.7742969,
+      "ideal_minimum_contrast_ratio": 6.4052076
+    },
+    {
+      "category": "landscape-edge",
+      "cases": 10,
+      "ideal_passes": 10,
+      "current_calibrated_passes": 8,
+      "ideal_rendering_p90_ms": 64,
+      "ideal_minimum_text_scale": 0.81726557,
+      "ideal_minimum_contrast_ratio": 7.227622
+    },
+    {
+      "category": "length-stress",
+      "cases": 10,
+      "ideal_passes": 10,
+      "current_calibrated_passes": 7,
+      "ideal_rendering_p90_ms": 61,
+      "ideal_minimum_text_scale": 0.6844531,
+      "ideal_minimum_contrast_ratio": 7.307399
+    },
+    {
+      "category": "light-body",
+      "cases": 10,
+      "ideal_passes": 10,
+      "current_calibrated_passes": 8,
+      "ideal_rendering_p90_ms": 63,
+      "ideal_minimum_text_scale": 0.7742969,
+      "ideal_minimum_contrast_ratio": 7.4127693
+    },
+    {
+      "category": "non-text-mixed",
+      "cases": 10,
+      "ideal_passes": 10,
+      "current_calibrated_passes": 8,
+      "ideal_rendering_p90_ms": 49,
+      "ideal_minimum_text_scale": 0.85632807,
+      "ideal_minimum_contrast_ratio": 6.9491405
+    }
+  ],
+  "input_profiles": {
+    "high_accuracy_ceiling": {
+      "passes": 50,
+      "coverage_min": 1,
+      "coverage_p10": 1,
+      "clipped_regions": 0,
+      "failed_regions": 0,
+      "dropped_input_regions": 0,
+      "retained_source_regions": 0,
+      "minimum_text_scale": 0.6844531,
+      "minimum_contrast_ratio": 6.4052076,
+      "protected_unchanged_min": 1,
+      "chrome_unchanged_min": 1,
+      "protected_patch_intersections": 0,
+      "changed_outside_patch_samples": 0,
+      "rendering_p50_ms": 44,
+      "rendering_p90_ms": 61,
+      "rendering_max_ms": 340
+    },
+    "current_calibrated": {
+      "passes": 39,
+      "coverage_min": 0.8,
+      "coverage_p10": 0.8333333,
+      "clipped_regions": 1,
+      "failed_regions": 0,
+      "dropped_input_regions": 10,
+      "retained_source_regions": 10,
+      "minimum_text_scale": 0.6219531,
+      "minimum_contrast_ratio": 6.4052076,
+      "protected_unchanged_min": 1,
+      "chrome_unchanged_min": 1,
+      "protected_patch_intersections": 0,
+      "changed_outside_patch_samples": 0,
+      "rendering_p50_ms": 44,
+      "rendering_p90_ms": 59,
+      "rendering_max_ms": 72
+    }
+  },
+  "current_pipeline_reference": {
+    "source": "2026-07-29 real MediaProjection continuous scroll run",
+    "recognized_regions": 466,
+    "failed_regions": 17,
+    "failure_ratio": 0.03648068669527897,
+    "retained_latin_ratio_p90": 0.05714285746216774,
+    "interpretation": "Calibration input only; not a deterministic renderer failure."
+  },
+  "gates": {
+    "fifty_cases_completed": true,
+    "ideal_all_regions_rendered": true,
+    "ideal_no_clipping": true,
+    "ideal_legible_scale": true,
+    "ideal_contrast": true,
+    "ideal_non_text_protected": true,
+    "ideal_changes_scoped_to_patches": true,
+    "ideal_rendering_performance": true
+  },
+  "automation_pass": true
+}

@@ -1,0 +1,6 @@
+
+com.example.imagetranslate.screenshot.DeterministicOverlayRenderingMatrixTest:.
+
+Time: 33.958
+
+OK (1 test)
