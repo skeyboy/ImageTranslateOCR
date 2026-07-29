@@ -42,7 +42,7 @@ internal class ActiveScreenCaptureOverlayController(
         fun onStop()
         fun onCancelPreview()
         fun onTranslationModeChanged(mode: TranslationMode)
-        fun onTranslationVisibilityChanged()
+        fun onTranslationVisibilityChanged(visible: Boolean)
         fun onExperienceModeRequested(mode: LiveOverlayExperienceMode)
         fun onCaptureSettingsChanged(settings: LiveCaptureSettings)
         fun onOcrSettingsOpened()
@@ -102,7 +102,7 @@ internal class ActiveScreenCaptureOverlayController(
         binding.btnToggleActiveTranslation.addOnCheckedChangeListener { _, checked ->
             translationVisible = checked
             translationView.setPatchesVisible(checked)
-            listener.onTranslationVisibilityChanged()
+            listener.onTranslationVisibilityChanged(checked)
         }
         binding.btnCollapseActiveOverlay.setOnClickListener { collapseNow() }
         binding.btnExpandActiveOverlay.setOnClickListener { expandNow() }
@@ -136,16 +136,21 @@ internal class ActiveScreenCaptureOverlayController(
         }
     }
 
-    fun signatureOcclusionBounds(): Rect? {
-        val params = controlParams ?: return null
-        if (binding.root.parent == null) return null
+    fun signatureOcclusionBounds(): List<Rect> {
         val padding = dp(SIGNATURE_OCCLUSION_PADDING_DP)
-        return Rect(
-            params.x - padding,
-            params.y - padding,
-            params.x + params.width + padding,
-            params.y + params.height + padding
-        )
+        val regions = translationView.signatureOcclusionBounds().map { bounds ->
+            Rect(bounds).apply { inset(-padding, -padding) }
+        }.toMutableList()
+        val params = controlParams
+        if (params != null && binding.root.parent != null) {
+            regions += Rect(
+                params.x - padding,
+                params.y - padding,
+                params.x + params.width + padding,
+                params.y + params.height + padding
+            )
+        }
+        return regions
     }
 
     fun showProcessing() = onMainThread {

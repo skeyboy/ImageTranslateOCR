@@ -274,10 +274,22 @@
     });
 
     let touchCount = 0;
+    let probeReportTimer = 0;
     const touchProbe = document.getElementById('touchProbe');
     const sectionIndicator = document.getElementById('sectionIndicator');
+    const reportProbeState = () => {
+      window.clearTimeout(probeReportTimer);
+      probeReportTimer = window.setTimeout(() => {
+        const parameters = new URLSearchParams({
+          touch: String(touchCount),
+          scroll: String(Math.round(window.scrollY))
+        });
+        fetch(`/probe-state?${parameters}`, { cache: 'no-store' }).catch(() => {});
+      }, 80);
+    };
     const updateProbeLabel = () => {
       touchProbe.setAttribute('aria-label', `Touch probe count ${touchCount} scroll position ${Math.round(window.scrollY)}`);
+      reportProbeState();
     };
     touchProbe.addEventListener('click', () => {
       touchCount += 1;

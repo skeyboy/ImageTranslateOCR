@@ -68,11 +68,21 @@ class ScreenshotOverlayLayoutTest {
                 sourceWidth = 100,
                 sourceHeight = 200
             )
+            view.measure(
+                View.MeasureSpec.makeMeasureSpec(200, View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(400, View.MeasureSpec.EXACTLY)
+            )
+            view.layout(0, 0, 200, 400)
             assertEquals(View.VISIBLE, view.visibility)
+            assertEquals(listOf(Rect(8, 12, 32, 28)), view.signatureOcclusionBounds())
 
             view.hideForViewportMovement()
             assertEquals(View.INVISIBLE, view.visibility)
             assertFalse(patchBitmap.isRecycled)
+            assertEquals(listOf(Rect(8, 12, 32, 28)), view.signatureOcclusionBounds())
+
+            view.setPatchesVisible(false, animateChange = false)
+            assertTrue(view.signatureOcclusionBounds().isEmpty())
 
             view.clearPatches()
             assertEquals(View.INVISIBLE, view.visibility)

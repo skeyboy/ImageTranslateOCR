@@ -12,7 +12,20 @@ class ScreenTranslationAccessibilityService : AccessibilityService() {
         notifyOverlayService()
     }
 
-    override fun onAccessibilityEvent(event: AccessibilityEvent?) = Unit
+    override fun onAccessibilityEvent(event: AccessibilityEvent?) {
+        if (event?.eventType != AccessibilityEvent.TYPE_VIEW_SCROLLED ||
+            event.packageName?.toString() == packageName ||
+            !OneShotScreenCaptureService.isRunning
+        ) {
+            return
+        }
+        ContextCompat.startForegroundService(
+            this,
+            android.content.Intent(this, OneShotScreenCaptureService::class.java).apply {
+                action = OneShotScreenCaptureService.ACTION_ACCESSIBILITY_VIEW_SCROLLED
+            }
+        )
+    }
 
     override fun onInterrupt() = Unit
 

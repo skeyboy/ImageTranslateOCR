@@ -101,6 +101,24 @@ internal class ScreenTranslationOverlayView @JvmOverloads constructor(
         invalidate()
     }
 
+    fun signatureOcclusionBounds(): List<Rect> {
+        if (!patchesVisible || patches.isEmpty() || sourceWidth <= 0 || sourceHeight <= 0 ||
+            width <= 0 || height <= 0
+        ) {
+            return emptyList()
+        }
+        val scaleX = width.toFloat() / sourceWidth
+        val scaleY = height.toFloat() / sourceHeight
+        return patches.map { patch ->
+            Rect(
+                (patch.bounds.left * scaleX).toInt(),
+                (patch.bounds.top * scaleY).toInt(),
+                (patch.bounds.right * scaleX).toInt(),
+                (patch.bounds.bottom * scaleY).toInt()
+            )
+        }
+    }
+
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         if (sourceWidth <= 0 || sourceHeight <= 0 || patches.isEmpty()) return

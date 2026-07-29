@@ -49,10 +49,15 @@ class LiveScrollBenchmarkLauncherActivity : ComponentActivity() {
                 intent.getStringExtra(EXTRA_BACKGROUND_MODE).orEmpty()
             )
         }.getOrDefault(LivePatchBackgroundExperienceMode.OFF)
+        val experienceMode = runCatching {
+            LiveOverlayExperienceMode.valueOf(
+                intent.getStringExtra(EXTRA_EXPERIENCE_MODE).orEmpty()
+            )
+        }.getOrDefault(LiveOverlayExperienceMode.DEFAULT)
         LivePatchBackgroundExperiencePreferences.set(this, backgroundMode)
         LiveOverlayExperiencePreferences.setRequestedMode(
             this,
-            LiveOverlayExperienceMode.DEFAULT
+            experienceMode
         )
         LiveOcrRecognitionPreferences.set(this, OcrRecognitionMode.ENGLISH)
         LiveCaptureSettingsPreferences.set(
@@ -64,5 +69,6 @@ class LiveScrollBenchmarkLauncherActivity : ComponentActivity() {
 
     companion object {
         const val EXTRA_BACKGROUND_MODE = "background_mode"
+        const val EXTRA_EXPERIENCE_MODE = "experience_mode"
     }
 }

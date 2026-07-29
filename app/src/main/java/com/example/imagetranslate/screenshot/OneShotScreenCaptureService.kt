@@ -117,6 +117,17 @@ class OneShotScreenCaptureService : Service() {
             }
         }
     }
+    private val accessibilityScrollPending = AtomicBoolean(false)
+    private val accessibilityScrollActive = AtomicBoolean(false)
+    private val accessibilityScrollSettle = Runnable {
+        if (!accessibilityScrollPending.compareAndSet(true, false) ||
+            experienceMode != LiveOverlayExperienceMode.ENHANCED ||
+            !continuousTranslationEnabled.get() || projection == null
+        ) {
+            return@Runnable
+        }
+        requestScreenshot()
+    }
     private val translationMutex = Mutex()
     private var foregroundServiceTypes = 0
     @Volatile
@@ -203,7 +214,11 @@ class OneShotScreenCaptureService : Service() {
                     }
                 }
 
-                override fun onTranslationVisibilityChanged() {
+                override fun onTranslationVisibilityChanged(visible: Boolean) {
+                    Log.i(
+                        METRICS_TAG,
+                        LiveRecognitionTelemetry.translationVisibilityChanged(visible)
+                    )
                     captureHandler?.post {
                         changeDetector.onTranslationRendered(SystemClock.elapsedRealtime())
                     }
@@ -264,6 +279,10 @@ class OneShotScreenCaptureService : Service() {
             }
             ACTION_REFRESH_OVERLAY_MODE -> {
                 applyResolvedExperienceMode()
+                return START_NOT_STICKY
+            }
+            ACTION_ACCESSIBILITY_VIEW_SCROLLED -> {
+                handleAccessibilityScroll()
                 return START_NOT_STICKY
             }
             ACTION_START_SESSION -> Unit
@@ -665,6 +684,10 @@ class OneShotScreenCaptureService : Service() {
             image.close()
             return
         }
+        if (accessibilityScrollPending.get()) {
+            image.close()
+            return
+        }
         val nowMs = SystemClock.elapsedRealtime()
         if (lastSignatureSampleAt != Long.MIN_VALUE &&
             nowMs - lastSignatureSampleAt < captureSettings.frequency.frameSampleIntervalMs
@@ -694,6 +717,7 @@ class OneShotScreenCaptureService : Service() {
         when (changeDetector.onFrame(signature, nowMs)) {
             ScreenFrameAction.NONE -> Unit
             ScreenFrameAction.MOVING -> {
+                if (experienceMode == LiveOverlayExperienceMode.ENHANCED) return
                 firstMotionAtMs.compareAndSet(0L, nowMs)
                 lastMotionAtMs.set(nowMs)
                 overlayController.showWaitingForStable {
@@ -710,6 +734,7 @@ class OneShotScreenCaptureService : Service() {
                 scheduleMovementSettleFallback()
             }
             ScreenFrameAction.MOVING_UPDATE -> {
+                if (experienceMode == LiveOverlayExperienceMode.ENHANCED) return
                 lastMotionAtMs.set(nowMs)
                 scheduleMovementSettleFallback()
             }
@@ -736,6 +761,36 @@ class OneShotScreenCaptureService : Service() {
         val handler = captureHandler ?: return
         handler.removeCallbacks(movementSettleFallback)
         handler.postDelayed(movementSettleFallback, MOVEMENT_SETTLE_FALLBACK_MS)
+    }
+
+    private fun handleAccessibilityScroll() {
+        val handler = captureHandler ?: return
+        if (experienceMode != LiveOverlayExperienceMode.ENHANCED ||
+            !continuousTranslationEnabled.get() || projection == null
+        ) {
+            return
+        }
+        val nowMs = SystemClock.elapsedRealtime()
+        lastMotionAtMs.set(nowMs)
+        if (accessibilityScrollPending.compareAndSet(false, true)) {
+            if (accessibilityScrollActive.compareAndSet(false, true)) {
+                firstMotionAtMs.compareAndSet(0L, nowMs)
+                overlayController.showWaitingForStable {
+                    val hiddenAtMs = SystemClock.elapsedRealtime()
+                    Log.i(
+                        METRICS_TAG,
+                        LiveRecognitionTelemetry.hiddenForMovement(
+                            generation = captureGeneration.get(),
+                            motionToHiddenMs = (hiddenAtMs - nowMs).coerceAtLeast(0L)
+                        )
+                    )
+                }
+            }
+            discardStaleCaptureForMovement()
+            changeDetector.reset()
+        }
+        handler.removeCallbacks(accessibilityScrollSettle)
+        handler.postDelayed(accessibilityScrollSettle, ACCESSIBILITY_SCROLL_SETTLE_MS)
     }
 
     private fun restoreUnchangedSettledViewport(trigger: String) {
@@ -1010,7 +1065,7 @@ class OneShotScreenCaptureService : Service() {
         val buffer = plane.buffer.duplicate()
         val samples = IntArray(SIGNATURE_COLUMNS * SIGNATURE_ROWS)
         val ignoredSamples = BooleanArray(samples.size)
-        val controlBounds = overlayController.signatureOcclusionBounds()
+        val overlayBounds = overlayController.signatureOcclusionBounds()
         val top = (image.height * SIGNATURE_TOP_CROP_RATIO).toInt()
         val bottom = (image.height * SIGNATURE_BOTTOM_RATIO).toInt().coerceAtLeast(top + 1)
         var sampleIndex = 0
@@ -1018,7 +1073,7 @@ class OneShotScreenCaptureService : Service() {
             val y = top + ((bottom - top - 1) * row / (SIGNATURE_ROWS - 1).coerceAtLeast(1))
             repeat(SIGNATURE_COLUMNS) { column ->
                 val x = (image.width - 1) * column / (SIGNATURE_COLUMNS - 1).coerceAtLeast(1)
-                ignoredSamples[sampleIndex] = controlBounds?.contains(x, y) == true
+                ignoredSamples[sampleIndex] = overlayBounds.any { it.contains(x, y) }
                 val offset = y * plane.rowStride + x * plane.pixelStride
                 if (offset + 2 < buffer.limit()) {
                     val red = buffer.get(offset).toInt() and 0xFF
@@ -1089,6 +1144,9 @@ class OneShotScreenCaptureService : Service() {
             sourceHeight = result.sourceHeight,
             recognizedCount = result.recognizedCount,
             onPresented = {
+                captureHandler?.removeCallbacks(accessibilityScrollSettle)
+                accessibilityScrollPending.set(false)
+                accessibilityScrollActive.set(false)
                 Log.i(
                     METRICS_TAG,
                     LiveRecognitionTelemetry.presented(
@@ -1116,6 +1174,9 @@ class OneShotScreenCaptureService : Service() {
         canRestoreLastResult.set(false)
         activeCapturePlan = null
         continuousTranslationEnabled.set(false)
+        captureHandler?.removeCallbacks(accessibilityScrollSettle)
+        accessibilityScrollPending.set(false)
+        accessibilityScrollActive.set(false)
         resetInteractionTiming()
         getSystemService(NotificationManager::class.java).notify(
             NOTIFICATION_ID,
@@ -1149,6 +1210,9 @@ class OneShotScreenCaptureService : Service() {
         lastSignatureSampleAt = Long.MIN_VALUE
         resetInteractionTiming()
         captureHandler?.removeCallbacks(movementSettleFallback)
+        captureHandler?.removeCallbacks(accessibilityScrollSettle)
+        accessibilityScrollPending.set(false)
+        accessibilityScrollActive.set(false)
         if (!keepContinuousMode) continuousTranslationEnabled.set(false)
         timeoutJob?.cancel()
         timeoutJob = null
@@ -1346,10 +1410,15 @@ class OneShotScreenCaptureService : Service() {
     private fun applyResolvedExperienceMode() {
         val resolved = resolvedExperienceMode()
         if (experienceMode == resolved) return
-        cancelActiveCapture(keepContinuousMode = false)
+        val resumeContinuousCapture = continuousTranslationEnabled.get()
+        cancelActiveCapture(keepContinuousMode = resumeContinuousCapture)
         experienceMode = resolved
         Log.i(TAG, "Live overlay experience changed: ${resolved.name}")
         overlayController.setExperienceMode(resolved)
+        if (projection != null && resumeContinuousCapture) {
+            liveProcessor.clearLiveOverlaySnapshot()
+            awaitStableViewport("overlay experience mode")
+        }
     }
 
     private fun resolvedExperienceMode(): LiveOverlayExperienceMode =
@@ -1462,6 +1531,8 @@ class OneShotScreenCaptureService : Service() {
             "com.example.imagetranslate.screenshot.STOP_CAPTURE_SESSION"
         const val ACTION_REFRESH_OVERLAY_MODE =
             "com.example.imagetranslate.screenshot.REFRESH_OVERLAY_MODE"
+        const val ACTION_ACCESSIBILITY_VIEW_SCROLLED =
+            "com.example.imagetranslate.screenshot.ACCESSIBILITY_VIEW_SCROLLED"
         const val ACTION_CAPTURE_FAILED =
             "com.example.imagetranslate.screenshot.CAPTURE_FAILED"
         private const val EXTRA_RESULT_CODE = "result_code"
@@ -1487,6 +1558,7 @@ class OneShotScreenCaptureService : Service() {
         private const val ROTATION_FRAME_RECOVERY_TIMEOUT_MS = 3_500L
         private const val INITIAL_STABILITY_MAX_WAIT_MS = 1_800L
         private const val MOVEMENT_SETTLE_FALLBACK_MS = 650L
+        private const val ACCESSIBILITY_SCROLL_SETTLE_MS = 700L
         private val CAPTURE_FRAME_PULSE_DELAYS_MS = longArrayOf(250L, 650L, 1_050L)
         private const val TAG = "ScreenCaptureSession"
         private const val METRICS_TAG = "LiveOcrMetrics"

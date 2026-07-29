@@ -23,6 +23,12 @@ internal object LiveRecognitionTelemetry {
         .put("atomic_group", true)
         .toString()
 
+    fun translationVisibilityChanged(visible: Boolean): String = JSONObject()
+        .put("schema", SCHEMA_VERSION)
+        .put("event", "overlay_translation_visibility_changed")
+        .put("visible", visible)
+        .toString()
+
     fun completion(
         generation: Int,
         totalMs: Long,

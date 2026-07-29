@@ -33,6 +33,12 @@ class LiveRecognitionTelemetryTest {
         assertEquals(12, presented.getInt("patches"))
         assertEquals(17, presented.getLong("presentation_ms"))
         assertTrue(presented.getBoolean("atomic_group"))
+
+        val visibility = JSONObject(
+            LiveRecognitionTelemetry.translationVisibilityChanged(visible = false)
+        )
+        assertEquals("overlay_translation_visibility_changed", visibility.getString("event"))
+        assertEquals(false, visibility.getBoolean("visible"))
     }
 
     @Test

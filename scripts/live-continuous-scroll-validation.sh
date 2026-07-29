@@ -5,6 +5,7 @@ serial="${ANDROID_SERIAL:-}"
 scroll_runs="${SCROLL_RUNS:-30}"
 theme="${SCROLL_THEME:-light}"
 background_mode="${SCROLL_BACKGROUND_MODE:-OFF}"
+experience_mode="${SCROLL_EXPERIENCE_MODE:-DEFAULT}"
 port="${SCROLL_SERVER_PORT:-8766}"
 page_package="${SCROLL_PAGE_PACKAGE:-com.android.browser}"
 package_name="com.example.imagetranslate"
@@ -28,15 +29,37 @@ case "$background_mode" in
         exit 1
         ;;
 esac
+case "$experience_mode" in
+    DEFAULT|ENHANCED) ;;
+    *)
+        echo "Unsupported SCROLL_EXPERIENCE_MODE: $experience_mode" >&2
+        exit 1
+        ;;
+esac
 
 adb_command=(adb -s "$serial")
 temporary_directory=$(mktemp -d /tmp/imagetranslate-scroll.XXXXXX)
+probe_state_file="$temporary_directory/probe-state.json"
 server_pid=""
 screenrecord_pid=""
 remote_video=""
 original_rotation=$("${adb_command[@]}" shell settings get system user_rotation | tr -d '\r')
 original_accelerometer=$("${adb_command[@]}" shell settings get system accelerometer_rotation | tr -d '\r')
 original_night=$("${adb_command[@]}" shell cmd uimode night | tr -d '\r')
+original_accessibility_enabled=$(
+    "${adb_command[@]}" shell settings get secure accessibility_enabled | tr -d '\r'
+)
+original_accessibility_services=$(
+    "${adb_command[@]}" shell settings get secure enabled_accessibility_services | tr -d '\r'
+)
+accessibility_component="$package_name/.screenshot.ScreenTranslationAccessibilityService"
+if [[ "$original_accessibility_services" == "null" ||
+      -z "$original_accessibility_services" ||
+      "$original_accessibility_services" == *"$package_name"* ]]; then
+    validation_accessibility_services="$accessibility_component"
+else
+    validation_accessibility_services="${original_accessibility_services}:${accessibility_component}"
+fi
 
 cleanup() {
     "${adb_command[@]}" shell am force-stop "$package_name" >/dev/null 2>&1 || true
@@ -57,6 +80,22 @@ cleanup() {
     else
         "${adb_command[@]}" shell cmd uimode night no >/dev/null
     fi
+    if [[ "$original_accessibility_services" == "null" ||
+          -z "$original_accessibility_services" ]]; then
+        "${adb_command[@]}" shell settings delete secure \
+            enabled_accessibility_services >/dev/null 2>&1 || true
+    else
+        "${adb_command[@]}" shell settings put secure enabled_accessibility_services \
+            "$original_accessibility_services" >/dev/null 2>&1 || true
+    fi
+    if [[ "$original_accessibility_enabled" == "null" ||
+          -z "$original_accessibility_enabled" ]]; then
+        "${adb_command[@]}" shell settings delete secure \
+            accessibility_enabled >/dev/null 2>&1 || true
+    else
+        "${adb_command[@]}" shell settings put secure accessibility_enabled \
+            "$original_accessibility_enabled" >/dev/null 2>&1 || true
+    fi
     rm -rf "$temporary_directory"
 }
 trap cleanup EXIT
@@ -67,10 +106,20 @@ results_file="$output_directory/scroll-results.jsonl"
 
 dump_ui() {
     local name="$1"
-    "${adb_command[@]}" shell uiautomator dump "/sdcard/$name.xml" >/dev/null
-    "${adb_command[@]}" exec-out cat "/sdcard/$name.xml" \
-        > "$temporary_directory/$name.xml"
-    printf '%s\n' "$temporary_directory/$name.xml"
+    local output="$temporary_directory/$name.xml"
+    for attempt in $(seq 1 5); do
+        if "${adb_command[@]}" shell uiautomator dump "/sdcard/$name.xml" \
+            >/dev/null 2>&1; then
+            "${adb_command[@]}" exec-out cat "/sdcard/$name.xml" > "$output"
+            if rg -q '<hierarchy' "$output"; then
+                printf '%s\n' "$output"
+                return 0
+            fi
+        fi
+        sleep 0.35
+    done
+    echo "Unable to obtain a valid UI hierarchy for $name" >&2
+    return 1
 }
 
 center_from_bounds() {
@@ -119,6 +168,76 @@ wait_for_probe() {
         sleep 0.25
     done
     echo "Timed out waiting for the fixture accessibility probe" >&2
+    return 1
+}
+
+server_probe_state() {
+    if [[ ! -s "$probe_state_file" ]]; then
+        return 1
+    fi
+    jq -er '"\(.touch) \(.scroll)"' "$probe_state_file"
+}
+
+wait_for_server_probe() {
+    local minimum_touch="${1:-0}"
+    for attempt in $(seq 1 40); do
+        local state
+        state=$(server_probe_state 2>/dev/null || true)
+        if [[ -n "$state" ]]; then
+            read -r touch _ <<< "$state"
+            if (( touch >= minimum_touch )); then
+                printf '%s\n' "$state"
+                return 0
+            fi
+        fi
+        sleep 0.2
+    done
+    echo "Timed out waiting for the fixture HTTP probe" >&2
+    return 1
+}
+
+current_probe_state() {
+    if [[ "$experience_mode" == "ENHANCED" ]]; then
+        wait_for_server_probe "${1:-0}"
+    else
+        local xml
+        xml=$(wait_for_probe)
+        probe_state "$xml"
+    fi
+}
+
+wait_for_accessibility_service() {
+    for attempt in $(seq 1 30); do
+        local state
+        state=$("${adb_command[@]}" shell dumpsys accessibility)
+        if [[ "$state" == *"$package_name"* ]] &&
+            rg -q 'Bound services:\{Service\[' <<< "$state" &&
+            [[ -n "$("${adb_command[@]}" shell pidof "$package_name")" ]]; then
+            return 0
+        fi
+        sleep 0.2
+    done
+    echo "Timed out waiting for the screen translation accessibility service" >&2
+    "${adb_command[@]}" shell dumpsys accessibility >&2
+    return 1
+}
+
+wait_for_enhanced_translation() {
+    for attempt in $(seq 1 120); do
+        local session_lines lines
+        session_lines=$(
+            "${adb_command[@]}" logcat -d -v raw -s ScreenCaptureSession:I \
+                2>/dev/null || true
+        )
+        lines=$(metrics_lines)
+        if [[ "$session_lines" == *"Live overlay experience changed: ENHANCED"* &&
+              "$lines" == *'"event":"overlay_translation_completed"'* &&
+              "$lines" == *'"event":"overlay_translation_presented"'* ]]; then
+            return 0
+        fi
+        sleep 0.25
+    done
+    echo "Timed out waiting for the Enhanced translation surface" >&2
     return 1
 }
 
@@ -179,18 +298,67 @@ wait_for_initial_translation() {
 }
 
 wait_for_scroll_translation() {
-    for attempt in $(seq 1 80); do
+    local stable_signature=""
+    local stable_samples=0
+    for attempt in $(seq 1 120); do
         local lines
         lines=$(metrics_lines)
-        if [[ "$lines" == *'"event":"overlay_translation_hidden_for_movement"'* &&
-              "$lines" == *'"event":"overlay_translation_completed"'* &&
-              "$lines" == *'"event":"overlay_translation_presented"'* ]]; then
-            return 0
+        local hidden completion presented
+        hidden=$(jq -c \
+            'select(.event == "overlay_translation_hidden_for_movement")' \
+            <<< "$lines" | tail -n 1)
+        completion=$(jq -c 'select(.event == "overlay_translation_completed")' \
+            <<< "$lines" | tail -n 1)
+        presented=$(jq -c 'select(.event == "overlay_translation_presented")' \
+            <<< "$lines" | tail -n 1)
+        if [[ -n "$hidden" && -n "$completion" && -n "$presented" ]] &&
+            (( $(jq -r '.generation' <<< "$completion") >
+               $(jq -r '.generation' <<< "$hidden") )) &&
+            (( $(jq -r '.generation' <<< "$presented") ==
+               $(jq -r '.generation' <<< "$completion") )); then
+            local signature
+            signature="$(jq -r '.generation' <<< "$hidden"):$(
+                jq -r '.generation' <<< "$completion"
+            ):$(jq -s 'length' <<< "$lines")"
+            if [[ "$signature" == "$stable_signature" ]]; then
+                stable_samples=$((stable_samples + 1))
+            else
+                stable_signature="$signature"
+                stable_samples=1
+            fi
+            if (( stable_samples >= 3 )); then
+                return 0
+            fi
+        else
+            stable_signature=""
+            stable_samples=0
         fi
         sleep 0.25
     done
     echo "Timed out waiting for a settled scroll translation" >&2
     metrics_lines >&2
+    return 1
+}
+
+wait_for_metrics_quiet() {
+    local required_samples="${1:-12}"
+    local last_count=-1
+    local stable_samples=0
+    for attempt in $(seq 1 80); do
+        local count
+        count=$(jq -s 'length' <<< "$(metrics_lines)")
+        if [[ "$count" == "$last_count" ]]; then
+            stable_samples=$((stable_samples + 1))
+        else
+            last_count=$count
+            stable_samples=1
+        fi
+        if (( stable_samples >= required_samples )); then
+            return 0
+        fi
+        sleep 0.25
+    done
+    echo "Timed out waiting for live recognition metrics to settle" >&2
     return 1
 }
 
@@ -233,6 +401,55 @@ expand_control_and_toggle_point() {
     printf '%s %s\n' "$((left + width * 124 / 380))" "$(((top + bottom) / 2))"
 }
 
+expanded_control_stop_point() {
+    local frame
+    frame=$(control_frame)
+    local coordinates
+    coordinates=$(sed 's/]\[/,/' <<< "$frame" | tr -d '[]' | tr ',' ' ')
+    read -r left top right bottom <<< "$coordinates"
+    local width=$((right - left))
+    local screen_width
+    screen_width=$("${adb_command[@]}" shell wm size |
+        sed -n 's/.*Physical size: \([0-9]*\)x.*/\1/p' | tail -n 1)
+    if (( width * 3 < screen_width * 2 )); then
+        "${adb_command[@]}" shell input tap \
+            "$(((left + right) / 2))" "$(((top + bottom) / 2))"
+        sleep 0.35
+        frame=$(control_frame)
+        coordinates=$(sed 's/]\[/,/' <<< "$frame" | tr -d '[]' | tr ',' ' ')
+        read -r left top right bottom <<< "$coordinates"
+        width=$((right - left))
+    fi
+    printf '%s %s\n' "$((right - width * 18 / 380))" "$(((top + bottom) / 2))"
+}
+
+package_overlay_window_count() {
+    "${adb_command[@]}" shell dumpsys window windows |
+        awk -v target="$package_name" '
+            /^  Window #[0-9]+/ {
+                if (active && owned) count++
+                active = 1
+                owned = index($0, target) > 0
+                next
+            }
+            active && index($0, "package=" target) > 0 { owned = 1 }
+            END {
+                if (active && owned) count++
+                print count + 0
+            }
+        '
+}
+
+wait_for_overlay_exit() {
+    for attempt in $(seq 1 30); do
+        if [[ "$(package_overlay_window_count)" == "0" ]]; then
+            return 0
+        fi
+        sleep 0.2
+    done
+    return 1
+}
+
 ssim_for_crop() {
     local translated="$1"
     local source="$2"
@@ -265,7 +482,10 @@ finish_video_segment() {
     "${adb_command[@]}" shell rm -f "$remote_video" >/dev/null 2>&1 || true
 }
 
-python3 -m http.server "$port" --bind 127.0.0.1 --directory "$fixture_root" \
+python3 scripts/serve-scroll-fixture.py \
+    --root "$fixture_root" \
+    --port "$port" \
+    --state-file "$probe_state_file" \
     > "$temporary_directory/http.log" 2>&1 &
 server_pid=$!
 for attempt in $(seq 1 20); do
@@ -287,19 +507,50 @@ done
 escaped_url="${page_url//&/\\&}"
 "${adb_command[@]}" shell am start -a android.intent.action.VIEW \
     -d "$escaped_url" -p "$page_package" >/dev/null
-wait_for_probe >/dev/null
+initial_probe_xml=$(wait_for_probe)
+wait_for_server_probe >/dev/null
 close_browser_translation_prompt
 
 "${adb_command[@]}" logcat -c
 "${adb_command[@]}" shell am start -n "$component" \
-    --es background_mode "$background_mode" >/dev/null
+    --es background_mode "$background_mode" \
+    --es experience_mode "$experience_mode" >/dev/null
 accept_projection_permission
 wait_for_initial_translation
-close_browser_translation_prompt
+if [[ "$experience_mode" == "ENHANCED" ]]; then
+    "${adb_command[@]}" logcat -c
+    "${adb_command[@]}" shell settings put secure enabled_accessibility_services \
+        "$validation_accessibility_services" >/dev/null
+    "${adb_command[@]}" shell settings put secure accessibility_enabled 1 >/dev/null
+    wait_for_accessibility_service
+    wait_for_enhanced_translation
+else
+    close_browser_translation_prompt
+fi
 sleep 0.8
 
-initial_probe_xml=$(wait_for_probe)
-read -r current_touch current_scroll <<< "$(probe_state "$initial_probe_xml")"
+overlay_windows_before_interaction=$(package_overlay_window_count)
+if [[ "$experience_mode" == "ENHANCED" ]]; then
+    resolved_experience=$(
+        "${adb_command[@]}" logcat -d -v raw -s ScreenCaptureSession:I 2>/dev/null |
+            rg -o 'Live overlay experience changed: ENHANCED|experience[^ ]*=ENHANCED' |
+            tail -n 1 || true
+    )
+    if [[ -z "$resolved_experience" ]]; then
+        resolved_experience=$(
+            "${adb_command[@]}" shell dumpsys window windows |
+                rg -o 'ty=ACCESSIBILITY_OVERLAY|type=2032|TYPE_ACCESSIBILITY_OVERLAY' |
+                head -n 1 || true
+        )
+    fi
+else
+    resolved_experience="DEFAULT"
+fi
+if [[ "$experience_mode" == "ENHANCED" ]]; then
+    read -r current_touch current_scroll <<< "$(wait_for_server_probe)"
+else
+    read -r current_touch current_scroll <<< "$(probe_state "$initial_probe_xml")"
+fi
 probe_bounds=$(xmllint --xpath \
     'string((//node[starts-with(@text,"Touch probe count")])[1]/@bounds)' \
     "$initial_probe_xml")
@@ -332,8 +583,14 @@ for run in $(seq 1 "$scroll_runs"); do
 
     "${adb_command[@]}" shell input tap "$probe_x" "$probe_y"
     sleep 0.2
-    touched_xml=$(wait_for_probe)
-    read -r touch_after scroll_after_touch <<< "$(probe_state "$touched_xml")"
+    if [[ "$experience_mode" == "ENHANCED" ]]; then
+        read -r touch_after scroll_after_touch <<< "$(
+            wait_for_server_probe "$((touch_before + 1))"
+        )"
+    else
+        touched_xml=$(wait_for_probe)
+        read -r touch_after scroll_after_touch <<< "$(probe_state "$touched_xml")"
+    fi
     scroll_after=$scroll_after_touch
     current_touch=$touch_after
     current_scroll=$scroll_after
@@ -375,35 +632,57 @@ for run in $(seq 1 "$scroll_runs"); do
         finish_video_segment 1
         start_video_segment 2
     fi
+    if [[ "$experience_mode" == "ENHANCED" ]]; then
+        wait_for_metrics_quiet
+    fi
 done
 
+wait_for_metrics_quiet 40
 "${adb_command[@]}" logcat -c
 sleep 15
 idle_lines=$(metrics_lines)
+printf '%s\n' "$idle_lines" > "$output_directory/idle-metrics.jsonl"
 idle_activity_count=$(jq -s \
     'map(select(.event == "overlay_translation_completed" or
-                .event == "overlay_translation_hidden_for_movement" or
-                .event == "settled_viewport_restored")) | length' <<< "$idle_lines")
+                .event == "overlay_translation_hidden_for_movement")) | length' \
+    <<< "$idle_lines")
+idle_restoration_count=$(jq -s \
+    'map(select(.event == "settled_viewport_restored")) | length' <<< "$idle_lines")
 
-before_toggle_xml=$(wait_for_probe)
-read -r _ anchor_before <<< "$(probe_state "$before_toggle_xml")"
+if [[ "$experience_mode" == "ENHANCED" ]]; then
+    read -r _ anchor_before <<< "$(wait_for_server_probe "$current_touch")"
+else
+    before_toggle_xml=$(wait_for_probe)
+    read -r _ anchor_before <<< "$(probe_state "$before_toggle_xml")"
+fi
 marker_bounds=$(xmllint --xpath \
     'string((//node[@text="Protected visual marker"])[1]/@bounds)' \
-    "$before_toggle_xml")
+    "$initial_probe_xml")
+wait_for_metrics_quiet
 toggle_point=$(expand_control_and_toggle_point)
 read -r toggle_x toggle_y <<< "$toggle_point"
 sleep 0.35
 "${adb_command[@]}" exec-out screencap -p \
     > "$output_directory/translated-visible.png"
+"${adb_command[@]}" logcat -c
 "${adb_command[@]}" shell input tap "$toggle_x" "$toggle_y"
 sleep 0.6
-source_xml=$(wait_for_probe)
-read -r _ anchor_source <<< "$(probe_state "$source_xml")"
 "${adb_command[@]}" exec-out screencap -p > "$output_directory/source-visible.png"
 "${adb_command[@]}" shell input tap "$toggle_x" "$toggle_y"
 sleep 0.6
-translation_xml=$(wait_for_probe)
-read -r _ anchor_translation <<< "$(probe_state "$translation_xml")"
+toggle_lines=$(metrics_lines)
+toggle_hidden_count=$(jq -s \
+    'map(select(.event == "overlay_translation_visibility_changed" and
+                .visible == false)) | length' <<< "$toggle_lines")
+toggle_visible_count=$(jq -s \
+    'map(select(.event == "overlay_translation_visibility_changed" and
+                .visible == true)) | length' <<< "$toggle_lines")
+if [[ "$experience_mode" == "ENHANCED" ]]; then
+    read -r _ anchor_translation <<< "$(wait_for_server_probe "$current_touch")"
+else
+    translation_xml=$(wait_for_probe)
+    read -r _ anchor_translation <<< "$(probe_state "$translation_xml")"
+fi
 
 marker_coordinates=$(sed 's/]\[/,/' <<< "$marker_bounds" | tr -d '[]' | tr ',' ' ')
 read -r marker_left marker_top marker_right marker_bottom <<< "$marker_coordinates"
@@ -416,32 +695,47 @@ browser_chrome_ssim=$(ssim_for_crop \
     "$output_directory/translated-visible.png" \
     "$output_directory/source-visible.png" \
     "1000:130:300:160")
-anchor_drift_source=$((anchor_source - anchor_before))
 anchor_drift_translation=$((anchor_translation - anchor_before))
-if (( anchor_drift_source < 0 )); then anchor_drift_source=$((-anchor_drift_source)); fi
 if (( anchor_drift_translation < 0 )); then
     anchor_drift_translation=$((-anchor_drift_translation))
 fi
-maximum_anchor_drift=$((
-    anchor_drift_source > anchor_drift_translation ?
-        anchor_drift_source : anchor_drift_translation
-))
+maximum_anchor_drift=$anchor_drift_translation
 
 finish_video_segment 2
+
+wait_for_metrics_quiet
+read -r stop_x stop_y <<< "$(expanded_control_stop_point)"
+"${adb_command[@]}" shell input tap "$stop_x" "$stop_y"
+if wait_for_overlay_exit; then
+    exit_cleanup_pass=true
+else
+    exit_cleanup_pass=false
+fi
+overlay_windows_after_exit=$(package_overlay_window_count)
 
 jq -s \
     --arg theme "$theme" \
     --arg background_mode "$background_mode" \
+    --arg experience_mode "$experience_mode" \
+    --arg resolved_experience "$resolved_experience" \
     --argjson expected_runs "$scroll_runs" \
     --argjson idle_activity_count "$idle_activity_count" \
+    --argjson idle_restoration_count "$idle_restoration_count" \
     --argjson maximum_anchor_drift "$maximum_anchor_drift" \
     --argjson marker_ssim "$marker_ssim" \
-    --argjson browser_chrome_ssim "$browser_chrome_ssim" '
+    --argjson browser_chrome_ssim "$browser_chrome_ssim" \
+    --argjson toggle_hidden_count "$toggle_hidden_count" \
+    --argjson toggle_visible_count "$toggle_visible_count" \
+    --argjson overlay_windows_before_interaction "$overlay_windows_before_interaction" \
+    --argjson overlay_windows_after_exit "$overlay_windows_after_exit" \
+    --argjson exit_cleanup_pass "$exit_cleanup_pass" '
     def percentile(p): sort | .[((length * p | ceil) - 1)];
     {
       event: "live_continuous_scroll_validation",
       theme: $theme,
       background_mode: $background_mode,
+      experience_mode: $experience_mode,
+      resolved_experience: $resolved_experience,
       runs: length,
       expected_runs: $expected_runs,
       scroll_passes: (map(select(.scroll_pass)) | length),
@@ -449,7 +743,10 @@ jq -s \
       single_completion_passes: (map(select(.completion_count == 1)) | length),
       single_hidden_passes: (map(select(.hidden_count == 1)) | length),
       atomic_presentation_passes: (map(select(
-        .presented_count == 1 and .presented.atomic_group == true
+        .presented_count == 1 and
+        .presented.atomic_group == true and
+        .completion.generation > .hidden.generation and
+        .presented.generation == .completion.generation
       )) | length),
       motion_to_hidden_p50_ms: (map(.hidden.motion_to_hidden_ms) | percentile(0.5)),
       motion_to_hidden_p90_ms: (map(.hidden.motion_to_hidden_ms) | percentile(0.9)),
@@ -464,14 +761,20 @@ jq -s \
       retained_latin_ratio_p90:
         (map(.completion.retained_latin_ratio) | percentile(0.9)),
       idle_activity_count: $idle_activity_count,
+      idle_restoration_count: $idle_restoration_count,
       maximum_toggle_anchor_drift_px: $maximum_anchor_drift,
       protected_marker_ssim: $marker_ssim,
       browser_chrome_ssim: $browser_chrome_ssim,
+      toggle_hidden_count: $toggle_hidden_count,
+      toggle_visible_count: $toggle_visible_count,
+      overlay_windows_before_interaction: $overlay_windows_before_interaction,
+      overlay_windows_after_exit: $overlay_windows_after_exit,
       gates: {
         a3_scroll_stability: (
           length == $expected_runs and
           (map(select(.scroll_pass)) | length) == $expected_runs and
           (map(select(.completion_count == 1)) | length) == $expected_runs and
+          (map(select(.hidden_count == 1)) | length) == $expected_runs and
           $idle_activity_count == 0
         ),
         a4_result_freshness: (
@@ -480,14 +783,29 @@ jq -s \
         ),
         a7_atomic_and_non_text: (
           (map(select(.presented_count == 1 and .presented.atomic_group == true)) |
-            length) == $expected_runs and
+            map(select(
+              .completion.generation > .hidden.generation and
+              .presented.generation == .completion.generation
+            )) | length) == $expected_runs and
           $marker_ssim >= 0.97 and
           $browser_chrome_ssim >= 0.99
         ),
         a8_touch_through: (
           (map(select(.touch_pass)) | length) == $expected_runs
         ),
-        a9_source_toggle: ($maximum_anchor_drift <= 16)
+        a9_source_toggle: (
+          $toggle_hidden_count == 1 and
+          $toggle_visible_count == 1 and
+          $maximum_anchor_drift <= 16
+        ),
+        a11_exit_cleanup: (
+          $exit_cleanup_pass and
+          $overlay_windows_before_interaction >= 2 and
+          $overlay_windows_after_exit == 0
+        ),
+        enhanced_overlay_resolved: (
+          $experience_mode != "ENHANCED" or $resolved_experience != ""
+        )
       },
       semantic_quality_evaluated: false
     }
