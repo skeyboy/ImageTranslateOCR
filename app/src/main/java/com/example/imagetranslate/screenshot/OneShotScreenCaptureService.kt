@@ -886,11 +886,13 @@ class OneShotScreenCaptureService : Service() {
                 val activeRecognitionMode = recognitionMode
                 val activeExperienceMode = experienceMode
                 val activeSmartAssistEnabled = smartAssistEnabled
+                val requestedExperienceMode =
+                    LiveOverlayExperiencePreferences.requestedMode(
+                        this@OneShotScreenCaptureService
+                    )
                 val activeBackgroundExperienceMode =
                     LiveOverlayExperiencePolicy.effectiveBackgroundExperienceMode(
-                        requested = LiveOverlayExperiencePreferences.requestedMode(
-                            this@OneShotScreenCaptureService
-                        ),
+                        requested = requestedExperienceMode,
                         resolved = activeExperienceMode,
                         selected = backgroundExperienceMode
                     )
@@ -907,8 +909,10 @@ class OneShotScreenCaptureService : Service() {
                             recognitionMode = activeRecognitionMode,
                             capturePlan = capturePlan,
                             overlayAlpha = LiveOverlayExperiencePolicy.translationWindowAlpha(
-                                activeExperienceMode,
-                                ScreenThemeColorEstimator.DEFAULT_OVERLAY_ALPHA
+                                requested = requestedExperienceMode,
+                                resolved = activeExperienceMode,
+                                standardOverlayAlpha =
+                                    ScreenThemeColorEstimator.DEFAULT_OVERLAY_ALPHA
                             ),
                             segmentation = captureSettings.segmentation,
                             executionProfile =

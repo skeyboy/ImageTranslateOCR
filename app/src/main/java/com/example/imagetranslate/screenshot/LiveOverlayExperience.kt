@@ -20,9 +20,13 @@ internal object LiveOverlayExperiencePolicy {
     }
 
     fun translationWindowAlpha(
-        mode: LiveOverlayExperienceMode,
+        requested: LiveOverlayExperienceMode,
+        resolved: LiveOverlayExperienceMode,
         standardOverlayAlpha: Float
-    ): Float = if (mode == LiveOverlayExperienceMode.ENHANCED) {
+    ): Float = if (
+        requested == LiveOverlayExperienceMode.ENHANCED ||
+        resolved == LiveOverlayExperienceMode.ENHANCED
+    ) {
         1f
     } else {
         standardOverlayAlpha

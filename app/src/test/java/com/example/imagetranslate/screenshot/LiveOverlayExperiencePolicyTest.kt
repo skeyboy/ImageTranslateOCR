@@ -27,7 +27,8 @@ class LiveOverlayExperiencePolicyTest {
         assertEquals(
             1f,
             LiveOverlayExperiencePolicy.translationWindowAlpha(
-                LiveOverlayExperienceMode.ENHANCED,
+                requested = LiveOverlayExperienceMode.ENHANCED,
+                resolved = LiveOverlayExperienceMode.ENHANCED,
                 standardOverlayAlpha = 0.72f
             ),
             0.001f
@@ -46,7 +47,21 @@ class LiveOverlayExperiencePolicyTest {
         assertEquals(
             0.72f,
             LiveOverlayExperiencePolicy.translationWindowAlpha(
-                LiveOverlayExperienceMode.DEFAULT,
+                requested = LiveOverlayExperienceMode.DEFAULT,
+                resolved = LiveOverlayExperienceMode.DEFAULT,
+                standardOverlayAlpha = 0.72f
+            ),
+            0.001f
+        )
+    }
+
+    @Test
+    fun enhancedFallbackStaysOpaqueWhenAccessibilityDisconnects() {
+        assertEquals(
+            1f,
+            LiveOverlayExperiencePolicy.translationWindowAlpha(
+                requested = LiveOverlayExperienceMode.ENHANCED,
+                resolved = LiveOverlayExperienceMode.DEFAULT,
                 standardOverlayAlpha = 0.72f
             ),
             0.001f

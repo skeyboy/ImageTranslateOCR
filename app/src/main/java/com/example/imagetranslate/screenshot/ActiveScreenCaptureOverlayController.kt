@@ -1065,8 +1065,10 @@ internal class ActiveScreenCaptureOverlayController(
                 .maximumObscuringOpacityForTouch
         }.getOrDefault(DEFAULT_MAXIMUM_OBSCURING_ALPHA)
         return LiveOverlayExperiencePolicy.translationWindowAlpha(
-            experienceMode,
-            TranslationOverlayTouchPolicy.windowAlpha(maximumAlpha, overlapCount)
+            requested = LiveOverlayExperiencePreferences.requestedMode(appContext),
+            resolved = experienceMode,
+            standardOverlayAlpha =
+                TranslationOverlayTouchPolicy.windowAlpha(maximumAlpha, overlapCount)
         )
     }
 
