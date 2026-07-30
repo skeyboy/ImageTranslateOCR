@@ -27,8 +27,7 @@ class LiveOverlayExperiencePolicyTest {
         assertEquals(
             1f,
             LiveOverlayExperiencePolicy.translationWindowAlpha(
-                requested = LiveOverlayExperienceMode.ENHANCED,
-                resolved = LiveOverlayExperienceMode.ENHANCED,
+                LiveOverlayExperienceMode.ENHANCED,
                 standardOverlayAlpha = 0.72f
             ),
             0.001f
@@ -47,8 +46,7 @@ class LiveOverlayExperiencePolicyTest {
         assertEquals(
             0.72f,
             LiveOverlayExperiencePolicy.translationWindowAlpha(
-                requested = LiveOverlayExperienceMode.DEFAULT,
-                resolved = LiveOverlayExperienceMode.DEFAULT,
+                LiveOverlayExperienceMode.DEFAULT,
                 standardOverlayAlpha = 0.72f
             ),
             0.001f
@@ -56,15 +54,27 @@ class LiveOverlayExperiencePolicyTest {
     }
 
     @Test
-    fun enhancedFallbackStaysOpaqueWhenAccessibilityDisconnects() {
+    fun enhancedFallbackPausesTranslationWhenAccessibilityDisconnects() {
         assertEquals(
-            1f,
-            LiveOverlayExperiencePolicy.translationWindowAlpha(
+            false,
+            LiveOverlayExperiencePolicy.canPresentTranslation(
                 requested = LiveOverlayExperienceMode.ENHANCED,
-                resolved = LiveOverlayExperienceMode.DEFAULT,
-                standardOverlayAlpha = 0.72f
-            ),
-            0.001f
+                resolved = LiveOverlayExperienceMode.DEFAULT
+            )
+        )
+        assertEquals(
+            true,
+            LiveOverlayExperiencePolicy.canPresentTranslation(
+                requested = LiveOverlayExperienceMode.ENHANCED,
+                resolved = LiveOverlayExperienceMode.ENHANCED
+            )
+        )
+        assertEquals(
+            true,
+            LiveOverlayExperiencePolicy.canPresentTranslation(
+                requested = LiveOverlayExperienceMode.DEFAULT,
+                resolved = LiveOverlayExperienceMode.DEFAULT
+            )
         )
     }
 

@@ -818,6 +818,11 @@ class OneShotScreenCaptureService : Service() {
     }
 
     private fun processInitialStableFrame(image: Image, signature: ScreenFrameSignature) {
+        if (!canPresentTranslation()) {
+            image.close()
+            pauseForUnavailableEnhancedExperience()
+            return
+        }
         if (!captureInProgress.compareAndSet(false, true)) {
             image.close()
             return
@@ -890,6 +895,14 @@ class OneShotScreenCaptureService : Service() {
                     LiveOverlayExperiencePreferences.requestedMode(
                         this@OneShotScreenCaptureService
                     )
+                if (!LiveOverlayExperiencePolicy.canPresentTranslation(
+                        requested = requestedExperienceMode,
+                        resolved = activeExperienceMode
+                    )
+                ) {
+                    pauseForUnavailableEnhancedExperience()
+                    return@launch
+                }
                 val activeBackgroundExperienceMode =
                     LiveOverlayExperiencePolicy.effectiveBackgroundExperienceMode(
                         requested = requestedExperienceMode,
@@ -909,10 +922,8 @@ class OneShotScreenCaptureService : Service() {
                             recognitionMode = activeRecognitionMode,
                             capturePlan = capturePlan,
                             overlayAlpha = LiveOverlayExperiencePolicy.translationWindowAlpha(
-                                requested = requestedExperienceMode,
-                                resolved = activeExperienceMode,
-                                standardOverlayAlpha =
-                                    ScreenThemeColorEstimator.DEFAULT_OVERLAY_ALPHA
+                                activeExperienceMode,
+                                ScreenThemeColorEstimator.DEFAULT_OVERLAY_ALPHA
                             ),
                             segmentation = captureSettings.segmentation,
                             executionProfile =
@@ -999,6 +1010,10 @@ class OneShotScreenCaptureService : Service() {
     private fun requestScreenshot(capturePlan: ScrollCapturePlan? = null) {
         if (projection == null) {
             stopSelf()
+            return
+        }
+        if (!canPresentTranslation()) {
+            pauseForUnavailableEnhancedExperience()
             return
         }
         if (!captureInProgress.compareAndSet(false, true)) return
@@ -1419,8 +1434,14 @@ class OneShotScreenCaptureService : Service() {
     }
 
     private fun applyResolvedExperienceMode() {
+        val requested = LiveOverlayExperiencePreferences.requestedMode(this)
         val resolved = resolvedExperienceMode()
-        if (experienceMode == resolved) return
+        if (experienceMode == resolved) {
+            if (!LiveOverlayExperiencePolicy.canPresentTranslation(requested, resolved)) {
+                pauseForUnavailableEnhancedExperience()
+            }
+            return
+        }
         val resumeContinuousCapture = continuousTranslationEnabled.get()
         cancelActiveCapture(keepContinuousMode = resumeContinuousCapture)
         experienceMode = resolved
@@ -1428,8 +1449,33 @@ class OneShotScreenCaptureService : Service() {
         overlayController.setExperienceMode(resolved)
         if (projection != null && resumeContinuousCapture) {
             liveProcessor.clearLiveOverlaySnapshot()
-            awaitStableViewport("overlay experience mode")
+            if (LiveOverlayExperiencePolicy.canPresentTranslation(requested, resolved)) {
+                awaitStableViewport("overlay experience mode")
+            } else {
+                pauseForUnavailableEnhancedExperience()
+            }
         }
+    }
+
+    private fun canPresentTranslation(): Boolean =
+        LiveOverlayExperiencePolicy.canPresentTranslation(
+            requested = LiveOverlayExperiencePreferences.requestedMode(this),
+            resolved = experienceMode
+        )
+
+    private fun pauseForUnavailableEnhancedExperience() {
+        timeoutJob?.cancel()
+        timeoutJob = null
+        captureRequested.set(false)
+        captureInProgress.set(false)
+        processingFrameCaptured.set(false)
+        presentationInProgress.set(false)
+        canRestoreLastResult.set(false)
+        activeCapturePlan = null
+        resetInteractionTiming()
+        overlayController.clearTranslations()
+        overlayController.showReadyExpanded()
+        Log.i(TAG, "Live translation paused: Enhanced accessibility overlay unavailable")
     }
 
     private fun resolvedExperienceMode(): LiveOverlayExperienceMode =

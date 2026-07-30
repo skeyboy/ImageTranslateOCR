@@ -20,17 +20,19 @@ internal object LiveOverlayExperiencePolicy {
     }
 
     fun translationWindowAlpha(
-        requested: LiveOverlayExperienceMode,
-        resolved: LiveOverlayExperienceMode,
+        mode: LiveOverlayExperienceMode,
         standardOverlayAlpha: Float
-    ): Float = if (
-        requested == LiveOverlayExperienceMode.ENHANCED ||
-        resolved == LiveOverlayExperienceMode.ENHANCED
-    ) {
+    ): Float = if (mode == LiveOverlayExperienceMode.ENHANCED) {
         1f
     } else {
         standardOverlayAlpha
     }
+
+    fun canPresentTranslation(
+        requested: LiveOverlayExperienceMode,
+        resolved: LiveOverlayExperienceMode
+    ): Boolean = requested != LiveOverlayExperienceMode.ENHANCED ||
+        resolved == LiveOverlayExperienceMode.ENHANCED
 
     fun effectiveBackgroundExperienceMode(
         requested: LiveOverlayExperienceMode,
