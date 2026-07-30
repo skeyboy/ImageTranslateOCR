@@ -886,7 +886,14 @@ class OneShotScreenCaptureService : Service() {
                 val activeRecognitionMode = recognitionMode
                 val activeExperienceMode = experienceMode
                 val activeSmartAssistEnabled = smartAssistEnabled
-                val activeBackgroundExperienceMode = backgroundExperienceMode
+                val activeBackgroundExperienceMode =
+                    LiveOverlayExperiencePolicy.effectiveBackgroundExperienceMode(
+                        requested = LiveOverlayExperiencePreferences.requestedMode(
+                            this@OneShotScreenCaptureService
+                        ),
+                        resolved = activeExperienceMode,
+                        selected = backgroundExperienceMode
+                    )
                 val result = withTimeout(LiveCaptureTimingPolicy.TRANSLATION_TIMEOUT_MS) {
                     translationMutex.withLock {
                         if (generation != captureGeneration.get()) {

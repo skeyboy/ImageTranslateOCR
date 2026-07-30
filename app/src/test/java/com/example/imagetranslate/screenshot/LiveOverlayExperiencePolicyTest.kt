@@ -52,4 +52,32 @@ class LiveOverlayExperiencePolicyTest {
             0.001f
         )
     }
+
+    @Test
+    fun enhancedBackgroundFallsBackOnlyWhileAccessibilityIsUnavailable() {
+        assertEquals(
+            LivePatchBackgroundExperienceMode.OFF,
+            LiveOverlayExperiencePolicy.effectiveBackgroundExperienceMode(
+                requested = LiveOverlayExperienceMode.ENHANCED,
+                resolved = LiveOverlayExperienceMode.DEFAULT,
+                selected = LivePatchBackgroundExperienceMode.THEME_COLOR
+            )
+        )
+        assertEquals(
+            LivePatchBackgroundExperienceMode.THEME_COLOR,
+            LiveOverlayExperiencePolicy.effectiveBackgroundExperienceMode(
+                requested = LiveOverlayExperienceMode.ENHANCED,
+                resolved = LiveOverlayExperienceMode.ENHANCED,
+                selected = LivePatchBackgroundExperienceMode.THEME_COLOR
+            )
+        )
+        assertEquals(
+            LivePatchBackgroundExperienceMode.THEME_COLOR,
+            LiveOverlayExperiencePolicy.effectiveBackgroundExperienceMode(
+                requested = LiveOverlayExperienceMode.DEFAULT,
+                resolved = LiveOverlayExperienceMode.DEFAULT,
+                selected = LivePatchBackgroundExperienceMode.THEME_COLOR
+            )
+        )
+    }
 }

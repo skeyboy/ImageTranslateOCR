@@ -27,6 +27,19 @@ internal object LiveOverlayExperiencePolicy {
     } else {
         standardOverlayAlpha
     }
+
+    fun effectiveBackgroundExperienceMode(
+        requested: LiveOverlayExperienceMode,
+        resolved: LiveOverlayExperienceMode,
+        selected: LivePatchBackgroundExperienceMode
+    ): LivePatchBackgroundExperienceMode = if (
+        requested == LiveOverlayExperienceMode.ENHANCED &&
+        resolved != LiveOverlayExperienceMode.ENHANCED
+    ) {
+        LivePatchBackgroundExperienceMode.OFF
+    } else {
+        selected
+    }
 }
 
 internal object LiveOverlayExperiencePreferences {
