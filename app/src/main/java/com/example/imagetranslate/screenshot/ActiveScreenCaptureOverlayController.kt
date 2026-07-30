@@ -24,6 +24,7 @@ import com.example.imagetranslate.ocr.OcrModel
 import com.example.imagetranslate.ocr.OcrModelState
 import com.example.imagetranslate.ocr.OcrRecognitionMode
 import com.example.imagetranslate.translate.TranslationMode
+import com.example.experimentaltranslation.ExperimentalTranslationEngine
 import kotlin.math.abs
 
 private const val SIGNATURE_OCCLUSION_PADDING_DP = 8
@@ -35,6 +36,7 @@ internal class ActiveScreenCaptureOverlayController(
     initialRecognitionMode: OcrRecognitionMode,
     initialSmartAssistEnabled: Boolean,
     initialBackgroundExperienceMode: LivePatchBackgroundExperienceMode,
+    initialExperimentalTranslationEngine: ExperimentalTranslationEngine,
     private val listener: Listener
 ) {
     interface Listener {
@@ -50,6 +52,8 @@ internal class ActiveScreenCaptureOverlayController(
         fun onOcrModelDownloadRequested(model: OcrModel)
         fun onSmartAssistEnabledChanged(enabled: Boolean)
         fun onBackgroundExperienceModeChanged(mode: LivePatchBackgroundExperienceMode)
+        fun onExperimentalTranslationEngineChanged(engine: ExperimentalTranslationEngine)
+        fun onExperimentalModelManagerRequested(engine: ExperimentalTranslationEngine)
     }
 
     private val appContext = context.applicationContext
@@ -75,6 +79,7 @@ internal class ActiveScreenCaptureOverlayController(
     private var recognitionMode = initialRecognitionMode
     private var smartAssistEnabled = initialSmartAssistEnabled
     private var backgroundExperienceMode = initialBackgroundExperienceMode
+    private var experimentalTranslationEngine = initialExperimentalTranslationEngine
     private val ocrModelStates = OcrModel.entries.associateWith {
         OcrModelState.UNKNOWN
     }.toMutableMap()
@@ -503,6 +508,44 @@ internal class ActiveScreenCaptureOverlayController(
             ).isChecked = true
             menu.add(
                 MENU_HEADER_GROUP,
+                MENU_HEADER_EXPERIMENTAL_TRANSLATION,
+                3,
+                R.string.active_screenshot_experimental_translation_group
+            ).isEnabled = false
+            menu.add(
+                EXPERIMENTAL_TRANSLATION_MENU_GROUP,
+                EXPERIMENTAL_TRANSLATION_DISABLED,
+                4,
+                R.string.active_screenshot_experimental_translation_disabled
+            )
+            menu.add(
+                EXPERIMENTAL_TRANSLATION_MENU_GROUP,
+                EXPERIMENTAL_TRANSLATION_MARIAN,
+                5,
+                R.string.active_screenshot_experimental_translation_marian
+            )
+            menu.add(
+                EXPERIMENTAL_TRANSLATION_MENU_GROUP,
+                EXPERIMENTAL_TRANSLATION_GEMMA,
+                6,
+                R.string.active_screenshot_experimental_translation_gemma
+            )
+            menu.setGroupCheckable(EXPERIMENTAL_TRANSLATION_MENU_GROUP, true, true)
+            menu.findItem(
+                when (experimentalTranslationEngine) {
+                    ExperimentalTranslationEngine.DISABLED -> EXPERIMENTAL_TRANSLATION_DISABLED
+                    ExperimentalTranslationEngine.MARIAN_INT8 -> EXPERIMENTAL_TRANSLATION_MARIAN
+                    ExperimentalTranslationEngine.TRANSLATEGEMMA_4B -> EXPERIMENTAL_TRANSLATION_GEMMA
+                }
+            ).isChecked = true
+            menu.add(
+                EXPERIMENTAL_TRANSLATION_ACTION_GROUP,
+                EXPERIMENTAL_TRANSLATION_MANAGE,
+                7,
+                R.string.active_screenshot_experimental_translation_manage
+            )
+            menu.add(
+                MENU_HEADER_GROUP,
                 MENU_HEADER_EXPERIENCE,
                 10,
                 R.string.active_screenshot_experience_group
@@ -534,6 +577,23 @@ internal class ActiveScreenCaptureOverlayController(
                 R.string.active_screenshot_capture_settings
             )
             setOnMenuItemClickListener { item ->
+                if (item.itemId == EXPERIMENTAL_TRANSLATION_MANAGE) {
+                    listener.onExperimentalModelManagerRequested(experimentalTranslationEngine)
+                    return@setOnMenuItemClickListener true
+                }
+                val selectedExperimentalEngine = when (item.itemId) {
+                    EXPERIMENTAL_TRANSLATION_DISABLED -> ExperimentalTranslationEngine.DISABLED
+                    EXPERIMENTAL_TRANSLATION_MARIAN -> ExperimentalTranslationEngine.MARIAN_INT8
+                    EXPERIMENTAL_TRANSLATION_GEMMA -> ExperimentalTranslationEngine.TRANSLATEGEMMA_4B
+                    else -> null
+                }
+                if (selectedExperimentalEngine != null) {
+                    if (selectedExperimentalEngine != experimentalTranslationEngine) {
+                        experimentalTranslationEngine = selectedExperimentalEngine
+                        listener.onExperimentalTranslationEngineChanged(selectedExperimentalEngine)
+                    }
+                    return@setOnMenuItemClickListener true
+                }
                 if (item.itemId == CAPTURE_SETTINGS_MENU_OPEN) {
                     mainHandler.post(::showCaptureSettingsMenu)
                     return@setOnMenuItemClickListener true
@@ -1104,6 +1164,7 @@ internal class ActiveScreenCaptureOverlayController(
         const val MODE_MENU_CHINESE_ENGLISH = 103
         const val MENU_HEADER_GROUP = 2
         const val MENU_HEADER_EXPERIENCE = 200
+        const val MENU_HEADER_EXPERIMENTAL_TRANSLATION = 201
         const val EXPERIENCE_MENU_GROUP = 3
         const val EXPERIENCE_MENU_DEFAULT = 301
         const val EXPERIENCE_MENU_ENHANCED = 302
@@ -1133,5 +1194,11 @@ internal class ActiveScreenCaptureOverlayController(
         const val SMART_ASSIST_MENU_ENABLED = 1101
         const val BACKGROUND_EXPERIENCE_MENU_GROUP = 12
         const val BACKGROUND_EXPERIENCE_MENU_ID_BASE = 1200
+        const val EXPERIMENTAL_TRANSLATION_MENU_GROUP = 13
+        const val EXPERIMENTAL_TRANSLATION_DISABLED = 1301
+        const val EXPERIMENTAL_TRANSLATION_MARIAN = 1302
+        const val EXPERIMENTAL_TRANSLATION_GEMMA = 1303
+        const val EXPERIMENTAL_TRANSLATION_ACTION_GROUP = 14
+        const val EXPERIMENTAL_TRANSLATION_MANAGE = 1401
     }
 }

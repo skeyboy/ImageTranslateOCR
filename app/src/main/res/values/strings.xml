@@ -124,6 +124,12 @@
     <string name="active_screenshot_background_experience_theme">主题色</string>
     <string name="active_screenshot_background_experience_blur">高斯模糊</string>
     <string name="active_screenshot_smart_assist">离线智能辅助</string>
+    <string name="active_screenshot_experimental_translation_group">实验翻译模型（默认关闭）</string>
+    <string name="active_screenshot_experimental_translation_disabled">关闭 · 使用 ML Kit</string>
+    <string name="active_screenshot_experimental_translation_marian">Marian INT8</string>
+    <string name="active_screenshot_experimental_translation_gemma">TranslateGemma 4B</string>
+    <string name="active_screenshot_experimental_translation_manage">管理 / 导入模型…</string>
+    <string name="active_screenshot_experimental_translation_not_ready">模型尚未导入，本次继续使用 ML Kit 翻译</string>
     <string name="active_screenshot_minimize">收起识别控制</string>
     <string name="active_screenshot_expand">展开录屏识别</string>
     <string name="active_screenshot_compact_ready">录屏识别</string>

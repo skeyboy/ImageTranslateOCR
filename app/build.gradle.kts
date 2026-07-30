@@ -28,10 +28,28 @@ android {
     kotlinOptions {
         jvmTarget = "17"
     }
+
+    packaging {
+        jniLibs {
+            // Experimental models are validated on arm64. Keep baseline OpenCV ABIs unchanged.
+            excludes += setOf(
+                "**/armeabi-v7a/libllm_inference_engine_jni.so",
+                "**/x86/libllm_inference_engine_jni.so",
+                "**/x86_64/libllm_inference_engine_jni.so",
+                "**/armeabi-v7a/libonnxruntime.so",
+                "**/armeabi-v7a/libonnxruntime4j_jni.so",
+                "**/x86/libonnxruntime.so",
+                "**/x86/libonnxruntime4j_jni.so",
+                "**/x86_64/libonnxruntime.so",
+                "**/x86_64/libonnxruntime4j_jni.so"
+            )
+        }
+    }
 }
 
 dependencies {
     implementation(project(":smart-assist-core"))
+    implementation(project(":experimental-translation"))
     implementation("androidx.core:core-ktx") {
         version { strictly("1.16.0") }
     }

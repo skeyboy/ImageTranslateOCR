@@ -23,6 +23,7 @@ import com.example.imagetranslate.ocr.RecognizedText
 import com.example.imagetranslate.ocr.RecognizerScript
 import com.example.imagetranslate.translate.TranslateManager
 import com.example.imagetranslate.translate.TranslationMode
+import com.example.experimentaltranslation.ExperimentalTranslationEngine
 import com.example.smartassist.api.AssistScript
 import com.example.smartassist.api.AssistTrackRole
 import kotlinx.coroutines.CancellationException
@@ -273,7 +274,7 @@ internal class BackgroundTranslatedImageProcessor(
     private val reuseResources: Boolean = false
 ) {
     private val ocrManager = OCRManager(context.applicationContext)
-    private val translateManager = TranslateManager()
+    private val translateManager = TranslateManager(context.applicationContext)
     private val smartAssistAdapterDelegate = lazy(::LiveSmartAssistAdapter)
     private val translationCache = object : LinkedHashMap<String, String>(64, 0.75f, true) {
         override fun removeEldestEntry(
@@ -297,6 +298,15 @@ internal class BackgroundTranslatedImageProcessor(
     private var liveOverlaySnapshot: LiveOverlaySnapshot? = null
     private var nextTrackId = 1L
     private var lastDifferentialFallbackReason: String? = null
+    @Volatile
+    private var experimentalTranslationEngine = ExperimentalTranslationEngine.DISABLED
+
+    fun setExperimentalTranslationEngine(engine: ExperimentalTranslationEngine) {
+        if (experimentalTranslationEngine == engine) return
+        experimentalTranslationEngine = engine
+        synchronized(translationCache) { translationCache.clear() }
+        clearLiveOverlaySnapshot()
+    }
 
     suspend fun prepareForLiveTranslation() {
         check(!closed) { "Image processor is closed" }
@@ -850,9 +860,14 @@ internal class BackgroundTranslatedImageProcessor(
     ): TranslationOutcome {
         val translationSource = normalizeCacheText(source.text)
         val translation = try {
-            val cacheKey = "${mode.name}:$translationSource"
+            val activeExperimentalEngine = experimentalTranslationEngine
+            val cacheKey = "${activeExperimentalEngine.name}:${mode.name}:$translationSource"
             synchronized(translationCache) { translationCache[cacheKey] }
-                ?: translateManager.translate(translationSource, mode).trim().also { translatedText ->
+                ?: translateManager.translate(
+                    translationSource,
+                    mode,
+                    activeExperimentalEngine
+                ).trim().also { translatedText ->
                     synchronized(translationCache) {
                         translationCache[cacheKey] = translatedText
                     }

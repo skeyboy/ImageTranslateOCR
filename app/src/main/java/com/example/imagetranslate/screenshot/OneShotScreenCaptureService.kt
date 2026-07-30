@@ -39,6 +39,11 @@ import com.example.imagetranslate.ocr.OcrRecognitionMode
 import com.google.android.gms.common.moduleinstall.ModuleInstallStatusCodes
 import com.example.imagetranslate.ui.ImageTranslateActivity
 import com.example.imagetranslate.translate.TranslationMode
+import com.example.imagetranslate.translate.ExperimentalTranslationSettings
+import com.example.experimentaltranslation.ExperimentalModelManagerActivity
+import com.example.experimentaltranslation.ExperimentalModelRepository
+import com.example.experimentaltranslation.ExperimentalModelState
+import com.example.experimentaltranslation.ExperimentalTranslationEngine
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -142,8 +147,12 @@ class OneShotScreenCaptureService : Service() {
     private var smartAssistEnabled = LiveSmartAssistSettingsPolicy.DEFAULT_ENABLED
     @Volatile
     private var backgroundExperienceMode = LivePatchBackgroundExperiencePolicy.default
+    @Volatile
+    private var experimentalTranslationEngine = ExperimentalTranslationEngine.DISABLED
     private val liveProcessorDelegate = lazy {
-        BackgroundTranslatedImageProcessor(applicationContext, reuseResources = true)
+        BackgroundTranslatedImageProcessor(applicationContext, reuseResources = true).also {
+            it.setExperimentalTranslationEngine(experimentalTranslationEngine)
+        }
     }
     private val liveProcessor by liveProcessorDelegate
     private lateinit var overlayController: ActiveScreenCaptureOverlayController
@@ -186,6 +195,7 @@ class OneShotScreenCaptureService : Service() {
         recognitionMode = LiveOcrRecognitionPreferences.get(this)
         smartAssistEnabled = LiveSmartAssistPreferences.isEnabled(this)
         backgroundExperienceMode = LivePatchBackgroundExperiencePreferences.get(this)
+        experimentalTranslationEngine = ExperimentalTranslationSettings.get(this)
         overlayController = ActiveScreenCaptureOverlayController(
             this,
             experienceMode,
@@ -193,6 +203,7 @@ class OneShotScreenCaptureService : Service() {
             recognitionMode,
             smartAssistEnabled,
             backgroundExperienceMode,
+            experimentalTranslationEngine,
             object : ActiveScreenCaptureOverlayController.Listener {
                 override fun onCapture() {
                     beginCaptureFromUser()
@@ -255,6 +266,24 @@ class OneShotScreenCaptureService : Service() {
                     mode: LivePatchBackgroundExperienceMode
                 ) {
                     applyBackgroundExperienceMode(mode)
+                }
+
+                override fun onExperimentalTranslationEngineChanged(
+                    engine: ExperimentalTranslationEngine
+                ) {
+                    applyExperimentalTranslationEngine(engine)
+                }
+
+                override fun onExperimentalModelManagerRequested(
+                    engine: ExperimentalTranslationEngine
+                ) {
+                    startActivity(
+                        ExperimentalModelManagerActivity.intent(
+                            this@OneShotScreenCaptureService,
+                            engine.takeIf { it != ExperimentalTranslationEngine.DISABLED }
+                                ?: ExperimentalTranslationEngine.MARIAN_INT8
+                        ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    )
                 }
             }
         )
@@ -1414,6 +1443,29 @@ class OneShotScreenCaptureService : Service() {
         Log.i(TAG, "Live patch background experience changed: ${mode.name}")
         overlayController.clearTranslations()
         if (liveProcessorDelegate.isInitialized()) liveProcessor.clearLiveOverlaySnapshot()
+        if (projection == null || !continuousTranslationEnabled.get()) return
+        cancelActiveCapture(keepContinuousMode = true)
+        requestScreenshot()
+    }
+
+    private fun applyExperimentalTranslationEngine(engine: ExperimentalTranslationEngine) {
+        if (experimentalTranslationEngine == engine) return
+        experimentalTranslationEngine = engine
+        ExperimentalTranslationSettings.set(this, engine)
+        Log.i(TAG, "Experimental translation engine changed: ${engine.name}")
+        if (
+            engine != ExperimentalTranslationEngine.DISABLED &&
+            ExperimentalModelRepository(this).status(engine).state != ExperimentalModelState.READY
+        ) {
+            Toast.makeText(
+                this,
+                R.string.active_screenshot_experimental_translation_not_ready,
+                Toast.LENGTH_LONG
+            ).show()
+        }
+        if (liveProcessorDelegate.isInitialized()) {
+            liveProcessor.setExperimentalTranslationEngine(engine)
+        }
         if (projection == null || !continuousTranslationEnabled.get()) return
         cancelActiveCapture(keepContinuousMode = true)
         requestScreenshot()

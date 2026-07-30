@@ -1,11 +1,18 @@
 package com.example.imagetranslate.translate
 
+import android.content.Context
+import android.util.Log
+import com.example.experimentaltranslation.ExperimentalTranslationEngine
+import com.example.experimentaltranslation.ExperimentalTranslationLibrary
+import com.example.experimentaltranslation.ExperimentalTranslationRequest
+import com.example.experimentaltranslation.TranslationLanguage
 import com.google.mlkit.common.model.DownloadConditions
 import com.google.mlkit.nl.translate.TranslateLanguage
 import com.google.mlkit.nl.translate.Translation
 import com.google.mlkit.nl.translate.Translator
 import com.google.mlkit.nl.translate.TranslatorOptions
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeout
@@ -18,8 +25,9 @@ enum class TranslationMode {
     AUTO_BIDIRECTIONAL
 }
 
-class TranslateManager {
+class TranslateManager(context: Context? = null) {
     private companion object {
+        const val TAG = "ExperimentalTranslate"
         const val MODEL_DOWNLOAD_TIMEOUT_MS = 60_000L
         const val TRANSLATION_TIMEOUT_MS = 20_000L
     }
@@ -27,6 +35,9 @@ class TranslateManager {
     private val translators = mutableMapOf<Pair<String, String>, Translator>()
     private val downloadedModels = mutableSetOf<Pair<String, String>>()
     private val modelDownloadMutex = Mutex()
+    private val experimentalLibraryDelegate = context?.applicationContext?.let { appContext ->
+        lazy { ExperimentalTranslationLibrary(appContext) }
+    }
 
     val areModelsReady: Boolean
         get() = (TranslateLanguage.CHINESE to TranslateLanguage.ENGLISH) in downloadedModels &&
@@ -55,12 +66,22 @@ class TranslateManager {
 
     suspend fun translate(
         text: String,
-        mode: TranslationMode = TranslationMode.AUTO_BIDIRECTIONAL
+        mode: TranslationMode = TranslationMode.AUTO_BIDIRECTIONAL,
+        experimentalEngine: ExperimentalTranslationEngine = ExperimentalTranslationEngine.DISABLED
     ): String {
         val inputText = sanitizeOcrText(text)
         if (shouldPreserveSourceText(inputText)) return inputText
         val sourceLanguage = identifySourceLanguageByScript(inputText) ?: return inputText
         val targetLanguage = targetLanguageFor(sourceLanguage, mode) ?: return inputText
+
+        if (experimentalEngine != ExperimentalTranslationEngine.DISABLED) {
+            translateWithExperimentalEngine(
+                experimentalEngine,
+                inputText,
+                sourceLanguage,
+                targetLanguage
+            )?.let { return it }
+        }
 
         ensureModel(sourceLanguage, targetLanguage)
         val translator = translatorFor(sourceLanguage, targetLanguage)
@@ -83,6 +104,61 @@ class TranslateManager {
             "翻译结果包含异常字符"
         }
         return result
+    }
+
+    private suspend fun translateWithExperimentalEngine(
+        engine: ExperimentalTranslationEngine,
+        text: String,
+        sourceLanguage: String,
+        targetLanguage: String
+    ): String? {
+        val library = experimentalLibraryDelegate?.value ?: return null
+        val source = sourceLanguage.toExperimentalLanguage() ?: return null
+        val target = targetLanguage.toExperimentalLanguage() ?: return null
+        return try {
+            val translation = library.translate(
+                engine,
+                ExperimentalTranslationRequest(
+                    text = text,
+                    sourceLanguage = source,
+                    targetLanguage = target
+                )
+            )
+            val result = translation.text.trim().takeIf { candidate ->
+                isValidTranslation(
+                    candidate,
+                    targetLanguage,
+                    requireNoHanCharacters = sourceLanguage == TranslateLanguage.CHINESE && text.length <= 12,
+                    requireChineseCharacters = sourceLanguage == TranslateLanguage.ENGLISH && text.length <= 32
+                )
+            }
+            if (result != null) {
+                Log.i(
+                    TAG,
+                    "Experimental translation succeeded: engine=${engine.name}, " +
+                        "inferenceMs=${translation.inferenceMs}, inputChars=${text.length}, " +
+                        "outputChars=${result.length}"
+                )
+            } else {
+                Log.w(TAG, "Experimental translation rejected; falling back to ML Kit: engine=${engine.name}")
+            }
+            result
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Exception) {
+            Log.w(
+                TAG,
+                "Experimental translation unavailable; falling back to ML Kit: " +
+                    "engine=${engine.name}, cause=${error.javaClass.simpleName}"
+            )
+            null
+        }
+    }
+
+    private fun String.toExperimentalLanguage(): TranslationLanguage? = when (this) {
+        TranslateLanguage.CHINESE -> TranslationLanguage.CHINESE
+        TranslateLanguage.ENGLISH -> TranslationLanguage.ENGLISH
+        else -> null
     }
 
     private fun shouldPreserveSourceText(text: String): Boolean {
@@ -195,5 +271,6 @@ class TranslateManager {
         translators.values.forEach(Translator::close)
         translators.clear()
         downloadedModels.clear()
+        experimentalLibraryDelegate?.takeIf { it.isInitialized() }?.value?.close()
     }
 }
