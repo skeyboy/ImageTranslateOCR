@@ -41,3 +41,6 @@ build/
 
 # Maven
 target/
+
+# Local install artifacts
+output/apk/*.apk
