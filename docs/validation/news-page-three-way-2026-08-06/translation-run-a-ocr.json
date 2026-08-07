@@ -1,0 +1,328 @@
+{
+  "schemaVersion": 1,
+  "inputPath": "\/data\/local\/tmp\/news-page-translation-a.png",
+  "width": 387,
+  "height": 892,
+  "engine": "ML_KIT",
+  "recognitionMode": "AUTO",
+  "elapsedMs": 564,
+  "lineCount": 10,
+  "groupCount": 9,
+  "lines": [
+    {
+      "lineId": "line-1",
+      "text": "23113RKC6C",
+      "bounds": {
+        "left": 89,
+        "top": 9,
+        "right": 170,
+        "bottom": 23
+      },
+      "modelConfidence": 0.852734386920929,
+      "consensusScore": 0.6399999856948853,
+      "passCount": 1,
+      "recognizerScript": "LATIN",
+      "sourceBlockId": "mlkit-0-89-9-170-23",
+      "sourceLineIndex": 0
+    },
+    {
+      "lineId": "line-2",
+      "text": "AFRICA-CANADA:Boost for",
+      "bounds": {
+        "left": 59,
+        "top": 86,
+        "right": 245,
+        "bottom": 101
+      },
+      "modelConfidence": 0.7817826867103577,
+      "consensusScore": 0.6399999856948853,
+      "passCount": 1,
+      "recognizerScript": "LATIN",
+      "sourceBlockId": "mlkit-3-59-86-245-101",
+      "sourceLineIndex": 0
+    },
+    {
+      "lineId": "line-3",
+      "text": "*RÌ\\ED",
+      "bounds": {
+        "left": 153,
+        "top": 345,
+        "right": 219,
+        "bottom": 363
+      },
+      "modelConfidence": 0.25439453125,
+      "consensusScore": 0.6053333282470703,
+      "passCount": 1,
+      "recognizerScript": "LATIN",
+      "sourceBlockId": "mlkit-4-88-345-219-363",
+      "sourceLineIndex": 0
+    },
+    {
+      "lineId": "line-4",
+      "text": "Iweet Whatsapp",
+      "bounds": {
+        "left": 8,
+        "top": 418,
+        "right": 129,
+        "bottom": 438
+      },
+      "modelConfidence": 0.7512019276618958,
+      "consensusScore": 0.6399999856948853,
+      "passCount": 1,
+      "recognizerScript": "LATIN",
+      "sourceBlockId": "mlkit-5-8-418-129-439",
+      "sourceLineIndex": 0
+    },
+    {
+      "lineId": "line-5",
+      "text": "jnKER20005",
+      "bounds": {
+        "left": 184,
+        "top": 468,
+        "right": 351,
+        "bottom": 482
+      },
+      "modelConfidence": 0.380859375,
+      "consensusScore": 0.6399999856948853,
+      "passCount": 1,
+      "recognizerScript": "LATIN",
+      "sourceBlockId": "mlkit-6-184-467-350-502",
+      "sourceLineIndex": 0
+    },
+    {
+      "lineId": "line-6",
+      "text": "bDJT(A19405T)",
+      "bounds": {
+        "left": 184,
+        "top": 487,
+        "right": 324,
+        "bottom": 502
+      },
+      "modelConfidence": 0.43479567766189575,
+      "consensusScore": 0.6276923418045044,
+      "passCount": 1,
+      "recognizerScript": "LATIN",
+      "sourceBlockId": "mlkit-6-184-467-350-502",
+      "sourceLineIndex": 1
+    },
+    {
+      "lineId": "line-7",
+      "text": "idtit,BA1AS Next#",
+      "bounds": {
+        "left": 170,
+        "top": 551,
+        "right": 333,
+        "bottom": 564
+      },
+      "modelConfidence": 0.35595703125,
+      "consensusScore": 0.6299999952316284,
+      "passCount": 1,
+      "recognizerScript": "LATIN",
+      "sourceBlockId": "mlkit-8-170-551-333-564",
+      "sourceLineIndex": 0
+    },
+    {
+      "lineId": "line-8",
+      "text": "ftAINSOSAAALAIMS NextHtiESAA,",
+      "bounds": {
+        "left": 38,
+        "top": 627,
+        "right": 333,
+        "bottom": 640
+      },
+      "modelConfidence": 0.3631465435028076,
+      "consensusScore": 0.6371428966522217,
+      "passCount": 1,
+      "recognizerScript": "LATIN",
+      "sourceBlockId": "mlkit-9-38-627-333-640",
+      "sourceLineIndex": 0
+    },
+    {
+      "lineId": "line-9",
+      "text": "SHS 55317ms",
+      "bounds": {
+        "left": 170,
+        "top": 808,
+        "right": 251,
+        "bottom": 819
+      },
+      "modelConfidence": 0.542187511920929,
+      "consensusScore": 0.6399999856948853,
+      "passCount": 1,
+      "recognizerScript": "LATIN",
+      "sourceBlockId": "mlkit-10-170-808-251-819",
+      "sourceLineIndex": 0
+    },
+    {
+      "lineId": "line-10",
+      "text": "Ai",
+      "bounds": {
+        "left": 181,
+        "top": 843,
+        "right": 203,
+        "bottom": 862
+      },
+      "modelConfidence": 0.70703125,
+      "consensusScore": 0.6399999856948853,
+      "passCount": 1,
+      "recognizerScript": "LATIN",
+      "sourceBlockId": "mlkit-11-181-843-203-862",
+      "sourceLineIndex": 0
+    }
+  ],
+  "groups": [
+    {
+      "groupId": "semantic-7b05a311",
+      "sourceText": "23113RKC6C",
+      "bounds": {
+        "left": 89,
+        "top": 9,
+        "right": 170,
+        "bottom": 23
+      },
+      "role": "BODY",
+      "groupingConfidence": 1,
+      "evidence": [],
+      "memberTexts": [
+        "23113RKC6C"
+      ]
+    },
+    {
+      "groupId": "semantic-737d75ca",
+      "sourceText": "AFRICA-CANADA:Boost for",
+      "bounds": {
+        "left": 59,
+        "top": 86,
+        "right": 245,
+        "bottom": 101
+      },
+      "role": "BODY",
+      "groupingConfidence": 1,
+      "evidence": [],
+      "memberTexts": [
+        "AFRICA-CANADA:Boost for"
+      ]
+    },
+    {
+      "groupId": "semantic-6de344a6",
+      "sourceText": "*RÌ\\ED",
+      "bounds": {
+        "left": 153,
+        "top": 345,
+        "right": 219,
+        "bottom": 363
+      },
+      "role": "BODY",
+      "groupingConfidence": 1,
+      "evidence": [],
+      "memberTexts": [
+        "*RÌ\\ED"
+      ]
+    },
+    {
+      "groupId": "semantic-1f236e7a",
+      "sourceText": "Iweet Whatsapp",
+      "bounds": {
+        "left": 8,
+        "top": 418,
+        "right": 129,
+        "bottom": 438
+      },
+      "role": "BODY",
+      "groupingConfidence": 1,
+      "evidence": [],
+      "memberTexts": [
+        "Iweet Whatsapp"
+      ]
+    },
+    {
+      "groupId": "semantic-c8a0f855",
+      "sourceText": "jnKER20005\nbDJT(A19405T)",
+      "bounds": {
+        "left": 184,
+        "top": 468,
+        "right": 351,
+        "bottom": 502
+      },
+      "role": "BODY",
+      "groupingConfidence": 0.949999988079071,
+      "evidence": [
+        "CENTER_ALIGNED",
+        "HORIZONTAL_OVERLAP",
+        "LEFT_ALIGNED",
+        "LINE_GAP",
+        "OCR_BLOCK",
+        "PUNCTUATION_CONTINUATION",
+        "REGION_OCCUPANCY"
+      ],
+      "memberTexts": [
+        "jnKER20005",
+        "bDJT(A19405T)"
+      ]
+    },
+    {
+      "groupId": "semantic-6c24551a",
+      "sourceText": "idtit,BA1AS Next#",
+      "bounds": {
+        "left": 170,
+        "top": 551,
+        "right": 333,
+        "bottom": 564
+      },
+      "role": "BODY",
+      "groupingConfidence": 1,
+      "evidence": [],
+      "memberTexts": [
+        "idtit,BA1AS Next#"
+      ]
+    },
+    {
+      "groupId": "semantic-d88b86df",
+      "sourceText": "ftAINSOSAAALAIMS NextHtiESAA,",
+      "bounds": {
+        "left": 38,
+        "top": 627,
+        "right": 333,
+        "bottom": 640
+      },
+      "role": "BODY",
+      "groupingConfidence": 1,
+      "evidence": [],
+      "memberTexts": [
+        "ftAINSOSAAALAIMS NextHtiESAA,"
+      ]
+    },
+    {
+      "groupId": "semantic-4e4a476c",
+      "sourceText": "SHS 55317ms",
+      "bounds": {
+        "left": 170,
+        "top": 808,
+        "right": 251,
+        "bottom": 819
+      },
+      "role": "BODY",
+      "groupingConfidence": 1,
+      "evidence": [],
+      "memberTexts": [
+        "SHS 55317ms"
+      ]
+    },
+    {
+      "groupId": "semantic-64494f54",
+      "sourceText": "Ai",
+      "bounds": {
+        "left": 181,
+        "top": 843,
+        "right": 203,
+        "bottom": 862
+      },
+      "role": "BODY",
+      "groupingConfidence": 1,
+      "evidence": [],
+      "memberTexts": [
+        "Ai"
+      ]
+    }
+  ]
+}

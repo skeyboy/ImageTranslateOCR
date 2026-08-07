@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "requestId": "94a5d158-8656-41e7-b675-718dbcbfa58b",
+  "generation": 0,
+  "scene": "ANDROID_CLIENT_CURRENT_PAGE_SINGLE_GROUP_STRICT",
+  "translation": {
+    "mode": "ENGLISH_TO_CHINESE",
+    "sourceLanguage": "auto",
+    "targetLanguage": "auto",
+    "preserveIdentifiers": true,
+    "useContext": false
+  },
+  "regions": [
+    {
+      "regionId": "semantic-11afce8b",
+      "text": "www.news.cn",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh"
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "requestId": "c0ba971e-ce3f-4b1c-9020-2251256e48e7",
+  "generation": 0,
+  "scene": "ANDROID_CLIENT_CURRENT_PAGE_SINGLE_GROUP",
+  "translation": {
+    "mode": "ENGLISH_TO_CHINESE",
+    "sourceLanguage": "en",
+    "targetLanguage": "zh",
+    "preserveIdentifiers": true,
+    "useContext": false
+  },
+  "regions": [
+    {
+      "regionId": "semantic-631d7a9d",
+      "text": "Xi Story:Six-foot alley reveals Chinese wisdom",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh"
+    }
+  ]
+}

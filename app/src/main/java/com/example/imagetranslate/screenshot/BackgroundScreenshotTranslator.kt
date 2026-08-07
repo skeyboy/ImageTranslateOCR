@@ -3,8 +3,11 @@ package com.example.imagetranslate.screenshot
 import android.graphics.Bitmap
 import android.content.Context
 import com.example.imagetranslate.ocr.OCRManager
+import com.example.imagetranslate.semantic.SemanticTextGrouper
+import com.example.imagetranslate.semantic.StaticImageTextFilter
 import com.example.imagetranslate.translate.TranslateManager
 import com.example.imagetranslate.translate.TranslationMode
+import com.example.imagetranslate.translate.toSemanticTranslationSource
 import kotlinx.coroutines.CancellationException
 
 internal data class BackgroundTranslationLine(
@@ -24,10 +27,7 @@ internal object BackgroundTextTranslationEngine {
         recognizedTexts: List<String>,
         translateText: suspend (String) -> String
     ): BackgroundTranslationResult {
-        val uniqueTexts = recognizedTexts
-            .map(String::trim)
-            .filter(String::isNotEmpty)
-            .distinct()
+        val uniqueTexts = preparedTexts(recognizedTexts)
         val translatedLines = mutableListOf<BackgroundTranslationLine>()
         for (source in uniqueTexts.take(MAX_BACKGROUND_TEXTS)) {
             val translated = try {
@@ -46,6 +46,39 @@ internal object BackgroundTextTranslationEngine {
             translatedLines = translatedLines
         )
     }
+
+    suspend fun translateBatch(
+        recognizedTexts: List<String>,
+        translateTexts: suspend (List<String>) -> List<String?>
+    ): BackgroundTranslationResult {
+        val uniqueTexts = preparedTexts(recognizedTexts)
+        val requested = uniqueTexts.take(MAX_BACKGROUND_TEXTS)
+        val translations = try {
+            translateTexts(requested)
+        } catch (error: CancellationException) {
+            throw error
+        } catch (_: Exception) {
+            emptyList()
+        }
+        val translatedLines = if (translations.size == requested.size) {
+            requested.zip(translations).mapNotNull { (source, translated) ->
+                translated?.trim()?.takeIf { it.isNotEmpty() && it != source }?.let {
+                    BackgroundTranslationLine(source, it)
+                }
+            }
+        } else {
+            emptyList()
+        }
+        return BackgroundTranslationResult(
+            recognizedCount = uniqueTexts.size,
+            translatedLines = translatedLines
+        )
+    }
+
+    private fun preparedTexts(recognizedTexts: List<String>): List<String> = recognizedTexts
+        .map(String::trim)
+        .filter(String::isNotEmpty)
+        .distinct()
 }
 
 internal object BackgroundTranslationFormatter {
@@ -63,11 +96,30 @@ internal class BackgroundScreenshotTranslator(context: Context) {
 
     suspend fun translate(bitmap: Bitmap): BackgroundTranslationResult {
         val ocrManager = OCRManager(appContext)
-        val translateManager = TranslateManager()
+        val translateManager = TranslateManager(appContext)
         return try {
-            val recognizedTexts = ocrManager.recognize(bitmap).map { it.text }
-            BackgroundTextTranslationEngine.translate(recognizedTexts) { source ->
-                translateManager.translate(source, TranslationMode.AUTO_BIDIRECTIONAL)
+            val recognized = StaticImageTextFilter.filter(
+                recognized = ocrManager.recognize(bitmap),
+                viewportWidth = bitmap.width,
+                viewportHeight = bitmap.height
+            )
+            val groups = SemanticTextGrouper.group(
+                recognized = recognized,
+                viewportWidth = bitmap.width,
+                viewportHeight = bitmap.height
+            )
+            val recognizedTexts = groups.map { group -> group.sourceText }
+            BackgroundTextTranslationEngine.translateBatch(recognizedTexts) { sources ->
+                val requestedGroups = groups.filter { it.sourceText in sources }
+                translateManager.translateSemanticGroups(
+                    sources = requestedGroups.map { it.toSemanticTranslationSource() },
+                    viewportWidth = bitmap.width,
+                    viewportHeight = bitmap.height,
+                    mode = TranslationMode.AUTO_BIDIRECTIONAL,
+                    scene = "SCREENSHOT_NOTIFICATION"
+                ).map { result ->
+                    result.translatedText.takeIf { result.succeeded }
+                }
             }
         } finally {
             ocrManager.close()

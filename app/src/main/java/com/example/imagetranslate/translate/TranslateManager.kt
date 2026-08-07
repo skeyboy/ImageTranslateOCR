@@ -11,11 +11,13 @@ import com.google.mlkit.nl.translate.TranslateLanguage
 import com.google.mlkit.nl.translate.Translation
 import com.google.mlkit.nl.translate.Translator
 import com.google.mlkit.nl.translate.TranslatorOptions
-import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeout
+import java.util.UUID
+import java.util.concurrent.atomic.AtomicLong
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
@@ -25,11 +27,25 @@ enum class TranslationMode {
     AUTO_BIDIRECTIONAL
 }
 
-class TranslateManager(context: Context? = null) {
+internal data class TranslationExecutionResult(
+    val regionId: String,
+    val sourceGroupIds: List<String> = listOf(regionId),
+    val memberRegionIds: List<String> = emptyList(),
+    val anchorBounds: TranslationBounds? = null,
+    val translatedText: String,
+    val provider: String,
+    val succeeded: Boolean,
+    val failure: TranslationFailure? = null,
+    val layoutHint: SemanticLayoutHint? = null,
+    val semanticTrace: SemanticTranslationTrace? = null
+)
+
+internal class TranslateManager(context: Context? = null) {
     private companion object {
         const val TAG = "ExperimentalTranslate"
         const val MODEL_DOWNLOAD_TIMEOUT_MS = 60_000L
         const val TRANSLATION_TIMEOUT_MS = 20_000L
+        const val MAXIMUM_DOCUMENT_CONTEXT_CHARACTERS = 12_000
     }
 
     private val translators = mutableMapOf<Pair<String, String>, Translator>()
@@ -38,6 +54,33 @@ class TranslateManager(context: Context? = null) {
     private val experimentalLibraryDelegate = context?.applicationContext?.let { appContext ->
         lazy { ExperimentalTranslationLibrary(appContext) }
     }
+    private val appContext = context?.applicationContext
+    private val remoteProviderLock = Any()
+    private var remoteProviderBaseUrl: String? = null
+    private var remoteProvider: RemoteTranslationProvider? = null
+    private val selfHostedProviderLock = Any()
+    private var selfHostedProviderConfiguration: Pair<String, String?>? = null
+    private var selfHostedProvider: SelfHostedSemanticTranslationProvider? = null
+    private val semanticSessionId = UUID.randomUUID().toString()
+    private val semanticGeneration = AtomicLong(0L)
+    private val localProvider = LocalTranslationProvider(translateOne = ::translateLocally)
+    private val switchingProvider = SwitchingTranslationProvider(
+        selectedBackend = {
+            appContext?.let(TranslationBackendSettings::get)
+                ?.takeUnless { it == TranslationBackend.SELF_HOSTED }
+                ?: TranslationBackend.LOCAL
+        },
+        localProvider = localProvider,
+        networkProvider = appContext?.let { { remoteProviderForCurrentSettings() } },
+        resultValidator = ::isValidProviderResult,
+        onNetworkFallback = { failures ->
+            Log.w(
+                TAG,
+                "Network translation fallback: count=${failures.size}, " +
+                    "codes=${failures.map(TranslationFailure::code).distinct()}"
+            )
+        }
+    )
 
     val areModelsReady: Boolean
         get() = (TranslateLanguage.CHINESE to TranslateLanguage.ENGLISH) in downloadedModels &&
@@ -47,6 +90,414 @@ class TranslateManager(context: Context? = null) {
         ensureModel(TranslateLanguage.CHINESE, TranslateLanguage.ENGLISH)
         ensureModel(TranslateLanguage.ENGLISH, TranslateLanguage.CHINESE)
         return true
+    }
+
+    suspend fun translate(
+        text: String,
+        mode: TranslationMode = TranslationMode.AUTO_BIDIRECTIONAL,
+        experimentalEngine: ExperimentalTranslationEngine = ExperimentalTranslationEngine.DISABLED
+    ): String {
+        val result = translateBatch(listOf(text), mode, experimentalEngine).single()
+        if (!result.succeeded) {
+            throw TranslationProviderException(
+                result.failure
+                    ?: TranslationFailure(
+                        regionId = result.regionId,
+                        code = "TRANSLATION_FAILED",
+                        message = "Translation failed",
+                        retryable = false
+                    )
+            )
+        }
+        return result.translatedText
+    }
+
+    suspend fun translateBatch(
+        texts: List<String>,
+        mode: TranslationMode = TranslationMode.AUTO_BIDIRECTIONAL,
+        experimentalEngine: ExperimentalTranslationEngine = ExperimentalTranslationEngine.DISABLED
+    ): List<TranslationExecutionResult> {
+        if (texts.isEmpty()) return emptyList()
+        val requestId = UUID.randomUUID().toString()
+        val prepared = texts.mapIndexed { index, text ->
+            val inputText = sanitizeOcrText(text)
+            val regionId = "region-$index-$requestId"
+            val sourceLanguage = identifySourceLanguageByScript(inputText)
+            val targetLanguage = sourceLanguage?.let { targetLanguageFor(it, mode) }
+            val request = if (
+                !shouldPreserveSourceText(inputText) &&
+                sourceLanguage != null &&
+                targetLanguage != null
+            ) {
+                TranslationRequest(
+                    requestId = requestId,
+                    regionId = regionId,
+                    text = inputText,
+                    mode = mode,
+                    sourceLanguage = sourceLanguage,
+                    targetLanguage = targetLanguage,
+                    experimentalEngine = experimentalEngine
+                )
+            } else {
+                null
+            }
+            PreparedTranslation(regionId, inputText, request)
+        }
+        val actionable = prepared.mapNotNull(PreparedTranslation::request)
+        val batch = switchingProvider.translateBatch(actionable)
+        val resultsById = batch.results.associateBy(TranslationResult::regionId)
+        val failuresById = batch.failures.associateBy(TranslationFailure::regionId)
+        return prepared.map { item ->
+            val request = item.request
+            if (request == null) {
+                TranslationExecutionResult(
+                    regionId = item.regionId,
+                    translatedText = item.inputText,
+                    provider = "preserve",
+                    succeeded = true
+                )
+            } else {
+                val result = resultsById[item.regionId]
+                if (result != null) {
+                    TranslationExecutionResult(
+                        regionId = item.regionId,
+                        translatedText = result.translatedText.trim(),
+                        provider = result.provider,
+                        succeeded = true
+                    )
+                } else {
+                    val failure = failuresById[item.regionId]
+                        ?: TranslationFailure(
+                            regionId = item.regionId,
+                            code = "MISSING_RESULT",
+                            message = "Translation provider returned no result",
+                            retryable = false
+                        )
+                    TranslationExecutionResult(
+                        regionId = item.regionId,
+                        translatedText = item.inputText,
+                        provider = "none",
+                        succeeded = false,
+                        failure = failure
+                    )
+                }
+            }
+        }
+    }
+
+    suspend fun translateSemanticGroups(
+        sources: List<SemanticTranslationSource>,
+        viewportWidth: Int,
+        viewportHeight: Int,
+        mode: TranslationMode = TranslationMode.AUTO_BIDIRECTIONAL,
+        scene: String = "ANDROID_CLIENT",
+        experimentalEngine: ExperimentalTranslationEngine = ExperimentalTranslationEngine.DISABLED,
+        debugCapture: SemanticDebugCapture? = null
+    ): List<TranslationExecutionResult> {
+        if (sources.isEmpty()) return emptyList()
+        require(viewportWidth > 0 && viewportHeight > 0) {
+            "Semantic translation viewport must be non-empty"
+        }
+        val backend = appContext?.let(TranslationBackendSettings::get) ?: TranslationBackend.LOCAL
+        if (backend != TranslationBackend.SELF_HOSTED) {
+            val translated = translateBatch(
+                texts = sources.map(SemanticTranslationSource::sourceText),
+                mode = mode,
+                experimentalEngine = experimentalEngine
+            )
+            return sources.zip(translated).map { (source, result) ->
+                result.copy(regionId = source.groupId)
+            }
+        }
+
+        val requestId = UUID.randomUUID().toString()
+        val preparedSources = sources
+            .sortedBy(SemanticTranslationSource::readingOrder)
+            .map { source -> source.preparedFor(mode, viewportWidth, viewportHeight) }
+        val generation = semanticGeneration.incrementAndGet()
+        val request = SemanticTranslationRequest(
+            requestId = requestId,
+            sessionId = semanticSessionId,
+            generation = generation,
+            translationRevision = mode.ordinal.toLong(),
+            scene = scene,
+            viewportWidth = viewportWidth,
+            viewportHeight = viewportHeight,
+            mode = mode,
+            documentText = preparedSources.joinToString("\n") { source ->
+                "[${source.role}] ${source.sourceText}"
+            }.take(MAXIMUM_DOCUMENT_CONTEXT_CHARACTERS),
+            sources = preparedSources,
+            debugCapture = debugCapture
+        )
+        val semanticTrace = SemanticTranslationTrace(
+            requestId = request.requestId,
+            sessionId = request.sessionId,
+            generation = request.generation,
+            translationRevision = request.translationRevision
+        )
+        val remoteBatch = try {
+            selfHostedProviderForCurrentSettings().translate(request)
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Exception) {
+            SemanticTranslationBatchResult(
+                results = emptyList(),
+                failures = preparedSources.map { source ->
+                    SemanticGroupTranslationFailure(
+                        groupId = source.groupId,
+                        code = "SELF_HOSTED_REQUEST_FAILED",
+                        message = error.message ?: "Self-hosted translation failed",
+                        retryable = true,
+                        cause = error
+                    )
+                }
+            )
+        }
+        val sourcesById = preparedSources.associateBy(SemanticTranslationSource::groupId)
+        val acceptedRemote = remoteBatch.results.filter { result ->
+            val resultSources = result.sourceGroupIds.mapNotNull(sourcesById::get)
+            resultSources.size == result.sourceGroupIds.size &&
+                isValidSemanticResult(resultSources, result)
+        }
+        val remotelyCoveredSourceIds = acceptedRemote
+            .flatMap(SemanticGroupTranslationResult::sourceGroupIds)
+            .toSet()
+        val fallbackSources = preparedSources.filter { it.groupId !in remotelyCoveredSourceIds }
+        val localFallbackSources = fallbackSources.filter { source ->
+            SemanticFallbackPolicy.allowsLocalFallback(source, viewportWidth, viewportHeight)
+        }
+        val remoteRequiredSources = fallbackSources.filter { it !in localFallbackSources }
+        if (fallbackSources.isNotEmpty()) {
+            Log.w(
+                TAG,
+                "Self-hosted semantic fallback: count=${fallbackSources.size}, " +
+                    "local=${localFallbackSources.size}, " +
+                    "preservedLongBody=${remoteRequiredSources.size}, " +
+                    "codes=${remoteBatch.failures.map { it.code }.distinct()}"
+            )
+        }
+        val localFallback = translateSemanticLocally(
+            localFallbackSources,
+            mode,
+            experimentalEngine,
+            requestId
+        ).associateBy(TranslationExecutionResult::regionId)
+        val remoteFailures = remoteBatch.failures.associateBy(SemanticGroupTranslationFailure::groupId)
+        val remoteExecutions = acceptedRemote.map { result ->
+            val resultSources = result.sourceGroupIds.mapNotNull(sourcesById::get)
+            TranslationExecutionResult(
+                regionId = result.groupId,
+                sourceGroupIds = result.sourceGroupIds,
+                memberRegionIds = result.memberRegionIds,
+                anchorBounds = result.anchorBounds,
+                translatedText = result.translatedText
+                    ?: resultSources.joinToString("\n") { it.sourceText },
+                provider = result.provider,
+                succeeded = true,
+                layoutHint = result.layoutHint,
+                semanticTrace = semanticTrace
+            )
+        }
+        val fallbackExecutions = fallbackSources.map { source ->
+            localFallback[source.groupId]?.copy(
+                sourceGroupIds = listOf(source.groupId),
+                memberRegionIds = source.memberRegionIds,
+                anchorBounds = source.bounds
+            ) ?: TranslationExecutionResult(
+                regionId = source.groupId,
+                sourceGroupIds = listOf(source.groupId),
+                memberRegionIds = source.memberRegionIds,
+                anchorBounds = source.bounds,
+                translatedText = source.sourceText,
+                provider = "none",
+                succeeded = false,
+                failure = remoteFailures[source.groupId]?.let { failure ->
+                    TranslationFailure(
+                        regionId = source.groupId,
+                        code = failure.code,
+                        message = failure.message,
+                        retryable = failure.retryable,
+                        cause = failure.cause
+                    )
+                } ?: if (source in remoteRequiredSources) {
+                    TranslationFailure(
+                        regionId = source.groupId,
+                        code = "REMOTE_REQUIRED_FOR_LONG_BODY",
+                        message = "Long body translation was preserved because semantic translation failed",
+                        retryable = true
+                    )
+                } else null
+            )
+        }
+        return (remoteExecutions + fallbackExecutions).sortedBy { execution ->
+            execution.sourceGroupIds.mapNotNull(sourcesById::get)
+                .minOfOrNull(SemanticTranslationSource::readingOrder) ?: Int.MAX_VALUE
+        }
+    }
+
+    private data class PreparedTranslation(
+        val regionId: String,
+        val inputText: String,
+        val request: TranslationRequest?
+    )
+
+    private fun SemanticTranslationSource.preparedFor(
+        mode: TranslationMode,
+        viewportWidth: Int,
+        viewportHeight: Int
+    ): SemanticTranslationSource {
+        val preparedRegions = regions.map { region ->
+            val sourceLanguage = identifySourceLanguageByScript(region.text)
+            val targetLanguage = sourceLanguage?.let { targetLanguageFor(it, mode) }
+            region.copy(
+                sourceLanguage = sourceLanguage,
+                targetLanguage = targetLanguage,
+                bounds = region.bounds.clampedTo(viewportWidth, viewportHeight)
+            )
+        }
+        val shouldPreserve = translationUnit == "PRESERVED" ||
+            shouldPreserveSourceText(sourceText) ||
+            preparedRegions.none { it.sourceLanguage != null && it.targetLanguage != null }
+        return copy(
+            translationUnit = if (shouldPreserve) "PRESERVED" else "GROUP",
+            bounds = bounds.clampedTo(viewportWidth, viewportHeight),
+            regions = preparedRegions
+        )
+    }
+
+    private fun TranslationBounds.clampedTo(
+        viewportWidth: Int,
+        viewportHeight: Int
+    ): TranslationBounds {
+        val visibleLeft = left.coerceIn(0, viewportWidth - 1)
+        val visibleTop = top.coerceIn(0, viewportHeight - 1)
+        return TranslationBounds(
+            left = visibleLeft,
+            top = visibleTop,
+            right = right.coerceIn(visibleLeft + 1, viewportWidth),
+            bottom = bottom.coerceIn(visibleTop + 1, viewportHeight)
+        )
+    }
+
+    private suspend fun translateSemanticLocally(
+        sources: List<SemanticTranslationSource>,
+        mode: TranslationMode,
+        experimentalEngine: ExperimentalTranslationEngine,
+        requestId: String
+    ): List<TranslationExecutionResult> {
+        if (sources.isEmpty()) return emptyList()
+        val prepared = sources.map { source ->
+            val inputText = sanitizeOcrText(source.sourceText)
+            val sourceLanguage = identifySourceLanguageByScript(inputText)
+            val targetLanguage = sourceLanguage?.let { targetLanguageFor(it, mode) }
+            val request = if (
+                source.translationUnit != "PRESERVED" &&
+                !shouldPreserveSourceText(inputText) &&
+                sourceLanguage != null && targetLanguage != null
+            ) {
+                TranslationRequest(
+                    requestId = requestId,
+                    regionId = source.groupId,
+                    text = inputText,
+                    mode = mode,
+                    sourceLanguage = sourceLanguage,
+                    targetLanguage = targetLanguage,
+                    experimentalEngine = experimentalEngine
+                )
+            } else {
+                null
+            }
+            PreparedTranslation(source.groupId, inputText, request)
+        }
+        val batch = localProvider.translateBatch(prepared.mapNotNull(PreparedTranslation::request))
+        val results = batch.results.associateBy(TranslationResult::regionId)
+        val failures = batch.failures.associateBy(TranslationFailure::regionId)
+        return prepared.map { item ->
+            val request = item.request
+            val translated = results[item.regionId]
+            when {
+                request == null -> TranslationExecutionResult(
+                    regionId = item.regionId,
+                    translatedText = item.inputText,
+                    provider = "preserve",
+                    succeeded = true
+                )
+                translated != null -> TranslationExecutionResult(
+                    regionId = item.regionId,
+                    translatedText = translated.translatedText.trim(),
+                    provider = translated.provider,
+                    succeeded = true
+                )
+                else -> TranslationExecutionResult(
+                    regionId = item.regionId,
+                    translatedText = item.inputText,
+                    provider = "none",
+                    succeeded = false,
+                    failure = failures[item.regionId]
+                )
+            }
+        }
+    }
+
+    private fun isValidSemanticResult(
+        sources: List<SemanticTranslationSource>,
+        result: SemanticGroupTranslationResult
+    ): Boolean {
+        if (sources.isEmpty() || sources.map { it.groupId } != result.sourceGroupIds) return false
+        if (sources.size > 1 && result.groupingConfidence < 0.90f) return false
+        val translated = result.translatedText?.trim() ?: return false
+        if (result.status == TranslationResultStatus.PRESERVED) {
+            return sources.size == 1 && translated == sources.single().sourceText.trim()
+        }
+        val sourceText = sources.joinToString("\n") { it.sourceText }
+        val targetLanguage = sources.flatMap(SemanticTranslationSource::regions)
+            .mapNotNull(SemanticTranslationRegion::targetLanguage)
+            .distinct().singleOrNull() ?: return false
+        if (result.targetLanguage != null &&
+            result.targetLanguage.substringBefore('-').lowercase() !=
+            targetLanguage.substringBefore('-').lowercase()
+        ) return false
+        return isValidTranslation(
+            translated,
+            targetLanguage,
+            requireNoHanCharacters = targetLanguage == TranslateLanguage.ENGLISH &&
+                sourceText.length <= 12,
+            requireChineseCharacters = targetLanguage == TranslateLanguage.CHINESE &&
+                sourceText.length <= 32
+        )
+    }
+
+    private fun remoteProviderForCurrentSettings(): RemoteTranslationProvider {
+        val context = checkNotNull(appContext) { "Remote translation requires an app context" }
+        val baseUrl = TranslationBackendSettings.networkBaseUrl(context)
+        require(baseUrl.isNotBlank()) { "Remote translation endpoint is not configured" }
+        return synchronized(remoteProviderLock) {
+            if (remoteProvider == null || remoteProviderBaseUrl != baseUrl) {
+                remoteProvider?.close()
+                remoteProvider = RemoteTranslationProvider(baseUrl)
+                remoteProviderBaseUrl = baseUrl
+            }
+            checkNotNull(remoteProvider)
+        }
+    }
+
+    private fun selfHostedProviderForCurrentSettings(): SelfHostedSemanticTranslationProvider {
+        val context = checkNotNull(appContext) {
+            "Self-hosted translation requires an app context"
+        }
+        val baseUrl = TranslationBackendSettings.selfHostedBaseUrl(context)
+        require(baseUrl.isNotBlank()) { "Self-hosted translation endpoint is not configured" }
+        val token = TranslationBackendSettings.selfHostedBearerToken(context)
+        val configuration = baseUrl to token
+        return synchronized(selfHostedProviderLock) {
+            if (selfHostedProvider == null || selfHostedProviderConfiguration != configuration) {
+                selfHostedProvider?.close()
+                selfHostedProvider = SelfHostedSemanticTranslationProvider(baseUrl, token)
+                selfHostedProviderConfiguration = configuration
+            }
+            checkNotNull(selfHostedProvider)
+        }
     }
 
     private suspend fun ensureModel(sourceLanguage: String, targetLanguage: String) =
@@ -64,34 +515,40 @@ class TranslateManager(context: Context? = null) {
             downloadedModels.add(languagePair)
         }
 
-    suspend fun translate(
-        text: String,
-        mode: TranslationMode = TranslationMode.AUTO_BIDIRECTIONAL,
-        experimentalEngine: ExperimentalTranslationEngine = ExperimentalTranslationEngine.DISABLED
-    ): String {
-        val inputText = sanitizeOcrText(text)
-        if (shouldPreserveSourceText(inputText)) return inputText
-        val sourceLanguage = identifySourceLanguageByScript(inputText) ?: return inputText
-        val targetLanguage = targetLanguageFor(sourceLanguage, mode) ?: return inputText
+    private suspend fun translateLocally(request: TranslationRequest): TranslationResult {
+        val sourceLanguage = request.sourceLanguage
+            ?: identifySourceLanguageByScript(request.text)
+            ?: throw IllegalArgumentException("Unable to identify source language")
+        val targetLanguage = request.targetLanguage
+            ?: targetLanguageFor(sourceLanguage, request.mode)
+            ?: throw IllegalArgumentException("Translation direction does not match source text")
 
-        if (experimentalEngine != ExperimentalTranslationEngine.DISABLED) {
+        if (request.experimentalEngine != ExperimentalTranslationEngine.DISABLED) {
             translateWithExperimentalEngine(
-                experimentalEngine,
-                inputText,
+                request.experimentalEngine,
+                request.text,
                 sourceLanguage,
                 targetLanguage
-            )?.let { return it }
+            )?.let { translated ->
+                return TranslationResult(
+                    regionId = request.regionId,
+                    translatedText = translated,
+                    provider = "experimental-${request.experimentalEngine.name.lowercase()}",
+                    detectedSourceLanguage = sourceLanguage,
+                    targetLanguage = targetLanguage
+                )
+            }
         }
 
         ensureModel(sourceLanguage, targetLanguage)
         val translator = translatorFor(sourceLanguage, targetLanguage)
-        var result = translateWithModel(translator, inputText).trim()
+        var result = translateWithModel(translator, request.text).trim()
         val requiresCompleteEnglish = sourceLanguage == TranslateLanguage.CHINESE &&
-            targetLanguage == TranslateLanguage.ENGLISH && inputText.length <= 12
+            targetLanguage == TranslateLanguage.ENGLISH && request.text.length <= 12
         val requiresChineseOutput = sourceLanguage == TranslateLanguage.ENGLISH &&
-            targetLanguage == TranslateLanguage.CHINESE && inputText.length <= 32
-        if (!isValidTranslation(result, targetLanguage) && inputText.length >= 16) {
-            result = translateInSegments(translator, inputText)
+            targetLanguage == TranslateLanguage.CHINESE && request.text.length <= 32
+        if (!isValidTranslation(result, targetLanguage) && request.text.length >= 16) {
+            result = translateInSegments(translator, request.text)
         }
         require(
             isValidTranslation(
@@ -100,10 +557,38 @@ class TranslateManager(context: Context? = null) {
                 requiresCompleteEnglish,
                 requiresChineseOutput
             )
-        ) {
-            "翻译结果包含异常字符"
+        ) { "翻译结果包含异常字符" }
+        return TranslationResult(
+            regionId = request.regionId,
+            translatedText = result,
+            provider = "local-ml-kit",
+            detectedSourceLanguage = sourceLanguage,
+            targetLanguage = targetLanguage
+        )
+    }
+
+    private fun isValidProviderResult(
+        request: TranslationRequest,
+        result: TranslationResult
+    ): Boolean {
+        if (result.regionId != request.regionId) return false
+        if (result.status == TranslationResultStatus.PRESERVED) {
+            return result.translatedText.trim() == request.text.trim()
         }
-        return result
+        val sourceLanguage = request.sourceLanguage ?: return false
+        val targetLanguage = request.targetLanguage ?: return false
+        if (result.targetLanguage != null &&
+            result.targetLanguage.substringBefore('-').lowercase() !=
+            targetLanguage.substringBefore('-').lowercase()
+        ) return false
+        return isValidTranslation(
+            result.translatedText.trim(),
+            targetLanguage,
+            requireNoHanCharacters = sourceLanguage == TranslateLanguage.CHINESE &&
+                request.text.length <= 12,
+            requireChineseCharacters = sourceLanguage == TranslateLanguage.ENGLISH &&
+                request.text.length <= 32
+        )
     }
 
     private suspend fun translateWithExperimentalEngine(
@@ -128,8 +613,10 @@ class TranslateManager(context: Context? = null) {
                 isValidTranslation(
                     candidate,
                     targetLanguage,
-                    requireNoHanCharacters = sourceLanguage == TranslateLanguage.CHINESE && text.length <= 12,
-                    requireChineseCharacters = sourceLanguage == TranslateLanguage.ENGLISH && text.length <= 32
+                    requireNoHanCharacters = sourceLanguage == TranslateLanguage.CHINESE &&
+                        text.length <= 12,
+                    requireChineseCharacters = sourceLanguage == TranslateLanguage.ENGLISH &&
+                        text.length <= 32
                 )
             }
             if (result != null) {
@@ -140,7 +627,11 @@ class TranslateManager(context: Context? = null) {
                         "outputChars=${result.length}"
                 )
             } else {
-                Log.w(TAG, "Experimental translation rejected; falling back to ML Kit: engine=${engine.name}")
+                Log.w(
+                    TAG,
+                    "Experimental translation rejected; falling back to ML Kit: " +
+                        "engine=${engine.name}"
+                )
             }
             result
         } catch (error: CancellationException) {
@@ -219,13 +710,15 @@ class TranslateManager(context: Context? = null) {
 
     private fun translatorFor(sourceLanguage: String, targetLanguage: String): Translator {
         val languagePair = sourceLanguage to targetLanguage
-        return translators.getOrPut(languagePair) {
-            Translation.getClient(
-                TranslatorOptions.Builder()
-                    .setSourceLanguage(sourceLanguage)
-                    .setTargetLanguage(targetLanguage)
-                    .build()
-            )
+        return synchronized(translators) {
+            translators.getOrPut(languagePair) {
+                Translation.getClient(
+                    TranslatorOptions.Builder()
+                        .setSourceLanguage(sourceLanguage)
+                        .setTargetLanguage(targetLanguage)
+                        .build()
+                )
+            }
         }
     }
 
@@ -263,14 +756,29 @@ class TranslateManager(context: Context? = null) {
         suspendCancellableCoroutine { cont ->
             translator.translate(text)
                 .addOnSuccessListener { result -> if (cont.isActive) cont.resume(result) }
-                .addOnFailureListener { e -> if (cont.isActive) cont.resumeWithException(e) }
+                .addOnFailureListener { error ->
+                    if (cont.isActive) cont.resumeWithException(error)
+                }
         }
     }
 
     fun close() {
-        translators.values.forEach(Translator::close)
-        translators.clear()
+        switchingProvider.close()
+        synchronized(translators) {
+            translators.values.forEach(Translator::close)
+            translators.clear()
+        }
         downloadedModels.clear()
         experimentalLibraryDelegate?.takeIf { it.isInitialized() }?.value?.close()
+        synchronized(remoteProviderLock) {
+            remoteProvider?.close()
+            remoteProvider = null
+            remoteProviderBaseUrl = null
+        }
+        synchronized(selfHostedProviderLock) {
+            selfHostedProvider?.close()
+            selfHostedProvider = null
+            selfHostedProviderConfiguration = null
+        }
     }
 }

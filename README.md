@@ -18,10 +18,12 @@ Android 图片 OCR 文字识别 + 翻译 + 原图覆盖工具
 ## 技术栈
 | 模块 | 方案 |
 |------|------|
-| OCR | Google ML Kit（中英文，Google Play services 按需模块） |
-| 翻译 | Google ML Kit Translation |
+| OCR | Google ML Kit / 端侧 PaddleOCR / PaddleOCR 局域网服务 |
+| 翻译 | Google ML Kit Translation / Hy-MT2 Gateway |
 | 擦除 | OpenCV Inpaint (Telea) |
 | UI | Kotlin + ViewBinding |
+
+网络能力位于[translation-service](translation-service/README.md)，使用 Rust Axum、PaddleX、`diesel-async`、PostgreSQL 和 Hy-MT2。Android 默认仍使用端侧管线；配置后可让悬浮窗把压缩采集帧交给局域网 Gateway，一次返回 OCR 框和译文。改造边界和实测见 [PaddleOCR 局域网一体化引擎实施记录](docs/paddle-network-integrated-engine-implementation.md)。
 
 ## 构建
 
@@ -63,6 +65,7 @@ AB_CANDIDATE=VERTICAL_BANDS ANDROID_SERIAL=<device-serial> scripts/live-recognit
 
 - 实时录屏识别、差分、缓冲、切分、悬浮交互、性能数据和 Git 实验节点见 [实时屏幕识别与悬浮翻译实验账本](docs/live-screen-translation-experiment-log.md)。
 - OCR、翻译、擦除和译文排版的历史问题、效果截图及提交记录见 [图片文字翻译与替换调校记录](docs/translation-tuning-log.md)。
+- PaddleOCR 局域网 OCR+翻译引擎、压缩策略、接口和联调结果见 [PaddleOCR 局域网一体化引擎实施记录](docs/paddle-network-integrated-engine-implementation.md)。
 - 系统截图监听、主动截屏入口和平台权限边界见 [OCR 与截图识别完整报告](docs/ocr-and-screenshot-recognition-complete-report.md)。
 - 可选、离线优先的智能复核、上下文增强和外部自动操作实验路线见 [离线优先智能辅助规划实施文档](docs/offline-smart-assist-implementation-plan.md)。
 - 已完成的 Library First M0/M1 范围、测试和性能基线见 [Smart Assist Core M0/M1 实施报告](docs/smart-assist-core-m0-m1-implementation-report.md)。

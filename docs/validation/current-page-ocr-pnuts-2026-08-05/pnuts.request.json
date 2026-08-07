@@ -1,0 +1,87 @@
+{
+  "schemaVersion": 1,
+  "requestId": "d0fe643c-7ac9-4912-9643-d4af6cd0a98b",
+  "generation": 0,
+  "scene": "ANDROID_CLIENT_CURRENT_PAGE_MANUAL_REVIEW",
+  "translation": {
+    "mode": "ENGLISH_TO_CHINESE",
+    "sourceLanguage": "auto",
+    "targetLanguage": "auto",
+    "preserveIdentifiers": true,
+    "useContext": true
+  },
+  "regions": [
+    {
+      "regionId": "semantic-b0675a81",
+      "text": "N'sTime",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh"
+    },
+    {
+      "regionId": "semantic-11afce8b",
+      "text": "www.news.cn",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh"
+    },
+    {
+      "regionId": "semantic-8895378",
+      "text": "EWS",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh"
+    },
+    {
+      "regionId": "semantic-e86f3d04",
+      "text": "net corm",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh"
+    },
+    {
+      "regionId": "semantic-55749d7a",
+      "text": "Home)(Xi Story Xiplomacy Xi Focus",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh"
+    },
+    {
+      "regionId": "semantic-8b380923",
+      "text": "Xi holds talks with Slovak president in Beijing",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh"
+    },
+    {
+      "regionId": "semantic-631d7a9d",
+      "text": "Xi Story:Six-foot alley reveals Chinese wisdom",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh"
+    },
+    {
+      "regionId": "semantic-fa793555",
+      "text": "of making roomn for others",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh"
+    },
+    {
+      "regionId": "semantic-9f094989",
+      "text": "PLA celebrates 99th founding anniversary in march toward world-class military,with peace",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh"
+    },
+    {
+      "regionId": "semantic-91fbfd5e",
+      "text": "as enduring mission",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh"
+    },
+    {
+      "regionId": "semantic-17d2690e",
+      "text": "Xi signs order to commend outstanding military individual",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh"
+    },
+    {
+      "regionId": "semantic-75ab1c6b",
+      "text": "Xi's Archive",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh"
+    }
+  ]
+}

@@ -1,0 +1,69 @@
+{
+  "schemaVersion": 1,
+  "endpoint": "https://api-dev.pnutsai.com/api/v1/translate/regions",
+  "sourceLines": [
+    "The Web3 industry tried, and we did",
+    "quite well. Until the country decided",
+    "to invest in projects that fit neither",
+    "the country nor the Web3 community.",
+    "Then all hell broke loose. The rest",
+    "is history."
+  ],
+  "lineMode": {
+    "regionCount": 6,
+    "elapsedMs": 5074,
+    "successCount": 0,
+    "failedCount": 6,
+    "results": [
+      {
+        "regionId": "line-1",
+        "sourceText": "The Web3 industry tried, and we did",
+        "status": "FAILED",
+        "translatedText": null
+      },
+      {
+        "regionId": "line-2",
+        "sourceText": "quite well. Until the country decided",
+        "status": "FAILED",
+        "translatedText": null
+      },
+      {
+        "regionId": "line-3",
+        "sourceText": "to invest in projects that fit neither",
+        "status": "FAILED",
+        "translatedText": null
+      },
+      {
+        "regionId": "line-4",
+        "sourceText": "the country nor the Web3 community.",
+        "status": "FAILED",
+        "translatedText": null
+      },
+      {
+        "regionId": "line-5",
+        "sourceText": "Then all hell broke loose. The rest",
+        "status": "FAILED",
+        "translatedText": null
+      },
+      {
+        "regionId": "line-6",
+        "sourceText": "is history.",
+        "status": "FAILED",
+        "translatedText": null
+      }
+    ],
+    "stitchedTranslation": null
+  },
+  "semanticGroupMode": {
+    "regionCount": 1,
+    "elapsedMs": 4391,
+    "translation": "Web3行业尝试过了，而且我们做得相当不错。直到国家决定投资那些既不适合国家、也不适合Web3社区的项目。然后局势彻底失控。剩下的就是历史了。"
+  },
+  "automaticChecks": {
+    "allLineResultsReturned": true,
+    "groupTranslated": true,
+    "groupPreservesWeb3": true,
+    "groupMentionsCountry": true,
+    "groupMentionsHistory": true
+  }
+}

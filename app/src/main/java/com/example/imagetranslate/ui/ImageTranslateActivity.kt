@@ -21,6 +21,8 @@ import android.text.TextPaint
 import android.view.Gravity
 import android.view.View
 import android.view.animation.AccelerateDecelerateInterpolator
+import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.InputMethodManager
 import android.widget.PopupWindow
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
@@ -29,21 +31,34 @@ import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.lifecycle.lifecycleScope
 import com.example.imagetranslate.App
+import com.example.imagetranslate.BuildConfig
 import com.example.imagetranslate.R
 import com.example.imagetranslate.databinding.ActivityImageTranslateBinding
+import com.example.imagetranslate.databinding.DialogPaddleNetworkSettingsBinding
 import com.example.imagetranslate.databinding.PopupOcrReviewBinding
 import com.example.imagetranslate.databinding.PopupReplacementInfoBinding
 import com.example.imagetranslate.inpaint.ImageInpainter
 import com.example.imagetranslate.inpaint.InpaintResult
 import com.example.imagetranslate.ocr.OCRManager
+import com.example.imagetranslate.ocr.PaddleNetworkSettings
 import com.example.imagetranslate.ocr.RecognizedText
+import com.example.imagetranslate.semantic.SemanticTextGrouper
+import com.example.imagetranslate.semantic.SemanticRenderShape
+import com.example.imagetranslate.semantic.SemanticTextRole
+import com.example.imagetranslate.semantic.StaticImageTextFilter
 import com.example.imagetranslate.ocr.RecognizerScript
 import com.example.imagetranslate.screenshot.OneShotScreenCaptureService
+import com.example.imagetranslate.screenshot.LiveOcrTranslationEngineSettings
+import com.example.imagetranslate.screenshot.LiveOcrTranslationEngineType
 import com.example.imagetranslate.screenshot.ScreenshotMonitorPreferences
 import com.example.imagetranslate.screenshot.ScreenshotMonitorService
 import com.example.imagetranslate.screenshot.TranslatedImageGallerySaver
 import com.example.imagetranslate.translate.TranslateManager
+import com.example.imagetranslate.translate.SemanticLayoutHint
+import com.example.imagetranslate.translate.TranslationBackend
+import com.example.imagetranslate.translate.TranslationBackendSettings
 import com.example.imagetranslate.translate.TranslationMode
+import com.example.imagetranslate.translate.toSemanticTranslationSource
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CancellationException
@@ -62,6 +77,9 @@ class ImageTranslateActivity : AppCompatActivity() {
         const val UI_PREFERENCES = "image_translate_ui"
         const val PREFERENCE_ADVANCED_SETTINGS_EXPANDED = "advanced_settings_expanded"
         const val PREFERENCE_REVIEW_BEFORE_TRANSLATION = "review_before_translation"
+        const val MINIMUM_OVERFLOW_BODY_REGIONS = 4
+        const val MINIMUM_OVERFLOW_BODY_CHARACTERS = 60
+        const val MINIMUM_OVERFLOW_BODY_AREA_RATIO = 0.03
     }
 
     private enum class WorkflowStage {
@@ -72,12 +90,13 @@ class ImageTranslateActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityImageTranslateBinding
     private val ocrManager by lazy { OCRManager(applicationContext) }
-    private val translateManager = TranslateManager()
+    private val translateManager by lazy { TranslateManager(applicationContext) }
     private val inpainter = ImageInpainter()
     private var translationMode = TranslationMode.AUTO_BIDIRECTIONAL
     private var workflowStage = WorkflowStage.READY
     private var workflowBusy = false
     private var updatingScreenshotMonitorControl = false
+    private var updatingTranslationBackendControl = false
     private var modelDownloadJob: Job? = null
 
     private var originalBitmap: Bitmap? = null
@@ -89,9 +108,11 @@ class ImageTranslateActivity : AppCompatActivity() {
 
     private data class TranslatedRegion(
         val source: RecognizedText,
+        val role: SemanticTextRole,
         val translation: String,
         val translated: Boolean,
-        val translationFailed: Boolean = false
+        val translationFailed: Boolean = false,
+        val layoutHint: SemanticLayoutHint? = null
     )
 
     private data class OcrReviewRegion(
@@ -113,6 +134,7 @@ class ImageTranslateActivity : AppCompatActivity() {
         val translatedText: String,
         val consensusScore: Float,
         val passCount: Int,
+        val overflow: Boolean = false,
         var showingOriginal: Boolean = false
     )
 
@@ -121,7 +143,8 @@ class ImageTranslateActivity : AppCompatActivity() {
         val sourceText: String,
         val translatedText: String,
         val consensusScore: Float,
-        val passCount: Int
+        val passCount: Int,
+        val outcome: ShapeAwareTextOutcome
     )
 
     private val pickImage = registerForActivityResult(
@@ -227,19 +250,45 @@ class ImageTranslateActivity : AppCompatActivity() {
             PREFERENCE_REVIEW_BEFORE_TRANSLATION,
             false
         )
+        binding.switchUploadOcrDebugImage.visibility = if (BuildConfig.DEBUG) {
+            View.VISIBLE
+        } else {
+            View.GONE
+        }
+        binding.switchUploadOcrDebugImage.isChecked =
+            TranslationBackendSettings.isDebugCaptureUploadEnabled(this)
+        binding.switchUploadRenderedDebugImage.visibility = if (BuildConfig.DEBUG) {
+            View.VISIBLE
+        } else {
+            View.GONE
+        }
+        binding.switchUploadRenderedDebugImage.isChecked =
+            TranslationBackendSettings.isDebugRenderedCaptureUploadEnabled(this)
+        restoreTranslationBackendControl()
+        restorePaddleNetworkControl()
         setAdvancedSettingsExpanded(
             expanded = uiPreferences.getBoolean(PREFERENCE_ADVANCED_SETTINGS_EXPANDED, false),
             animate = false,
             persist = false
         )
         setupListeners()
-        downloadModel()
+        if (LiveOcrTranslationEngineSettings.get(this) ==
+            LiveOcrTranslationEngineType.PADDLE_NETWORK
+        ) {
+            binding.tvStatus.setText(R.string.paddle_network_capture_ready)
+        } else {
+            downloadModel()
+        }
         handleScreenshotIntent(intent)
     }
 
     override fun onResume() {
         super.onResume()
-        if (::binding.isInitialized) restoreConfiguredScreenshotMonitor()
+        if (::binding.isInitialized) {
+            restoreConfiguredScreenshotMonitor()
+            restoreTranslationBackendControl()
+            restorePaddleNetworkControl()
+        }
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -323,6 +372,69 @@ class ImageTranslateActivity : AppCompatActivity() {
                 .putBoolean(PREFERENCE_REVIEW_BEFORE_TRANSLATION, checked)
                 .apply()
         }
+        binding.switchUploadOcrDebugImage.setOnCheckedChangeListener { _, checked ->
+            TranslationBackendSettings.setDebugCaptureUploadEnabled(this, checked)
+        }
+        binding.switchUploadRenderedDebugImage.setOnCheckedChangeListener { _, checked ->
+            TranslationBackendSettings.setDebugRenderedCaptureUploadEnabled(this, checked)
+        }
+        binding.translationBackendGroup.addOnButtonCheckedListener { _, checkedId, isChecked ->
+            if (!isChecked || updatingTranslationBackendControl) {
+                return@addOnButtonCheckedListener
+            }
+            val backend = when (checkedId) {
+                binding.btnBackendPnuts.id -> TranslationBackend.NETWORK
+                binding.btnBackendSelfHosted.id -> TranslationBackend.SELF_HOSTED
+                else -> TranslationBackend.LOCAL
+            }
+            if (!TranslationBackendSettings.isConfigured(this, backend)) {
+                Toast.makeText(
+                    this,
+                    R.string.network_translation_not_configured,
+                    Toast.LENGTH_LONG
+                ).show()
+                restoreTranslationBackendControl()
+                return@addOnButtonCheckedListener
+            }
+            TranslationBackendSettings.set(this, backend)
+        }
+        binding.editNetworkTranslationBaseUrl.setOnEditorActionListener { view, actionId, _ ->
+            if (actionId != EditorInfo.IME_ACTION_DONE) return@setOnEditorActionListener false
+            if (saveNetworkTranslationEndpoint(showConfirmation = true)) {
+                getSystemService(InputMethodManager::class.java)
+                    ?.hideSoftInputFromWindow(view.windowToken, 0)
+                view.clearFocus()
+            }
+            true
+        }
+        binding.editNetworkTranslationBaseUrl.onFocusChangeListener =
+            View.OnFocusChangeListener { _, hasFocus ->
+                if (!hasFocus) saveNetworkTranslationEndpoint(showConfirmation = false)
+            }
+        binding.editSelfHostedBearerToken.setOnEditorActionListener { view, actionId, _ ->
+            if (actionId != EditorInfo.IME_ACTION_DONE) return@setOnEditorActionListener false
+            if (saveSelfHostedTranslationEndpoint(showConfirmation = true)) {
+                getSystemService(InputMethodManager::class.java)
+                    ?.hideSoftInputFromWindow(view.windowToken, 0)
+                view.clearFocus()
+            }
+            true
+        }
+        binding.editSelfHostedTranslationBaseUrl.onFocusChangeListener =
+            View.OnFocusChangeListener { _, hasFocus ->
+                if (!hasFocus && binding.editSelfHostedTranslationBaseUrl.text?.isNotBlank() == true) {
+                    saveSelfHostedTranslationEndpoint(showConfirmation = false)
+                }
+            }
+        binding.editSelfHostedBearerToken.onFocusChangeListener =
+            View.OnFocusChangeListener { _, hasFocus ->
+                if (!hasFocus && binding.editSelfHostedTranslationBaseUrl.text?.isNotBlank() == true) {
+                    saveSelfHostedTranslationEndpoint(showConfirmation = false)
+                }
+            }
+        binding.btnPaddleNetworkSettings.setOnClickListener {
+            showPaddleNetworkSettingsDialog()
+        }
 
         binding.translationModeGroup.addOnButtonCheckedListener { _, checkedId, isChecked ->
             if (!isChecked) return@addOnButtonCheckedListener
@@ -379,6 +491,193 @@ class ImageTranslateActivity : AppCompatActivity() {
                 binding.replacementOverlay.performMarkerClick(x, y)
             if (!markerHandled) toggleReplacementAt(x, y)
         }
+    }
+
+    private fun restoreTranslationBackendControl() {
+        val networkConfigured = TranslationBackendSettings.isNetworkConfigured(this)
+        val selfHostedConfigured = TranslationBackendSettings.isSelfHostedConfigured(this)
+        binding.btnBackendPnuts.isEnabled = networkConfigured
+        binding.btnBackendSelfHosted.isEnabled = selfHostedConfigured
+        updatingTranslationBackendControl = true
+        binding.translationBackendGroup.check(
+            when (TranslationBackendSettings.get(this)) {
+                TranslationBackend.LOCAL -> binding.btnBackendLocal.id
+                TranslationBackend.NETWORK -> binding.btnBackendPnuts.id
+                TranslationBackend.SELF_HOSTED -> binding.btnBackendSelfHosted.id
+            }
+        )
+        updatingTranslationBackendControl = false
+        if (!binding.editNetworkTranslationBaseUrl.hasFocus()) {
+            binding.editNetworkTranslationBaseUrl.setText(
+                TranslationBackendSettings.networkBaseUrl(this)
+            )
+        }
+        binding.inputNetworkTranslationBaseUrl.helperText = if (networkConfigured) {
+            getString(
+                R.string.network_translation_endpoint_format,
+                TranslationBackendSettings.networkBatchEndpoint(this)
+            )
+        } else {
+            getString(R.string.network_translation_not_configured)
+        }
+        if (!binding.editSelfHostedTranslationBaseUrl.hasFocus()) {
+            binding.editSelfHostedTranslationBaseUrl.setText(
+                TranslationBackendSettings.selfHostedBaseUrl(this)
+            )
+        }
+        if (!binding.editSelfHostedBearerToken.hasFocus()) {
+            binding.editSelfHostedBearerToken.setText(
+                TranslationBackendSettings.selfHostedBearerToken(this).orEmpty()
+            )
+        }
+        binding.inputSelfHostedTranslationBaseUrl.helperText = if (selfHostedConfigured) {
+            getString(
+                R.string.network_translation_endpoint_format,
+                TranslationBackendSettings.selfHostedTranslationEndpoint(this)
+            )
+        } else {
+            getString(R.string.network_translation_not_configured)
+        }
+    }
+
+    private fun saveNetworkTranslationEndpoint(showConfirmation: Boolean): Boolean {
+        val endpoint = binding.editNetworkTranslationBaseUrl.text?.toString().orEmpty()
+        return runCatching {
+            TranslationBackendSettings.setNetworkBaseUrl(this, endpoint)
+        }.fold(
+            onSuccess = {
+                binding.inputNetworkTranslationBaseUrl.error = null
+                restoreTranslationBackendControl()
+                if (showConfirmation) {
+                    Toast.makeText(
+                        this,
+                        R.string.network_translation_endpoint_saved,
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+                true
+            },
+            onFailure = {
+                binding.inputNetworkTranslationBaseUrl.error =
+                    getString(R.string.network_translation_endpoint_invalid)
+                false
+            }
+        )
+    }
+
+    private fun saveSelfHostedTranslationEndpoint(showConfirmation: Boolean): Boolean {
+        val baseUrl = binding.editSelfHostedTranslationBaseUrl.text?.toString().orEmpty()
+        val token = binding.editSelfHostedBearerToken.text?.toString().orEmpty()
+        return runCatching {
+            TranslationBackendSettings.setSelfHosted(this, baseUrl, token)
+        }.fold(
+            onSuccess = {
+                binding.inputSelfHostedTranslationBaseUrl.error = null
+                restoreTranslationBackendControl()
+                if (showConfirmation) {
+                    Toast.makeText(
+                        this,
+                        R.string.self_hosted_translation_endpoint_saved,
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+                true
+            },
+            onFailure = {
+                binding.inputSelfHostedTranslationBaseUrl.error =
+                    getString(R.string.network_translation_endpoint_invalid)
+                false
+            }
+        )
+    }
+
+    private fun restorePaddleNetworkControl() {
+        val configured = PaddleNetworkSettings.isConfigured(this)
+        val selected = LiveOcrTranslationEngineSettings.get(this)
+        binding.btnPaddleNetworkSettings.setText(
+            when {
+                selected == LiveOcrTranslationEngineType.PADDLE_NETWORK ->
+                    R.string.paddle_network_status_enabled
+                configured -> R.string.paddle_network_status_configured
+                else -> R.string.paddle_network_status_unconfigured
+            }
+        )
+    }
+
+    private fun showPaddleNetworkSettingsDialog() {
+        val dialogBinding = DialogPaddleNetworkSettingsBinding.inflate(layoutInflater)
+        val configuration = PaddleNetworkSettings.get(this)
+        dialogBinding.editPaddleNetworkBaseUrl.setText(configuration.baseUrl)
+        dialogBinding.editPaddleNetworkBearerToken.setText(configuration.bearerToken)
+        dialogBinding.switchPaddleNetworkLiveEngine.isChecked =
+            LiveOcrTranslationEngineSettings.get(this) ==
+            LiveOcrTranslationEngineType.PADDLE_NETWORK
+        dialogBinding.inputPaddleNetworkBaseUrl.helperText = if (configuration.isConfigured) {
+            getString(R.string.paddle_network_endpoint_format, configuration.endpoint)
+        } else {
+            getString(R.string.paddle_network_not_configured)
+        }
+
+        val dialog = MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.paddle_network_settings_title)
+            .setView(dialogBinding.root)
+            .setNegativeButton(R.string.action_cancel, null)
+            .setPositiveButton(R.string.action_save, null)
+            .create()
+        dialog.setOnShowListener {
+            dialog.getButton(android.content.DialogInterface.BUTTON_POSITIVE)
+                .setOnClickListener {
+                    val baseUrl = dialogBinding.editPaddleNetworkBaseUrl.text
+                        ?.toString()
+                        .orEmpty()
+                    val token = dialogBinding.editPaddleNetworkBearerToken.text
+                        ?.toString()
+                        .orEmpty()
+                    if (dialogBinding.switchPaddleNetworkLiveEngine.isChecked &&
+                        baseUrl.isBlank()
+                    ) {
+                        dialogBinding.inputPaddleNetworkBaseUrl.error =
+                            getString(R.string.paddle_network_endpoint_required)
+                        return@setOnClickListener
+                    }
+                    runCatching {
+                        PaddleNetworkSettings.set(this, baseUrl, token)
+                        LiveOcrTranslationEngineSettings.set(
+                            this,
+                            if (dialogBinding.switchPaddleNetworkLiveEngine.isChecked) {
+                                LiveOcrTranslationEngineType.PADDLE_NETWORK
+                            } else {
+                                LiveOcrTranslationEngineType.LOCAL_PIPELINE
+                            }
+                        )
+                    }.onSuccess {
+                        dialogBinding.inputPaddleNetworkBaseUrl.error = null
+                        restorePaddleNetworkControl()
+                        if (LiveOcrTranslationEngineSettings.get(this) ==
+                            LiveOcrTranslationEngineType.PADDLE_NETWORK
+                        ) {
+                            modelDownloadJob?.cancel()
+                            modelDownloadJob = null
+                            if (!workflowBusy && originalBitmap == null) {
+                                binding.tvStatus.setText(R.string.paddle_network_capture_ready)
+                            }
+                        } else if (originalBitmap == null) {
+                            downloadModel()
+                        }
+                        OneShotScreenCaptureService.refreshPipelineSettings(this)
+                        Toast.makeText(
+                            this,
+                            R.string.paddle_network_settings_saved,
+                            Toast.LENGTH_SHORT
+                        ).show()
+                        dialog.dismiss()
+                    }.onFailure {
+                        dialogBinding.inputPaddleNetworkBaseUrl.error =
+                            getString(R.string.paddle_network_endpoint_invalid)
+                    }
+                }
+        }
+        dialog.show()
     }
 
     private fun beginScreenshotMonitorSetup() {
@@ -779,7 +1078,14 @@ class ImageTranslateActivity : AppCompatActivity() {
                 }
 
                 clearReplacementRegions()
-                ocrReviewRegions = texts.map { OcrReviewRegion(it) }.toMutableList()
+                val defaultIncluded = StaticImageTextFilter.filter(
+                    texts,
+                    bitmap.width,
+                    bitmap.height
+                ).toSet()
+                ocrReviewRegions = texts.map { text ->
+                    OcrReviewRegion(text, included = text in defaultIncluded)
+                }.toMutableList()
                 processedBitmap = bitmap.copy(Bitmap.Config.ARGB_8888, true)
                 binding.ivResult.setImageBitmap(processedBitmap)
                 binding.ivResult.resetZoom()
@@ -816,11 +1122,17 @@ class ImageTranslateActivity : AppCompatActivity() {
 
     private fun translateReviewedImage(bitmap: Bitmap) {
         val reviewRegions = ocrReviewRegions ?: return
-        val texts = reviewRegions.filter { it.included }.map { it.source }
-        if (texts.isEmpty()) {
+        val includedTexts = reviewRegions.filter { it.included }.map { it.source }
+        if (includedTexts.isEmpty()) {
             binding.tvStatus.text = "没有参与翻译的文字"
             return
         }
+        val groups = SemanticTextGrouper.group(
+            recognized = includedTexts,
+            viewportWidth = bitmap.width,
+            viewportHeight = bitmap.height
+        )
+        val texts = groups.map { group -> group.toRecognizedText() }
 
         lifecycleScope.launch {
             val activeMode = translationMode
@@ -831,17 +1143,25 @@ class ImageTranslateActivity : AppCompatActivity() {
 
                 binding.tvStatus.text = "翻译 ${texts.size} 段文字..."
                 val regions = withTimeout(TRANSLATION_WORKFLOW_TIMEOUT_MS) {
-                    texts.mapIndexed { index, item ->
-                        binding.tvStatus.text = "翻译 ${index + 1}/${texts.size}..."
-                        try {
-                            val translatedText = translateManager.translate(item.text, activeMode)
-                            val changed = translatedText.trim() != item.text.trim()
-                            TranslatedRegion(item, translatedText, changed)
-                        } catch (e: CancellationException) {
-                            throw e
-                        } catch (e: Exception) {
-                            TranslatedRegion(item, item.text, false, translationFailed = true)
-                        }
+                    val translations = translateManager.translateSemanticGroups(
+                        sources = groups.map { it.toSemanticTranslationSource() },
+                        viewportWidth = bitmap.width,
+                        viewportHeight = bitmap.height,
+                        mode = activeMode,
+                        scene = "STATIC_IMAGE"
+                    )
+                    groups.zip(translations).map { (group, translation) ->
+                        val item = group.toRecognizedText()
+                        val changed = translation.succeeded &&
+                            translation.translatedText.trim() != item.text.trim()
+                        TranslatedRegion(
+                            source = item,
+                            role = group.role,
+                            translation = translation.translatedText,
+                            translated = changed,
+                            translationFailed = !translation.succeeded,
+                            layoutHint = translation.layoutHint
+                        )
                     }
                 }
 
@@ -856,11 +1176,13 @@ class ImageTranslateActivity : AppCompatActivity() {
                         )
                     } else if (usePrecise) {
                         inpainter.eraseWithPreciseMask(
-                            bitmap, translatedRegions.map { it.source.bounds }
+                            bitmap,
+                            translatedRegions.flatMap { it.source.textEraseBounds() }.distinct()
                         )
                     } else {
                         inpainter.eraseWithRectMask(
-                            bitmap, translatedRegions.map { it.source.bounds }
+                            bitmap,
+                            translatedRegions.flatMap { it.source.textEraseBounds() }.distinct()
                         )
                     }
                 }
@@ -882,7 +1204,8 @@ class ImageTranslateActivity : AppCompatActivity() {
                         sourceText = bounds.sourceText,
                         translatedText = bounds.translatedText,
                         consensusScore = bounds.consensusScore,
-                        passCount = bounds.passCount
+                        passCount = bounds.passCount,
+                        overflow = bounds.outcome == ShapeAwareTextOutcome.OVERFLOW_MORE
                     )
                 }
                 binding.ivResult.setImageBitmap(processedBitmap)
@@ -893,11 +1216,17 @@ class ImageTranslateActivity : AppCompatActivity() {
                 scrollToResult()
                 val failedCount = regions.count { it.translationFailed }
                 val replacedCount = renderedRegions.size
-                val skippedEraseCount = translatedRegions.size - erasedBounds.size
+                val overflowCount = renderedRegions.count {
+                    it.outcome == ShapeAwareTextOutcome.OVERFLOW_MORE
+                }
+                val preservedForSafetyCount = translatedRegions.size - renderedRegions.size
                 binding.tvStatus.text = buildString {
                     append("完成，共替换 $replacedCount 段文字")
                     if (failedCount > 0) append("；$failedCount 段翻译失败")
-                    if (skippedEraseCount > 0) append("；$skippedEraseCount 段因擦除风险保留原文")
+                    if (preservedForSafetyCount > 0) {
+                        append("；$preservedForSafetyCount 段因擦除或排版风险保留原文")
+                    }
+                    if (overflowCount > 0) append("；$overflowCount 段可点击更多查看全文")
                 }
             } catch (e: TimeoutCancellationException) {
                 binding.tvStatus.text = "翻译超时，请检查网络后重试"
@@ -992,76 +1321,93 @@ class ImageTranslateActivity : AppCompatActivity() {
         val paint = TextPaint(Paint.ANTI_ALIAS_FLAG)
         val renderedRegions = mutableListOf<RenderedRegion>()
 
-        for (region in regions.filter { it.translated && it.source.bounds in erasedBounds }) {
+        for (region in regions.filter { candidate ->
+            candidate.translated && candidate.source.textEraseBounds().all(erasedBounds::contains)
+        }) {
             val bounds = region.source.bounds
             if (bounds.width() <= 0 || bounds.height() <= 0) continue
 
             val style = estimateTextStyle(sourceBitmap, bounds, region.source.text)
-            val isControlLabel = style.isDarkBackground &&
-                bounds.height() < canvas.height / 10
-            val layoutBounds = if (isControlLabel) {
-                Rect(bounds)
-            } else {
-                findAvailableBounds(canvas, bounds, region.source.text, regions)
+            val isControlLabel = region.role == SemanticTextRole.CONTROL ||
+                style.isDarkBackground && bounds.height() < canvas.height / 10
+            val requestedSlots = region.layoutHint?.renderSlots.orEmpty().map { slot ->
+                Rect(slot.left, slot.top, slot.right, slot.bottom)
             }
-            val horizontalPadding = if (isControlLabel) 0 else maxOf(2, bounds.height() / 8)
-            val layoutWidth = maxOf(1, layoutBounds.width() - horizontalPadding * 2)
-            val preferredSize = maxOf(8f, bounds.height() * style.fontSizeMultiplier)
-            val minimumSize = maxOf(8f, bounds.height() * 0.68f)
+            val renderSlots = requestedSlots.takeIf { slots ->
+                slots.isNotEmpty() && slots.all { slot ->
+                    slot.left >= bounds.left && slot.top >= bounds.top &&
+                        slot.right <= bounds.right && slot.bottom <= bounds.bottom
+                }
+            } ?: SemanticRenderShape.slots(region.source.textEraseBounds(), bounds)
+            val layoutMetrics = StaticImageTextLayoutPolicy.resolve(
+                groupBounds = bounds,
+                componentBounds = region.source.textEraseBounds(),
+                fontSizeMultiplier = style.fontSizeMultiplier,
+                preferredMaxLines = region.layoutHint?.preferredMaxLines,
+                minimumTextScale = region.layoutHint?.minimumTextScale
+            )
+            val horizontalPadding = if (isControlLabel) {
+                0
+            } else {
+                maxOf(2, (layoutMetrics.sourceLineHeightPx / 8f).toInt())
+            }
             paint.color = style.foregroundColor
             paint.typeface = style.typeface
 
-            var low = minimumSize
-            var high = preferredSize
-            val alignment = if (isControlLabel) {
-                Layout.Alignment.ALIGN_CENTER
-            } else {
-                Layout.Alignment.ALIGN_NORMAL
+            val alignment = when {
+                isControlLabel -> Layout.Alignment.ALIGN_CENTER
+                region.layoutHint?.alignment.equals("CENTER", ignoreCase = true) ->
+                    Layout.Alignment.ALIGN_CENTER
+                region.layoutHint?.alignment.equals("END", ignoreCase = true) ->
+                    Layout.Alignment.ALIGN_OPPOSITE
+                else -> Layout.Alignment.ALIGN_NORMAL
             }
-            var best = createTextLayout(region.translation, paint, layoutWidth, low, alignment)
-            repeat(8) {
-                val candidateSize = (low + high) / 2f
-                val candidate = createTextLayout(
-                    region.translation, paint, layoutWidth, candidateSize, alignment
-                )
-                if (candidate.height <= layoutBounds.height()) {
-                    low = candidateSize
-                    best = candidate
-                } else {
-                    high = candidateSize
+            val allowOverflowMore = region.role == SemanticTextRole.BODY &&
+                region.source.textEraseBounds().size >= MINIMUM_OVERFLOW_BODY_REGIONS &&
+                region.source.text.count { !it.isWhitespace() } >=
+                MINIMUM_OVERFLOW_BODY_CHARACTERS &&
+                bounds.width().toDouble() * bounds.height() /
+                (canvas.width.toDouble() * canvas.height) >=
+                MINIMUM_OVERFLOW_BODY_AREA_RATIO
+            val shapedLayout = ShapeAwareTextLayout.layout(
+                text = region.translation,
+                paint = paint,
+                renderSlots = renderSlots,
+                preferredTextSizePx = layoutMetrics.preferredTextSizePx,
+                minimumTextSizePx = layoutMetrics.minimumTextSizePx,
+                maximumLines = layoutMetrics.maximumLines,
+                alignment = alignment,
+                horizontalPadding = horizontalPadding,
+                allowOverflowMore = allowOverflowMore
+            )
+            if (shapedLayout == null) {
+                region.source.textEraseBounds().forEach { sourceBounds ->
+                    canvas.drawBitmap(sourceBitmap, sourceBounds, sourceBounds, null)
                 }
+                continue
             }
 
-            val x = layoutBounds.left + horizontalPadding.toFloat()
-            val y = bounds.top + maxOf(0f, (bounds.height() - best.getLineBottom(0)) / 2f)
-            canvas.save()
-            canvas.clipRect(layoutBounds)
-            canvas.translate(x, y)
-            best.draw(canvas)
-            canvas.restore()
-
-            val widestLine = (0 until best.lineCount)
-                .maxOfOrNull { best.getLineWidth(it) } ?: 0f
-            val textLeft = if (alignment == Layout.Alignment.ALIGN_CENTER) {
-                x + (layoutWidth - widestLine) / 2f
-            } else {
-                x
+            paint.textSize = shapedLayout.textSizePx
+            shapedLayout.segments.forEach { segment ->
+                val x = segment.bounds.left + segment.horizontalPadding.toFloat()
+                val y = segment.bounds.top + maxOf(
+                    0f,
+                    (segment.bounds.height() - segment.layout.height) / 2f
+                )
+                canvas.save()
+                canvas.clipRect(segment.bounds)
+                canvas.translate(x, y)
+                segment.layout.draw(canvas)
+                canvas.restore()
             }
-            val restorePadding = maxOf(4, bounds.height() / 5)
             renderedRegions.add(
                 RenderedRegion(
-                    bounds = Rect(
-                        minOf(bounds.left - restorePadding, textLeft.toInt()).coerceAtLeast(0),
-                        (bounds.top - restorePadding).coerceAtLeast(0),
-                        maxOf(bounds.right + restorePadding, (textLeft + widestLine).toInt())
-                            .coerceAtMost(canvas.width),
-                        maxOf(bounds.bottom + restorePadding, (y + best.height).toInt())
-                            .coerceAtMost(canvas.height)
-                    ),
+                    bounds = Rect(bounds),
                     sourceText = region.source.text,
                     translatedText = region.translation,
                     consensusScore = region.source.consensusScore,
-                    passCount = region.source.passCount
+                    passCount = region.source.passCount,
+                    outcome = shapedLayout.outcome
                 )
             )
         }
@@ -1082,10 +1428,15 @@ class ImageTranslateActivity : AppCompatActivity() {
         inverse.mapPoints(imagePoint)
         val imageX = imagePoint[0].toInt()
         val imageY = imagePoint[1].toInt()
-        val region = replacementRegions
-            .filter { it.bounds.contains(imageX, imageY) }
-            .minByOrNull { it.bounds.width().toLong() * it.bounds.height() }
+        val matched = replacementRegions.withIndex()
+            .filter { it.value.bounds.contains(imageX, imageY) }
+            .minByOrNull { it.value.bounds.width().toLong() * it.value.bounds.height() }
             ?: return false
+        val region = matched.value
+        if (region.overflow) {
+            showReplacementInfo(matched.index, viewX, viewY)
+            return true
+        }
 
         val canvas = Canvas(current)
         if (region.showingOriginal) {
@@ -1505,7 +1856,17 @@ class ImageTranslateActivity : AppCompatActivity() {
                 consensusScore = item.consensusScore,
                 passCount = item.passCount,
                 modelConfidence = item.modelConfidence,
-                recognizerScript = item.recognizerScript
+                recognizerScript = item.recognizerScript,
+                sourceBlockId = item.sourceBlockId,
+                sourceLineIndex = item.sourceLineIndex,
+                componentBounds = item.componentBounds.map { bounds ->
+                    Rect(
+                        (bounds.left * scaleX).toInt().coerceIn(0, processingBitmap.width),
+                        (bounds.top * scaleY).toInt().coerceIn(0, processingBitmap.height),
+                        (bounds.right * scaleX).toInt().coerceIn(0, processingBitmap.width),
+                        (bounds.bottom * scaleY).toInt().coerceIn(0, processingBitmap.height)
+                    )
+                }
             )
         }
     }

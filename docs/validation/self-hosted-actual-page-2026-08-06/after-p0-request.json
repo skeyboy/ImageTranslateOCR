@@ -1,0 +1,566 @@
+{
+  "schemaVersion": 2,
+  "requestId": "actual-page-after-p0-direct-20260806",
+  "sessionId": "actual-page-after-p0-validation",
+  "generation": 1,
+  "translationRevision": 1,
+  "scene": "STATIC_IMAGE_VALIDATION",
+  "viewport": {
+    "width": 388,
+    "height": 894,
+    "rotationDegrees": 0
+  },
+  "translation": {
+    "mode": "ENGLISH_TO_CHINESE",
+    "sourceLanguage": "en",
+    "targetLanguage": "zh",
+    "preserveIdentifiers": true,
+    "useDocumentContext": true
+  },
+  "documentContext": {
+    "text": "[BODY] During the Anhui inspection,Xi also\nemphasized the need to strengthen the\nprotection of historical and cultural\nheritage,as well as the promotion of\ncreative transformation and innovative\ndevelopment of fine traditional culture.\n[BODY] Tongcheng has woven the values\nassociated with the alley into community\nwork and grassroots governance,using\npersuasion,empathy and compromise to\nhelp resolve disputes before they escalate.\n[BODY] That emphasis on accommodation,Zhang\nstressed,does not mean asking people to\nyield without principle.\"It's not simply\ngiving way,still less forcing someone to do\nso,\"he said.\"It is a gesture the stronger\nside takes the first step,while morality and\nlaw work together.\n[BODY] The approach is also gaining broader\ninstitutional backing.On July 24,the\nStanding Committee of the Anhui\nProvincial People's Congress adopted",
+    "sourceLanguage": "en",
+    "readingOrderRegionIds": [
+      "semantic-dc5d1bd8-region-0",
+      "semantic-dc5d1bd8-region-1",
+      "semantic-dc5d1bd8-region-2",
+      "semantic-dc5d1bd8-region-3",
+      "semantic-dc5d1bd8-region-4",
+      "semantic-dc5d1bd8-region-5",
+      "semantic-10dfad85-region-0",
+      "semantic-10dfad85-region-1",
+      "semantic-10dfad85-region-2",
+      "semantic-10dfad85-region-3",
+      "semantic-10dfad85-region-4",
+      "semantic-3bcf99ec-region-0",
+      "semantic-3bcf99ec-region-1",
+      "semantic-3bcf99ec-region-2",
+      "semantic-3bcf99ec-region-3",
+      "semantic-3bcf99ec-region-4",
+      "semantic-3bcf99ec-region-5",
+      "semantic-3bcf99ec-region-6",
+      "semantic-86cb33cc-region-0",
+      "semantic-86cb33cc-region-1",
+      "semantic-86cb33cc-region-2",
+      "semantic-86cb33cc-region-3"
+    ]
+  },
+  "groups": [
+    {
+      "groupId": "semantic-dc5d1bd8",
+      "role": "BODY",
+      "translationUnit": "GROUP",
+      "sourceText": "During the Anhui inspection,Xi also\nemphasized the need to strengthen the\nprotection of historical and cultural\nheritage,as well as the promotion of\ncreative transformation and innovative\ndevelopment of fine traditional culture.",
+      "memberRegionIds": [
+        "semantic-dc5d1bd8-region-0",
+        "semantic-dc5d1bd8-region-1",
+        "semantic-dc5d1bd8-region-2",
+        "semantic-dc5d1bd8-region-3",
+        "semantic-dc5d1bd8-region-4",
+        "semantic-dc5d1bd8-region-5"
+      ],
+      "readingOrder": 0,
+      "groupingConfidence": 0.8199999928474426,
+      "groupingEvidence": [
+        "CENTER_ALIGNED",
+        "GEOMETRY_INFERRED",
+        "HORIZONTAL_OVERLAP",
+        "LEFT_ALIGNED",
+        "LINE_GAP",
+        "PUNCTUATION_CONTINUATION"
+      ],
+      "bounds": {
+        "left": 8,
+        "top": 115,
+        "right": 347,
+        "bottom": 286
+      }
+    },
+    {
+      "groupId": "semantic-10dfad85",
+      "role": "BODY",
+      "translationUnit": "GROUP",
+      "sourceText": "Tongcheng has woven the values\nassociated with the alley into community\nwork and grassroots governance,using\npersuasion,empathy and compromise to\nhelp resolve disputes before they escalate.",
+      "memberRegionIds": [
+        "semantic-10dfad85-region-0",
+        "semantic-10dfad85-region-1",
+        "semantic-10dfad85-region-2",
+        "semantic-10dfad85-region-3",
+        "semantic-10dfad85-region-4"
+      ],
+      "readingOrder": 1,
+      "groupingConfidence": 0.8199999928474426,
+      "groupingEvidence": [
+        "CENTER_ALIGNED",
+        "GEOMETRY_INFERRED",
+        "HORIZONTAL_OVERLAP",
+        "LEFT_ALIGNED",
+        "LINE_GAP",
+        "PUNCTUATION_CONTINUATION"
+      ],
+      "bounds": {
+        "left": 7,
+        "top": 318,
+        "right": 373,
+        "bottom": 457
+      }
+    },
+    {
+      "groupId": "semantic-3bcf99ec",
+      "role": "BODY",
+      "translationUnit": "GROUP",
+      "sourceText": "That emphasis on accommodation,Zhang\nstressed,does not mean asking people to\nyield without principle.\"It's not simply\ngiving way,still less forcing someone to do\nso,\"he said.\"It is a gesture the stronger\nside takes the first step,while morality and\nlaw work together.",
+      "memberRegionIds": [
+        "semantic-3bcf99ec-region-0",
+        "semantic-3bcf99ec-region-1",
+        "semantic-3bcf99ec-region-2",
+        "semantic-3bcf99ec-region-3",
+        "semantic-3bcf99ec-region-4",
+        "semantic-3bcf99ec-region-5",
+        "semantic-3bcf99ec-region-6"
+      ],
+      "readingOrder": 2,
+      "groupingConfidence": 0.8199999928474426,
+      "groupingEvidence": [
+        "CENTER_ALIGNED",
+        "GEOMETRY_INFERRED",
+        "HORIZONTAL_OVERLAP",
+        "LEFT_ALIGNED",
+        "LINE_GAP",
+        "PUNCTUATION_CONTINUATION"
+      ],
+      "bounds": {
+        "left": 7,
+        "top": 488,
+        "right": 375,
+        "bottom": 687
+      }
+    },
+    {
+      "groupId": "semantic-86cb33cc",
+      "role": "BODY",
+      "translationUnit": "GROUP",
+      "sourceText": "The approach is also gaining broader\ninstitutional backing.On July 24,the\nStanding Committee of the Anhui\nProvincial People's Congress adopted",
+      "memberRegionIds": [
+        "semantic-86cb33cc-region-0",
+        "semantic-86cb33cc-region-1",
+        "semantic-86cb33cc-region-2",
+        "semantic-86cb33cc-region-3"
+      ],
+      "readingOrder": 3,
+      "groupingConfidence": 0.8199999928474426,
+      "groupingEvidence": [
+        "CENTER_ALIGNED",
+        "GEOMETRY_INFERRED",
+        "HORIZONTAL_OVERLAP",
+        "LEFT_ALIGNED",
+        "LINE_GAP",
+        "PUNCTUATION_CONTINUATION"
+      ],
+      "bounds": {
+        "left": 8,
+        "top": 718,
+        "right": 328,
+        "bottom": 827
+      }
+    }
+  ],
+  "regions": [
+    {
+      "regionId": "semantic-dc5d1bd8-region-0",
+      "groupId": "semantic-dc5d1bd8",
+      "sourceRevision": 1,
+      "text": "During the Anhui inspection,Xi also",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh",
+      "readingOrder": 0,
+      "blockId": null,
+      "lineIndex": 0,
+      "confidence": 0.8722278475761414,
+      "bounds": {
+        "left": 8,
+        "top": 115,
+        "right": 316,
+        "bottom": 135
+      }
+    },
+    {
+      "regionId": "semantic-dc5d1bd8-region-1",
+      "groupId": "semantic-dc5d1bd8",
+      "sourceRevision": 1,
+      "text": "emphasized the need to strengthen the",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh",
+      "readingOrder": 1,
+      "blockId": null,
+      "lineIndex": null,
+      "confidence": 0.904541015625,
+      "bounds": {
+        "left": 8,
+        "top": 149,
+        "right": 347,
+        "bottom": 167
+      }
+    },
+    {
+      "regionId": "semantic-dc5d1bd8-region-2",
+      "groupId": "semantic-dc5d1bd8",
+      "sourceRevision": 1,
+      "text": "protection of historical and cultural",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh",
+      "readingOrder": 2,
+      "blockId": null,
+      "lineIndex": null,
+      "confidence": 0.9074336886405945,
+      "bounds": {
+        "left": 8,
+        "top": 178,
+        "right": 310,
+        "bottom": 196
+      }
+    },
+    {
+      "regionId": "semantic-dc5d1bd8-region-3",
+      "groupId": "semantic-dc5d1bd8",
+      "sourceRevision": 1,
+      "text": "heritage,as well as the promotion of",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh",
+      "readingOrder": 3,
+      "blockId": null,
+      "lineIndex": null,
+      "confidence": 0.8984375,
+      "bounds": {
+        "left": 8,
+        "top": 209,
+        "right": 322,
+        "bottom": 226
+      }
+    },
+    {
+      "regionId": "semantic-dc5d1bd8-region-4",
+      "groupId": "semantic-dc5d1bd8",
+      "sourceRevision": 1,
+      "text": "creative transformation and innovative",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh",
+      "readingOrder": 4,
+      "blockId": null,
+      "lineIndex": null,
+      "confidence": 0.9006696343421936,
+      "bounds": {
+        "left": 8,
+        "top": 239,
+        "right": 338,
+        "bottom": 254
+      }
+    },
+    {
+      "regionId": "semantic-dc5d1bd8-region-5",
+      "groupId": "semantic-dc5d1bd8",
+      "sourceRevision": 1,
+      "text": "development of fine traditional culture.",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh",
+      "readingOrder": 5,
+      "blockId": null,
+      "lineIndex": null,
+      "confidence": 0.8902994990348816,
+      "bounds": {
+        "left": 8,
+        "top": 269,
+        "right": 342,
+        "bottom": 286
+      }
+    },
+    {
+      "regionId": "semantic-10dfad85-region-0",
+      "groupId": "semantic-10dfad85",
+      "sourceRevision": 1,
+      "text": "Tongcheng has woven the values",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh",
+      "readingOrder": 1000,
+      "blockId": null,
+      "lineIndex": 0,
+      "confidence": 0.903245210647583,
+      "bounds": {
+        "left": 7,
+        "top": 318,
+        "right": 292,
+        "bottom": 336
+      }
+    },
+    {
+      "regionId": "semantic-10dfad85-region-1",
+      "groupId": "semantic-10dfad85",
+      "sourceRevision": 1,
+      "text": "associated with the alley into community",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh",
+      "readingOrder": 1001,
+      "blockId": null,
+      "lineIndex": 1,
+      "confidence": 0.9017857313156128,
+      "bounds": {
+        "left": 8,
+        "top": 348,
+        "right": 359,
+        "bottom": 366
+      }
+    },
+    {
+      "regionId": "semantic-10dfad85-region-2",
+      "groupId": "semantic-10dfad85",
+      "sourceRevision": 1,
+      "text": "work and grassroots governance,using",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh",
+      "readingOrder": 1002,
+      "blockId": null,
+      "lineIndex": 2,
+      "confidence": 0.8870738744735718,
+      "bounds": {
+        "left": 7,
+        "top": 378,
+        "right": 344,
+        "bottom": 398
+      }
+    },
+    {
+      "regionId": "semantic-10dfad85-region-3",
+      "groupId": "semantic-10dfad85",
+      "sourceRevision": 1,
+      "text": "persuasion,empathy and compromise to",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh",
+      "readingOrder": 1003,
+      "blockId": null,
+      "lineIndex": 3,
+      "confidence": 0.8726325631141663,
+      "bounds": {
+        "left": 9,
+        "top": 409,
+        "right": 358,
+        "bottom": 428
+      }
+    },
+    {
+      "regionId": "semantic-10dfad85-region-4",
+      "groupId": "semantic-10dfad85",
+      "sourceRevision": 1,
+      "text": "help resolve disputes before they escalate.",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh",
+      "readingOrder": 1004,
+      "blockId": null,
+      "lineIndex": 4,
+      "confidence": 0.8990542888641357,
+      "bounds": {
+        "left": 9,
+        "top": 440,
+        "right": 373,
+        "bottom": 457
+      }
+    },
+    {
+      "regionId": "semantic-3bcf99ec-region-0",
+      "groupId": "semantic-3bcf99ec",
+      "sourceRevision": 1,
+      "text": "That emphasis on accommodation,Zhang",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh",
+      "readingOrder": 2000,
+      "blockId": null,
+      "lineIndex": 0,
+      "confidence": 0.8857717514038086,
+      "bounds": {
+        "left": 7,
+        "top": 488,
+        "right": 367,
+        "bottom": 506
+      }
+    },
+    {
+      "regionId": "semantic-3bcf99ec-region-1",
+      "groupId": "semantic-3bcf99ec",
+      "sourceRevision": 1,
+      "text": "stressed,does not mean asking people to",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh",
+      "readingOrder": 2001,
+      "blockId": null,
+      "lineIndex": 1,
+      "confidence": 0.886603832244873,
+      "bounds": {
+        "left": 8,
+        "top": 518,
+        "right": 366,
+        "bottom": 535
+      }
+    },
+    {
+      "regionId": "semantic-3bcf99ec-region-2",
+      "groupId": "semantic-3bcf99ec",
+      "sourceRevision": 1,
+      "text": "yield without principle.\"It's not simply",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh",
+      "readingOrder": 2002,
+      "blockId": null,
+      "lineIndex": 2,
+      "confidence": 0.8395182490348816,
+      "bounds": {
+        "left": 8,
+        "top": 547,
+        "right": 334,
+        "bottom": 567
+      }
+    },
+    {
+      "regionId": "semantic-3bcf99ec-region-3",
+      "groupId": "semantic-3bcf99ec",
+      "sourceRevision": 1,
+      "text": "giving way,still less forcing someone to do",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh",
+      "readingOrder": 2003,
+      "blockId": null,
+      "lineIndex": 3,
+      "confidence": 0.872994065284729,
+      "bounds": {
+        "left": 8,
+        "top": 578,
+        "right": 375,
+        "bottom": 596
+      }
+    },
+    {
+      "regionId": "semantic-3bcf99ec-region-4",
+      "groupId": "semantic-3bcf99ec",
+      "sourceRevision": 1,
+      "text": "so,\"he said.\"It is a gesture the stronger",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh",
+      "readingOrder": 2004,
+      "blockId": null,
+      "lineIndex": 4,
+      "confidence": 0.8336148858070374,
+      "bounds": {
+        "left": 12,
+        "top": 606,
+        "right": 372,
+        "bottom": 626
+      }
+    },
+    {
+      "regionId": "semantic-3bcf99ec-region-5",
+      "groupId": "semantic-3bcf99ec",
+      "sourceRevision": 1,
+      "text": "side takes the first step,while morality and",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh",
+      "readingOrder": 2005,
+      "blockId": null,
+      "lineIndex": 5,
+      "confidence": 0.9020353555679321,
+      "bounds": {
+        "left": 8,
+        "top": 638,
+        "right": 375,
+        "bottom": 656
+      }
+    },
+    {
+      "regionId": "semantic-3bcf99ec-region-6",
+      "groupId": "semantic-3bcf99ec",
+      "sourceRevision": 1,
+      "text": "law work together.",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh",
+      "readingOrder": 2006,
+      "blockId": null,
+      "lineIndex": 6,
+      "confidence": 0.90478515625,
+      "bounds": {
+        "left": 8,
+        "top": 668,
+        "right": 165,
+        "bottom": 687
+      }
+    },
+    {
+      "regionId": "semantic-86cb33cc-region-0",
+      "groupId": "semantic-86cb33cc",
+      "sourceRevision": 1,
+      "text": "The approach is also gaining broader",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh",
+      "readingOrder": 3000,
+      "blockId": null,
+      "lineIndex": 0,
+      "confidence": 0.8826864957809448,
+      "bounds": {
+        "left": 8,
+        "top": 718,
+        "right": 326,
+        "bottom": 737
+      }
+    },
+    {
+      "regionId": "semantic-86cb33cc-region-1",
+      "groupId": "semantic-86cb33cc",
+      "sourceRevision": 1,
+      "text": "institutional backing.On July 24,the",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh",
+      "readingOrder": 3001,
+      "blockId": null,
+      "lineIndex": 1,
+      "confidence": 0.8896780014038086,
+      "bounds": {
+        "left": 8,
+        "top": 748,
+        "right": 322,
+        "bottom": 767
+      }
+    },
+    {
+      "regionId": "semantic-86cb33cc-region-2",
+      "groupId": "semantic-86cb33cc",
+      "sourceRevision": 1,
+      "text": "Standing Committee of the Anhui",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh",
+      "readingOrder": 3002,
+      "blockId": null,
+      "lineIndex": 2,
+      "confidence": 0.8816550970077515,
+      "bounds": {
+        "left": 9,
+        "top": 779,
+        "right": 296,
+        "bottom": 798
+      }
+    },
+    {
+      "regionId": "semantic-86cb33cc-region-3",
+      "groupId": "semantic-86cb33cc",
+      "sourceRevision": 1,
+      "text": "Provincial People's Congress adopted",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh",
+      "readingOrder": 3003,
+      "blockId": null,
+      "lineIndex": 3,
+      "confidence": 0.8823529481887817,
+      "bounds": {
+        "left": 8,
+        "top": 806,
+        "right": 328,
+        "bottom": 827
+      }
+    }
+  ]
+}

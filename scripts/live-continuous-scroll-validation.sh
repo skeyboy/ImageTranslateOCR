@@ -6,6 +6,7 @@ scroll_runs="${SCROLL_RUNS:-30}"
 theme="${SCROLL_THEME:-light}"
 background_mode="${SCROLL_BACKGROUND_MODE:-OFF}"
 experience_mode="${SCROLL_EXPERIENCE_MODE:-DEFAULT}"
+gesture_profile="${SCROLL_GESTURE_PROFILE:-FIXED}"
 port="${SCROLL_SERVER_PORT:-8766}"
 page_package="${SCROLL_PAGE_PACKAGE:-com.android.browser}"
 package_name="com.example.imagetranslate"
@@ -33,6 +34,13 @@ case "$experience_mode" in
     DEFAULT|ENHANCED) ;;
     *)
         echo "Unsupported SCROLL_EXPERIENCE_MODE: $experience_mode" >&2
+        exit 1
+        ;;
+esac
+case "$gesture_profile" in
+    FIXED|HUMAN_BURST) ;;
+    *)
+        echo "Unsupported SCROLL_GESTURE_PROFILE: $gesture_profile" >&2
         exit 1
         ;;
 esac
@@ -224,15 +232,21 @@ wait_for_accessibility_service() {
 
 wait_for_enhanced_translation() {
     for attempt in $(seq 1 120); do
-        local session_lines lines
+        local session_lines lines enhanced_window
         session_lines=$(
             "${adb_command[@]}" logcat -d -v raw -s ScreenCaptureSession:I \
                 2>/dev/null || true
         )
         lines=$(metrics_lines)
-        if [[ "$session_lines" == *"Live overlay experience changed: ENHANCED"* &&
-              "$lines" == *'"event":"overlay_translation_completed"'* &&
-              "$lines" == *'"event":"overlay_translation_presented"'* ]]; then
+        enhanced_window=$(
+            "${adb_command[@]}" shell dumpsys window windows 2>/dev/null |
+                rg -o 'ty=ACCESSIBILITY_OVERLAY|type=2032|TYPE_ACCESSIBILITY_OVERLAY' |
+                head -n 1 || true
+        )
+        if [[ "$lines" == *'"event":"overlay_translation_completed"'* &&
+              "$lines" == *'"event":"overlay_translation_presented"'* ]] &&
+            [[ "$session_lines" == *"Live overlay experience changed: ENHANCED"* ||
+               -n "$enhanced_window" ]]; then
             return 0
         fi
         sleep 0.25
@@ -283,12 +297,25 @@ metrics_lines() {
 }
 
 wait_for_initial_translation() {
-    for attempt in $(seq 1 80); do
-        local lines
+    local warmup_triggered=false
+    for attempt in $(seq 1 120); do
+        local lines completion presented
         lines=$(metrics_lines)
-        if [[ "$lines" == *'"event":"overlay_translation_completed"'* &&
-              "$lines" == *'"event":"overlay_translation_presented"'* ]]; then
+        completion=$(jq -c 'select(.event == "overlay_translation_completed")' \
+            <<< "$lines" | tail -n 1)
+        presented=$(jq -c 'select(.event == "overlay_translation_presented")' \
+            <<< "$lines" | tail -n 1)
+        if [[ -n "$completion" && -n "$presented" ]] &&
+            (( $(jq -r '.patches' <<< "$completion") > 0 )) &&
+            (( $(jq -r '.generation' <<< "$presented") ==
+               $(jq -r '.generation' <<< "$completion") )); then
             return 0
+        fi
+        if [[ "$warmup_triggered" == false && -n "$completion" && -n "$presented" ]] &&
+            (( $(jq -r '.patches' <<< "$completion") == 0 )); then
+            warmup_triggered=true
+            sleep 0.35
+            "${adb_command[@]}" shell input swipe 720 2100 720 1600 260
         fi
         sleep 0.25
     done
@@ -512,17 +539,18 @@ wait_for_server_probe >/dev/null
 close_browser_translation_prompt
 
 "${adb_command[@]}" logcat -c
+if [[ "$experience_mode" == "ENHANCED" ]]; then
+    "${adb_command[@]}" shell settings put secure enabled_accessibility_services \
+        "$validation_accessibility_services" >/dev/null
+    "${adb_command[@]}" shell settings put secure accessibility_enabled 1 >/dev/null
+    wait_for_accessibility_service
+fi
 "${adb_command[@]}" shell am start -n "$component" \
     --es background_mode "$background_mode" \
     --es experience_mode "$experience_mode" >/dev/null
 accept_projection_permission
 wait_for_initial_translation
 if [[ "$experience_mode" == "ENHANCED" ]]; then
-    "${adb_command[@]}" logcat -c
-    "${adb_command[@]}" shell settings put secure enabled_accessibility_services \
-        "$validation_accessibility_services" >/dev/null
-    "${adb_command[@]}" shell settings put secure accessibility_enabled 1 >/dev/null
-    wait_for_accessibility_service
     wait_for_enhanced_translation
 else
     close_browser_translation_prompt
@@ -546,11 +574,7 @@ if [[ "$experience_mode" == "ENHANCED" ]]; then
 else
     resolved_experience="DEFAULT"
 fi
-if [[ "$experience_mode" == "ENHANCED" ]]; then
-    read -r current_touch current_scroll <<< "$(wait_for_server_probe)"
-else
-    read -r current_touch current_scroll <<< "$(probe_state "$initial_probe_xml")"
-fi
+read -r current_touch current_scroll <<< "$(wait_for_server_probe)"
 probe_bounds=$(xmllint --xpath \
     'string((//node[starts-with(@text,"Touch probe count")])[1]/@bounds)' \
     "$initial_probe_xml")
@@ -558,11 +582,87 @@ read -r probe_x probe_y <<< "$(center_from_bounds "$probe_bounds")"
 video_split_run=$(((scroll_runs + 1) / 2))
 start_video_segment 1
 
+capture_next_motion_frame=true
+motion_capture_pid=""
+gesture_variant="fixed"
+swipes_performed=1
+
+perform_swipe() {
+    local x="$1"
+    local start_y="$2"
+    local end_y="$3"
+    local duration_ms="$4"
+    if [[ "$capture_next_motion_frame" == true ]]; then
+        (
+            sleep 0.22
+            "${adb_command[@]}" exec-out screencap -p \
+                > "$output_directory/during-first-motion.png"
+        ) &
+        motion_capture_pid=$!
+        capture_next_motion_frame=false
+    fi
+    "${adb_command[@]}" shell input swipe \
+        "$x" "$start_y" "$x" "$end_y" "$duration_ms"
+}
+
+wait_for_motion_capture() {
+    if [[ -n "$motion_capture_pid" ]]; then
+        wait "$motion_capture_pid"
+        motion_capture_pid=""
+    fi
+}
+
+perform_human_scroll_burst() {
+    local run="$1"
+    swipes_performed=3
+    case $(((run - 1) % 4)) in
+        0)
+            gesture_variant="long_then_two_flicks"
+            perform_swipe 660 2520 1260 430
+            sleep 0.18
+            perform_swipe 790 2380 1040 190
+            sleep 0.14
+            perform_swipe 710 2210 1430 170
+            ;;
+        1)
+            gesture_variant="triple_fast_flick"
+            perform_swipe 820 2460 1180 180
+            sleep 0.12
+            perform_swipe 640 2320 980 160
+            sleep 0.10
+            perform_swipe 750 2200 1360 200
+            ;;
+        2)
+            gesture_variant="hesitation_then_resume"
+            perform_swipe 690 2480 1330 260
+            sleep 0.34
+            perform_swipe 840 2340 1080 220
+            sleep 0.18
+            perform_swipe 620 2190 1410 190
+            ;;
+        3)
+            gesture_variant="mixed_distance_flicks"
+            perform_swipe 780 2500 1450 340
+            sleep 0.15
+            perform_swipe 650 2350 1010 180
+            sleep 0.13
+            perform_swipe 830 2230 1260 260
+            ;;
+    esac
+}
+
 for run in $(seq 1 "$scroll_runs"); do
     touch_before=$current_touch
     scroll_before=$current_scroll
     "${adb_command[@]}" logcat -c
-    "${adb_command[@]}" shell input swipe 720 2400 720 1050 550
+    if [[ "$gesture_profile" == "HUMAN_BURST" ]]; then
+        perform_human_scroll_burst "$run"
+    else
+        gesture_variant="fixed_long_swipe"
+        swipes_performed=1
+        perform_swipe 720 2400 1050 550
+    fi
+    wait_for_motion_capture
     wait_for_scroll_translation
     sleep 0.65
 
@@ -580,17 +680,15 @@ for run in $(seq 1 "$scroll_runs"); do
         <<< "$lines")
     presented_count=$(jq -s \
         'map(select(.event == "overlay_translation_presented")) | length' <<< "$lines")
+    stale_presentation_drop_count=$(jq -s \
+        'map(select(.event == "overlay_translation_stale_presentation_dropped")) | length' \
+        <<< "$lines")
 
     "${adb_command[@]}" shell input tap "$probe_x" "$probe_y"
     sleep 0.2
-    if [[ "$experience_mode" == "ENHANCED" ]]; then
-        read -r touch_after scroll_after_touch <<< "$(
-            wait_for_server_probe "$((touch_before + 1))"
-        )"
-    else
-        touched_xml=$(wait_for_probe)
-        read -r touch_after scroll_after_touch <<< "$(probe_state "$touched_xml")"
-    fi
+    read -r touch_after scroll_after_touch <<< "$(
+        wait_for_server_probe "$((touch_before + 1))"
+    )"
     scroll_after=$scroll_after_touch
     current_touch=$touch_after
     current_scroll=$scroll_after
@@ -605,9 +703,12 @@ for run in $(seq 1 "$scroll_runs"); do
         --argjson touch_before "$touch_before" \
         --argjson touch_after "$touch_after" \
         --argjson touch_delta "$touch_delta" \
+        --arg gesture_variant "$gesture_variant" \
+        --argjson swipes_performed "$swipes_performed" \
         --argjson completion_count "$completion_count" \
         --argjson hidden_count "$hidden_count" \
         --argjson presented_count "$presented_count" \
+        --argjson stale_presentation_drop_count "$stale_presentation_drop_count" \
         --argjson hidden "$hidden" \
         --argjson completion "$completion" \
         --argjson presented "$presented" \
@@ -615,8 +716,10 @@ for run in $(seq 1 "$scroll_runs"); do
           scroll_delta:$scroll_delta, scroll_pass:($scroll_delta >= 200),
           touch_before:$touch_before, touch_after:$touch_after,
           touch_delta:$touch_delta, touch_pass:($touch_delta == 1),
+          gesture_variant:$gesture_variant, swipes_performed:$swipes_performed,
           completion_count:$completion_count, hidden_count:$hidden_count,
-          presented_count:$presented_count, hidden:$hidden,
+          presented_count:$presented_count,
+          stale_presentation_drop_count:$stale_presentation_drop_count, hidden:$hidden,
           completion:$completion, presented:$presented}' \
         | tee -a "$results_file" >/dev/null
 
@@ -626,6 +729,7 @@ for run in $(seq 1 "$scroll_runs"); do
             > "$output_directory/checkpoints/scroll-$(printf '%02d' "$run").png"
     fi
     echo "[$run/$scroll_runs] scroll=$scroll_delta touch=$touch_delta " \
+        "gesture=$gesture_variant swipes=$swipes_performed " \
         "hidden=$(jq -r '.motion_to_hidden_ms' <<< "$hidden")ms " \
         "commit=$(jq -r '.last_motion_to_commit_ms' <<< "$completion")ms"
     if [[ "$run" == "$video_split_run" ]]; then
@@ -649,12 +753,7 @@ idle_activity_count=$(jq -s \
 idle_restoration_count=$(jq -s \
     'map(select(.event == "settled_viewport_restored")) | length' <<< "$idle_lines")
 
-if [[ "$experience_mode" == "ENHANCED" ]]; then
-    read -r _ anchor_before <<< "$(wait_for_server_probe "$current_touch")"
-else
-    before_toggle_xml=$(wait_for_probe)
-    read -r _ anchor_before <<< "$(probe_state "$before_toggle_xml")"
-fi
+read -r _ anchor_before <<< "$(wait_for_server_probe "$current_touch")"
 marker_bounds=$(xmllint --xpath \
     'string((//node[@text="Protected visual marker"])[1]/@bounds)' \
     "$initial_probe_xml")
@@ -677,12 +776,7 @@ toggle_hidden_count=$(jq -s \
 toggle_visible_count=$(jq -s \
     'map(select(.event == "overlay_translation_visibility_changed" and
                 .visible == true)) | length' <<< "$toggle_lines")
-if [[ "$experience_mode" == "ENHANCED" ]]; then
-    read -r _ anchor_translation <<< "$(wait_for_server_probe "$current_touch")"
-else
-    translation_xml=$(wait_for_probe)
-    read -r _ anchor_translation <<< "$(probe_state "$translation_xml")"
-fi
+read -r _ anchor_translation <<< "$(wait_for_server_probe "$current_touch")"
 
 marker_coordinates=$(sed 's/]\[/,/' <<< "$marker_bounds" | tr -d '[]' | tr ',' ' ')
 read -r marker_left marker_top marker_right marker_bottom <<< "$marker_coordinates"
@@ -717,6 +811,7 @@ jq -s \
     --arg theme "$theme" \
     --arg background_mode "$background_mode" \
     --arg experience_mode "$experience_mode" \
+    --arg gesture_profile "$gesture_profile" \
     --arg resolved_experience "$resolved_experience" \
     --argjson expected_runs "$scroll_runs" \
     --argjson idle_activity_count "$idle_activity_count" \
@@ -735,6 +830,7 @@ jq -s \
       theme: $theme,
       background_mode: $background_mode,
       experience_mode: $experience_mode,
+      gesture_profile: $gesture_profile,
       resolved_experience: $resolved_experience,
       runs: length,
       expected_runs: $expected_runs,
@@ -744,6 +840,7 @@ jq -s \
       single_hidden_passes: (map(select(.hidden_count == 1)) | length),
       atomic_presentation_passes: (map(select(
         .presented_count == 1 and
+        .hidden.translation_layer_cleared == true and
         .presented.atomic_group == true and
         .completion.generation > .hidden.generation and
         .presented.generation == .completion.generation
@@ -757,6 +854,7 @@ jq -s \
       capture_to_commit_p90_ms:
         (map(.completion.capture_to_commit_ms) | percentile(0.9)),
       total_p90_ms: (map(.completion.total_ms) | percentile(0.9)),
+      stale_presentation_drops_total: (map(.stale_presentation_drop_count) | add),
       failed_regions_total: (map(.completion.failed) | add),
       retained_latin_ratio_p90:
         (map(.completion.retained_latin_ratio) | percentile(0.9)),
@@ -775,6 +873,8 @@ jq -s \
           (map(select(.scroll_pass)) | length) == $expected_runs and
           (map(select(.completion_count == 1)) | length) == $expected_runs and
           (map(select(.hidden_count == 1)) | length) == $expected_runs and
+          (map(select(.hidden.translation_layer_cleared == true)) | length) ==
+            $expected_runs and
           $idle_activity_count == 0
         ),
         a4_result_freshness: (

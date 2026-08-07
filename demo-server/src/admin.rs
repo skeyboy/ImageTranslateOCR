@@ -1,0 +1,700 @@
+use axum::{
+    extract::{Path, Query, State},
+    http::{HeaderMap, StatusCode, header},
+    response::{Html, IntoResponse, Redirect, Response},
+};
+use base64::{Engine as _, engine::general_purpose::STANDARD};
+use serde::Deserialize;
+
+use crate::{
+    database::{PaginatedRequestAudits, RequestRecord, schema_version_from_request_json},
+    routes::AppState,
+};
+
+const DEFAULT_HISTORY_PAGE_SIZE: i64 = 20;
+
+pub async fn admin_root() -> Redirect {
+    Redirect::temporary("/admin/requests")
+}
+
+#[derive(Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HistoryFilter {
+    status: Option<String>,
+    version: Option<String>,
+    page: Option<i64>,
+    page_size: Option<i64>,
+}
+
+pub async fn request_history(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Query(filter): Query<HistoryFilter>,
+) -> Response {
+    if !admin_authorized(&headers, state.config.bearer_token.as_deref()) {
+        return unauthorized();
+    }
+    let selected_status = filter
+        .status
+        .as_deref()
+        .filter(|status| matches!(*status, "SUCCEEDED" | "FAILED" | "CANCELLED"));
+    let selected_version = filter.version.as_deref().and_then(|version| match version {
+        "2" => Some(2),
+        "3" => Some(3),
+        _ => None,
+    });
+    let page = filter.page.unwrap_or(1).max(1);
+    let page_size = match filter.page_size {
+        Some(50) => 50,
+        Some(100) => 100,
+        _ => DEFAULT_HISTORY_PAGE_SIZE,
+    };
+    match state
+        .database
+        .paginate_audits_with_version_filtered(
+            state.config.request_history_limit,
+            page,
+            page_size,
+            selected_status,
+            selected_version,
+        )
+        .await
+    {
+        Ok(audits) => Html(history_page(
+            audits,
+            state.config.request_history_limit,
+            selected_status,
+            selected_version,
+        ))
+        .into_response(),
+        Err(error) => server_error(error.to_string()),
+    }
+}
+
+pub async fn request_detail(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+) -> Response {
+    if !admin_authorized(&headers, state.config.bearer_token.as_deref()) {
+        return unauthorized();
+    }
+    match state.database.request_record(&id).await {
+        Ok(Some(record)) => Html(detail_page(record)).into_response(),
+        Ok(None) => (StatusCode::NOT_FOUND, "request record not found").into_response(),
+        Err(error) => server_error(error.to_string()),
+    }
+}
+
+pub async fn request_image(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+) -> Response {
+    if !admin_authorized(&headers, state.config.bearer_token.as_deref()) {
+        return unauthorized();
+    }
+    let record = match state.database.request_record(&id).await {
+        Ok(Some(record)) => record,
+        Ok(None) => return (StatusCode::NOT_FOUND, "request record not found").into_response(),
+        Err(error) => return server_error(error.to_string()),
+    };
+    let Some(image) = record.image else {
+        return (StatusCode::NOT_FOUND, "request image not found").into_response();
+    };
+    match tokio::fs::read(&image.image_path).await {
+        Ok(bytes) => (
+            [
+                (header::CONTENT_TYPE, image.mime_type),
+                (header::CACHE_CONTROL, "private, no-store".to_owned()),
+            ],
+            bytes,
+        )
+            .into_response(),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            (StatusCode::NOT_FOUND, "request image file not found").into_response()
+        }
+        Err(error) => server_error(error.to_string()),
+    }
+}
+
+pub async fn rendered_request_image(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+) -> Response {
+    if !admin_authorized(&headers, state.config.bearer_token.as_deref()) {
+        return unauthorized();
+    }
+    let record = match state.database.request_record(&id).await {
+        Ok(Some(record)) => record,
+        Ok(None) => return (StatusCode::NOT_FOUND, "request record not found").into_response(),
+        Err(error) => return server_error(error.to_string()),
+    };
+    let Some(image) = record.rendered_image else {
+        return (StatusCode::NOT_FOUND, "rendered request image not found").into_response();
+    };
+    match tokio::fs::read(&image.image_path).await {
+        Ok(bytes) => (
+            [
+                (header::CONTENT_TYPE, image.mime_type),
+                (header::CACHE_CONTROL, "private, no-store".to_owned()),
+            ],
+            bytes,
+        )
+            .into_response(),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => (
+            StatusCode::NOT_FOUND,
+            "rendered request image file not found",
+        )
+            .into_response(),
+        Err(error) => server_error(error.to_string()),
+    }
+}
+
+pub async fn admin_styles() -> impl IntoResponse {
+    (
+        [(header::CONTENT_TYPE, "text/css; charset=utf-8")],
+        include_str!("../assets/admin.css"),
+    )
+}
+
+pub async fn admin_script() -> impl IntoResponse {
+    (
+        [(header::CONTENT_TYPE, "text/javascript; charset=utf-8")],
+        include_str!("../assets/admin.js"),
+    )
+}
+
+fn history_page(
+    pagination: PaginatedRequestAudits,
+    history_limit: i64,
+    selected_status: Option<&str>,
+    selected_version: Option<u32>,
+) -> String {
+    let rows = if pagination.items.is_empty() {
+        "<tr><td class=\"empty\" colspan=\"10\">暂无请求记录</td></tr>".to_owned()
+    } else {
+        pagination
+            .items
+            .iter()
+            .map(|entry| {
+                let audit = &entry.audit;
+                let status_class = audit.status.to_ascii_lowercase();
+                let (version_class, version_label) = version_badge(entry.schema_version);
+                format!(
+                    "<tr>\
+                        <td><a class=\"request-link\" target=\"_blank\" href=\"/admin/requests/{id}\">{request_id}</a></td>\
+                        <td><span class=\"api-version {version_class}\">{version_label}</span></td>\
+                        <td><span class=\"status status-{status_class}\">{status}</span></td>\
+                        <td>{scene}</td>\
+                        <td class=\"numeric\">{groups}</td>\
+                        <td class=\"numeric\">{regions}</td>\
+                        <td class=\"numeric\">{chars}</td>\
+                        <td>{model}</td>\
+                        <td class=\"numeric\">{duration} ms</td>\
+                        <td><time>{created}</time></td>\
+                    </tr>",
+                    id = escape_html(&audit.id),
+                    request_id = escape_html(&audit.request_id),
+                    version_class = version_class,
+                    version_label = version_label,
+                    status = escape_html(&audit.status),
+                    scene = escape_html(&audit.scene),
+                    groups = audit.group_count,
+                    regions = audit.region_count,
+                    chars = audit.input_chars,
+                    model = escape_html(&audit.model),
+                    duration = audit.duration_ms,
+                    created = escape_html(&audit.created_at),
+                )
+            })
+            .collect::<Vec<_>>()
+            .join("")
+    };
+    let range_start = if pagination.total == 0 {
+        0
+    } else {
+        ((pagination.page - 1) * pagination.page_size + 1) as usize
+    };
+    let range_end = (pagination.page * pagination.page_size).min(pagination.total as i64) as usize;
+    let pagination_controls = pagination_controls(&pagination, selected_status, selected_version);
+    page_shell(
+        "请求历史",
+        &format!(
+            "<header class=\"topbar\">\
+                <div><span class=\"product\">OCR Translation Trace</span><h1>请求历史</h1></div>\
+                <a class=\"health-link\" href=\"/healthz\">服务状态</a>\
+            </header>\
+            <main>\
+                <section class=\"summary-band\">\
+                    <span>匹配记录</span><strong>{total}</strong>\
+                    <span>当前范围</span><strong>{range_start}-{range_end}</strong>\
+                    <span>页码</span><strong>{page}/{total_pages}</strong>\
+                    <span>保留上限</span><strong>{history_limit}</strong>\
+                </section>\
+                <form class=\"history-filters\" method=\"get\" action=\"/admin/requests\">\
+                    <label for=\"status-filter\">状态</label>\
+                    <select id=\"status-filter\" name=\"status\">{status_options}</select>\
+                    <label for=\"version-filter\">版本</label>\
+                    <select id=\"version-filter\" name=\"version\">{version_options}</select>\
+                    <label for=\"page-size-filter\">每页</label>\
+                    <select id=\"page-size-filter\" name=\"pageSize\">{page_size_options}</select>\
+                    <button type=\"submit\">筛选</button>\
+                    <a href=\"/admin/requests\">重置</a>\
+                </form>\
+                <section class=\"table-section\">\
+                    <div class=\"table-scroll\"><table>\
+                        <thead><tr><th>Request ID</th><th>版本</th><th>状态</th><th>场景</th><th>组</th><th>区域</th><th>字符</th><th>模型</th><th>耗时</th><th>时间</th></tr></thead>\
+                        <tbody>{rows}</tbody>\
+                    </table></div>{pagination_controls}\
+                </section>\
+            </main>",
+            total = pagination.total,
+            page = pagination.page,
+            total_pages = pagination.total_pages,
+            status_options = status_options(selected_status),
+            version_options = version_options(selected_version),
+            page_size_options = page_size_options(pagination.page_size),
+        ),
+        "history-page",
+    )
+}
+
+fn page_size_options(selected: i64) -> String {
+    [20, 50, 100]
+        .into_iter()
+        .map(|value| {
+            let selected_attribute = (selected == value)
+                .then_some(" selected")
+                .unwrap_or_default();
+            format!("<option value=\"{value}\"{selected_attribute}>{value} 条</option>")
+        })
+        .collect::<Vec<_>>()
+        .join("")
+}
+
+fn pagination_controls(
+    pagination: &PaginatedRequestAudits,
+    selected_status: Option<&str>,
+    selected_version: Option<u32>,
+) -> String {
+    let link = |page, label: &str, class_name: &str| {
+        format!(
+            "<a class=\"pagination-link {class_name}\" href=\"{}\">{label}</a>",
+            pagination_url(
+                page,
+                pagination.page_size,
+                selected_status,
+                selected_version
+            )
+        )
+    };
+    let disabled = |label: &str, class_name: &str| {
+        format!(
+            "<span class=\"pagination-link {class_name} is-disabled\" aria-disabled=\"true\">{label}</span>"
+        )
+    };
+    let first = if pagination.page > 1 {
+        link(1, "首页", "pagination-first")
+    } else {
+        disabled("首页", "pagination-first")
+    };
+    let previous = if pagination.page > 1 {
+        link(pagination.page - 1, "上一页", "pagination-previous")
+    } else {
+        disabled("上一页", "pagination-previous")
+    };
+    let next = if pagination.page < pagination.total_pages {
+        link(pagination.page + 1, "下一页", "pagination-next")
+    } else {
+        disabled("下一页", "pagination-next")
+    };
+    let last = if pagination.page < pagination.total_pages {
+        link(pagination.total_pages, "末页", "pagination-last")
+    } else {
+        disabled("末页", "pagination-last")
+    };
+    format!(
+        "<nav class=\"pagination\" aria-label=\"请求历史分页\">\
+            <div>{first}{previous}</div>\
+            <span class=\"pagination-status\">第 {page} / {total_pages} 页 · 共 {total} 条</span>\
+            <div>{next}{last}</div>\
+        </nav>",
+        page = pagination.page,
+        total_pages = pagination.total_pages,
+        total = pagination.total,
+    )
+}
+
+fn pagination_url(
+    page: i64,
+    page_size: i64,
+    selected_status: Option<&str>,
+    selected_version: Option<u32>,
+) -> String {
+    let mut parameters = vec![
+        format!("page={}", page.max(1)),
+        format!("pageSize={page_size}"),
+    ];
+    if let Some(status) = selected_status {
+        parameters.push(format!("status={status}"));
+    }
+    if let Some(version) = selected_version {
+        parameters.push(format!("version={version}"));
+    }
+    format!("/admin/requests?{}", parameters.join("&amp;"))
+}
+
+fn version_options(selected: Option<u32>) -> String {
+    [(None, "全部"), (Some(2), "v2"), (Some(3), "v3")]
+        .into_iter()
+        .map(|(value, label)| {
+            let selected_attribute = (selected == value)
+                .then_some(" selected")
+                .unwrap_or_default();
+            let value = value.map(|version| version.to_string()).unwrap_or_default();
+            format!("<option value=\"{value}\"{selected_attribute}>{label}</option>")
+        })
+        .collect::<Vec<_>>()
+        .join("")
+}
+
+fn version_badge(schema_version: Option<u32>) -> (&'static str, String) {
+    match schema_version {
+        Some(2) => ("version-v2", "v2".to_owned()),
+        Some(3) => ("version-v3", "v3".to_owned()),
+        Some(version) => ("version-other", format!("v{version}")),
+        None => ("version-unknown", "未知".to_owned()),
+    }
+}
+
+fn status_options(selected: Option<&str>) -> String {
+    [
+        ("", "全部"),
+        ("SUCCEEDED", "成功"),
+        ("FAILED", "失败"),
+        ("CANCELLED", "已取消"),
+    ]
+    .into_iter()
+    .map(|(value, label)| {
+        let selected_attribute = (selected.unwrap_or_default() == value)
+            .then_some(" selected")
+            .unwrap_or_default();
+        format!("<option value=\"{value}\"{selected_attribute}>{label}</option>")
+    })
+    .collect::<Vec<_>>()
+    .join("")
+}
+
+fn detail_page(record: RequestRecord) -> String {
+    let audit = &record.audit;
+    let schema_version = record
+        .payload
+        .as_ref()
+        .and_then(|payload| schema_version_from_request_json(&payload.request_json));
+    let (version_class, version_label) = version_badge(schema_version);
+    let (request_json, response_json, model_request_json, error_message, payload_attributes) =
+        match &record.payload {
+            Some(payload) => {
+                let request_pretty = pretty_json(&payload.request_json);
+                let response_pretty = payload
+                    .response_json
+                    .as_deref()
+                    .map(pretty_json)
+                    .unwrap_or_else(|| "无响应数据".to_owned());
+                let attributes = format!(
+                    "data-request-json=\"{}\" data-response-json=\"{}\"",
+                    STANDARD.encode(payload.request_json.as_bytes()),
+                    payload
+                        .response_json
+                        .as_deref()
+                        .map(|value| STANDARD.encode(value.as_bytes()))
+                        .unwrap_or_default(),
+                );
+                let model_request_pretty = payload
+                    .model_request_json
+                    .as_deref()
+                    .map(pretty_json)
+                    .unwrap_or_else(|| {
+                        "本次请求未调用模型，或记录创建于模型请求审计功能启用前。".to_owned()
+                    });
+                (
+                    request_pretty,
+                    response_pretty,
+                    model_request_pretty,
+                    payload.error_message.clone(),
+                    attributes,
+                )
+            }
+            None => (
+                "旧记录未保存请求正文".to_owned(),
+                "旧记录未保存响应正文".to_owned(),
+                "旧记录未保存模型请求正文".to_owned(),
+                None,
+                "data-request-json=\"\" data-response-json=\"\"".to_owned(),
+            ),
+        };
+    let error_html = error_message
+        .filter(|value| !value.is_empty())
+        .map(|value| {
+            format!(
+                "<section class=\"error-band\"><strong>请求错误</strong><span>{}</span></section>",
+                escape_html(&value)
+            )
+        })
+        .unwrap_or_default();
+    let (source_image_view, source_image_meta) = record.image.as_ref().map_or_else(
+        || {
+            (
+                "<div id=\"source-capture-view\" class=\"capture-view capture-view-placeholder\"><span>本次请求未上传翻译前截图</span></div>"
+                    .to_owned(),
+                "<p id=\"source-capture-meta\" class=\"capture-view-meta\">无原图 · 服务端布局还原仍可正常查看</p>"
+                    .to_owned(),
+            )
+        },
+        |image| {
+            (
+                format!(
+                    "<div id=\"source-capture-view\" class=\"capture-view\">\
+                        <img src=\"/admin/requests/{id}/image\" alt=\"本次 OCR 全屏采集原图\">\
+                     </div>",
+                    id = escape_html(&audit.id),
+                ),
+                format!(
+                    "<p id=\"source-capture-meta\" class=\"capture-view-meta\">{width} x {height} · {bytes} bytes · 翻译前原图</p>",
+                    width = image.pixel_width,
+                    height = image.pixel_height,
+                    bytes = image.byte_size,
+                ),
+            )
+        },
+    );
+    let (
+        rendered_image_view,
+        rendered_image_meta,
+        rendered_toggle_attributes,
+        rendered_toggle_label,
+    ) = record
+        .rendered_image
+        .as_ref()
+        .map_or_else(
+            || {
+                (
+                    "<div id=\"rendered-capture-view\" class=\"capture-view capture-view-placeholder\" hidden><span>本次请求未上传端侧实际回贴截图</span></div>"
+                        .to_owned(),
+                    "<p id=\"rendered-capture-meta\" class=\"capture-view-meta\" hidden>无回贴截图</p>"
+                        .to_owned(),
+                    " disabled aria-disabled=\"true\"",
+                    "未上传端侧实际回贴",
+                )
+            },
+            |image| {
+                (
+                    format!(
+                        "<div id=\"rendered-capture-view\" class=\"capture-view\" hidden>\
+                            <img loading=\"lazy\" src=\"/admin/requests/{id}/rendered-image\" alt=\"本次译文回贴后的全屏采集图\">\
+                         </div>",
+                        id = escape_html(&audit.id),
+                    ),
+                    format!(
+                        "<p id=\"rendered-capture-meta\" class=\"capture-view-meta\" hidden>{width} x {height} · {bytes} bytes · 端侧实际回贴</p>",
+                        width = image.pixel_width,
+                        height = image.pixel_height,
+                        bytes = image.byte_size,
+                    ),
+                    "",
+                    "显示端侧实际回贴",
+                )
+            },
+        );
+    let status_class = audit.status.to_ascii_lowercase();
+    page_shell(
+        &format!("请求 {}", audit.request_id),
+        &format!(
+            "<header class=\"topbar detail-topbar\">\
+                <div><a class=\"back-link\" href=\"/admin/requests\">请求历史</a><h1>{request_id}</h1></div>\
+                <div class=\"record-badges\"><span class=\"api-version {version_class}\">{version_label}</span><span class=\"status status-{status_class}\">{status}</span></div>\
+            </header>\
+            <main id=\"record-detail\" class=\"detail-main\" {payload_attributes}>\
+                <section class=\"metadata-band\">\
+                    <div><span>协议版本</span><strong>{version_label}</strong></div>\
+                    <div><span>场景</span><strong>{scene}</strong></div>\
+                    <div><span>模型</span><strong>{model}</strong></div>\
+                    <div><span>语义组</span><strong>{groups}</strong></div>\
+                    <div><span>OCR 区域</span><strong>{regions}</strong></div>\
+                    <div><span>输入字符</span><strong>{chars}</strong></div>\
+                    <div><span>耗时</span><strong>{duration} ms</strong></div>\
+                    <div><span>记录时间</span><strong>{created}</strong></div>\
+                </section>\
+                {error_html}\
+                <section class=\"capture-comparison-section\">\
+                    <div class=\"section-heading\"><h2>采集参考</h2><span>同一画框切换前后结果</span></div>\
+                    <div class=\"capture-reference-layout\">\
+                        <div class=\"capture-viewer\">\
+                            <div class=\"capture-viewer-toolbar\">\
+                                <h3 id=\"capture-view-title\">翻译前 OCR 采集图</h3>\
+                                <label class=\"capture-view-toggle\">\
+                                    <input id=\"rendered-capture-toggle\" type=\"checkbox\" aria-controls=\"source-capture-view rendered-capture-view\"{rendered_toggle_attributes}>\
+                                    <span>{rendered_toggle_label}</span>\
+                                </label>\
+                            </div>\
+                            <div class=\"capture-stage\">\
+                                {source_image_view}\
+                                {rendered_image_view}\
+                            </div>\
+                            {source_image_meta}\
+                            {rendered_image_meta}\
+                        </div>\
+                    </div>\
+                </section>\
+                <section class=\"layout-section\">\
+                    <div class=\"section-heading\"><h2>页面布局还原</h2><span id=\"layout-summary\"></span></div>\
+                    <div class=\"legend\"><span class=\"legend-body\">正文</span><span class=\"legend-title\">标题</span><span class=\"legend-meta\">元数据</span><span class=\"legend-control\">控件</span><span class=\"legend-id\">标识符</span></div>\
+                    <div class=\"layout-grid analysis-grid\">\
+                        <div class=\"preview-panel\"><h3>OCR 与语义组</h3><div id=\"source-layout\" class=\"layout-canvas\"></div></div>\
+                        <div class=\"preview-panel\"><h3>服务端语义计划</h3><div id=\"server-layout\" class=\"layout-canvas\"></div></div>\
+                        <div class=\"preview-panel\"><h3>译文与 renderSlots</h3><div id=\"translation-layout\" class=\"layout-canvas\"></div></div>\
+                    </div>\
+                </section>\
+                <section class=\"payload-section\">\
+                    <div class=\"payload-pane\"><h2>请求数据</h2><pre>{request_json}</pre></div>\
+                    <div class=\"payload-pane\"><h2>翻译响应</h2><pre>{response_json}</pre></div>\
+                </section>\
+                <section class=\"model-request-section\">\
+                    <details class=\"model-request-details\">\
+                        <summary><span>发送给 Ollama / Qwen 的请求</span><small>默认折叠 · 不包含 API Key</small></summary>\
+                        <div class=\"model-request-content\"><pre>{model_request_json}</pre></div>\
+                    </details>\
+                </section>\
+            </main>",
+            request_id = escape_html(&audit.request_id),
+            version_class = version_class,
+            version_label = escape_html(&version_label),
+            status = escape_html(&audit.status),
+            scene = escape_html(&audit.scene),
+            model = escape_html(&audit.model),
+            groups = audit.group_count,
+            regions = audit.region_count,
+            chars = audit.input_chars,
+            duration = audit.duration_ms,
+            created = escape_html(&audit.created_at),
+            request_json = escape_html(&request_json),
+            response_json = escape_html(&response_json),
+            model_request_json = escape_html(&model_request_json),
+            rendered_toggle_attributes = rendered_toggle_attributes,
+            rendered_toggle_label = rendered_toggle_label,
+        ),
+        "detail-page",
+    )
+}
+
+fn page_shell(title: &str, content: &str, body_class: &str) -> String {
+    format!(
+        "<!doctype html><html lang=\"zh-CN\"><head>\
+            <meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\
+            <title>{title} · OCR Translation Trace</title>\
+            <link rel=\"stylesheet\" href=\"/admin/assets/admin.css\">\
+        </head><body class=\"{body_class}\">{content}<script src=\"/admin/assets/admin.js\"></script></body></html>",
+        title = escape_html(title),
+    )
+}
+
+fn pretty_json(value: &str) -> String {
+    serde_json::from_str::<serde_json::Value>(value)
+        .and_then(|parsed| serde_json::to_string_pretty(&parsed))
+        .unwrap_or_else(|_| value.to_owned())
+}
+
+fn escape_html(value: &str) -> String {
+    value
+        .replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
+        .replace('\'', "&#39;")
+}
+
+fn admin_authorized(headers: &HeaderMap, expected: Option<&str>) -> bool {
+    let Some(expected) = expected else {
+        return true;
+    };
+    let Some(value) = headers
+        .get(header::AUTHORIZATION)
+        .and_then(|value| value.to_str().ok())
+    else {
+        return false;
+    };
+    if value.strip_prefix("Bearer ") == Some(expected) {
+        return true;
+    }
+    let Some(encoded) = value.strip_prefix("Basic ") else {
+        return false;
+    };
+    STANDARD
+        .decode(encoded)
+        .ok()
+        .and_then(|decoded| String::from_utf8(decoded).ok())
+        .and_then(|credentials| {
+            credentials
+                .split_once(':')
+                .map(|(_, password)| password.to_owned())
+        })
+        .is_some_and(|password| password == expected)
+}
+
+fn unauthorized() -> Response {
+    (
+        StatusCode::UNAUTHORIZED,
+        [(
+            header::WWW_AUTHENTICATE,
+            "Basic realm=\"OCR translation history\"",
+        )],
+        "admin authentication required",
+    )
+        .into_response()
+}
+
+fn server_error(message: String) -> Response {
+    (StatusCode::INTERNAL_SERVER_ERROR, message).into_response()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn admin_uses_existing_bearer_token_as_basic_auth_password() {
+        let mut headers = HeaderMap::new();
+        assert!(admin_authorized(&headers, None));
+        assert!(!admin_authorized(&headers, Some("secret")));
+
+        headers.insert(
+            header::AUTHORIZATION,
+            format!("Basic {}", STANDARD.encode("admin:secret"))
+                .parse()
+                .unwrap(),
+        );
+        assert!(admin_authorized(&headers, Some("secret")));
+        assert!(!admin_authorized(&headers, Some("other")));
+    }
+
+    #[test]
+    fn version_filter_and_badges_distinguish_v2_and_v3() {
+        let options = version_options(Some(3));
+        assert!(options.contains("value=\"2\">v2"));
+        assert!(options.contains("value=\"3\" selected>v3"));
+        assert_eq!(version_badge(Some(2)).1, "v2");
+        assert_eq!(version_badge(Some(3)).1, "v3");
+        assert_eq!(version_badge(None).1, "未知");
+    }
+
+    #[test]
+    fn pagination_url_preserves_filters_and_page_size() {
+        assert_eq!(
+            pagination_url(2, 50, Some("FAILED"), Some(3)),
+            "/admin/requests?page=2&amp;pageSize=50&amp;status=FAILED&amp;version=3"
+        );
+        assert!(page_size_options(20).contains("value=\"20\" selected"));
+    }
+}

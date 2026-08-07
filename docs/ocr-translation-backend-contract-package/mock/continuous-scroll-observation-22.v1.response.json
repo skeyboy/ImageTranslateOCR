@@ -1,0 +1,36 @@
+{
+  "requestId": "bcb31972-6c09-4f7b-9a0c-220000000011",
+  "results": [
+    {
+      "regionId": "region-0-bcb31972-6c09-4f7b-9a0c-220000000011",
+      "status": "TRANSLATED",
+      "translatedText": "Atlas 运维",
+      "provider": "mock-nmt-v1",
+      "detectedSourceLanguage": "en",
+      "targetLanguage": "zh"
+    },
+    {
+      "regionId": "region-1-bcb31972-6c09-4f7b-9a0c-220000000011",
+      "status": "TRANSLATED",
+      "translatedText": "22. 可见的完成才是真正的交付点",
+      "provider": "mock-nmt-v1",
+      "detectedSourceLanguage": "en",
+      "targetLanguage": "zh"
+    },
+    {
+      "regionId": "region-2-bcb31972-6c09-4f7b-9a0c-220000000011",
+      "status": "TRANSLATED",
+      "translatedText": "性能应建立在正确性和完整性之上。应跟踪整个可见结果提交完成所需的时间，而不是仅记录偶然先出现的第一行局部结果。",
+      "provider": "mock-nmt-v1",
+      "detectedSourceLanguage": "en",
+      "targetLanguage": "zh"
+    },
+    {
+      "regionId": "region-3-bcb31972-6c09-4f7b-9a0c-220000000011",
+      "status": "PRESERVED",
+      "provider": "mock-nmt-v1",
+      "detectedSourceLanguage": "en",
+      "targetLanguage": "zh"
+    }
+  ]
+}

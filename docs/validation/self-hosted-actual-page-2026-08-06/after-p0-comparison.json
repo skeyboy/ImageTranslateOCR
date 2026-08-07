@@ -1,0 +1,144 @@
+{
+  "schemaVersion": 1,
+  "validation": "after-p0-client-batch",
+  "baseline": {
+    "ocrRegions": 27,
+    "requestedGroups": 13,
+    "requestedRegions": 27,
+    "inputChars": 862,
+    "serviceDurationMs": 42788,
+    "uiReplacedGroups": 10,
+    "uiFailedGroups": 2,
+    "layoutResult": "FAILED"
+  },
+  "afterP0": {
+    "ocrRegions": 27,
+    "includedRegions": 22,
+    "excludedRegions": 5,
+    "requestedGroups": 4,
+    "requestedRegions": 22,
+    "inputChars": 808,
+    "instrumentationTranslationMs": 27921,
+    "directServiceDurationMs": 17141,
+    "formalUiServiceDurationMs": 25535,
+    "uiReplacedGroups": 4,
+    "uiFailedGroups": 0,
+    "layoutResult": "PASSED_WITH_RESIDUAL_MASK_ARTIFACTS"
+  },
+  "excludedOcrTexts": [
+    "23113RKC6C",
+    "9:42",
+    "Xi Story:Six-foot alley revea...",
+    "XA EEM",
+    "Ai"
+  ],
+  "groups": [
+    {
+      "groupId": "semantic-dc5d1bd8",
+      "sourceText": "During the Anhui inspection,Xi also\nemphasized the need to strengthen the\nprotection of historical and cultural\nheritage,as well as the promotion of\ncreative transformation and innovative\ndevelopment of fine traditional culture.",
+      "memberRegionIds": [
+        "semantic-dc5d1bd8-region-0",
+        "semantic-dc5d1bd8-region-1",
+        "semantic-dc5d1bd8-region-2",
+        "semantic-dc5d1bd8-region-3",
+        "semantic-dc5d1bd8-region-4",
+        "semantic-dc5d1bd8-region-5"
+      ],
+      "bounds": {
+        "left": 8,
+        "top": 115,
+        "right": 347,
+        "bottom": 286
+      },
+      "translatedText": "在安徽考察期间，习近平还强调要加强历史文化遗产保护，推动中华优秀传统文化创造性转化、创新性发展。",
+      "layoutHint": {
+        "preferredMaxLines": 6,
+        "minimumTextScale": 0.86,
+        "alignment": "START",
+        "overflowStrategy": "REFLOW_THEN_SCALE"
+      },
+      "status": "TRANSLATED"
+    },
+    {
+      "groupId": "semantic-10dfad85",
+      "sourceText": "Tongcheng has woven the values\nassociated with the alley into community\nwork and grassroots governance,using\npersuasion,empathy and compromise to\nhelp resolve disputes before they escalate.",
+      "memberRegionIds": [
+        "semantic-10dfad85-region-0",
+        "semantic-10dfad85-region-1",
+        "semantic-10dfad85-region-2",
+        "semantic-10dfad85-region-3",
+        "semantic-10dfad85-region-4"
+      ],
+      "bounds": {
+        "left": 7,
+        "top": 318,
+        "right": 373,
+        "bottom": 457
+      },
+      "translatedText": "桐城将小巷所蕴含的价值融入社区工作和基层治理中，运用说服、共情和妥协等方式帮助化解矛盾于萌芽状态。",
+      "layoutHint": {
+        "preferredMaxLines": 5,
+        "minimumTextScale": 0.86,
+        "alignment": "START",
+        "overflowStrategy": "REFLOW_THEN_SCALE"
+      },
+      "status": "TRANSLATED"
+    },
+    {
+      "groupId": "semantic-3bcf99ec",
+      "sourceText": "That emphasis on accommodation,Zhang\nstressed,does not mean asking people to\nyield without principle.\"It's not simply\ngiving way,still less forcing someone to do\nso,\"he said.\"It is a gesture the stronger\nside takes the first step,while morality and\nlaw work together.",
+      "memberRegionIds": [
+        "semantic-3bcf99ec-region-0",
+        "semantic-3bcf99ec-region-1",
+        "semantic-3bcf99ec-region-2",
+        "semantic-3bcf99ec-region-3",
+        "semantic-3bcf99ec-region-4",
+        "semantic-3bcf99ec-region-5",
+        "semantic-3bcf99ec-region-6"
+      ],
+      "bounds": {
+        "left": 7,
+        "top": 488,
+        "right": 375,
+        "bottom": 687
+      },
+      "translatedText": "张强强调，这种对包容的强调并不意味着要求人们无原则退让。“这不仅仅是让步，更不是强迫别人这样做，”他说，“这是强势一方主动迈出的一步，同时道德与法律共同发挥作用。”",
+      "layoutHint": {
+        "preferredMaxLines": 6,
+        "minimumTextScale": 0.86,
+        "alignment": "START",
+        "overflowStrategy": "REFLOW_THEN_SCALE"
+      },
+      "status": "TRANSLATED"
+    },
+    {
+      "groupId": "semantic-86cb33cc",
+      "sourceText": "The approach is also gaining broader\ninstitutional backing.On July 24,the\nStanding Committee of the Anhui\nProvincial People's Congress adopted",
+      "memberRegionIds": [
+        "semantic-86cb33cc-region-0",
+        "semantic-86cb33cc-region-1",
+        "semantic-86cb33cc-region-2",
+        "semantic-86cb33cc-region-3"
+      ],
+      "bounds": {
+        "left": 8,
+        "top": 718,
+        "right": 328,
+        "bottom": 827
+      },
+      "translatedText": "这一做法也获得了更广泛的制度支持。7月24日，安徽省人大常委会通过",
+      "layoutHint": {
+        "preferredMaxLines": 4,
+        "minimumTextScale": 0.86,
+        "alignment": "START",
+        "overflowStrategy": "REFLOW_THEN_SCALE"
+      },
+      "status": "TRANSLATED"
+    }
+  ],
+  "residualRisks": [
+    "The source only says Zhang, but qwen3.5:9b expands it to 张强.",
+    "OCR or precise-mask coverage leaves a small quote and trailing source character near occluding overlays.",
+    "Formal UI service latency is 25.535s, above the 8-12s interaction target."
+  ]
+}

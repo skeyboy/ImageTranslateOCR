@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "requestId": "3ac4fca9-16e9-4de7-825a-11c2867acd2b",
+  "generation": 0,
+  "scene": "ANDROID_CLIENT_CURRENT_PAGE_SINGLE_GROUP",
+  "translation": {
+    "mode": "ENGLISH_TO_CHINESE",
+    "sourceLanguage": "en",
+    "targetLanguage": "zh",
+    "preserveIdentifiers": true,
+    "useContext": false
+  },
+  "regions": [
+    {
+      "regionId": "semantic-9f094989",
+      "text": "PLA celebrates 99th founding anniversary in march toward world-class military,with peace",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh"
+    }
+  ]
+}

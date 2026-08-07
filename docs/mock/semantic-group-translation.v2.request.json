@@ -1,0 +1,255 @@
+{
+  "schemaVersion": 2,
+  "requestId": "019fc71b-2c6b-7860-a705-52310edee7f3",
+  "sessionId": "screen-session-20260805-001",
+  "generation": 42,
+  "translationRevision": 3,
+  "scene": "LIVE_SCREEN",
+  "viewport": {
+    "width": 1080,
+    "height": 2400,
+    "signature": "sha256:mock-stable-viewport-42"
+  },
+  "translation": {
+    "mode": "AUTO_BIDIRECTIONAL",
+    "sourceLanguage": "auto",
+    "targetLanguage": "zh",
+    "preserveIdentifiers": true,
+    "useDocumentContext": true,
+    "qualityMode": "BALANCED",
+    "terminologySetIds": [
+      "global-ui-zh-en-v1"
+    ]
+  },
+  "documentContext": {
+    "text": "U.S. strikes Iran after attacks on vessels in Strait of Hormuz\nPerformance matters after correctness and completeness. Track the time until the whole visible result is committed.\nSave\nCancel",
+    "sourceLanguage": "en",
+    "readingOrderRegionIds": [
+      "region-title-1",
+      "region-title-2",
+      "region-body-1",
+      "region-body-2",
+      "region-save",
+      "region-cancel",
+      "region-code"
+    ]
+  },
+  "groups": [
+    {
+      "groupId": "group-title",
+      "role": "TITLE",
+      "translationUnit": "GROUP",
+      "sourceText": "U.S. strikes Iran after attacks on vessels in Strait of Hormuz",
+      "memberRegionIds": [
+        "region-title-1",
+        "region-title-2"
+      ],
+      "readingOrder": 0,
+      "groupingConfidence": 0.97,
+      "groupingEvidence": [
+        "OCR_BLOCK",
+        "LEFT_ALIGNED",
+        "PUNCTUATION_CONTINUATION"
+      ],
+      "bounds": {
+        "left": 64,
+        "top": 240,
+        "right": 1016,
+        "bottom": 382
+      }
+    },
+    {
+      "groupId": "group-body",
+      "role": "BODY",
+      "translationUnit": "GROUP",
+      "sourceText": "Performance matters after correctness and completeness. Track the time until the whole visible result is committed.",
+      "memberRegionIds": [
+        "region-body-1",
+        "region-body-2"
+      ],
+      "readingOrder": 1,
+      "groupingConfidence": 0.94,
+      "groupingEvidence": [
+        "OCR_BLOCK",
+        "LEFT_ALIGNED",
+        "LINE_GAP"
+      ],
+      "bounds": {
+        "left": 64,
+        "top": 430,
+        "right": 1016,
+        "bottom": 612
+      }
+    },
+    {
+      "groupId": "group-actions",
+      "role": "MENU_ITEM",
+      "translationUnit": "REGION_ITEMS",
+      "sourceText": "Save\nCancel",
+      "memberRegionIds": [
+        "region-save",
+        "region-cancel"
+      ],
+      "readingOrder": 2,
+      "groupingConfidence": 0.99,
+      "groupingEvidence": [
+        "ACCESSIBILITY_CONTAINER",
+        "SAME_SURFACE"
+      ],
+      "bounds": {
+        "left": 64,
+        "top": 680,
+        "right": 1016,
+        "bottom": 778
+      }
+    },
+    {
+      "groupId": "group-code",
+      "role": "CODE",
+      "translationUnit": "GROUP",
+      "sourceText": "suspend fun commit(frame: Frame) {\n  require(frame.generation == current)\n}",
+      "memberRegionIds": [
+        "region-code"
+      ],
+      "readingOrder": 3,
+      "groupingConfidence": 0.99,
+      "groupingEvidence": [
+        "OCR_BLOCK"
+      ],
+      "bounds": {
+        "left": 64,
+        "top": 840,
+        "right": 1016,
+        "bottom": 1020
+      }
+    }
+  ],
+  "regions": [
+    {
+      "regionId": "region-title-1",
+      "groupId": "group-title",
+      "sourceRevision": 1,
+      "text": "U.S. strikes Iran after attacks on",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh",
+      "readingOrder": 0,
+      "blockId": "mlkit-block-7",
+      "lineIndex": 0,
+      "confidence": 0.96,
+      "bounds": {
+        "left": 64,
+        "top": 240,
+        "right": 1016,
+        "bottom": 304
+      }
+    },
+    {
+      "regionId": "region-title-2",
+      "groupId": "group-title",
+      "sourceRevision": 1,
+      "text": "vessels in Strait of Hormuz",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh",
+      "readingOrder": 1,
+      "blockId": "mlkit-block-7",
+      "lineIndex": 1,
+      "confidence": 0.95,
+      "bounds": {
+        "left": 64,
+        "top": 314,
+        "right": 820,
+        "bottom": 382
+      }
+    },
+    {
+      "regionId": "region-body-1",
+      "groupId": "group-body",
+      "sourceRevision": 1,
+      "text": "Performance matters after correctness and completeness.",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh",
+      "readingOrder": 2,
+      "blockId": "mlkit-block-8",
+      "lineIndex": 0,
+      "confidence": 0.94,
+      "bounds": {
+        "left": 64,
+        "top": 430,
+        "right": 1016,
+        "bottom": 500
+      }
+    },
+    {
+      "regionId": "region-body-2",
+      "groupId": "group-body",
+      "sourceRevision": 1,
+      "text": "Track the time until the whole visible result is committed.",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh",
+      "readingOrder": 3,
+      "blockId": "mlkit-block-8",
+      "lineIndex": 1,
+      "confidence": 0.93,
+      "bounds": {
+        "left": 64,
+        "top": 516,
+        "right": 970,
+        "bottom": 612
+      }
+    },
+    {
+      "regionId": "region-save",
+      "groupId": "group-actions",
+      "sourceRevision": 1,
+      "text": "Save",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh",
+      "readingOrder": 4,
+      "blockId": "mlkit-block-9",
+      "lineIndex": 0,
+      "confidence": 0.99,
+      "bounds": {
+        "left": 120,
+        "top": 690,
+        "right": 360,
+        "bottom": 766
+      }
+    },
+    {
+      "regionId": "region-cancel",
+      "groupId": "group-actions",
+      "sourceRevision": 1,
+      "text": "Cancel",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh",
+      "readingOrder": 5,
+      "blockId": "mlkit-block-10",
+      "lineIndex": 0,
+      "confidence": 0.99,
+      "bounds": {
+        "left": 710,
+        "top": 690,
+        "right": 970,
+        "bottom": 766
+      }
+    },
+    {
+      "regionId": "region-code",
+      "groupId": "group-code",
+      "sourceRevision": 1,
+      "text": "suspend fun commit(frame: Frame) {\n  require(frame.generation == current)\n}",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh",
+      "readingOrder": 6,
+      "blockId": "mlkit-block-11",
+      "lineIndex": 0,
+      "confidence": 0.97,
+      "bounds": {
+        "left": 64,
+        "top": 840,
+        "right": 1016,
+        "bottom": 1020
+      }
+    }
+  ]
+}

@@ -1,0 +1,1517 @@
+{
+  "schemaVersion": 1,
+  "event": "self_hosted_actual_page_translation",
+  "source": {
+    "path": "\/data\/user\/0\/com.example.imagetranslate\/files\/self-hosted-chat-page-source.jpg",
+    "width": 1080,
+    "height": 2400
+  },
+  "service": {
+    "baseUrl": "http:\/\/192.168.0.63:8090",
+    "backend": "SELF_HOSTED"
+  },
+  "ocr": {
+    "engine": "ML_KIT",
+    "mode": "AUTO",
+    "elapsedMs": 1811,
+    "regionCount": 34,
+    "regions": [
+      {
+        "regionId": "ocr-region-0",
+        "text": "17:27 | 0.9K\/s",
+        "bounds": {
+          "left": 171,
+          "top": 45,
+          "right": 417,
+          "bottom": 84
+        },
+        "modelConfidence": 0.7839543223381042,
+        "consensusScore": 0.8893333673477173,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": 0
+      },
+      {
+        "regionId": "ocr-region-1",
+        "text": "4G",
+        "bounds": {
+          "left": 872,
+          "top": 47,
+          "right": 898,
+          "bottom": 62
+        },
+        "modelConfidence": 0.85546875,
+        "consensusScore": 0.6399999856948853,
+        "passCount": 1,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": "mlkit-13-872-47-898-62",
+        "sourceLineIndex": 0
+      },
+      {
+        "regionId": "ocr-region-2",
+        "text": "HD ll HD 99",
+        "bounds": {
+          "left": 713,
+          "top": 51,
+          "right": 1011,
+          "bottom": 79
+        },
+        "modelConfidence": 0.5798611044883728,
+        "consensusScore": 0.7699999809265137,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": 0
+      },
+      {
+        "regionId": "ocr-region-3",
+        "text": "Alfor Humanity Com...",
+        "bounds": {
+          "left": 294,
+          "top": 133,
+          "right": 830,
+          "bottom": 184
+        },
+        "modelConfidence": 0.78125,
+        "consensusScore": 0.8873685002326965,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": 0
+      },
+      {
+        "regionId": "ocr-region-4",
+        "text": "22AE",
+        "bounds": {
+          "left": 289,
+          "top": 194,
+          "right": 386,
+          "bottom": 229
+        },
+        "modelConfidence": 0.6591796875,
+        "consensusScore": 0.9000000357627869,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": 0
+      },
+      {
+        "regionId": "ocr-region-5",
+        "text": "Feux Lee on instagram:",
+        "bounds": {
+          "left": 160,
+          "top": 251,
+          "right": 596,
+          "bottom": 286
+        },
+        "modelConfidence": 0.7512335777282715,
+        "consensusScore": 0.8869005441665649,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": 0
+      },
+      {
+        "regionId": "ocr-region-6",
+        "text": "\"Ilived in Singapore for",
+        "bounds": {
+          "left": 167,
+          "top": 301,
+          "right": 609,
+          "bottom": 341
+        },
+        "modelConfidence": 0.83203125,
+        "consensusScore": 0.8961905241012573,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": 1
+      },
+      {
+        "regionId": "ocr-region-7",
+        "text": "instagram.com",
+        "bounds": {
+          "left": 214,
+          "top": 387,
+          "right": 484,
+          "bottom": 425
+        },
+        "modelConfidence": 0.8419471383094788,
+        "consensusScore": 0.9000000357627869,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": 0
+      },
+      {
+        "regionId": "ocr-region-8",
+        "text": "22:08",
+        "bounds": {
+          "left": 607,
+          "top": 470,
+          "right": 691,
+          "bottom": 497
+        },
+        "modelConfidence": 0.9281250238418579,
+        "consensusScore": 0.8906667232513428,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": 0
+      },
+      {
+        "regionId": "ocr-region-9",
+        "text": "Instagram",
+        "bounds": {
+          "left": 276,
+          "top": 560,
+          "right": 477,
+          "bottom": 602
+        },
+        "modelConfidence": 0.8046875,
+        "consensusScore": 0.9000000357627869,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": 0
+      },
+      {
+        "regionId": "ocr-region-10",
+        "text": "- Prof",
+        "bounds": {
+          "left": 154,
+          "top": 746,
+          "right": 259,
+          "bottom": 781
+        },
+        "modelConfidence": 0.793749988079071,
+        "consensusScore": 0.874666690826416,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": 0
+      },
+      {
+        "regionId": "ocr-region-11",
+        "text": "+65 9684 3435",
+        "bounds": {
+          "left": 656,
+          "top": 751,
+          "right": 895,
+          "bottom": 776
+        },
+        "modelConfidence": 0.9264914989471436,
+        "consensusScore": 0.8913940191268921,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": 0
+      },
+      {
+        "regionId": "ocr-region-12",
+        "text": "The Web3 industry tried and we did",
+        "bounds": {
+          "left": 153,
+          "top": 807,
+          "right": 887,
+          "bottom": 848
+        },
+        "modelConfidence": 0.8857421875,
+        "consensusScore": 0.9000000357627869,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": null
+      },
+      {
+        "regionId": "ocr-region-13",
+        "text": "quite well.Until the country decided",
+        "bounds": {
+          "left": 154,
+          "top": 865,
+          "right": 900,
+          "bottom": 908
+        },
+        "modelConfidence": 0.885498046875,
+        "consensusScore": 0.8899999856948853,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": null
+      },
+      {
+        "regionId": "ocr-region-14",
+        "text": "to invest in something that did not",
+        "bounds": {
+          "left": 153,
+          "top": 923,
+          "right": 867,
+          "bottom": 964
+        },
+        "modelConfidence": 0.8991109728813171,
+        "consensusScore": 0.9000000357627869,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": null
+      },
+      {
+        "regionId": "ocr-region-15",
+        "text": "fit into the country nor the Web3",
+        "bounds": {
+          "left": 154,
+          "top": 980,
+          "right": 843,
+          "bottom": 1022
+        },
+        "modelConfidence": 0.8998842835426331,
+        "consensusScore": 0.9000000357627869,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": null
+      },
+      {
+        "regionId": "ocr-region-16",
+        "text": "community.Then all hell broke",
+        "bounds": {
+          "left": 154,
+          "top": 1033,
+          "right": 793,
+          "bottom": 1081
+        },
+        "modelConfidence": 0.8461538553237915,
+        "consensusScore": 0.9000000357627869,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": null
+      },
+      {
+        "regionId": "ocr-region-17",
+        "text": "loose.The rest is history.After that,",
+        "bounds": {
+          "left": 155,
+          "top": 1096,
+          "right": 891,
+          "bottom": 1139
+        },
+        "modelConfidence": 0.8722774386405945,
+        "consensusScore": 0.8927273154258728,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": null
+      },
+      {
+        "regionId": "ocr-region-18",
+        "text": "we were suddenly All in AI,that was",
+        "bounds": {
+          "left": 153,
+          "top": 1155,
+          "right": 905,
+          "bottom": 1196
+        },
+        "modelConfidence": 0.8534482717514038,
+        "consensusScore": 0.9000000357627869,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": null
+      },
+      {
+        "regionId": "ocr-region-19",
+        "text": "really dangerous and riskier than",
+        "bounds": {
+          "left": 155,
+          "top": 1213,
+          "right": 822,
+          "bottom": 1256
+        },
+        "modelConfidence": 0.9073275923728943,
+        "consensusScore": 0.9000000357627869,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": null
+      },
+      {
+        "regionId": "ocr-region-20",
+        "text": "Web3.Glad that recently we are",
+        "bounds": {
+          "left": 153,
+          "top": 1271,
+          "right": 821,
+          "bottom": 1313
+        },
+        "modelConfidence": 0.8891226053237915,
+        "consensusScore": 0.9000000357627869,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": null
+      },
+      {
+        "regionId": "ocr-region-21",
+        "text": "Coming back to our senses.Now,",
+        "bounds": {
+          "left": 154,
+          "top": 1331,
+          "right": 833,
+          "bottom": 1369
+        },
+        "modelConfidence": 0.8347355723381042,
+        "consensusScore": 0.8938462138175964,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": null
+      },
+      {
+        "regionId": "ocr-region-22",
+        "text": "the few solid Web3 projects in the",
+        "bounds": {
+          "left": 153,
+          "top": 1386,
+          "right": 863,
+          "bottom": 1430
+        },
+        "modelConfidence": 0.8929966688156128,
+        "consensusScore": 0.9000000357627869,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": null
+      },
+      {
+        "regionId": "ocr-region-23",
+        "text": "US are from Singapore.Indeed,",
+        "bounds": {
+          "left": 155,
+          "top": 1444,
+          "right": 802,
+          "bottom": 1486
+        },
+        "modelConfidence": 0.8653846383094788,
+        "consensusScore": 0.8938462138175964,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": null
+      },
+      {
+        "regionId": "ocr-region-24",
+        "text": "these youngsters have made us",
+        "bounds": {
+          "left": 153,
+          "top": 1503,
+          "right": 804,
+          "bottom": 1545
+        },
+        "modelConfidence": 0.8998437523841858,
+        "consensusScore": 0.9000000357627869,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": null
+      },
+      {
+        "regionId": "ocr-region-25",
+        "text": "proud.They left for a good reason,",
+        "bounds": {
+          "left": 155,
+          "top": 1558,
+          "right": 894,
+          "bottom": 1603
+        },
+        "modelConfidence": 0.8980333805084229,
+        "consensusScore": 0.8944827914237976,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": null
+      },
+      {
+        "regionId": "ocr-region-26",
+        "text": "and they will come back for sure",
+        "bounds": {
+          "left": 166,
+          "top": 1618,
+          "right": 828,
+          "bottom": 1659
+        },
+        "modelConfidence": 0.875,
+        "consensusScore": 0.9000000357627869,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": null
+      },
+      {
+        "regionId": "ocr-region-27",
+        "text": "because this place is good for those",
+        "bounds": {
+          "left": 155,
+          "top": 1676,
+          "right": 900,
+          "bottom": 1717
+        },
+        "modelConfidence": 0.8920572996139526,
+        "consensusScore": 0.9000000357627869,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": null
+      },
+      {
+        "regionId": "ocr-region-28",
+        "text": "who have made it.",
+        "bounds": {
+          "left": 153,
+          "top": 1735,
+          "right": 529,
+          "bottom": 1769
+        },
+        "modelConfidence": 0.8518415093421936,
+        "consensusScore": 0.8942857384681702,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": null
+      },
+      {
+        "regionId": "ocr-region-29",
+        "text": "22:43",
+        "bounds": {
+          "left": 825,
+          "top": 1762,
+          "right": 911,
+          "bottom": 1786
+        },
+        "modelConfidence": 0.91015625,
+        "consensusScore": 0.8906667232513428,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": 0
+      },
+      {
+        "regionId": "ocr-region-30",
+        "text": "Lim CW",
+        "bounds": {
+          "left": 185,
+          "top": 1952,
+          "right": 324,
+          "bottom": 1982
+        },
+        "modelConfidence": 0.703125,
+        "consensusScore": 0.9000000357627869,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": 0
+      },
+      {
+        "regionId": "ocr-region-31",
+        "text": "+65 9478 2794",
+        "bounds": {
+          "left": 443,
+          "top": 1955,
+          "right": 678,
+          "bottom": 1980
+        },
+        "modelConfidence": 0.9367897510528564,
+        "consensusScore": 0.8913940191268921,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": 0
+      },
+      {
+        "regionId": "ocr-region-32",
+        "text": "DainV",
+        "bounds": {
+          "left": 109,
+          "top": 2109,
+          "right": 219,
+          "bottom": 2137
+        },
+        "modelConfidence": 0.5101562738418579,
+        "consensusScore": 0.6399999856948853,
+        "passCount": 1,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": "mlkit-7-109-2109-219-2137",
+        "sourceLineIndex": 0
+      },
+      {
+        "regionId": "ocr-region-33",
+        "text": "86 802",
+        "bounds": {
+          "left": 441,
+          "top": 2109,
+          "right": 535,
+          "bottom": 2138
+        },
+        "modelConfidence": 0.63671875,
+        "consensusScore": 0.5400000214576721,
+        "passCount": 1,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": "mlkit-15-441-2109-535-2138",
+        "sourceLineIndex": 0
+      }
+    ]
+  },
+  "contentFilter": {
+    "inputCount": 34,
+    "includedCount": 34,
+    "excludedCount": 0,
+    "excludedRegions": []
+  },
+  "semanticGrouping": {
+    "groupCount": 16,
+    "documentContext": "[BODY] 17:27 | 0.9K\/s\n[BODY] HD ll HD 99\n[BODY] Alfor Humanity Com...\n[BODY] 22AE\n[BODY] Feux Lee on instagram:\n\"Ilived in Singapore for\n[BODY] instagram.com\n[TIMESTAMP] 22:08\n[BODY] Instagram\n[LIST_ITEM] - Prof\n[BODY] +65 9684 3435\n[BODY] The Web3 industry tried and we did\nquite well.Until the country decided\nto invest in something that did not\nfit into the country nor the Web3\ncommunity.Then all hell broke\nloose.The rest is history.After that,\nwe were suddenly All in AI,that was\nreally dangerous and riskier than\nWeb3.Glad that recently we are\nComing back to our senses.Now,\nthe few solid Web3 projects in the\nUS are from Singapore.Indeed,\nthese youngsters have made us\nproud.They left for a good reason,\nand they will come back for sure\nbecause this place is good for those\nwho have made it.\n[TIMESTAMP] 22:43\n[BODY] Lim CW\n[BODY] +65 9478 2794\n[BODY] DainV\n[BODY] 86 802",
+    "groups": [
+      {
+        "groupId": "semantic-4f999ebe",
+        "role": "BODY",
+        "translationUnit": "GROUP",
+        "sourceText": "17:27 | 0.9K\/s",
+        "memberRegionIds": [
+          "semantic-4f999ebe-region-0"
+        ],
+        "readingOrder": 0,
+        "groupingConfidence": 1,
+        "groupingEvidence": [],
+        "bounds": {
+          "left": 171,
+          "top": 45,
+          "right": 417,
+          "bottom": 84
+        },
+        "regions": [
+          {
+            "regionId": "semantic-4f999ebe-region-0",
+            "text": "17:27 | 0.9K\/s",
+            "confidence": 0.7839543223381042,
+            "blockId": null,
+            "lineIndex": 0,
+            "bounds": {
+              "left": 171,
+              "top": 45,
+              "right": 417,
+              "bottom": 84
+            }
+          }
+        ],
+        "translation": {
+          "succeeded": true,
+          "translatedText": "17:27 | 0.9K\/s",
+          "provider": "self-hosted-qwen-v2",
+          "failureCode": null,
+          "layoutHint": {
+            "preferredMaxLines": 1,
+            "minimumTextScale": 0.8600000143051147,
+            "alignment": "START",
+            "overflowStrategy": "REFLOW_THEN_SCALE"
+          }
+        }
+      },
+      {
+        "groupId": "semantic-f96476fd",
+        "role": "BODY",
+        "translationUnit": "GROUP",
+        "sourceText": "HD ll HD 99",
+        "memberRegionIds": [
+          "semantic-f96476fd-region-0"
+        ],
+        "readingOrder": 1,
+        "groupingConfidence": 1,
+        "groupingEvidence": [],
+        "bounds": {
+          "left": 713,
+          "top": 51,
+          "right": 1011,
+          "bottom": 79
+        },
+        "regions": [
+          {
+            "regionId": "semantic-f96476fd-region-0",
+            "text": "HD ll HD 99",
+            "confidence": 0.5798611044883728,
+            "blockId": null,
+            "lineIndex": 0,
+            "bounds": {
+              "left": 713,
+              "top": 51,
+              "right": 1011,
+              "bottom": 79
+            }
+          }
+        ],
+        "translation": {
+          "succeeded": false,
+          "translatedText": "HD ll HD 99",
+          "provider": "none",
+          "failureCode": "LOCAL_TRANSLATION_FAILED",
+          "layoutHint": null
+        }
+      },
+      {
+        "groupId": "semantic-d8ead74f",
+        "role": "BODY",
+        "translationUnit": "GROUP",
+        "sourceText": "Alfor Humanity Com...",
+        "memberRegionIds": [
+          "semantic-d8ead74f-region-0"
+        ],
+        "readingOrder": 2,
+        "groupingConfidence": 1,
+        "groupingEvidence": [],
+        "bounds": {
+          "left": 294,
+          "top": 133,
+          "right": 830,
+          "bottom": 184
+        },
+        "regions": [
+          {
+            "regionId": "semantic-d8ead74f-region-0",
+            "text": "Alfor Humanity Com...",
+            "confidence": 0.78125,
+            "blockId": null,
+            "lineIndex": 0,
+            "bounds": {
+              "left": 294,
+              "top": 133,
+              "right": 830,
+              "bottom": 184
+            }
+          }
+        ],
+        "translation": {
+          "succeeded": false,
+          "translatedText": "Alfor Humanity Com...",
+          "provider": "none",
+          "failureCode": "LOCAL_TRANSLATION_FAILED",
+          "layoutHint": null
+        }
+      },
+      {
+        "groupId": "semantic-7d3a9cf6",
+        "role": "BODY",
+        "translationUnit": "GROUP",
+        "sourceText": "22AE",
+        "memberRegionIds": [
+          "semantic-7d3a9cf6-region-0"
+        ],
+        "readingOrder": 3,
+        "groupingConfidence": 1,
+        "groupingEvidence": [],
+        "bounds": {
+          "left": 289,
+          "top": 194,
+          "right": 386,
+          "bottom": 229
+        },
+        "regions": [
+          {
+            "regionId": "semantic-7d3a9cf6-region-0",
+            "text": "22AE",
+            "confidence": 0.6591796875,
+            "blockId": null,
+            "lineIndex": 0,
+            "bounds": {
+              "left": 289,
+              "top": 194,
+              "right": 386,
+              "bottom": 229
+            }
+          }
+        ],
+        "translation": {
+          "succeeded": false,
+          "translatedText": "22AE",
+          "provider": "none",
+          "failureCode": "LOCAL_TRANSLATION_FAILED",
+          "layoutHint": null
+        }
+      },
+      {
+        "groupId": "semantic-573694a1",
+        "role": "BODY",
+        "translationUnit": "GROUP",
+        "sourceText": "Feux Lee on instagram:\n\"Ilived in Singapore for",
+        "memberRegionIds": [
+          "semantic-573694a1-region-0",
+          "semantic-573694a1-region-1"
+        ],
+        "readingOrder": 4,
+        "groupingConfidence": 0.8199999928474426,
+        "groupingEvidence": [
+          "CENTER_ALIGNED",
+          "GEOMETRY_INFERRED",
+          "HORIZONTAL_OVERLAP",
+          "LEFT_ALIGNED",
+          "LINE_GAP",
+          "PUNCTUATION_CONTINUATION",
+          "REGION_OCCUPANCY"
+        ],
+        "bounds": {
+          "left": 160,
+          "top": 251,
+          "right": 609,
+          "bottom": 341
+        },
+        "regions": [
+          {
+            "regionId": "semantic-573694a1-region-0",
+            "text": "Feux Lee on instagram:",
+            "confidence": 0.7512335777282715,
+            "blockId": null,
+            "lineIndex": 0,
+            "bounds": {
+              "left": 160,
+              "top": 251,
+              "right": 596,
+              "bottom": 286
+            }
+          },
+          {
+            "regionId": "semantic-573694a1-region-1",
+            "text": "\"Ilived in Singapore for",
+            "confidence": 0.83203125,
+            "blockId": null,
+            "lineIndex": 1,
+            "bounds": {
+              "left": 167,
+              "top": 301,
+              "right": 609,
+              "bottom": 341
+            }
+          }
+        ],
+        "translation": {
+          "succeeded": true,
+          "translatedText": "Feux Lee 在 instagram:\n\"我曾在新加坡居住",
+          "provider": "self-hosted-qwen-v2",
+          "failureCode": null,
+          "layoutHint": {
+            "preferredMaxLines": 2,
+            "minimumTextScale": 0.8600000143051147,
+            "alignment": "START",
+            "overflowStrategy": "REFLOW_THEN_SCALE"
+          }
+        }
+      },
+      {
+        "groupId": "semantic-52f30378",
+        "role": "BODY",
+        "translationUnit": "GROUP",
+        "sourceText": "instagram.com",
+        "memberRegionIds": [
+          "semantic-52f30378-region-0"
+        ],
+        "readingOrder": 5,
+        "groupingConfidence": 1,
+        "groupingEvidence": [],
+        "bounds": {
+          "left": 214,
+          "top": 387,
+          "right": 484,
+          "bottom": 425
+        },
+        "regions": [
+          {
+            "regionId": "semantic-52f30378-region-0",
+            "text": "instagram.com",
+            "confidence": 0.8419471383094788,
+            "blockId": null,
+            "lineIndex": 0,
+            "bounds": {
+              "left": 214,
+              "top": 387,
+              "right": 484,
+              "bottom": 425
+            }
+          }
+        ],
+        "translation": {
+          "succeeded": false,
+          "translatedText": "instagram.com",
+          "provider": "none",
+          "failureCode": "LOCAL_TRANSLATION_FAILED",
+          "layoutHint": null
+        }
+      },
+      {
+        "groupId": "semantic-cc2d56b1",
+        "role": "TIMESTAMP",
+        "translationUnit": "PRESERVED",
+        "sourceText": "22:08",
+        "memberRegionIds": [
+          "semantic-cc2d56b1-region-0"
+        ],
+        "readingOrder": 6,
+        "groupingConfidence": 1,
+        "groupingEvidence": [],
+        "bounds": {
+          "left": 607,
+          "top": 470,
+          "right": 691,
+          "bottom": 497
+        },
+        "regions": [
+          {
+            "regionId": "semantic-cc2d56b1-region-0",
+            "text": "22:08",
+            "confidence": 0.9281250238418579,
+            "blockId": null,
+            "lineIndex": 0,
+            "bounds": {
+              "left": 607,
+              "top": 470,
+              "right": 691,
+              "bottom": 497
+            }
+          }
+        ],
+        "translation": {
+          "succeeded": true,
+          "translatedText": "22:08",
+          "provider": "self-hosted-qwen-v2",
+          "failureCode": null,
+          "layoutHint": {
+            "preferredMaxLines": 1,
+            "minimumTextScale": 0.8600000143051147,
+            "alignment": "START",
+            "overflowStrategy": "REFLOW_THEN_SCALE"
+          }
+        }
+      },
+      {
+        "groupId": "semantic-b0081be3",
+        "role": "BODY",
+        "translationUnit": "GROUP",
+        "sourceText": "Instagram",
+        "memberRegionIds": [
+          "semantic-b0081be3-region-0"
+        ],
+        "readingOrder": 7,
+        "groupingConfidence": 1,
+        "groupingEvidence": [],
+        "bounds": {
+          "left": 276,
+          "top": 560,
+          "right": 477,
+          "bottom": 602
+        },
+        "regions": [
+          {
+            "regionId": "semantic-b0081be3-region-0",
+            "text": "Instagram",
+            "confidence": 0.8046875,
+            "blockId": null,
+            "lineIndex": 0,
+            "bounds": {
+              "left": 276,
+              "top": 560,
+              "right": 477,
+              "bottom": 602
+            }
+          }
+        ],
+        "translation": {
+          "succeeded": false,
+          "translatedText": "Instagram",
+          "provider": "none",
+          "failureCode": "LOCAL_TRANSLATION_FAILED",
+          "layoutHint": null
+        }
+      },
+      {
+        "groupId": "semantic-11fb40b8",
+        "role": "LIST_ITEM",
+        "translationUnit": "GROUP",
+        "sourceText": "- Prof",
+        "memberRegionIds": [
+          "semantic-11fb40b8-region-0"
+        ],
+        "readingOrder": 8,
+        "groupingConfidence": 1,
+        "groupingEvidence": [],
+        "bounds": {
+          "left": 154,
+          "top": 746,
+          "right": 259,
+          "bottom": 781
+        },
+        "regions": [
+          {
+            "regionId": "semantic-11fb40b8-region-0",
+            "text": "- Prof",
+            "confidence": 0.793749988079071,
+            "blockId": null,
+            "lineIndex": 0,
+            "bounds": {
+              "left": 154,
+              "top": 746,
+              "right": 259,
+              "bottom": 781
+            }
+          }
+        ],
+        "translation": {
+          "succeeded": true,
+          "translatedText": "- 教授",
+          "provider": "local-ml-kit",
+          "failureCode": null,
+          "layoutHint": null
+        }
+      },
+      {
+        "groupId": "semantic-25000fcd",
+        "role": "BODY",
+        "translationUnit": "GROUP",
+        "sourceText": "+65 9684 3435",
+        "memberRegionIds": [
+          "semantic-25000fcd-region-0"
+        ],
+        "readingOrder": 9,
+        "groupingConfidence": 1,
+        "groupingEvidence": [],
+        "bounds": {
+          "left": 656,
+          "top": 751,
+          "right": 895,
+          "bottom": 776
+        },
+        "regions": [
+          {
+            "regionId": "semantic-25000fcd-region-0",
+            "text": "+65 9684 3435",
+            "confidence": 0.9264914989471436,
+            "blockId": null,
+            "lineIndex": 0,
+            "bounds": {
+              "left": 656,
+              "top": 751,
+              "right": 895,
+              "bottom": 776
+            }
+          }
+        ],
+        "translation": {
+          "succeeded": true,
+          "translatedText": "+65 9684 3435",
+          "provider": "self-hosted-qwen-v2",
+          "failureCode": null,
+          "layoutHint": {
+            "preferredMaxLines": 1,
+            "minimumTextScale": 0.8600000143051147,
+            "alignment": "START",
+            "overflowStrategy": "REFLOW_THEN_SCALE"
+          }
+        }
+      },
+      {
+        "groupId": "semantic-4cdd063f",
+        "role": "BODY",
+        "translationUnit": "GROUP",
+        "sourceText": "The Web3 industry tried and we did\nquite well.Until the country decided\nto invest in something that did not\nfit into the country nor the Web3\ncommunity.Then all hell broke\nloose.The rest is history.After that,\nwe were suddenly All in AI,that was\nreally dangerous and riskier than\nWeb3.Glad that recently we are\nComing back to our senses.Now,\nthe few solid Web3 projects in the\nUS are from Singapore.Indeed,\nthese youngsters have made us\nproud.They left for a good reason,\nand they will come back for sure\nbecause this place is good for those\nwho have made it.",
+        "memberRegionIds": [
+          "semantic-4cdd063f-region-0",
+          "semantic-4cdd063f-region-1",
+          "semantic-4cdd063f-region-2",
+          "semantic-4cdd063f-region-3",
+          "semantic-4cdd063f-region-4",
+          "semantic-4cdd063f-region-5",
+          "semantic-4cdd063f-region-6",
+          "semantic-4cdd063f-region-7",
+          "semantic-4cdd063f-region-8",
+          "semantic-4cdd063f-region-9",
+          "semantic-4cdd063f-region-10",
+          "semantic-4cdd063f-region-11",
+          "semantic-4cdd063f-region-12",
+          "semantic-4cdd063f-region-13",
+          "semantic-4cdd063f-region-14",
+          "semantic-4cdd063f-region-15",
+          "semantic-4cdd063f-region-16"
+        ],
+        "readingOrder": 10,
+        "groupingConfidence": 0.8199999928474426,
+        "groupingEvidence": [
+          "CENTER_ALIGNED",
+          "GEOMETRY_INFERRED",
+          "HORIZONTAL_OVERLAP",
+          "LEFT_ALIGNED",
+          "LINE_GAP",
+          "PUNCTUATION_CONTINUATION",
+          "REGION_OCCUPANCY"
+        ],
+        "bounds": {
+          "left": 153,
+          "top": 807,
+          "right": 905,
+          "bottom": 1769
+        },
+        "regions": [
+          {
+            "regionId": "semantic-4cdd063f-region-0",
+            "text": "The Web3 industry tried and we did",
+            "confidence": 0.8857421875,
+            "blockId": null,
+            "lineIndex": null,
+            "bounds": {
+              "left": 153,
+              "top": 807,
+              "right": 887,
+              "bottom": 848
+            }
+          },
+          {
+            "regionId": "semantic-4cdd063f-region-1",
+            "text": "quite well.Until the country decided",
+            "confidence": 0.885498046875,
+            "blockId": null,
+            "lineIndex": null,
+            "bounds": {
+              "left": 154,
+              "top": 865,
+              "right": 900,
+              "bottom": 908
+            }
+          },
+          {
+            "regionId": "semantic-4cdd063f-region-2",
+            "text": "to invest in something that did not",
+            "confidence": 0.8991109728813171,
+            "blockId": null,
+            "lineIndex": null,
+            "bounds": {
+              "left": 153,
+              "top": 923,
+              "right": 867,
+              "bottom": 964
+            }
+          },
+          {
+            "regionId": "semantic-4cdd063f-region-3",
+            "text": "fit into the country nor the Web3",
+            "confidence": 0.8998842835426331,
+            "blockId": null,
+            "lineIndex": null,
+            "bounds": {
+              "left": 154,
+              "top": 980,
+              "right": 843,
+              "bottom": 1022
+            }
+          },
+          {
+            "regionId": "semantic-4cdd063f-region-4",
+            "text": "community.Then all hell broke",
+            "confidence": 0.8461538553237915,
+            "blockId": null,
+            "lineIndex": null,
+            "bounds": {
+              "left": 154,
+              "top": 1033,
+              "right": 793,
+              "bottom": 1081
+            }
+          },
+          {
+            "regionId": "semantic-4cdd063f-region-5",
+            "text": "loose.The rest is history.After that,",
+            "confidence": 0.8722774386405945,
+            "blockId": null,
+            "lineIndex": null,
+            "bounds": {
+              "left": 155,
+              "top": 1096,
+              "right": 891,
+              "bottom": 1139
+            }
+          },
+          {
+            "regionId": "semantic-4cdd063f-region-6",
+            "text": "we were suddenly All in AI,that was",
+            "confidence": 0.8534482717514038,
+            "blockId": null,
+            "lineIndex": null,
+            "bounds": {
+              "left": 153,
+              "top": 1155,
+              "right": 905,
+              "bottom": 1196
+            }
+          },
+          {
+            "regionId": "semantic-4cdd063f-region-7",
+            "text": "really dangerous and riskier than",
+            "confidence": 0.9073275923728943,
+            "blockId": null,
+            "lineIndex": null,
+            "bounds": {
+              "left": 155,
+              "top": 1213,
+              "right": 822,
+              "bottom": 1256
+            }
+          },
+          {
+            "regionId": "semantic-4cdd063f-region-8",
+            "text": "Web3.Glad that recently we are",
+            "confidence": 0.8891226053237915,
+            "blockId": null,
+            "lineIndex": null,
+            "bounds": {
+              "left": 153,
+              "top": 1271,
+              "right": 821,
+              "bottom": 1313
+            }
+          },
+          {
+            "regionId": "semantic-4cdd063f-region-9",
+            "text": "Coming back to our senses.Now,",
+            "confidence": 0.8347355723381042,
+            "blockId": null,
+            "lineIndex": null,
+            "bounds": {
+              "left": 154,
+              "top": 1331,
+              "right": 833,
+              "bottom": 1369
+            }
+          },
+          {
+            "regionId": "semantic-4cdd063f-region-10",
+            "text": "the few solid Web3 projects in the",
+            "confidence": 0.8929966688156128,
+            "blockId": null,
+            "lineIndex": null,
+            "bounds": {
+              "left": 153,
+              "top": 1386,
+              "right": 863,
+              "bottom": 1430
+            }
+          },
+          {
+            "regionId": "semantic-4cdd063f-region-11",
+            "text": "US are from Singapore.Indeed,",
+            "confidence": 0.8653846383094788,
+            "blockId": null,
+            "lineIndex": null,
+            "bounds": {
+              "left": 155,
+              "top": 1444,
+              "right": 802,
+              "bottom": 1486
+            }
+          },
+          {
+            "regionId": "semantic-4cdd063f-region-12",
+            "text": "these youngsters have made us",
+            "confidence": 0.8998437523841858,
+            "blockId": null,
+            "lineIndex": null,
+            "bounds": {
+              "left": 153,
+              "top": 1503,
+              "right": 804,
+              "bottom": 1545
+            }
+          },
+          {
+            "regionId": "semantic-4cdd063f-region-13",
+            "text": "proud.They left for a good reason,",
+            "confidence": 0.8980333805084229,
+            "blockId": null,
+            "lineIndex": null,
+            "bounds": {
+              "left": 155,
+              "top": 1558,
+              "right": 894,
+              "bottom": 1603
+            }
+          },
+          {
+            "regionId": "semantic-4cdd063f-region-14",
+            "text": "and they will come back for sure",
+            "confidence": 0.875,
+            "blockId": null,
+            "lineIndex": null,
+            "bounds": {
+              "left": 166,
+              "top": 1618,
+              "right": 828,
+              "bottom": 1659
+            }
+          },
+          {
+            "regionId": "semantic-4cdd063f-region-15",
+            "text": "because this place is good for those",
+            "confidence": 0.8920572996139526,
+            "blockId": null,
+            "lineIndex": null,
+            "bounds": {
+              "left": 155,
+              "top": 1676,
+              "right": 900,
+              "bottom": 1717
+            }
+          },
+          {
+            "regionId": "semantic-4cdd063f-region-16",
+            "text": "who have made it.",
+            "confidence": 0.8518415093421936,
+            "blockId": null,
+            "lineIndex": null,
+            "bounds": {
+              "left": 153,
+              "top": 1735,
+              "right": 529,
+              "bottom": 1769
+            }
+          }
+        ],
+        "translation": {
+          "succeeded": true,
+          "translatedText": "Web3 行业曾尝试过，我们也做得相当不错。直到该国决定投资一些既不符合国家利益也不符合 Web3 社区的事物时，一切才彻底失控。其余的都是历史了。在那之后，我们突然全部转向 AI，那真的非常危险且风险比 Web3 更大。很高兴最近我们正在重新回归理智。现在，美国仅有的几个扎实的 Web3 项目都来自新加坡。确实，这些年轻人让我们感到自豪。他们离开是有正当理由的，而他们肯定会回来的，因为这个地方对于那些成功的人来说是理想的所在。",
+          "provider": "self-hosted-qwen-v2",
+          "failureCode": null,
+          "layoutHint": {
+            "preferredMaxLines": 6,
+            "minimumTextScale": 0.8600000143051147,
+            "alignment": "START",
+            "overflowStrategy": "REFLOW_THEN_SCALE"
+          }
+        }
+      },
+      {
+        "groupId": "semantic-2e58f572",
+        "role": "TIMESTAMP",
+        "translationUnit": "PRESERVED",
+        "sourceText": "22:43",
+        "memberRegionIds": [
+          "semantic-2e58f572-region-0"
+        ],
+        "readingOrder": 11,
+        "groupingConfidence": 1,
+        "groupingEvidence": [],
+        "bounds": {
+          "left": 825,
+          "top": 1762,
+          "right": 911,
+          "bottom": 1786
+        },
+        "regions": [
+          {
+            "regionId": "semantic-2e58f572-region-0",
+            "text": "22:43",
+            "confidence": 0.91015625,
+            "blockId": null,
+            "lineIndex": 0,
+            "bounds": {
+              "left": 825,
+              "top": 1762,
+              "right": 911,
+              "bottom": 1786
+            }
+          }
+        ],
+        "translation": {
+          "succeeded": true,
+          "translatedText": "22:43",
+          "provider": "self-hosted-qwen-v2",
+          "failureCode": null,
+          "layoutHint": {
+            "preferredMaxLines": 1,
+            "minimumTextScale": 0.8600000143051147,
+            "alignment": "START",
+            "overflowStrategy": "REFLOW_THEN_SCALE"
+          }
+        }
+      },
+      {
+        "groupId": "semantic-5773caf9",
+        "role": "BODY",
+        "translationUnit": "GROUP",
+        "sourceText": "Lim CW",
+        "memberRegionIds": [
+          "semantic-5773caf9-region-0"
+        ],
+        "readingOrder": 12,
+        "groupingConfidence": 1,
+        "groupingEvidence": [],
+        "bounds": {
+          "left": 185,
+          "top": 1952,
+          "right": 324,
+          "bottom": 1982
+        },
+        "regions": [
+          {
+            "regionId": "semantic-5773caf9-region-0",
+            "text": "Lim CW",
+            "confidence": 0.703125,
+            "blockId": null,
+            "lineIndex": 0,
+            "bounds": {
+              "left": 185,
+              "top": 1952,
+              "right": 324,
+              "bottom": 1982
+            }
+          }
+        ],
+        "translation": {
+          "succeeded": false,
+          "translatedText": "Lim CW",
+          "provider": "none",
+          "failureCode": "LOCAL_TRANSLATION_FAILED",
+          "layoutHint": null
+        }
+      },
+      {
+        "groupId": "semantic-2a80ebd7",
+        "role": "BODY",
+        "translationUnit": "GROUP",
+        "sourceText": "+65 9478 2794",
+        "memberRegionIds": [
+          "semantic-2a80ebd7-region-0"
+        ],
+        "readingOrder": 13,
+        "groupingConfidence": 1,
+        "groupingEvidence": [],
+        "bounds": {
+          "left": 443,
+          "top": 1955,
+          "right": 678,
+          "bottom": 1980
+        },
+        "regions": [
+          {
+            "regionId": "semantic-2a80ebd7-region-0",
+            "text": "+65 9478 2794",
+            "confidence": 0.9367897510528564,
+            "blockId": null,
+            "lineIndex": 0,
+            "bounds": {
+              "left": 443,
+              "top": 1955,
+              "right": 678,
+              "bottom": 1980
+            }
+          }
+        ],
+        "translation": {
+          "succeeded": true,
+          "translatedText": "+65 9478 2794",
+          "provider": "self-hosted-qwen-v2",
+          "failureCode": null,
+          "layoutHint": {
+            "preferredMaxLines": 1,
+            "minimumTextScale": 0.8600000143051147,
+            "alignment": "START",
+            "overflowStrategy": "REFLOW_THEN_SCALE"
+          }
+        }
+      },
+      {
+        "groupId": "semantic-de70ab79",
+        "role": "BODY",
+        "translationUnit": "GROUP",
+        "sourceText": "DainV",
+        "memberRegionIds": [
+          "semantic-de70ab79-region-0"
+        ],
+        "readingOrder": 14,
+        "groupingConfidence": 1,
+        "groupingEvidence": [],
+        "bounds": {
+          "left": 109,
+          "top": 2109,
+          "right": 219,
+          "bottom": 2137
+        },
+        "regions": [
+          {
+            "regionId": "semantic-de70ab79-region-0",
+            "text": "DainV",
+            "confidence": 0.5101562738418579,
+            "blockId": "mlkit-7-109-2109-219-2137",
+            "lineIndex": 0,
+            "bounds": {
+              "left": 109,
+              "top": 2109,
+              "right": 219,
+              "bottom": 2137
+            }
+          }
+        ],
+        "translation": {
+          "succeeded": false,
+          "translatedText": "DainV",
+          "provider": "none",
+          "failureCode": "LOCAL_TRANSLATION_FAILED",
+          "layoutHint": null
+        }
+      },
+      {
+        "groupId": "semantic-af3ec064",
+        "role": "BODY",
+        "translationUnit": "GROUP",
+        "sourceText": "86 802",
+        "memberRegionIds": [
+          "semantic-af3ec064-region-0"
+        ],
+        "readingOrder": 15,
+        "groupingConfidence": 1,
+        "groupingEvidence": [],
+        "bounds": {
+          "left": 441,
+          "top": 2109,
+          "right": 535,
+          "bottom": 2138
+        },
+        "regions": [
+          {
+            "regionId": "semantic-af3ec064-region-0",
+            "text": "86 802",
+            "confidence": 0.63671875,
+            "blockId": "mlkit-15-441-2109-535-2138",
+            "lineIndex": 0,
+            "bounds": {
+              "left": 441,
+              "top": 2109,
+              "right": 535,
+              "bottom": 2138
+            }
+          }
+        ],
+        "translation": {
+          "succeeded": true,
+          "translatedText": "86 802",
+          "provider": "self-hosted-qwen-v2",
+          "failureCode": null,
+          "layoutHint": {
+            "preferredMaxLines": 1,
+            "minimumTextScale": 0.8600000143051147,
+            "alignment": "START",
+            "overflowStrategy": "REFLOW_THEN_SCALE"
+          }
+        }
+      }
+    ]
+  },
+  "translation": {
+    "elapsedMs": 43505,
+    "resultCount": 16,
+    "succeededCount": 9,
+    "failedCount": 7
+  }
+}

@@ -28,6 +28,9 @@ internal object LiveOverlayExperiencePolicy {
         standardOverlayAlpha
     }
 
+    fun shouldMaskTranslationPatchesFromSignature(mode: LiveOverlayExperienceMode): Boolean =
+        mode == LiveOverlayExperienceMode.ENHANCED
+
     fun canPresentTranslation(
         requested: LiveOverlayExperienceMode,
         resolved: LiveOverlayExperienceMode

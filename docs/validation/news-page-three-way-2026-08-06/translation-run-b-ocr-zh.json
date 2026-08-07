@@ -1,0 +1,707 @@
+{
+  "schemaVersion": 1,
+  "inputPath": "\/data\/local\/tmp\/news-page-translation-b.png",
+  "width": 387,
+  "height": 892,
+  "engine": "ML_KIT",
+  "recognitionMode": "CHINESE",
+  "elapsedMs": 744,
+  "lineCount": 23,
+  "groupCount": 19,
+  "lines": [
+    {
+      "lineId": "line-1",
+      "text": "23113RKC6C",
+      "bounds": {
+        "left": 85,
+        "top": 12,
+        "right": 167,
+        "bottom": 21
+      },
+      "modelConfidence": 0.850390613079071,
+      "consensusScore": 0.6399999856948853,
+      "passCount": 1,
+      "recognizerScript": "CHINESE",
+      "sourceBlockId": "mlkit-0-85-12-167-21",
+      "sourceLineIndex": 0
+    },
+    {
+      "lineId": "line-2",
+      "text": "13:37多",
+      "bounds": {
+        "left": 16,
+        "top": 41,
+        "right": 95,
+        "bottom": 54
+      },
+      "modelConfidence": 0.4921875,
+      "consensusScore": 0.6346666812896729,
+      "passCount": 1,
+      "recognizerScript": "CHINESE",
+      "sourceBlockId": "mlkit-1-16-41-95-54",
+      "sourceLineIndex": 0
+    },
+    {
+      "lineId": "line-3",
+      "text": "屏幕共享中",
+      "bounds": {
+        "left": 205,
+        "top": 44,
+        "right": 272,
+        "bottom": 57
+      },
+      "modelConfidence": 0.573437511920929,
+      "consensusScore": 0.6399999856948853,
+      "passCount": 1,
+      "recognizerScript": "CHINESE",
+      "sourceBlockId": "mlkit-6-205-44-272-57",
+      "sourceLineIndex": 0
+    },
+    {
+      "lineId": "line-4",
+      "text": "AFRICA-CANADA:Boost for",
+      "bounds": {
+        "left": 59,
+        "top": 86,
+        "right": 245,
+        "bottom": 102
+      },
+      "modelConfidence": 0.8167613744735718,
+      "consensusScore": 0.6399999856948853,
+      "passCount": 1,
+      "recognizerScript": "CHINESE",
+      "sourceBlockId": "mlkit-3-59-86-245-102",
+      "sourceLineIndex": 0
+    },
+    {
+      "lineId": "line-5",
+      "text": "大学世界新间",
+      "bounds": {
+        "left": 9,
+        "top": 136,
+        "right": 110,
+        "bottom": 155
+      },
+      "modelConfidence": 0.751953125,
+      "consensusScore": 0.6399999856948853,
+      "passCount": 1,
+      "recognizerScript": "CHINESE",
+      "sourceBlockId": "mlkit-2-9-136-110-155",
+      "sourceLineIndex": 0
+    },
+    {
+      "lineId": "line-6",
+      "text": "1全球版非洲版",
+      "bounds": {
+        "left": 0,
+        "top": 177,
+        "right": 89,
+        "bottom": 194
+      },
+      "modelConfidence": 0.4737723171710968,
+      "consensusScore": 0.6399999856948853,
+      "passCount": 1,
+      "recognizerScript": "CHINESE",
+      "sourceBlockId": "mlkit-4-0-177-89-194",
+      "sourceLineIndex": 0
+    },
+    {
+      "lineId": "line-7",
+      "text": "「亚洲修細",
+      "bounds": {
+        "left": 283,
+        "top": 178,
+        "right": 336,
+        "bottom": 193
+      },
+      "modelConfidence": 0.21640625596046448,
+      "consensusScore": 0.6146666407585144,
+      "passCount": 1,
+      "recognizerScript": "CHINESE",
+      "sourceBlockId": "mlkit-11-283-178-336-193",
+      "sourceLineIndex": 0
+    },
+    {
+      "lineId": "line-8",
+      "text": "非洲加拿大:为下ー个爱因斯坦中心提升",
+      "bounds": {
+        "left": 13,
+        "top": 357,
+        "right": 315,
+        "bottom": 371
+      },
+      "modelConfidence": 0.6342516541481018,
+      "consensusScore": 0.6399999856948853,
+      "passCount": 1,
+      "recognizerScript": "CHINESE",
+      "sourceBlockId": "mlkit-7-13-357-315-371",
+      "sourceLineIndex": 0
+    },
+    {
+      "lineId": "line-9",
+      "text": "Munyaradzi Makoni 18 July 2010",
+      "bounds": {
+        "left": 8,
+        "top": 399,
+        "right": 182,
+        "bottom": 410
+      },
+      "modelConfidence": 0.8517127633094788,
+      "consensusScore": 0.6399999856948853,
+      "passCount": 1,
+      "recognizerScript": "CHINESE",
+      "sourceBlockId": "mlkit-5-8-399-182-410",
+      "sourceLineIndex": 0
+    },
+    {
+      "lineId": "line-10",
+      "text": "Iweet Whatsapp",
+      "bounds": {
+        "left": 5,
+        "top": 419,
+        "right": 128,
+        "bottom": 438
+      },
+      "modelConfidence": 0.7836538553237915,
+      "consensusScore": 0.6399999856948853,
+      "passCount": 1,
+      "recognizerScript": "CHINESE",
+      "sourceBlockId": "mlkit-8-5-419-128-439",
+      "sourceLineIndex": 0
+    },
+    {
+      "lineId": "line-11",
+      "text": "加拿大政府己获得2000",
+      "bounds": {
+        "left": 184,
+        "top": 467,
+        "right": 341,
+        "bottom": 481
+      },
+      "modelConfidence": 0.6731770634651184,
+      "consensusScore": 0.6399999856948853,
+      "passCount": 1,
+      "recognizerScript": "CHINESE",
+      "sourceBlockId": "mlkit-10-176-467-346-505",
+      "sourceLineIndex": 0
+    },
+    {
+      "lineId": "line-12",
+      "text": "万美元(19400万美元)",
+      "bounds": {
+        "left": 176,
+        "top": 487,
+        "right": 346,
+        "bottom": 505
+      },
+      "modelConfidence": 0.7277644276618958,
+      "consensusScore": 0.6276923418045044,
+      "passCount": 1,
+      "recognizerScript": "CHINESE",
+      "sourceBlockId": "mlkit-10-176-467-346-505",
+      "sourceLineIndex": 1
+    },
+    {
+      "lineId": "line-13",
+      "text": "接下来四年非洲数学研究所的技术中心!",
+      "bounds": {
+        "left": 128,
+        "top": 523,
+        "right": 376,
+        "bottom": 539
+      },
+      "modelConfidence": 0.666015625,
+      "consensusScore": 0.6355555653572083,
+      "passCount": 1,
+      "recognizerScript": "CHINESE",
+      "sourceBlockId": "mlkit-12-128-523-376-539",
+      "sourceLineIndex": 0
+    },
+    {
+      "lineId": "line-14",
+      "text": "|科学。中心委延",
+      "bounds": {
+        "left": 124,
+        "top": 552,
+        "right": 229,
+        "bottom": 567
+      },
+      "modelConfidence": 0.376953125,
+      "consensusScore": 0.6146666407585144,
+      "passCount": 1,
+      "recognizerScript": "CHINESE",
+      "sourceBlockId": "mlkit-13-124-552-229-567",
+      "sourceLineIndex": 0
+    },
+    {
+      "lineId": "line-15",
+      "text": "在整个大陆和通过ATMS-NEXT的",
+      "bounds": {
+        "left": 17,
+        "top": 575,
+        "right": 278,
+        "bottom": 593
+      },
+      "modelConfidence": 0.7690972089767456,
+      "consensusScore": 0.6399999856948853,
+      "passCount": 1,
+      "recognizerScript": "CHINESE",
+      "sourceBlockId": "mlkit-14-17-575-278-593",
+      "sourceLineIndex": 0
+    },
+    {
+      "lineId": "line-16",
+      "text": "Eins tein倡议贯穿。他们将在数学科学",
+      "bounds": {
+        "left": 10,
+        "top": 598,
+        "right": 344,
+        "bottom": 617
+      },
+      "modelConfidence": 0.7829241156578064,
+      "consensusScore": 0.6399999856948853,
+      "passCount": 1,
+      "recognizerScript": "CHINESE",
+      "sourceBlockId": "mlkit-15-10-598-344-617",
+      "sourceLineIndex": 0
+    },
+    {
+      "lineId": "line-17",
+      "text": "|中培训有才华的年轻非洲研究生研究员。",
+      "bounds": {
+        "left": 7,
+        "top": 621,
+        "right": 340,
+        "bottom": 642
+      },
+      "modelConfidence": 0.7119654417037964,
+      "consensusScore": 0.6155789494514465,
+      "passCount": 1,
+      "recognizerScript": "CHINESE",
+      "sourceBlockId": "mlkit-16-7-621-340-642",
+      "sourceLineIndex": 0
+    },
+    {
+      "lineId": "line-18",
+      "text": "|基于南非出生的科学家诺尔科科特博士的基于ario",
+      "bounds": {
+        "left": 14,
+        "top": 677,
+        "right": 361,
+        "bottom": 695
+      },
+      "modelConfidence": 0.6729687452316284,
+      "consensusScore": 0.6329600214958191,
+      "passCount": 1,
+      "recognizerScript": "CHINESE",
+      "sourceBlockId": "mlkit-17-13-677-361-762",
+      "sourceLineIndex": 0
+    },
+    {
+      "lineId": "line-19",
+      "text": "基于ario的非营利性外界学会的非营利性外展课程",
+      "bounds": {
+        "left": 22,
+        "top": 701,
+        "right": 357,
+        "bottom": 716
+      },
+      "modelConfidence": 0.6954752802848816,
+      "consensusScore": 0.6399999856948853,
+      "passCount": 1,
+      "recognizerScript": "CHINESE",
+      "sourceBlockId": "mlkit-17-13-677-361-762",
+      "sourceLineIndex": 1
+    },
+    {
+      "lineId": "line-20",
+      "text": "的课程的资金支持尼尔图里托博士,他也是冒在的",
+      "bounds": {
+        "left": 23,
+        "top": 723,
+        "right": 357,
+        "bottom": 738
+      },
+      "modelConfidence": 0.6766690611839294,
+      "consensusScore": 0.6399999856948853,
+      "passCount": 1,
+      "recognizerScript": "CHINESE",
+      "sourceBlockId": "mlkit-17-13-677-361-762",
+      "sourceLineIndex": 2
+    },
+    {
+      "lineId": "line-21",
+      "text": "|目标和发起人的创始人-下ー个爱因斯坦的倡议。",
+      "bounds": {
+        "left": 13,
+        "top": 744,
+        "right": 354,
+        "bottom": 762
+      },
+      "modelConfidence": 0.597316563129425,
+      "consensusScore": 0.61356520652771,
+      "passCount": 1,
+      "recognizerScript": "CHINESE",
+      "sourceBlockId": "mlkit-17-13-677-361-762",
+      "sourceLineIndex": 3
+    },
+    {
+      "lineId": "line-22",
+      "text": "隐私",
+      "bounds": {
+        "left": 321,
+        "top": 811,
+        "right": 349,
+        "bottom": 825
+      },
+      "modelConfidence": 0.56640625,
+      "consensusScore": 0.6399999856948853,
+      "passCount": 1,
+      "recognizerScript": "CHINESE",
+      "sourceBlockId": null,
+      "sourceLineIndex": null
+    },
+    {
+      "lineId": "line-23",
+      "text": "总耗时52453ms",
+      "bounds": {
+        "left": 165,
+        "top": 835,
+        "right": 249,
+        "bottom": 847
+      },
+      "modelConfidence": 0.7007812261581421,
+      "consensusScore": 0.6399999856948853,
+      "passCount": 1,
+      "recognizerScript": "CHINESE",
+      "sourceBlockId": "mlkit-18-165-834-249-847",
+      "sourceLineIndex": 0
+    }
+  ],
+  "groups": [
+    {
+      "groupId": "semantic-421c59ef",
+      "sourceText": "23113RKC6C",
+      "bounds": {
+        "left": 85,
+        "top": 12,
+        "right": 167,
+        "bottom": 21
+      },
+      "role": "BODY",
+      "groupingConfidence": 1,
+      "evidence": [],
+      "memberTexts": [
+        "23113RKC6C"
+      ]
+    },
+    {
+      "groupId": "semantic-89a1721f",
+      "sourceText": "13:37多",
+      "bounds": {
+        "left": 16,
+        "top": 41,
+        "right": 95,
+        "bottom": 54
+      },
+      "role": "BODY",
+      "groupingConfidence": 1,
+      "evidence": [],
+      "memberTexts": [
+        "13:37多"
+      ]
+    },
+    {
+      "groupId": "semantic-64cd9b33",
+      "sourceText": "屏幕共享中",
+      "bounds": {
+        "left": 205,
+        "top": 44,
+        "right": 272,
+        "bottom": 57
+      },
+      "role": "BODY",
+      "groupingConfidence": 1,
+      "evidence": [],
+      "memberTexts": [
+        "屏幕共享中"
+      ]
+    },
+    {
+      "groupId": "semantic-844dedcc",
+      "sourceText": "AFRICA-CANADA:Boost for",
+      "bounds": {
+        "left": 59,
+        "top": 86,
+        "right": 245,
+        "bottom": 102
+      },
+      "role": "BODY",
+      "groupingConfidence": 1,
+      "evidence": [],
+      "memberTexts": [
+        "AFRICA-CANADA:Boost for"
+      ]
+    },
+    {
+      "groupId": "semantic-bf721837",
+      "sourceText": "大学世界新间",
+      "bounds": {
+        "left": 9,
+        "top": 136,
+        "right": 110,
+        "bottom": 155
+      },
+      "role": "BODY",
+      "groupingConfidence": 1,
+      "evidence": [],
+      "memberTexts": [
+        "大学世界新间"
+      ]
+    },
+    {
+      "groupId": "semantic-179261b2",
+      "sourceText": "1全球版非洲版",
+      "bounds": {
+        "left": 0,
+        "top": 177,
+        "right": 89,
+        "bottom": 194
+      },
+      "role": "BODY",
+      "groupingConfidence": 1,
+      "evidence": [],
+      "memberTexts": [
+        "1全球版非洲版"
+      ]
+    },
+    {
+      "groupId": "semantic-a67dc06",
+      "sourceText": "「亚洲修細",
+      "bounds": {
+        "left": 283,
+        "top": 178,
+        "right": 336,
+        "bottom": 193
+      },
+      "role": "BODY",
+      "groupingConfidence": 1,
+      "evidence": [],
+      "memberTexts": [
+        "「亚洲修細"
+      ]
+    },
+    {
+      "groupId": "semantic-cfa5b0b7",
+      "sourceText": "非洲加拿大:为下ー个爱因斯坦中心提升",
+      "bounds": {
+        "left": 13,
+        "top": 357,
+        "right": 315,
+        "bottom": 371
+      },
+      "role": "BODY",
+      "groupingConfidence": 1,
+      "evidence": [],
+      "memberTexts": [
+        "非洲加拿大:为下ー个爱因斯坦中心提升"
+      ]
+    },
+    {
+      "groupId": "semantic-14d88cf4",
+      "sourceText": "Munyaradzi Makoni 18 July 2010",
+      "bounds": {
+        "left": 8,
+        "top": 399,
+        "right": 182,
+        "bottom": 410
+      },
+      "role": "BODY",
+      "groupingConfidence": 1,
+      "evidence": [],
+      "memberTexts": [
+        "Munyaradzi Makoni 18 July 2010"
+      ]
+    },
+    {
+      "groupId": "semantic-2790361d",
+      "sourceText": "Iweet Whatsapp",
+      "bounds": {
+        "left": 5,
+        "top": 419,
+        "right": 128,
+        "bottom": 438
+      },
+      "role": "BODY",
+      "groupingConfidence": 1,
+      "evidence": [],
+      "memberTexts": [
+        "Iweet Whatsapp"
+      ]
+    },
+    {
+      "groupId": "semantic-2f5826b7",
+      "sourceText": "加拿大政府己获得2000\n万美元(19400万美元)",
+      "bounds": {
+        "left": 176,
+        "top": 467,
+        "right": 346,
+        "bottom": 505
+      },
+      "role": "BODY",
+      "groupingConfidence": 0.949999988079071,
+      "evidence": [
+        "CENTER_ALIGNED",
+        "HORIZONTAL_OVERLAP",
+        "LEFT_ALIGNED",
+        "LINE_GAP",
+        "OCR_BLOCK",
+        "PUNCTUATION_CONTINUATION",
+        "REGION_OCCUPANCY"
+      ],
+      "memberTexts": [
+        "加拿大政府己获得2000",
+        "万美元(19400万美元)"
+      ]
+    },
+    {
+      "groupId": "semantic-67f06f1f",
+      "sourceText": "接下来四年非洲数学研究所的技术中心!",
+      "bounds": {
+        "left": 128,
+        "top": 523,
+        "right": 376,
+        "bottom": 539
+      },
+      "role": "BODY",
+      "groupingConfidence": 1,
+      "evidence": [],
+      "memberTexts": [
+        "接下来四年非洲数学研究所的技术中心!"
+      ]
+    },
+    {
+      "groupId": "semantic-21fce23f",
+      "sourceText": "|科学。中心委延",
+      "bounds": {
+        "left": 124,
+        "top": 552,
+        "right": 229,
+        "bottom": 567
+      },
+      "role": "BODY",
+      "groupingConfidence": 1,
+      "evidence": [],
+      "memberTexts": [
+        "|科学。中心委延"
+      ]
+    },
+    {
+      "groupId": "semantic-e2e8dae0",
+      "sourceText": "在整个大陆和通过ATMS-NEXT的",
+      "bounds": {
+        "left": 17,
+        "top": 575,
+        "right": 278,
+        "bottom": 593
+      },
+      "role": "BODY",
+      "groupingConfidence": 1,
+      "evidence": [],
+      "memberTexts": [
+        "在整个大陆和通过ATMS-NEXT的"
+      ]
+    },
+    {
+      "groupId": "semantic-1eeebda1",
+      "sourceText": "Eins tein倡议贯穿。他们将在数学科学",
+      "bounds": {
+        "left": 10,
+        "top": 598,
+        "right": 344,
+        "bottom": 617
+      },
+      "role": "BODY",
+      "groupingConfidence": 1,
+      "evidence": [],
+      "memberTexts": [
+        "Eins tein倡议贯穿。他们将在数学科学"
+      ]
+    },
+    {
+      "groupId": "semantic-ca69dd2",
+      "sourceText": "|中培训有才华的年轻非洲研究生研究员。",
+      "bounds": {
+        "left": 7,
+        "top": 621,
+        "right": 340,
+        "bottom": 642
+      },
+      "role": "BODY",
+      "groupingConfidence": 1,
+      "evidence": [],
+      "memberTexts": [
+        "|中培训有才华的年轻非洲研究生研究员。"
+      ]
+    },
+    {
+      "groupId": "semantic-baa243ca",
+      "sourceText": "|基于南非出生的科学家诺尔科科特博士的基于ario\n基于ario的非营利性外界学会的非营利性外展课程\n的课程的资金支持尼尔图里托博士,他也是冒在的\n|目标和发起人的创始人-下ー个爱因斯坦的倡议。",
+      "bounds": {
+        "left": 13,
+        "top": 677,
+        "right": 361,
+        "bottom": 762
+      },
+      "role": "BODY",
+      "groupingConfidence": 0.949999988079071,
+      "evidence": [
+        "CENTER_ALIGNED",
+        "HORIZONTAL_OVERLAP",
+        "LEFT_ALIGNED",
+        "LINE_GAP",
+        "OCR_BLOCK",
+        "PUNCTUATION_CONTINUATION",
+        "REGION_OCCUPANCY"
+      ],
+      "memberTexts": [
+        "|基于南非出生的科学家诺尔科科特博士的基于ario",
+        "基于ario的非营利性外界学会的非营利性外展课程",
+        "的课程的资金支持尼尔图里托博士,他也是冒在的",
+        "|目标和发起人的创始人-下ー个爱因斯坦的倡议。"
+      ]
+    },
+    {
+      "groupId": "semantic-5a9dcbb2",
+      "sourceText": "隐私",
+      "bounds": {
+        "left": 321,
+        "top": 811,
+        "right": 349,
+        "bottom": 825
+      },
+      "role": "BODY",
+      "groupingConfidence": 1,
+      "evidence": [],
+      "memberTexts": [
+        "隐私"
+      ]
+    },
+    {
+      "groupId": "semantic-b07b0ce3",
+      "sourceText": "总耗时52453ms",
+      "bounds": {
+        "left": 165,
+        "top": 835,
+        "right": 249,
+        "bottom": 847
+      },
+      "role": "BODY",
+      "groupingConfidence": 1,
+      "evidence": [],
+      "memberTexts": [
+        "总耗时52453ms"
+      ]
+    }
+  ]
+}

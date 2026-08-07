@@ -1,0 +1,155 @@
+[
+  {
+    "requestId": "94a5d158-8656-41e7-b675-718dbcbfa58b",
+    "results": [
+      {
+        "regionId": "semantic-11afce8b",
+        "status": "TRANSLATED",
+        "translatedText": "www.news.cn",
+        "provider": "pnuts-translate-v1",
+        "detectedSourceLanguage": "en",
+        "targetLanguage": "zh"
+      }
+    ]
+  },
+  {
+    "requestId": "2a3deaf6-339b-469a-bc72-1a998b3fe1d1",
+    "results": [
+      {
+        "regionId": "semantic-17d2690e",
+        "status": "TRANSLATED",
+        "translatedText": "习近平签署命令表彰优秀军事个人",
+        "provider": "pnuts-translate-v1",
+        "detectedSourceLanguage": "en",
+        "targetLanguage": "zh"
+      }
+    ]
+  },
+  {
+    "requestId": "ae90ba53-958f-43ab-8b9f-bc9ce79bc54b",
+    "results": [
+      {
+        "regionId": "semantic-55749d7a",
+        "status": "TRANSLATED",
+        "translatedText": "首页)(习近平的故事 习式外交 习近平聚焦",
+        "provider": "pnuts-translate-v1",
+        "detectedSourceLanguage": "en",
+        "targetLanguage": "zh"
+      }
+    ]
+  },
+  {
+    "requestId": "3d210bfe-cfdb-451f-b891-e290abdd85d8",
+    "results": [
+      {
+        "regionId": "semantic-631d7a9d",
+        "status": "TRANSLATED",
+        "translatedText": "习语故事：六尺巷展现中国智慧",
+        "provider": "pnuts-translate-v1",
+        "detectedSourceLanguage": "en",
+        "targetLanguage": "zh"
+      }
+    ]
+  },
+  {
+    "requestId": "73462188-a3fd-4055-94ba-5049322d99c5",
+    "results": [
+      {
+        "regionId": "semantic-75ab1c6b",
+        "status": "TRANSLATED",
+        "translatedText": "习近平文库",
+        "provider": "pnuts-translate-v1",
+        "detectedSourceLanguage": "en",
+        "targetLanguage": "zh"
+      }
+    ]
+  },
+  {
+    "requestId": "624f26f9-15f3-4412-a433-376c4dc3f3cc",
+    "results": [
+      {
+        "regionId": "semantic-8895378",
+        "status": "TRANSLATED",
+        "translatedText": "EWS",
+        "provider": "pnuts-translate-v1",
+        "detectedSourceLanguage": "en",
+        "targetLanguage": "zh"
+      }
+    ]
+  },
+  {
+    "requestId": "df82004c-fb89-4776-a19f-aed27fd218ab",
+    "results": [
+      {
+        "regionId": "semantic-8b380923",
+        "status": "TRANSLATED",
+        "translatedText": "习近平在北京同斯洛伐克总统举行会谈",
+        "provider": "pnuts-translate-v1",
+        "detectedSourceLanguage": "en",
+        "targetLanguage": "zh"
+      }
+    ]
+  },
+  {
+    "requestId": "833d0c7b-da7a-4d2c-a39d-46d8fb582969",
+    "results": [
+      {
+        "regionId": "semantic-91fbfd5e",
+        "status": "TRANSLATED",
+        "translatedText": "作为持久的使命",
+        "provider": "pnuts-translate-v1",
+        "detectedSourceLanguage": "en",
+        "targetLanguage": "zh"
+      }
+    ]
+  },
+  {
+    "requestId": "5a237982-3045-4a15-b320-bc6afe2072dc",
+    "results": [
+      {
+        "regionId": "semantic-9f094989",
+        "status": "FAILED",
+        "provider": "pnuts-translate-v1",
+        "detectedSourceLanguage": "en",
+        "targetLanguage": "zh"
+      }
+    ]
+  },
+  {
+    "requestId": "2b6b03ae-d527-401e-ac5a-6635173333bc",
+    "results": [
+      {
+        "regionId": "semantic-b0675a81",
+        "status": "TRANSLATED",
+        "translatedText": "N'sTime",
+        "provider": "pnuts-translate-v1",
+        "detectedSourceLanguage": "en",
+        "targetLanguage": "zh"
+      }
+    ]
+  },
+  {
+    "requestId": "c3d9e8a3-d44b-4b19-878e-30df98ae8bcc",
+    "results": [
+      {
+        "regionId": "semantic-e86f3d04",
+        "status": "FAILED",
+        "provider": "pnuts-translate-v1",
+        "detectedSourceLanguage": "en",
+        "targetLanguage": "zh"
+      }
+    ]
+  },
+  {
+    "requestId": "2f8950e0-0bd7-48a7-9292-3418bcbc9a63",
+    "results": [
+      {
+        "regionId": "semantic-fa793555",
+        "status": "FAILED",
+        "provider": "pnuts-translate-v1",
+        "detectedSourceLanguage": "en",
+        "targetLanguage": "zh"
+      }
+    ]
+  }
+]

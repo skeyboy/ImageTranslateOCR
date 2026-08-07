@@ -20,23 +20,72 @@ import android.view.animation.DecelerateInterpolator
 import android.widget.PopupMenu
 import com.example.imagetranslate.R
 import com.example.imagetranslate.databinding.OverlayActiveScreenCaptureBinding
+import com.example.imagetranslate.ocr.OcrEngineType
 import com.example.imagetranslate.ocr.OcrModel
 import com.example.imagetranslate.ocr.OcrModelState
 import com.example.imagetranslate.ocr.OcrRecognitionMode
+import com.example.imagetranslate.translate.TranslationBackend
 import com.example.imagetranslate.translate.TranslationMode
 import com.example.experimentaltranslation.ExperimentalTranslationEngine
 import kotlin.math.abs
 
 private const val SIGNATURE_OCCLUSION_PADDING_DP = 8
 
+internal data class TranslationBackendMenuOption(
+    val backend: TranslationBackend,
+    val selected: Boolean,
+    val enabled: Boolean
+)
+
+internal fun translationBackendMenuOptions(
+    selectedBackend: TranslationBackend,
+    networkConfigured: Boolean,
+    selfHostedConfigured: Boolean = false
+): List<TranslationBackendMenuOption> = TranslationBackend.entries.map { backend ->
+    TranslationBackendMenuOption(
+        backend = backend,
+        selected = backend == selectedBackend,
+        enabled = when (backend) {
+            TranslationBackend.LOCAL -> true
+            TranslationBackend.NETWORK -> networkConfigured
+            TranslationBackend.SELF_HOSTED -> selfHostedConfigured
+        }
+    )
+}
+
+internal data class LiveOcrTranslationEngineMenuOption(
+    val engine: LiveOcrTranslationEngineType,
+    val selected: Boolean,
+    val enabled: Boolean
+)
+
+internal fun liveOcrTranslationEngineMenuOptions(
+    selectedEngine: LiveOcrTranslationEngineType,
+    paddleNetworkConfigured: Boolean
+): List<LiveOcrTranslationEngineMenuOption> =
+    LiveOcrTranslationEngineType.entries.map { engine ->
+        LiveOcrTranslationEngineMenuOption(
+            engine = engine,
+            selected = engine == selectedEngine,
+            enabled = engine != LiveOcrTranslationEngineType.PADDLE_NETWORK ||
+                paddleNetworkConfigured
+        )
+    }
+
 internal class ActiveScreenCaptureOverlayController(
     context: Context,
     initialExperienceMode: LiveOverlayExperienceMode,
     initialCaptureSettings: LiveCaptureSettings,
+    initialOcrEngine: OcrEngineType,
     initialRecognitionMode: OcrRecognitionMode,
     initialSmartAssistEnabled: Boolean,
     initialBackgroundExperienceMode: LivePatchBackgroundExperienceMode,
     initialExperimentalTranslationEngine: ExperimentalTranslationEngine,
+    initialTranslationBackend: TranslationBackend,
+    private val networkTranslationConfigured: Boolean,
+    private val selfHostedTranslationConfigured: Boolean,
+    initialLiveOcrTranslationEngine: LiveOcrTranslationEngineType,
+    initialPaddleNetworkConfigured: Boolean,
     private val listener: Listener
 ) {
     interface Listener {
@@ -44,10 +93,13 @@ internal class ActiveScreenCaptureOverlayController(
         fun onStop()
         fun onCancelPreview()
         fun onTranslationModeChanged(mode: TranslationMode)
+        fun onTranslationBackendChanged(backend: TranslationBackend)
+        fun onLiveOcrTranslationEngineChanged(engine: LiveOcrTranslationEngineType)
         fun onTranslationVisibilityChanged(visible: Boolean)
         fun onExperienceModeRequested(mode: LiveOverlayExperienceMode)
         fun onCaptureSettingsChanged(settings: LiveCaptureSettings)
         fun onOcrSettingsOpened()
+        fun onOcrEngineChanged(engine: OcrEngineType)
         fun onOcrRecognitionModeChanged(mode: OcrRecognitionMode)
         fun onOcrModelDownloadRequested(model: OcrModel)
         fun onSmartAssistEnabledChanged(enabled: Boolean)
@@ -68,18 +120,22 @@ internal class ActiveScreenCaptureOverlayController(
     private val edgeMargin = dp(12)
     private val expandedWidth: Int
         get() = minOf(dp(380), (windowBounds().first - edgeMargin * 2).coerceAtLeast(dp(300)))
-    private val expandedHeight = dp(56)
-    private val collapsedWidth = dp(132)
+    private val expandedHeight = dp(78)
+    private val collapsedWidth = dp(168)
     private val collapsedHeight = dp(42)
     private var controlParams: WindowManager.LayoutParams? = null
     private var translationParams: WindowManager.LayoutParams? = null
     private var translationMode = TranslationMode.AUTO_BIDIRECTIONAL
     private var experienceMode = initialExperienceMode
     private var captureSettings = initialCaptureSettings
+    private var ocrEngine = initialOcrEngine
     private var recognitionMode = initialRecognitionMode
     private var smartAssistEnabled = initialSmartAssistEnabled
     private var backgroundExperienceMode = initialBackgroundExperienceMode
     private var experimentalTranslationEngine = initialExperimentalTranslationEngine
+    private var translationBackend = initialTranslationBackend
+    private var liveOcrTranslationEngine = initialLiveOcrTranslationEngine
+    private var paddleNetworkConfigured = initialPaddleNetworkConfigured
     private val ocrModelStates = OcrModel.entries.associateWith {
         OcrModelState.UNKNOWN
     }.toMutableMap()
@@ -89,6 +145,8 @@ internal class ActiveScreenCaptureOverlayController(
     private var collapsed = false
     private var translationVisible = true
     private var hasTranslationResult = false
+    private var latestPerformanceSummary: String? = null
+    private var latestCompactPerformance: String? = null
 
     init {
         binding.btnActiveOverlayCapture.setOnClickListener { listener.onCapture() }
@@ -141,11 +199,19 @@ internal class ActiveScreenCaptureOverlayController(
         }
     }
 
-    fun signatureOcclusionBounds(): List<Rect> {
+    fun signatureOcclusionBounds(maskTranslationPatches: Boolean = false): List<Rect> {
         val padding = dp(SIGNATURE_OCCLUSION_PADDING_DP)
-        val regions = translationView.signatureOcclusionBounds().map { bounds ->
-            Rect(bounds).apply { inset(-padding, -padding) }
-        }.toMutableList()
+        val regions = if (
+            maskTranslationPatches ||
+            LiveOverlayExperiencePolicy.shouldMaskTranslationPatchesFromSignature(experienceMode)
+        ) {
+            translationView.signatureOcclusionBounds().map { bounds ->
+                Rect(bounds).apply { inset(-padding, -padding) }
+            }.toMutableList()
+        } else {
+            // Default overlays are translucent, so their pixels retain the underlying motion signal.
+            mutableListOf<Rect>()
+        }
         val params = controlParams
         if (params != null && binding.root.parent != null) {
             regions += Rect(
@@ -158,9 +224,11 @@ internal class ActiveScreenCaptureOverlayController(
         return regions
     }
 
-    fun showProcessing() = onMainThread {
+    fun showProcessing(shouldShow: () -> Boolean = { true }) = onMainThread {
+        if (!shouldShow()) return@onMainThread
         if (!ensureControlAttachedNow()) return@onMainThread
         processing = true
+        binding.tvActiveOverlayPerformance.visibility = View.GONE
         sessionActive = true
         collapseNow()
         binding.root.visibility = View.VISIBLE
@@ -187,12 +255,43 @@ internal class ActiveScreenCaptureOverlayController(
         updateCompactStatus(R.string.active_screenshot_ocr_model_preparing_short, showProgress = true)
     }
 
+    fun showRecognitionSucceeded() = onMainThread {
+        if (!processing || !ensureControlAttachedNow()) return@onMainThread
+        binding.activeOverlayProgress.visibility = View.VISIBLE
+        binding.tvActiveOverlayStatus.setText(R.string.active_screenshot_recognition_succeeded)
+        updateCompactStatus(
+            R.string.active_screenshot_recognition_succeeded_short,
+            showProgress = true
+        )
+    }
+
+    fun showRecognitionFailed() = showTransientRecognitionStatus(
+        R.string.active_screenshot_recognition_failed
+    )
+
+    fun showRecognitionCancelled() = showTransientRecognitionStatus(
+        R.string.active_screenshot_recognition_cancelled
+    )
+
     fun updateOcrModelState(model: OcrModel, state: OcrModelState) = onMainThread {
         ocrModelStates[model] = state
     }
 
-    fun showWaitingForStable(onHidden: (() -> Unit)? = null) = onMainThread {
-        translationView.hideForViewportMovement()
+    fun setTranslationBackend(backend: TranslationBackend) = onMainThread {
+        translationBackend = backend
+    }
+
+    fun setLiveOcrTranslationEngine(
+        engine: LiveOcrTranslationEngineType,
+        networkConfigured: Boolean
+    ) = onMainThread {
+        liveOcrTranslationEngine = engine
+        paddleNetworkConfigured = networkConfigured
+    }
+
+    fun showWaitingForStable(onHidden: ((Boolean) -> Unit)? = null) = onMainThread {
+        val translationLayerCleared = translationView.clearForViewportMovement()
+        hasTranslationResult = false
         sessionActive = true
         updateCompactStatus(R.string.active_screenshot_compact_waiting, showProgress = false)
         if (binding.expandedCaptureControls.visibility == View.VISIBLE) {
@@ -202,7 +301,8 @@ internal class ActiveScreenCaptureOverlayController(
             binding.tvActiveOverlayStatus.setText(R.string.active_screenshot_waiting_stable)
             binding.btnCancelActivePreview.visibility = View.VISIBLE
         }
-        binding.root.postOnAnimation { onHidden?.invoke() }
+        binding.btnToggleActiveTranslation.isEnabled = false
+        binding.root.postOnAnimation { onHidden?.invoke(translationLayerCleared) }
     }
 
     fun showResult(
@@ -210,8 +310,16 @@ internal class ActiveScreenCaptureOverlayController(
         sourceWidth: Int,
         sourceHeight: Int,
         recognizedCount: Int,
+        ocrMs: Long,
+        translationMs: Long,
+        renderingMs: Long,
+        shouldPresent: () -> Boolean = { true },
         onPresented: () -> Unit
     ) = onMainThread {
+        if (!shouldPresent()) {
+            patches.recyclePatchBitmaps()
+            return@onMainThread
+        }
         if (!ensureControlAttachedNow()) {
             patches.forEach { if (!it.bitmap.isRecycled) it.bitmap.recycle() }
             mainHandler.post(onPresented)
@@ -225,28 +333,51 @@ internal class ActiveScreenCaptureOverlayController(
         binding.btnActiveOverlayCapture.visibility = View.GONE
         binding.activeOverlayStatusGroup.visibility = View.VISIBLE
         binding.activeOverlayProgress.visibility = View.GONE
-        binding.tvActiveOverlayStatus.text = if (patches.isEmpty()) {
+        val resultText = if (patches.isEmpty()) {
             appContext.getString(R.string.active_screenshot_no_translatable_text)
         } else {
             appContext.getString(R.string.active_screenshot_live_result, recognizedCount)
         }
+        binding.tvActiveOverlayStatus.text = resultText
+        val totalMs = ocrMs + translationMs + renderingMs
+        latestPerformanceSummary = appContext.getString(
+            R.string.active_screenshot_performance_metrics,
+            ocrMs,
+            translationMs,
+            renderingMs,
+            totalMs
+        )
+        latestCompactPerformance = appContext.getString(
+            R.string.active_screenshot_performance_compact,
+            totalMs
+        )
+        binding.tvActiveOverlayPerformance.text = latestPerformanceSummary
+        binding.tvActiveOverlayPerformance.visibility = View.VISIBLE
         binding.btnCancelActivePreview.visibility = View.VISIBLE
         binding.btnActiveOverlayMode.isEnabled = true
         binding.btnActiveOverlaySettings.isEnabled = true
         binding.btnToggleActiveTranslation.isEnabled = hasTranslationResult
         binding.btnToggleActiveTranslation.isChecked = translationVisible
-        updateCompactStatus(
-            if (patches.isEmpty()) {
-                R.string.active_screenshot_compact_no_text
-            } else {
-                R.string.active_screenshot_compact_translated
-            },
-            showProgress = false
-        )
+        updateCompactPerformance()
         binding.root.postOnAnimation(onPresented)
     }
 
     fun showCaptureFailed() = onMainThread(::showReadyNow)
+
+    private fun showTransientRecognitionStatus(textRes: Int) = onMainThread {
+        if (!ensureControlAttachedNow()) return@onMainThread
+        processing = false
+        binding.root.visibility = View.VISIBLE
+        binding.btnActiveOverlayCapture.visibility = View.GONE
+        binding.activeOverlayStatusGroup.visibility = View.VISIBLE
+        binding.activeOverlayProgress.visibility = View.INVISIBLE
+        binding.tvActiveOverlayStatus.setText(textRes)
+        binding.btnCancelActivePreview.visibility = View.GONE
+        binding.btnActiveOverlayMode.isEnabled = true
+        binding.btnActiveOverlaySettings.isEnabled = true
+        updateCompactStatus(textRes, showProgress = false)
+        mainHandler.postDelayed(::showReadyNow, TERMINAL_STATUS_DURATION_MS)
+    }
 
     fun restoreAfterSkippedCapture() = onMainThread {
         processing = false
@@ -258,14 +389,16 @@ internal class ActiveScreenCaptureOverlayController(
         binding.btnToggleActiveTranslation.isEnabled = hasTranslationResult
         if (hasTranslationResult) {
             binding.tvActiveOverlayStatus.setText(R.string.active_screenshot_compact_translated)
-            updateCompactStatus(
-                R.string.active_screenshot_compact_translated,
-                showProgress = false
-            )
+            updateCompactPerformance()
         }
     }
 
     fun clearTranslations() = onMainThread {
+        hasTranslationResult = false
+        latestPerformanceSummary = null
+        latestCompactPerformance = null
+        binding.tvActiveOverlayPerformance.visibility = View.GONE
+        binding.btnToggleActiveTranslation.isEnabled = false
         removeTranslationLayersNow()
     }
 
@@ -304,12 +437,15 @@ internal class ActiveScreenCaptureOverlayController(
         processing = false
         sessionActive = false
         hasTranslationResult = false
+        latestPerformanceSummary = null
+        latestCompactPerformance = null
         translationVisible = true
         removeTranslationLayersNow()
         if (!ensureControlAttachedNow()) return
         binding.root.visibility = View.VISIBLE
         binding.btnActiveOverlayCapture.visibility = View.VISIBLE
         binding.activeOverlayStatusGroup.visibility = View.GONE
+        binding.tvActiveOverlayPerformance.visibility = View.GONE
         binding.btnCancelActivePreview.visibility = View.GONE
         binding.btnActiveOverlayMode.isEnabled = true
         binding.btnActiveOverlaySettings.isEnabled = true
@@ -639,10 +775,107 @@ internal class ActiveScreenCaptureOverlayController(
                 )
             ).isEnabled = false
 
+            val translationProviderMenu = menu.addSubMenu(
+                CAPTURE_SETTINGS_MENU_GROUP,
+                CAPTURE_SETTINGS_MENU_TRANSLATION_PROVIDER,
+                1,
+                appContext.getString(
+                    R.string.active_screenshot_translation_provider_current,
+                    translationBackendLabel(translationBackend)
+                )
+            )
+            val translationBackendOptions = translationBackendMenuOptions(
+                selectedBackend = translationBackend,
+                networkConfigured = networkTranslationConfigured,
+                selfHostedConfigured = selfHostedTranslationConfigured
+            )
+            translationBackendOptions.forEachIndexed { index, option ->
+                val backend = option.backend
+                translationProviderMenu.add(
+                    TRANSLATION_PROVIDER_MENU_GROUP,
+                    translationBackendMenuId(backend),
+                    index,
+                    when {
+                        backend == TranslationBackend.NETWORK &&
+                            !networkTranslationConfigured ->
+                            R.string.active_screenshot_translation_provider_network_unavailable
+                        backend == TranslationBackend.NETWORK ->
+                            R.string.active_screenshot_translation_provider_network
+                        backend == TranslationBackend.SELF_HOSTED &&
+                            !selfHostedTranslationConfigured ->
+                            R.string.active_screenshot_translation_provider_self_hosted_unavailable
+                        backend == TranslationBackend.SELF_HOSTED ->
+                            R.string.active_screenshot_translation_provider_self_hosted
+                        else -> R.string.active_screenshot_translation_provider_local
+                    }
+                ).isEnabled = option.enabled
+            }
+            translationProviderMenu.setGroupCheckable(
+                TRANSLATION_PROVIDER_MENU_GROUP,
+                true,
+                true
+            )
+            translationBackendOptions.firstOrNull(TranslationBackendMenuOption::selected)
+                ?.let { selected ->
+                    translationProviderMenu.findItem(
+                        translationBackendMenuId(selected.backend)
+                    )?.isChecked = true
+                }
+
+            val liveEngineMenu = menu.addSubMenu(
+                CAPTURE_SETTINGS_MENU_GROUP,
+                CAPTURE_SETTINGS_MENU_LIVE_ENGINE,
+                2,
+                R.string.active_screenshot_live_engine_group
+            )
+            val liveEngineOptions = liveOcrTranslationEngineMenuOptions(
+                selectedEngine = liveOcrTranslationEngine,
+                paddleNetworkConfigured = paddleNetworkConfigured
+            )
+            liveEngineOptions.forEachIndexed { index, option ->
+                liveEngineMenu.add(
+                    LIVE_ENGINE_MENU_GROUP,
+                    liveOcrTranslationEngineMenuId(option.engine),
+                    index,
+                    when {
+                        option.engine == LiveOcrTranslationEngineType.PADDLE_NETWORK &&
+                            !paddleNetworkConfigured ->
+                            R.string.active_screenshot_live_engine_paddle_network_unavailable
+                        option.engine == LiveOcrTranslationEngineType.PADDLE_NETWORK ->
+                            R.string.active_screenshot_live_engine_paddle_network
+                        else -> R.string.active_screenshot_live_engine_local
+                    }
+                ).isEnabled = option.enabled
+            }
+            liveEngineMenu.setGroupCheckable(LIVE_ENGINE_MENU_GROUP, true, true)
+            liveEngineOptions.firstOrNull(LiveOcrTranslationEngineMenuOption::selected)
+                ?.let { selected ->
+                    liveEngineMenu.findItem(
+                        liveOcrTranslationEngineMenuId(selected.engine)
+                    )?.isChecked = true
+                }
+
+            val ocrEngineMenu = menu.addSubMenu(
+                CAPTURE_SETTINGS_MENU_GROUP,
+                CAPTURE_SETTINGS_MENU_OCR_ENGINE,
+                2,
+                R.string.active_screenshot_ocr_engine_group
+            )
+            OcrEngineType.entries.forEachIndexed { index, engine ->
+                ocrEngineMenu.add(
+                    OCR_ENGINE_MENU_GROUP,
+                    ocrEngineMenuId(engine),
+                    index,
+                    ocrEngineLabel(engine)
+                )
+            }
+            ocrEngineMenu.setGroupCheckable(OCR_ENGINE_MENU_GROUP, true, true)
+            ocrEngineMenu.findItem(ocrEngineMenuId(ocrEngine))?.isChecked = true
+
             val recognitionMenu = menu.addSubMenu(
                 CAPTURE_SETTINGS_MENU_GROUP,
                 CAPTURE_SETTINGS_MENU_OCR_MODE,
-                1,
+                3,
                 R.string.active_screenshot_ocr_mode_group
             )
             OcrRecognitionMode.entries.forEachIndexed { index, mode ->
@@ -656,29 +889,31 @@ internal class ActiveScreenCaptureOverlayController(
             recognitionMenu.setGroupCheckable(OCR_MODE_MENU_GROUP, true, true)
             recognitionMenu.findItem(ocrModeMenuId(recognitionMode))?.isChecked = true
 
-            val modelMenu = menu.addSubMenu(
-                CAPTURE_SETTINGS_MENU_GROUP,
-                CAPTURE_SETTINGS_MENU_OCR_MODELS,
-                2,
-                R.string.active_screenshot_ocr_models_group
-            )
-            OcrModel.entries.forEachIndexed { index, model ->
-                modelMenu.add(
-                    OCR_MODEL_MENU_GROUP,
-                    ocrModelMenuId(model),
-                    index,
-                    appContext.getString(
-                        R.string.active_screenshot_ocr_model_status,
-                        ocrModelLabel(model),
-                        ocrModelStateLabel(ocrModelStates.getValue(model))
-                    )
-                ).isEnabled = ocrModelStates[model] != OcrModelState.DOWNLOADING
+            if (ocrEngine == OcrEngineType.ML_KIT) {
+                val modelMenu = menu.addSubMenu(
+                    CAPTURE_SETTINGS_MENU_GROUP,
+                    CAPTURE_SETTINGS_MENU_OCR_MODELS,
+                    4,
+                    R.string.active_screenshot_ocr_models_group
+                )
+                OcrModel.entries.forEachIndexed { index, model ->
+                    modelMenu.add(
+                        OCR_MODEL_MENU_GROUP,
+                        ocrModelMenuId(model),
+                        index,
+                        appContext.getString(
+                            R.string.active_screenshot_ocr_model_status,
+                            ocrModelLabel(model),
+                            ocrModelStateLabel(ocrModelStates.getValue(model))
+                        )
+                    ).isEnabled = ocrModelStates[model] != OcrModelState.DOWNLOADING
+                }
             }
 
             val sceneMenu = menu.addSubMenu(
                 CAPTURE_SETTINGS_MENU_GROUP,
                 CAPTURE_SETTINGS_MENU_SCENE,
-                3,
+                4,
                 R.string.active_screenshot_scene_group
             )
             LiveCaptureScenePreset.entries
@@ -699,7 +934,7 @@ internal class ActiveScreenCaptureOverlayController(
             val frequencyMenu = menu.addSubMenu(
                 CAPTURE_SETTINGS_MENU_GROUP,
                 CAPTURE_SETTINGS_MENU_FREQUENCY,
-                4,
+                5,
                 R.string.active_screenshot_frequency_group
             )
             LiveCaptureFrequency.entries.forEachIndexed { index, frequency ->
@@ -716,7 +951,7 @@ internal class ActiveScreenCaptureOverlayController(
             val bufferMenu = menu.addSubMenu(
                 CAPTURE_SETTINGS_MENU_GROUP,
                 CAPTURE_SETTINGS_MENU_BUFFER,
-                5,
+                6,
                 R.string.active_screenshot_buffer_group
             )
             LiveFrameBufferMode.entries.forEachIndexed { index, mode ->
@@ -733,7 +968,7 @@ internal class ActiveScreenCaptureOverlayController(
             val segmentationMenu = menu.addSubMenu(
                 CAPTURE_SETTINGS_MENU_GROUP,
                 CAPTURE_SETTINGS_MENU_SEGMENTATION,
-                6,
+                7,
                 R.string.active_screenshot_segmentation_group
             )
             LiveRecognitionSegmentation.entries.forEachIndexed { index, segmentation ->
@@ -752,7 +987,7 @@ internal class ActiveScreenCaptureOverlayController(
             val backgroundExperienceMenu = menu.addSubMenu(
                 CAPTURE_SETTINGS_MENU_GROUP,
                 CAPTURE_SETTINGS_MENU_BACKGROUND_EXPERIENCE,
-                7,
+                8,
                 R.string.active_screenshot_background_experience_group
             )
             LivePatchBackgroundExperienceMode.entries.forEachIndexed { index, mode ->
@@ -775,7 +1010,7 @@ internal class ActiveScreenCaptureOverlayController(
             menu.add(
                 SMART_ASSIST_MENU_GROUP,
                 SMART_ASSIST_MENU_ENABLED,
-                8,
+                9,
                 R.string.active_screenshot_smart_assist
             ).apply {
                 isCheckable = true
@@ -783,10 +1018,40 @@ internal class ActiveScreenCaptureOverlayController(
             }
 
             setOnMenuItemClickListener { item ->
+                val selectedLiveEngine = LiveOcrTranslationEngineType.entries.firstOrNull {
+                    liveOcrTranslationEngineMenuId(it) == item.itemId
+                }
+                if (selectedLiveEngine != null) {
+                    if (selectedLiveEngine != liveOcrTranslationEngine) {
+                        liveOcrTranslationEngine = selectedLiveEngine
+                        listener.onLiveOcrTranslationEngineChanged(selectedLiveEngine)
+                    }
+                    return@setOnMenuItemClickListener true
+                }
+                val selectedTranslationBackend = TranslationBackend.entries.firstOrNull {
+                    translationBackendMenuId(it) == item.itemId
+                }
+                if (selectedTranslationBackend != null) {
+                    if (selectedTranslationBackend != translationBackend) {
+                        translationBackend = selectedTranslationBackend
+                        listener.onTranslationBackendChanged(selectedTranslationBackend)
+                    }
+                    return@setOnMenuItemClickListener true
+                }
                 if (item.itemId == SMART_ASSIST_MENU_ENABLED) {
                     smartAssistEnabled = !smartAssistEnabled
                     item.isChecked = smartAssistEnabled
                     listener.onSmartAssistEnabledChanged(smartAssistEnabled)
+                    return@setOnMenuItemClickListener true
+                }
+                val selectedOcrEngine = OcrEngineType.entries.firstOrNull {
+                    ocrEngineMenuId(it) == item.itemId
+                }
+                if (selectedOcrEngine != null) {
+                    if (selectedOcrEngine != ocrEngine) {
+                        ocrEngine = selectedOcrEngine
+                        listener.onOcrEngineChanged(selectedOcrEngine)
+                    }
                     return@setOnMenuItemClickListener true
                 }
                 val selectedRecognitionMode = OcrRecognitionMode.entries.firstOrNull {
@@ -926,10 +1191,31 @@ internal class ActiveScreenCaptureOverlayController(
     private fun ocrModeMenuId(mode: OcrRecognitionMode): Int =
         OCR_MODE_MENU_ID_BASE + mode.ordinal
 
+    private fun ocrEngineMenuId(engine: OcrEngineType): Int =
+        OCR_ENGINE_MENU_ID_BASE + engine.ordinal
+
     private fun ocrModelMenuId(model: OcrModel): Int = OCR_MODEL_MENU_ID_BASE + model.ordinal
 
     private fun backgroundExperienceMenuId(mode: LivePatchBackgroundExperienceMode): Int =
         BACKGROUND_EXPERIENCE_MENU_ID_BASE + mode.ordinal
+
+    private fun translationBackendMenuId(backend: TranslationBackend): Int =
+        TRANSLATION_PROVIDER_MENU_ID_BASE + backend.ordinal
+
+    private fun liveOcrTranslationEngineMenuId(engine: LiveOcrTranslationEngineType): Int =
+        LIVE_ENGINE_MENU_ID_BASE + engine.ordinal
+
+    private fun translationBackendLabel(backend: TranslationBackend): String =
+        appContext.getString(
+            when (backend) {
+                TranslationBackend.LOCAL ->
+                    R.string.active_screenshot_translation_provider_local_short
+                TranslationBackend.NETWORK ->
+                    R.string.active_screenshot_translation_provider_network_short
+                TranslationBackend.SELF_HOSTED ->
+                    R.string.active_screenshot_translation_provider_self_hosted_short
+            }
+        )
 
     private fun backgroundExperienceLabel(mode: LivePatchBackgroundExperienceMode): String =
         appContext.getString(
@@ -948,6 +1234,13 @@ internal class ActiveScreenCaptureOverlayController(
             OcrRecognitionMode.AUTO -> R.string.active_screenshot_ocr_mode_auto
             OcrRecognitionMode.CHINESE -> R.string.active_screenshot_ocr_mode_chinese
             OcrRecognitionMode.ENGLISH -> R.string.active_screenshot_ocr_mode_english
+        }
+    )
+
+    private fun ocrEngineLabel(engine: OcrEngineType): String = appContext.getString(
+        when (engine) {
+            OcrEngineType.ML_KIT -> R.string.active_screenshot_ocr_engine_ml_kit
+            OcrEngineType.PADDLE -> R.string.active_screenshot_ocr_engine_paddle
         }
     )
 
@@ -973,6 +1266,12 @@ internal class ActiveScreenCaptureOverlayController(
         binding.tvCollapsedOverlayStatus.setText(textRes)
         binding.collapsedOverlayProgress.visibility =
             if (showProgress) View.VISIBLE else View.INVISIBLE
+    }
+
+    private fun updateCompactPerformance() {
+        binding.tvCollapsedOverlayStatus.text = latestCompactPerformance
+            ?: appContext.getString(R.string.active_screenshot_compact_translated)
+        binding.collapsedOverlayProgress.visibility = View.INVISIBLE
     }
 
     private fun updateControlWindow(width: Int, height: Int, x: Int, y: Int) {
@@ -1154,6 +1453,7 @@ internal class ActiveScreenCaptureOverlayController(
         const val DEFAULT_MAXIMUM_OBSCURING_ALPHA = 0.8f
         const val CONTROL_PRESS_DURATION_MS = 90L
         const val CONTROL_MATERIALIZE_DURATION_MS = 150L
+        const val TERMINAL_STATUS_DURATION_MS = 1_800L
         const val CONTROL_PRESSED_ALPHA = 0.92f
         const val CONTROL_MATERIALIZE_ALPHA = 0.82f
         const val CONTROL_PRESSED_SCALE = 0.985f
@@ -1178,6 +1478,9 @@ internal class ActiveScreenCaptureOverlayController(
         const val CAPTURE_SETTINGS_MENU_OCR_MODE = 406
         const val CAPTURE_SETTINGS_MENU_OCR_MODELS = 407
         const val CAPTURE_SETTINGS_MENU_BACKGROUND_EXPERIENCE = 408
+        const val CAPTURE_SETTINGS_MENU_TRANSLATION_PROVIDER = 409
+        const val CAPTURE_SETTINGS_MENU_OCR_ENGINE = 410
+        const val CAPTURE_SETTINGS_MENU_LIVE_ENGINE = 411
         const val SCENE_MENU_GROUP = 5
         const val SCENE_MENU_ID_BASE = 500
         const val FREQUENCY_MENU_GROUP = 6
@@ -1200,5 +1503,11 @@ internal class ActiveScreenCaptureOverlayController(
         const val EXPERIMENTAL_TRANSLATION_GEMMA = 1303
         const val EXPERIMENTAL_TRANSLATION_ACTION_GROUP = 14
         const val EXPERIMENTAL_TRANSLATION_MANAGE = 1401
+        const val TRANSLATION_PROVIDER_MENU_GROUP = 15
+        const val TRANSLATION_PROVIDER_MENU_ID_BASE = 1500
+        const val OCR_ENGINE_MENU_GROUP = 16
+        const val OCR_ENGINE_MENU_ID_BASE = 1600
+        const val LIVE_ENGINE_MENU_GROUP = 17
+        const val LIVE_ENGINE_MENU_ID_BASE = 1700
     }
 }

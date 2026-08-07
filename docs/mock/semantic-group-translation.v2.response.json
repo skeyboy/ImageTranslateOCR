@@ -1,0 +1,105 @@
+{
+  "schemaVersion": 2,
+  "requestId": "019fc71b-2c6b-7860-a705-52310edee7f3",
+  "sessionId": "screen-session-20260805-001",
+  "generation": 42,
+  "translationRevision": 3,
+  "provider": "pnuts-semantic-translate-v2",
+  "modelVersion": "gemini-translation-2026-08",
+  "promptVersion": "semantic-translation-system-v1",
+  "terminologyVersion": "global-ui-v1",
+  "qualityRuleVersion": "semantic-quality-v1",
+  "results": [
+    {
+      "groupId": "group-title",
+      "status": "TRANSLATED",
+      "renderMode": "GROUP",
+      "translatedText": "美国在霍尔木兹海峡船只遭袭后对伊朗实施打击",
+      "memberRegionIds": [
+        "region-title-1",
+        "region-title-2"
+      ],
+      "detectedSourceLanguage": "en",
+      "targetLanguage": "zh",
+      "quality": {
+        "accepted": true,
+        "flags": [],
+        "entityIntegrity": true,
+        "terminologyIntegrity": true
+      }
+    },
+    {
+      "groupId": "group-body",
+      "status": "TRANSLATED",
+      "renderMode": "GROUP",
+      "translatedText": "在确保正确性和完整性之后，性能才具有意义。应跟踪整个可见结果完成提交所需的时间。",
+      "memberRegionIds": [
+        "region-body-1",
+        "region-body-2"
+      ],
+      "detectedSourceLanguage": "en",
+      "targetLanguage": "zh",
+      "quality": {
+        "accepted": true,
+        "flags": [],
+        "entityIntegrity": true,
+        "terminologyIntegrity": true
+      }
+    },
+    {
+      "groupId": "group-actions",
+      "status": "TRANSLATED",
+      "renderMode": "REGION_ITEMS",
+      "memberRegionIds": [
+        "region-save",
+        "region-cancel"
+      ],
+      "regionResults": [
+        {
+          "regionId": "region-save",
+          "status": "TRANSLATED",
+          "translatedText": "保存"
+        },
+        {
+          "regionId": "region-cancel",
+          "status": "TRANSLATED",
+          "translatedText": "取消"
+        }
+      ],
+      "detectedSourceLanguage": "en",
+      "targetLanguage": "zh",
+      "quality": {
+        "accepted": true,
+        "flags": [],
+        "entityIntegrity": true,
+        "terminologyIntegrity": true
+      }
+    },
+    {
+      "groupId": "group-code",
+      "status": "PRESERVED",
+      "renderMode": "NONE",
+      "memberRegionIds": [
+        "region-code"
+      ],
+      "detectedSourceLanguage": "en",
+      "targetLanguage": "zh",
+      "quality": {
+        "accepted": true,
+        "flags": [
+          "PURE_CODE_PRESERVED"
+        ],
+        "entityIntegrity": true,
+        "terminologyIntegrity": true
+      }
+    }
+  ],
+  "metrics": {
+    "groupCount": 4,
+    "translatedGroupCount": 3,
+    "preservedGroupCount": 1,
+    "failedGroupCount": 0,
+    "retryCount": 0,
+    "totalMs": 1840
+  }
+}

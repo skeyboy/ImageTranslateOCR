@@ -1,0 +1,384 @@
+{
+  "schemaVersion": 1,
+  "inputPath": "\/data\/local\/tmp\/news-page-translation-b.png",
+  "width": 387,
+  "height": 892,
+  "engine": "ML_KIT",
+  "recognitionMode": "AUTO",
+  "elapsedMs": 455,
+  "lineCount": 12,
+  "groupCount": 10,
+  "lines": [
+    {
+      "lineId": "line-1",
+      "text": "23113RKC6C",
+      "bounds": {
+        "left": 85,
+        "top": 12,
+        "right": 167,
+        "bottom": 21
+      },
+      "modelConfidence": 0.850390613079071,
+      "consensusScore": 0.6399999856948853,
+      "passCount": 1,
+      "recognizerScript": "LATIN",
+      "sourceBlockId": "mlkit-0-85-12-167-21",
+      "sourceLineIndex": 0
+    },
+    {
+      "lineId": "line-2",
+      "text": "AFRICA-CANADA:Boost for",
+      "bounds": {
+        "left": 59,
+        "top": 86,
+        "right": 245,
+        "bottom": 102
+      },
+      "modelConfidence": 0.8167613744735718,
+      "consensusScore": 0.6399999856948853,
+      "passCount": 1,
+      "recognizerScript": "LATIN",
+      "sourceBlockId": "mlkit-3-59-86-245-102",
+      "sourceLineIndex": 0
+    },
+    {
+      "lineId": "line-3",
+      "text": "Munyaradzi Makoni 18 July 2010",
+      "bounds": {
+        "left": 8,
+        "top": 399,
+        "right": 182,
+        "bottom": 410
+      },
+      "modelConfidence": 0.8517127633094788,
+      "consensusScore": 0.6399999856948853,
+      "passCount": 1,
+      "recognizerScript": "LATIN",
+      "sourceBlockId": "mlkit-4-8-399-182-410",
+      "sourceLineIndex": 0
+    },
+    {
+      "lineId": "line-4",
+      "text": "Iweet Whatsapp",
+      "bounds": {
+        "left": 5,
+        "top": 419,
+        "right": 128,
+        "bottom": 438
+      },
+      "modelConfidence": 0.7836538553237915,
+      "consensusScore": 0.6399999856948853,
+      "passCount": 1,
+      "recognizerScript": "LATIN",
+      "sourceBlockId": "mlkit-5-5-419-128-439",
+      "sourceLineIndex": 0
+    },
+    {
+      "lineId": "line-5",
+      "text": "nsttSEI2000",
+      "bounds": {
+        "left": 184,
+        "top": 467,
+        "right": 341,
+        "bottom": 481
+      },
+      "modelConfidence": 0.3849431872367859,
+      "consensusScore": 0.6399999856948853,
+      "passCount": 1,
+      "recognizerScript": "LATIN",
+      "sourceBlockId": "mlkit-6-184-467-341-504",
+      "sourceLineIndex": 0
+    },
+    {
+      "lineId": "line-6",
+      "text": "5žt(19,400 5Jt)",
+      "bounds": {
+        "left": 185,
+        "top": 489,
+        "right": 340,
+        "bottom": 504
+      },
+      "modelConfidence": 0.5055803656578064,
+      "consensusScore": 0.6228571534156799,
+      "passCount": 1,
+      "recognizerScript": "LATIN",
+      "sourceBlockId": "mlkit-6-184-467-341-504",
+      "sourceLineIndex": 1
+    },
+    {
+      "lineId": "line-7",
+      "text": "^FtÄSĚtAIMS-NEXTẾS",
+      "bounds": {
+        "left": 60,
+        "top": 574,
+        "right": 278,
+        "bottom": 593
+      },
+      "modelConfidence": 0.4509548544883728,
+      "consensusScore": 0.6311111450195312,
+      "passCount": 1,
+      "recognizerScript": "LATIN",
+      "sourceBlockId": "mlkit-7-18-574-325-617",
+      "sourceLineIndex": 0
+    },
+    {
+      "lineId": "line-8",
+      "text": "EinsteinſiX.(]EYA",
+      "bounds": {
+        "left": 18,
+        "top": 598,
+        "right": 325,
+        "bottom": 617
+      },
+      "modelConfidence": 0.541130542755127,
+      "consensusScore": 0.6399999856948853,
+      "passCount": 1,
+      "recognizerScript": "LATIN",
+      "sourceBlockId": "mlkit-7-18-574-325-617",
+      "sourceLineIndex": 1
+    },
+    {
+      "lineId": "line-9",
+      "text": "TtEAKAAtTario",
+      "bounds": {
+        "left": 33,
+        "top": 677,
+        "right": 355,
+        "bottom": 695
+      },
+      "modelConfidence": 0.36989182233810425,
+      "consensusScore": 0.6399999856948853,
+      "passCount": 1,
+      "recognizerScript": "LATIN",
+      "sourceBlockId": "mlkit-8-33-677-355-695",
+      "sourceLineIndex": 0
+    },
+    {
+      "lineId": "line-10",
+      "text": "Tario fJ#IERYNESINAW",
+      "bounds": {
+        "left": 22,
+        "top": 699,
+        "right": 347,
+        "bottom": 719
+      },
+      "modelConfidence": 0.26398026943206787,
+      "consensusScore": 0.6399999856948853,
+      "passCount": 1,
+      "recognizerScript": "LATIN",
+      "sourceBlockId": "mlkit-9-22-699-347-719",
+      "sourceLineIndex": 0
+    },
+    {
+      "lineId": "line-11",
+      "text": "XA",
+      "bounds": {
+        "left": 119,
+        "top": 834,
+        "right": 137,
+        "bottom": 851
+      },
+      "modelConfidence": 0.392578125,
+      "consensusScore": 0.6399999856948853,
+      "passCount": 1,
+      "recognizerScript": "LATIN",
+      "sourceBlockId": "mlkit-10-119-834-137-851",
+      "sourceLineIndex": 0
+    },
+    {
+      "lineId": "line-12",
+      "text": "AEB 52453ms",
+      "bounds": {
+        "left": 165,
+        "top": 835,
+        "right": 249,
+        "bottom": 847
+      },
+      "modelConfidence": 0.6039062738418579,
+      "consensusScore": 0.6399999856948853,
+      "passCount": 1,
+      "recognizerScript": "LATIN",
+      "sourceBlockId": "mlkit-11-165-834-249-847",
+      "sourceLineIndex": 0
+    }
+  ],
+  "groups": [
+    {
+      "groupId": "semantic-421c59ef",
+      "sourceText": "23113RKC6C",
+      "bounds": {
+        "left": 85,
+        "top": 12,
+        "right": 167,
+        "bottom": 21
+      },
+      "role": "BODY",
+      "groupingConfidence": 1,
+      "evidence": [],
+      "memberTexts": [
+        "23113RKC6C"
+      ]
+    },
+    {
+      "groupId": "semantic-844dedcc",
+      "sourceText": "AFRICA-CANADA:Boost for",
+      "bounds": {
+        "left": 59,
+        "top": 86,
+        "right": 245,
+        "bottom": 102
+      },
+      "role": "BODY",
+      "groupingConfidence": 1,
+      "evidence": [],
+      "memberTexts": [
+        "AFRICA-CANADA:Boost for"
+      ]
+    },
+    {
+      "groupId": "semantic-809a1d55",
+      "sourceText": "Munyaradzi Makoni 18 July 2010",
+      "bounds": {
+        "left": 8,
+        "top": 399,
+        "right": 182,
+        "bottom": 410
+      },
+      "role": "BODY",
+      "groupingConfidence": 1,
+      "evidence": [],
+      "memberTexts": [
+        "Munyaradzi Makoni 18 July 2010"
+      ]
+    },
+    {
+      "groupId": "semantic-fb298d40",
+      "sourceText": "Iweet Whatsapp",
+      "bounds": {
+        "left": 5,
+        "top": 419,
+        "right": 128,
+        "bottom": 438
+      },
+      "role": "BODY",
+      "groupingConfidence": 1,
+      "evidence": [],
+      "memberTexts": [
+        "Iweet Whatsapp"
+      ]
+    },
+    {
+      "groupId": "semantic-ccea0ea6",
+      "sourceText": "nsttSEI2000\n5žt(19,400 5Jt)",
+      "bounds": {
+        "left": 184,
+        "top": 467,
+        "right": 341,
+        "bottom": 504
+      },
+      "role": "BODY",
+      "groupingConfidence": 0.949999988079071,
+      "evidence": [
+        "CENTER_ALIGNED",
+        "HORIZONTAL_OVERLAP",
+        "LEFT_ALIGNED",
+        "LINE_GAP",
+        "OCR_BLOCK",
+        "PUNCTUATION_CONTINUATION",
+        "REGION_OCCUPANCY"
+      ],
+      "memberTexts": [
+        "nsttSEI2000",
+        "5žt(19,400 5Jt)"
+      ]
+    },
+    {
+      "groupId": "semantic-18709bad",
+      "sourceText": "^FtÄSĚtAIMS-NEXTẾS\nEinsteinſiX.(]EYA",
+      "bounds": {
+        "left": 18,
+        "top": 574,
+        "right": 325,
+        "bottom": 617
+      },
+      "role": "BODY",
+      "groupingConfidence": 0.949999988079071,
+      "evidence": [
+        "CENTER_ALIGNED",
+        "HORIZONTAL_OVERLAP",
+        "LINE_GAP",
+        "OCR_BLOCK",
+        "PUNCTUATION_CONTINUATION",
+        "REGION_OCCUPANCY"
+      ],
+      "memberTexts": [
+        "^FtÄSĚtAIMS-NEXTẾS",
+        "EinsteinſiX.(]EYA"
+      ]
+    },
+    {
+      "groupId": "semantic-59f2b9c8",
+      "sourceText": "TtEAKAAtTario",
+      "bounds": {
+        "left": 33,
+        "top": 677,
+        "right": 355,
+        "bottom": 695
+      },
+      "role": "BODY",
+      "groupingConfidence": 1,
+      "evidence": [],
+      "memberTexts": [
+        "TtEAKAAtTario"
+      ]
+    },
+    {
+      "groupId": "semantic-74e43787",
+      "sourceText": "Tario fJ#IERYNESINAW",
+      "bounds": {
+        "left": 22,
+        "top": 699,
+        "right": 347,
+        "bottom": 719
+      },
+      "role": "BODY",
+      "groupingConfidence": 1,
+      "evidence": [],
+      "memberTexts": [
+        "Tario fJ#IERYNESINAW"
+      ]
+    },
+    {
+      "groupId": "semantic-52ae1e34",
+      "sourceText": "XA",
+      "bounds": {
+        "left": 119,
+        "top": 834,
+        "right": 137,
+        "bottom": 851
+      },
+      "role": "BODY",
+      "groupingConfidence": 1,
+      "evidence": [],
+      "memberTexts": [
+        "XA"
+      ]
+    },
+    {
+      "groupId": "semantic-e55eff90",
+      "sourceText": "AEB 52453ms",
+      "bounds": {
+        "left": 165,
+        "top": 835,
+        "right": 249,
+        "bottom": 847
+      },
+      "role": "BODY",
+      "groupingConfidence": 1,
+      "evidence": [],
+      "memberTexts": [
+        "AEB 52453ms"
+      ]
+    }
+  ]
+}

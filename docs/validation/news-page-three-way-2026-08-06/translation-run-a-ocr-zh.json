@@ -1,0 +1,737 @@
+{
+  "schemaVersion": 1,
+  "inputPath": "\/data\/local\/tmp\/news-page-translation-a.png",
+  "width": 387,
+  "height": 892,
+  "engine": "ML_KIT",
+  "recognitionMode": "CHINESE",
+  "elapsedMs": 736,
+  "lineCount": 23,
+  "groupCount": 21,
+  "lines": [
+    {
+      "lineId": "line-1",
+      "text": "23113RKC6C",
+      "bounds": {
+        "left": 89,
+        "top": 9,
+        "right": 170,
+        "bottom": 23
+      },
+      "modelConfidence": 0.852734386920929,
+      "consensusScore": 0.6399999856948853,
+      "passCount": 1,
+      "recognizerScript": "CHINESE",
+      "sourceBlockId": "mlkit-2-89-9-170-23",
+      "sourceLineIndex": 0
+    },
+    {
+      "lineId": "line-2",
+      "text": "屏慕共享中",
+      "bounds": {
+        "left": 207,
+        "top": 45,
+        "right": 273,
+        "bottom": 58
+      },
+      "modelConfidence": 0.578906238079071,
+      "consensusScore": 0.6399999856948853,
+      "passCount": 1,
+      "recognizerScript": "CHINESE",
+      "sourceBlockId": "mlkit-11-207-45-273-58",
+      "sourceLineIndex": 0
+    },
+    {
+      "lineId": "line-3",
+      "text": "AFRICA-CANADA:Boost for",
+      "bounds": {
+        "left": 59,
+        "top": 86,
+        "right": 245,
+        "bottom": 101
+      },
+      "modelConfidence": 0.7817826867103577,
+      "consensusScore": 0.6399999856948853,
+      "passCount": 1,
+      "recognizerScript": "CHINESE",
+      "sourceBlockId": "mlkit-5-59-86-245-101",
+      "sourceLineIndex": 0
+    },
+    {
+      "lineId": "line-4",
+      "text": "大学世界新闻",
+      "bounds": {
+        "left": 9,
+        "top": 136,
+        "right": 118,
+        "bottom": 153
+      },
+      "modelConfidence": 0.7252604365348816,
+      "consensusScore": 0.6399999856948853,
+      "passCount": 1,
+      "recognizerScript": "CHINESE",
+      "sourceBlockId": "mlkit-3-9-136-118-153",
+      "sourceLineIndex": 0
+    },
+    {
+      "lineId": "line-5",
+      "text": "全球版非洲版",
+      "bounds": {
+        "left": 0,
+        "top": 177,
+        "right": 95,
+        "bottom": 194
+      },
+      "modelConfidence": 0.5078125,
+      "consensusScore": 0.6399999856948853,
+      "passCount": 1,
+      "recognizerScript": "CHINESE",
+      "sourceBlockId": "mlkit-6-0-177-95-194",
+      "sourceLineIndex": 0
+    },
+    {
+      "lineId": "line-6",
+      "text": "「亚洲修細",
+      "bounds": {
+        "left": 282,
+        "top": 178,
+        "right": 336,
+        "bottom": 193
+      },
+      "modelConfidence": 0.26249998807907104,
+      "consensusScore": 0.6146666407585144,
+      "passCount": 1,
+      "recognizerScript": "CHINESE",
+      "sourceBlockId": "mlkit-16-282-178-336-193",
+      "sourceLineIndex": 0
+    },
+    {
+      "lineId": "line-7",
+      "text": "「非洲",
+      "bounds": {
+        "left": 4,
+        "top": 330,
+        "right": 27,
+        "bottom": 340
+      },
+      "modelConfidence": 0.4127604067325592,
+      "consensusScore": 0.6013333201408386,
+      "passCount": 1,
+      "recognizerScript": "CHINESE",
+      "sourceBlockId": "mlkit-4-4-330-27-340",
+      "sourceLineIndex": 0
+    },
+    {
+      "lineId": "line-8",
+      "text": "加拿大 | |非洲: | 为未來注入动力",
+      "bounds": {
+        "left": 23,
+        "top": 347,
+        "right": 231,
+        "bottom": 361
+      },
+      "modelConfidence": 0.5577567219734192,
+      "consensusScore": 0.6359999775886536,
+      "passCount": 1,
+      "recognizerScript": "CHINESE",
+      "sourceBlockId": "mlkit-7-23-347-231-361",
+      "sourceLineIndex": 0
+    },
+    {
+      "lineId": "line-9",
+      "text": "|爱因斯坦中心",
+      "bounds": {
+        "left": 11,
+        "top": 367,
+        "right": 96,
+        "bottom": 382
+      },
+      "modelConfidence": 0.6177455186843872,
+      "consensusScore": 0.6219047904014587,
+      "passCount": 1,
+      "recognizerScript": "CHINESE",
+      "sourceBlockId": "mlkit-8-11-367-96-382",
+      "sourceLineIndex": 0
+    },
+    {
+      "lineId": "line-10",
+      "text": "「玩纳粉兹迪、马对忌2010年7月18日",
+      "bounds": {
+        "left": 10,
+        "top": 400,
+        "right": 162,
+        "bottom": 409
+      },
+      "modelConfidence": 0.32421875,
+      "consensusScore": 0.6320000290870667,
+      "passCount": 1,
+      "recognizerScript": "CHINESE",
+      "sourceBlockId": "mlkit-9-10-400-162-409",
+      "sourceLineIndex": 0
+    },
+    {
+      "lineId": "line-11",
+      "text": "Iweet Whatsapp",
+      "bounds": {
+        "left": 8,
+        "top": 418,
+        "right": 129,
+        "bottom": 438
+      },
+      "modelConfidence": 0.7512019276618958,
+      "consensusScore": 0.6399999856948853,
+      "passCount": 1,
+      "recognizerScript": "CHINESE",
+      "sourceBlockId": "mlkit-10-8-418-129-439",
+      "sourceLineIndex": 0
+    },
+    {
+      "lineId": "line-12",
+      "text": "|加拿大政府己拨款2000万",
+      "bounds": {
+        "left": 184,
+        "top": 468,
+        "right": 351,
+        "bottom": 482
+      },
+      "modelConfidence": 0.6110491156578064,
+      "consensusScore": 0.6342856884002686,
+      "passCount": 1,
+      "recognizerScript": "CHINESE",
+      "sourceBlockId": "mlkit-14-175-467-350-503",
+      "sourceLineIndex": 0
+    },
+    {
+      "lineId": "line-13",
+      "text": "|加元(合1940万美元)",
+      "bounds": {
+        "left": 175,
+        "top": 485,
+        "right": 333,
+        "bottom": 503
+      },
+      "modelConfidence": 0.7142428159713745,
+      "consensusScore": 0.6055384874343872,
+      "passCount": 1,
+      "recognizerScript": "CHINESE",
+      "sourceBlockId": "mlkit-14-175-467-350-503",
+      "sourceLineIndex": 1
+    },
+    {
+      "lineId": "line-14",
+      "text": "用于末来四年资助五个非洲数学科学研究所",
+      "bounds": {
+        "left": 129,
+        "top": 524,
+        "right": 374,
+        "bottom": 538
+      },
+      "modelConfidence": 0.5861430764198303,
+      "consensusScore": 0.6399999856948853,
+      "passCount": 1,
+      "recognizerScript": "CHINESE",
+      "sourceBlockId": "mlkit-15-129-524-374-538",
+      "sourceLineIndex": 0
+    },
+    {
+      "lineId": "line-15",
+      "text": "|这草中心有整个大陆,日AJMS | -Next因斯",
+      "bounds": {
+        "left": 123,
+        "top": 551,
+        "right": 336,
+        "bottom": 564
+      },
+      "modelConfidence": 0.31844428181648254,
+      "consensusScore": 0.6186666488647461,
+      "passCount": 1,
+      "recognizerScript": "CHINESE",
+      "sourceBlockId": "mlkit-17-123-551-336-564",
+      "sourceLineIndex": 0
+    },
+    {
+      "lineId": "line-16",
+      "text": "|非洲数学科学研究生研究人员。",
+      "bounds": {
+        "left": 10,
+        "top": 573,
+        "right": 166,
+        "bottom": 586
+      },
+      "modelConfidence": 0.4502604305744171,
+      "consensusScore": 0.6133333444595337,
+      "passCount": 1,
+      "recognizerScript": "CHINESE",
+      "sourceBlockId": "mlkit-12-10-573-166-586",
+      "sourceLineIndex": 0
+    },
+    {
+      "lineId": "line-17",
+      "text": "政AMS政出女ズ所的牛不E”的E时)的新全",
+      "bounds": {
+        "left": 16,
+        "top": 591,
+        "right": 346,
+        "bottom": 612
+      },
+      "modelConfidence": 0.13671875,
+      "consensusScore": 0.6399999856948853,
+      "passCount": 1,
+      "recognizerScript": "CHINESE",
+      "sourceBlockId": "mlkit-18-16-591-346-612",
+      "sourceLineIndex": 0
+    },
+    {
+      "lineId": "line-18",
+      "text": "对外展计件动的,适汁划由南出生的科学家尼尔·图罗克博士领",
+      "bounds": {
+        "left": 13,
+        "top": 613,
+        "right": 343,
+        "bottom": 626
+      },
+      "modelConfidence": 0.3250558078289032,
+      "consensusScore": 0.6399999856948853,
+      "passCount": 1,
+      "recognizerScript": "CHINESE",
+      "sourceBlockId": "mlkit-19-13-613-343-640",
+      "sourceLineIndex": 0
+    },
+    {
+      "lineId": "line-19",
+      "text": "导。他也忌AIMS的创始人和A工M5,Next爱因斯坦计划的发記人。",
+      "bounds": {
+        "left": 17,
+        "top": 630,
+        "right": 330,
+        "bottom": 640
+      },
+      "modelConfidence": 0.44910386204719543,
+      "consensusScore": 0.6258823275566101,
+      "passCount": 1,
+      "recognizerScript": "CHINESE",
+      "sourceBlockId": "mlkit-19-13-613-343-640",
+      "sourceLineIndex": 1
+    },
+    {
+      "lineId": "line-20",
+      "text": "隐私政策",
+      "bounds": {
+        "left": 12,
+        "top": 709,
+        "right": 105,
+        "bottom": 733
+      },
+      "modelConfidence": 0.7412109375,
+      "consensusScore": 0.6399999856948853,
+      "passCount": 1,
+      "recognizerScript": "CHINESE",
+      "sourceBlockId": "mlkit-13-12-709-105-733",
+      "sourceLineIndex": 0
+    },
+    {
+      "lineId": "line-21",
+      "text": "|总耗时55317ms",
+      "bounds": {
+        "left": 162,
+        "top": 806,
+        "right": 251,
+        "bottom": 820
+      },
+      "modelConfidence": 0.6519886255264282,
+      "consensusScore": 0.6270303130149841,
+      "passCount": 1,
+      "recognizerScript": "CHINESE",
+      "sourceBlockId": "mlkit-20-162-806-251-820",
+      "sourceLineIndex": 0
+    },
+    {
+      "lineId": "line-22",
+      "text": "隐私",
+      "bounds": {
+        "left": 321,
+        "top": 811,
+        "right": 348,
+        "bottom": 825
+      },
+      "modelConfidence": 0.58203125,
+      "consensusScore": 0.6399999856948853,
+      "passCount": 1,
+      "recognizerScript": "CHINESE",
+      "sourceBlockId": null,
+      "sourceLineIndex": null
+    },
+    {
+      "lineId": "line-23",
+      "text": "Ai",
+      "bounds": {
+        "left": 181,
+        "top": 843,
+        "right": 203,
+        "bottom": 862
+      },
+      "modelConfidence": 0.70703125,
+      "consensusScore": 0.6399999856948853,
+      "passCount": 1,
+      "recognizerScript": "CHINESE",
+      "sourceBlockId": "mlkit-21-181-843-203-862",
+      "sourceLineIndex": 0
+    }
+  ],
+  "groups": [
+    {
+      "groupId": "semantic-3daadc4f",
+      "sourceText": "23113RKC6C",
+      "bounds": {
+        "left": 89,
+        "top": 9,
+        "right": 170,
+        "bottom": 23
+      },
+      "role": "BODY",
+      "groupingConfidence": 1,
+      "evidence": [],
+      "memberTexts": [
+        "23113RKC6C"
+      ]
+    },
+    {
+      "groupId": "semantic-75bcf54b",
+      "sourceText": "屏慕共享中",
+      "bounds": {
+        "left": 207,
+        "top": 45,
+        "right": 273,
+        "bottom": 58
+      },
+      "role": "BODY",
+      "groupingConfidence": 1,
+      "evidence": [],
+      "memberTexts": [
+        "屏慕共享中"
+      ]
+    },
+    {
+      "groupId": "semantic-c626204c",
+      "sourceText": "AFRICA-CANADA:Boost for",
+      "bounds": {
+        "left": 59,
+        "top": 86,
+        "right": 245,
+        "bottom": 101
+      },
+      "role": "BODY",
+      "groupingConfidence": 1,
+      "evidence": [],
+      "memberTexts": [
+        "AFRICA-CANADA:Boost for"
+      ]
+    },
+    {
+      "groupId": "semantic-1d14a351",
+      "sourceText": "大学世界新闻",
+      "bounds": {
+        "left": 9,
+        "top": 136,
+        "right": 118,
+        "bottom": 153
+      },
+      "role": "BODY",
+      "groupingConfidence": 1,
+      "evidence": [],
+      "memberTexts": [
+        "大学世界新闻"
+      ]
+    },
+    {
+      "groupId": "semantic-adae18ab",
+      "sourceText": "全球版非洲版",
+      "bounds": {
+        "left": 0,
+        "top": 177,
+        "right": 95,
+        "bottom": 194
+      },
+      "role": "BODY",
+      "groupingConfidence": 1,
+      "evidence": [],
+      "memberTexts": [
+        "全球版非洲版"
+      ]
+    },
+    {
+      "groupId": "semantic-e8367dc9",
+      "sourceText": "「亚洲修細",
+      "bounds": {
+        "left": 282,
+        "top": 178,
+        "right": 336,
+        "bottom": 193
+      },
+      "role": "BODY",
+      "groupingConfidence": 1,
+      "evidence": [],
+      "memberTexts": [
+        "「亚洲修細"
+      ]
+    },
+    {
+      "groupId": "semantic-ad22df5a",
+      "sourceText": "「非洲",
+      "bounds": {
+        "left": 4,
+        "top": 330,
+        "right": 27,
+        "bottom": 340
+      },
+      "role": "BODY",
+      "groupingConfidence": 1,
+      "evidence": [],
+      "memberTexts": [
+        "「非洲"
+      ]
+    },
+    {
+      "groupId": "semantic-5ed75c47",
+      "sourceText": "加拿大 | |非洲: | 为未來注入动力",
+      "bounds": {
+        "left": 23,
+        "top": 347,
+        "right": 231,
+        "bottom": 361
+      },
+      "role": "BODY",
+      "groupingConfidence": 1,
+      "evidence": [],
+      "memberTexts": [
+        "加拿大 | |非洲: | 为未來注入动力"
+      ]
+    },
+    {
+      "groupId": "semantic-40966d74",
+      "sourceText": "|爱因斯坦中心",
+      "bounds": {
+        "left": 11,
+        "top": 367,
+        "right": 96,
+        "bottom": 382
+      },
+      "role": "BODY",
+      "groupingConfidence": 1,
+      "evidence": [],
+      "memberTexts": [
+        "|爱因斯坦中心"
+      ]
+    },
+    {
+      "groupId": "semantic-5d111f15",
+      "sourceText": "「玩纳粉兹迪、马对忌2010年7月18日",
+      "bounds": {
+        "left": 10,
+        "top": 400,
+        "right": 162,
+        "bottom": 409
+      },
+      "role": "BODY",
+      "groupingConfidence": 1,
+      "evidence": [],
+      "memberTexts": [
+        "「玩纳粉兹迪、马对忌2010年7月18日"
+      ]
+    },
+    {
+      "groupId": "semantic-16b38c24",
+      "sourceText": "Iweet Whatsapp",
+      "bounds": {
+        "left": 8,
+        "top": 418,
+        "right": 129,
+        "bottom": 438
+      },
+      "role": "TITLE",
+      "groupingConfidence": 1,
+      "evidence": [],
+      "memberTexts": [
+        "Iweet Whatsapp"
+      ]
+    },
+    {
+      "groupId": "semantic-9d934a67",
+      "sourceText": "|加拿大政府己拨款2000万\n|加元(合1940万美元)",
+      "bounds": {
+        "left": 175,
+        "top": 468,
+        "right": 351,
+        "bottom": 503
+      },
+      "role": "BODY",
+      "groupingConfidence": 0.949999988079071,
+      "evidence": [
+        "CENTER_ALIGNED",
+        "HORIZONTAL_OVERLAP",
+        "LEFT_ALIGNED",
+        "LINE_GAP",
+        "OCR_BLOCK",
+        "PUNCTUATION_CONTINUATION",
+        "REGION_OCCUPANCY"
+      ],
+      "memberTexts": [
+        "|加拿大政府己拨款2000万",
+        "|加元(合1940万美元)"
+      ]
+    },
+    {
+      "groupId": "semantic-d0e465a1",
+      "sourceText": "用于末来四年资助五个非洲数学科学研究所",
+      "bounds": {
+        "left": 129,
+        "top": 524,
+        "right": 374,
+        "bottom": 538
+      },
+      "role": "BODY",
+      "groupingConfidence": 1,
+      "evidence": [],
+      "memberTexts": [
+        "用于末来四年资助五个非洲数学科学研究所"
+      ]
+    },
+    {
+      "groupId": "semantic-8c56e111",
+      "sourceText": "|这草中心有整个大陆,日AJMS | -Next因斯",
+      "bounds": {
+        "left": 123,
+        "top": 551,
+        "right": 336,
+        "bottom": 564
+      },
+      "role": "BODY",
+      "groupingConfidence": 1,
+      "evidence": [],
+      "memberTexts": [
+        "|这草中心有整个大陆,日AJMS | -Next因斯"
+      ]
+    },
+    {
+      "groupId": "semantic-f6c31ff7",
+      "sourceText": "|非洲数学科学研究生研究人员。",
+      "bounds": {
+        "left": 10,
+        "top": 573,
+        "right": 166,
+        "bottom": 586
+      },
+      "role": "BODY",
+      "groupingConfidence": 1,
+      "evidence": [],
+      "memberTexts": [
+        "|非洲数学科学研究生研究人员。"
+      ]
+    },
+    {
+      "groupId": "semantic-d2557c4d",
+      "sourceText": "政AMS政出女ズ所的牛不E”的E时)的新全",
+      "bounds": {
+        "left": 16,
+        "top": 591,
+        "right": 346,
+        "bottom": 612
+      },
+      "role": "BODY",
+      "groupingConfidence": 1,
+      "evidence": [],
+      "memberTexts": [
+        "政AMS政出女ズ所的牛不E”的E时)的新全"
+      ]
+    },
+    {
+      "groupId": "semantic-a6311af2",
+      "sourceText": "对外展计件动的,适汁划由南出生的科学家尼尔·图罗克博士领\n导。他也忌AIMS的创始人和A工M5,Next爱因斯坦计划的发記人。",
+      "bounds": {
+        "left": 13,
+        "top": 613,
+        "right": 343,
+        "bottom": 640
+      },
+      "role": "BODY",
+      "groupingConfidence": 0.949999988079071,
+      "evidence": [
+        "CENTER_ALIGNED",
+        "HORIZONTAL_OVERLAP",
+        "LEFT_ALIGNED",
+        "LINE_GAP",
+        "OCR_BLOCK",
+        "PUNCTUATION_CONTINUATION",
+        "REGION_OCCUPANCY"
+      ],
+      "memberTexts": [
+        "对外展计件动的,适汁划由南出生的科学家尼尔·图罗克博士领",
+        "导。他也忌AIMS的创始人和A工M5,Next爱因斯坦计划的发記人。"
+      ]
+    },
+    {
+      "groupId": "semantic-cf947b50",
+      "sourceText": "隐私政策",
+      "bounds": {
+        "left": 12,
+        "top": 709,
+        "right": 105,
+        "bottom": 733
+      },
+      "role": "TITLE",
+      "groupingConfidence": 1,
+      "evidence": [],
+      "memberTexts": [
+        "隐私政策"
+      ]
+    },
+    {
+      "groupId": "semantic-55fa0afd",
+      "sourceText": "|总耗时55317ms",
+      "bounds": {
+        "left": 162,
+        "top": 806,
+        "right": 251,
+        "bottom": 820
+      },
+      "role": "BODY",
+      "groupingConfidence": 1,
+      "evidence": [],
+      "memberTexts": [
+        "|总耗时55317ms"
+      ]
+    },
+    {
+      "groupId": "semantic-f2bc9ed3",
+      "sourceText": "隐私",
+      "bounds": {
+        "left": 321,
+        "top": 811,
+        "right": 348,
+        "bottom": 825
+      },
+      "role": "BODY",
+      "groupingConfidence": 1,
+      "evidence": [],
+      "memberTexts": [
+        "隐私"
+      ]
+    },
+    {
+      "groupId": "semantic-2d4a4695",
+      "sourceText": "Ai",
+      "bounds": {
+        "left": 181,
+        "top": 843,
+        "right": 203,
+        "bottom": 862
+      },
+      "role": "TITLE",
+      "groupingConfidence": 1,
+      "evidence": [],
+      "memberTexts": [
+        "Ai"
+      ]
+    }
+  ]
+}

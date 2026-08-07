@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "requestId": "64013c3d-1069-4aad-92d3-46e14760688d",
+  "generation": 0,
+  "scene": "ANDROID_CLIENT_CURRENT_PAGE_SINGLE_GROUP",
+  "translation": {
+    "mode": "ENGLISH_TO_CHINESE",
+    "sourceLanguage": "en",
+    "targetLanguage": "zh",
+    "preserveIdentifiers": true,
+    "useContext": false
+  },
+  "regions": [
+    {
+      "regionId": "semantic-8b380923",
+      "text": "Xi holds talks with Slovak president in Beijing",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh"
+    }
+  ]
+}

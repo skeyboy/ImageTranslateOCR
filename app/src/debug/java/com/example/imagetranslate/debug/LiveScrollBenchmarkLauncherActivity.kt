@@ -17,6 +17,8 @@ import com.example.imagetranslate.screenshot.LivePatchBackgroundExperienceMode
 import com.example.imagetranslate.screenshot.LivePatchBackgroundExperiencePreferences
 import com.example.imagetranslate.screenshot.LiveSmartAssistPreferences
 import com.example.imagetranslate.screenshot.OneShotScreenCaptureService
+import com.example.imagetranslate.translate.ExperimentalTranslationSettings
+import com.example.experimentaltranslation.ExperimentalTranslationEngine
 
 class LiveScrollBenchmarkLauncherActivity : ComponentActivity() {
     private val requestScreenCapture = registerForActivityResult(
@@ -65,6 +67,7 @@ class LiveScrollBenchmarkLauncherActivity : ComponentActivity() {
             LiveCaptureSettingsPolicy.forPreset(LiveCaptureScenePreset.READING)
         )
         LiveSmartAssistPreferences.setEnabled(this, false)
+        ExperimentalTranslationSettings.set(this, ExperimentalTranslationEngine.DISABLED)
     }
 
     companion object {

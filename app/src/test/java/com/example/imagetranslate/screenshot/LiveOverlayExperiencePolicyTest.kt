@@ -51,6 +51,18 @@ class LiveOverlayExperiencePolicyTest {
             ),
             0.001f
         )
+        assertEquals(
+            false,
+            LiveOverlayExperiencePolicy.shouldMaskTranslationPatchesFromSignature(
+                LiveOverlayExperienceMode.DEFAULT
+            )
+        )
+        assertEquals(
+            true,
+            LiveOverlayExperiencePolicy.shouldMaskTranslationPatchesFromSignature(
+                LiveOverlayExperienceMode.ENHANCED
+            )
+        )
     }
 
     @Test

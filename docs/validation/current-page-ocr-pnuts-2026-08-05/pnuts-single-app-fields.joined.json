@@ -1,0 +1,110 @@
+[
+  {
+    "regionId": "semantic-b0675a81",
+    "sourceText": "N'sTime",
+    "status": "TRANSLATED",
+    "translatedText": "N'sTime",
+    "provider": "pnuts-translate-v1",
+    "detectedSourceLanguage": "en",
+    "targetLanguage": "zh"
+  },
+  {
+    "regionId": "semantic-11afce8b",
+    "sourceText": "www.news.cn",
+    "status": "TRANSLATED",
+    "translatedText": "www.news.cn",
+    "provider": "pnuts-translate-v1",
+    "detectedSourceLanguage": "en",
+    "targetLanguage": "zh"
+  },
+  {
+    "regionId": "semantic-8895378",
+    "sourceText": "EWS",
+    "status": "TRANSLATED",
+    "translatedText": "EWS",
+    "provider": "pnuts-translate-v1",
+    "detectedSourceLanguage": "en",
+    "targetLanguage": "zh"
+  },
+  {
+    "regionId": "semantic-e86f3d04",
+    "sourceText": "net corm",
+    "status": "FAILED",
+    "translatedText": null,
+    "provider": "pnuts-translate-v1",
+    "detectedSourceLanguage": "en",
+    "targetLanguage": "zh"
+  },
+  {
+    "regionId": "semantic-55749d7a",
+    "sourceText": "Home)(Xi Story Xiplomacy Xi Focus",
+    "status": "TRANSLATED",
+    "translatedText": "首页)(习近平的故事 习式外交 习近平聚焦",
+    "provider": "pnuts-translate-v1",
+    "detectedSourceLanguage": "en",
+    "targetLanguage": "zh"
+  },
+  {
+    "regionId": "semantic-8b380923",
+    "sourceText": "Xi holds talks with Slovak president in Beijing",
+    "status": "TRANSLATED",
+    "translatedText": "习近平在北京同斯洛伐克总统举行会谈",
+    "provider": "pnuts-translate-v1",
+    "detectedSourceLanguage": "en",
+    "targetLanguage": "zh"
+  },
+  {
+    "regionId": "semantic-631d7a9d",
+    "sourceText": "Xi Story:Six-foot alley reveals Chinese wisdom",
+    "status": "TRANSLATED",
+    "translatedText": "习语故事：六尺巷展现中国智慧",
+    "provider": "pnuts-translate-v1",
+    "detectedSourceLanguage": "en",
+    "targetLanguage": "zh"
+  },
+  {
+    "regionId": "semantic-fa793555",
+    "sourceText": "of making roomn for others",
+    "status": "FAILED",
+    "translatedText": null,
+    "provider": "pnuts-translate-v1",
+    "detectedSourceLanguage": "en",
+    "targetLanguage": "zh"
+  },
+  {
+    "regionId": "semantic-9f094989",
+    "sourceText": "PLA celebrates 99th founding anniversary in march toward world-class military,with peace",
+    "status": "FAILED",
+    "translatedText": null,
+    "provider": "pnuts-translate-v1",
+    "detectedSourceLanguage": "en",
+    "targetLanguage": "zh"
+  },
+  {
+    "regionId": "semantic-91fbfd5e",
+    "sourceText": "as enduring mission",
+    "status": "TRANSLATED",
+    "translatedText": "作为持久的使命",
+    "provider": "pnuts-translate-v1",
+    "detectedSourceLanguage": "en",
+    "targetLanguage": "zh"
+  },
+  {
+    "regionId": "semantic-17d2690e",
+    "sourceText": "Xi signs order to commend outstanding military individual",
+    "status": "TRANSLATED",
+    "translatedText": "习近平签署命令表彰优秀军事个人",
+    "provider": "pnuts-translate-v1",
+    "detectedSourceLanguage": "en",
+    "targetLanguage": "zh"
+  },
+  {
+    "regionId": "semantic-75ab1c6b",
+    "sourceText": "Xi's Archive",
+    "status": "TRANSLATED",
+    "translatedText": "习近平文库",
+    "provider": "pnuts-translate-v1",
+    "detectedSourceLanguage": "en",
+    "targetLanguage": "zh"
+  }
+]

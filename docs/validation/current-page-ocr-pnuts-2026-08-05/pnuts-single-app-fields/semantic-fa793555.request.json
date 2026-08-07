@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "requestId": "2f8950e0-0bd7-48a7-9292-3418bcbc9a63",
+  "generation": 0,
+  "scene": "ANDROID_CLIENT_CURRENT_PAGE_SINGLE_GROUP_STRICT",
+  "translation": {
+    "mode": "ENGLISH_TO_CHINESE",
+    "sourceLanguage": "auto",
+    "targetLanguage": "auto",
+    "preserveIdentifiers": true,
+    "useContext": false
+  },
+  "regions": [
+    {
+      "regionId": "semantic-fa793555",
+      "text": "of making roomn for others",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh"
+    }
+  ]
+}

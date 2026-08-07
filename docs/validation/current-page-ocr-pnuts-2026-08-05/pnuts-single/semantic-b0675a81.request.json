@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "requestId": "8dd3aabd-d169-4a00-a86c-33f6db9dd124",
+  "generation": 0,
+  "scene": "ANDROID_CLIENT_CURRENT_PAGE_SINGLE_GROUP",
+  "translation": {
+    "mode": "ENGLISH_TO_CHINESE",
+    "sourceLanguage": "en",
+    "targetLanguage": "zh",
+    "preserveIdentifiers": true,
+    "useContext": false
+  },
+  "regions": [
+    {
+      "regionId": "semantic-b0675a81",
+      "text": "N'sTime",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh"
+    }
+  ]
+}

@@ -61,11 +61,47 @@ class ScreenFrameChangeDetectorTest {
     }
 
     @Test
-    fun renderedOverlayIsIgnoredBeforeWatchingResumes() {
-        detector.onFrame(frame(10), 0L)
+    fun renderedPatchChangesAreMaskedWithoutPausingSourceMovementDetection() {
+        val presentationDetector = ScreenFrameChangeDetector(
+            stableDelayMs = 300L,
+            minimumCaptureIntervalMs = 100L,
+            changedSampleRatio = 0.2f,
+            luminanceDelta = 20,
+            minimumStableFrameSamples = 3
+        )
+        presentationDetector.onCaptureStarted(maskedFrame(10, 10), 0L)
+        presentationDetector.onTranslationRendered(100L)
+
+        assertTrue(presentationDetector.shouldMaskTranslationPatches(300L))
+        assertFalse(presentationDetector.shouldMaskTranslationPatches(520L))
+        assertEquals(
+            ScreenFrameAction.NONE,
+            presentationDetector.onFrame(maskedFrame(180, 10), 150L)
+        )
+        assertEquals(
+            ScreenFrameAction.NONE,
+            presentationDetector.onFrame(maskedFrame(230, 10), 220L)
+        )
+        assertEquals(
+            ScreenFrameAction.MOVING,
+            presentationDetector.onFrame(maskedFrame(240, 80), 300L)
+        )
+        assertEquals(
+            ScreenFrameAction.MOVING_UPDATE,
+            presentationDetector.onFrame(maskedFrame(245, 140), 380L)
+        )
+        assertTrue(presentationDetector.isAwaitingStableFrames())
+        assertEquals(null, presentationDetector.currentMotionPlan())
+    }
+
+    @Test
+    fun presentationMaskTransitionDoesNotCreateMovementAfterTheWindow() {
+        detector.onFrame(maskedFrame(10, 10), 0L)
         detector.onTranslationRendered(100L)
-        assertEquals(ScreenFrameAction.NONE, detector.onFrame(frame(200), 300L))
-        assertEquals(ScreenFrameAction.NONE, detector.onFrame(frame(200), 800L))
+        assertEquals(ScreenFrameAction.NONE, detector.onFrame(maskedFrame(200, 10), 300L))
+        assertEquals(ScreenFrameAction.NONE, detector.onFrame(maskedFrame(230, 10), 450L))
+        assertEquals(ScreenFrameAction.NONE, detector.onFrame(frameWithPatch(230, 10), 550L))
+        assertEquals(ScreenFrameAction.NONE, detector.onFrame(frameWithPatch(230, 10), 800L))
     }
 
     @Test
@@ -153,6 +189,72 @@ class ScreenFrameChangeDetectorTest {
     }
 
     @Test
+    fun rapidConsecutiveSwipesCaptureOnlyTheFinalSettledViewport() {
+        val burstDetector = ScreenFrameChangeDetector(
+            stableDelayMs = 300L,
+            minimumCaptureIntervalMs = 100L,
+            changedSampleRatio = 0.05f,
+            luminanceDelta = 10,
+            minimumStableFrameSamples = 3
+        )
+        burstDetector.onCaptureStarted(frame(10), 0L)
+
+        assertEquals(ScreenFrameAction.MOVING, burstDetector.onFrame(frame(80), 100L))
+        assertEquals(ScreenFrameAction.NONE, burstDetector.onFrame(frame(80), 260L))
+        assertEquals(
+            ScreenFrameAction.MOVING_UPDATE,
+            burstDetector.onFrame(frame(140), 320L)
+        )
+        assertEquals(ScreenFrameAction.NONE, burstDetector.onFrame(frame(140), 500L))
+        assertEquals(
+            ScreenFrameAction.MOVING_UPDATE,
+            burstDetector.onFrame(frame(210), 560L)
+        )
+        assertEquals(ScreenFrameAction.NONE, burstDetector.onFrame(frame(210), 861L))
+        assertEquals(ScreenFrameAction.NONE, burstDetector.onFrame(frame(210), 940L))
+        assertEquals(ScreenFrameAction.CAPTURE, burstDetector.onFrame(frame(210), 1_020L))
+        assertFalse(burstDetector.isAwaitingStableFrames())
+        assertEquals(ScreenFrameAction.NONE, burstDetector.onFrame(frame(210), 1_200L))
+    }
+
+    @Test
+    fun defaultTranslucentPatchCoverageStillExposesMotionSignal() {
+        val overlayAlpha = LiveOverlayExperiencePolicy.translationWindowAlpha(
+            LiveOverlayExperienceMode.DEFAULT,
+            TranslationOverlayTouchPolicy.PREFERRED_SINGLE_WINDOW_ALPHA
+        )
+        fun compositedLuminance(sourceLuminance: Int): Int =
+            (235 * overlayAlpha + sourceLuminance * (1f - overlayAlpha)).toInt()
+
+        val ignored = BooleanArray(100).apply {
+            if (LiveOverlayExperiencePolicy.shouldMaskTranslationPatchesFromSignature(
+                    LiveOverlayExperienceMode.DEFAULT
+                )
+            ) {
+                fill(true, 0, 85)
+            }
+            fill(true, 95, 100)
+        }
+        val baseline = ScreenFrameSignature(
+            IntArray(100) { compositedLuminance(40) },
+            ignoredSamples = ignored
+        )
+        val moved = ScreenFrameSignature(
+            samples = IntArray(100) { index ->
+                compositedLuminance(if (index < 85) 140 else 40)
+            },
+            ignoredSamples = ignored
+        )
+        val highCoverageDetector = ScreenFrameChangeDetector(
+            changedSampleRatio = 0.2f,
+            luminanceDelta = 20
+        )
+
+        highCoverageDetector.onCaptureStarted(baseline, 0L)
+        assertEquals(ScreenFrameAction.MOVING, highCoverageDetector.onFrame(moved, 100L))
+    }
+
+    @Test
     fun duplicateCapturePolicyIgnoresMinorSamplingNoise() {
         val baseline = frame(100)
         val minorNoise = baseline.copy(samples = baseline.samples.copyOf().apply { this[0] = 112 })
@@ -220,6 +322,15 @@ class ScreenFrameChangeDetectorTest {
     }
 
     private fun frame(value: Int) = ScreenFrameSignature(IntArray(100) { value })
+
+    private fun maskedFrame(patchValue: Int, sourceValue: Int) = ScreenFrameSignature(
+        samples = IntArray(100) { index -> if (index < 80) patchValue else sourceValue },
+        ignoredSamples = BooleanArray(100) { index -> index < 80 }
+    )
+
+    private fun frameWithPatch(patchValue: Int, sourceValue: Int) = ScreenFrameSignature(
+        samples = IntArray(100) { index -> if (index < 80) patchValue else sourceValue }
+    )
 
     private fun patternedFrame(): ScreenFrameSignature {
         val columns = 12

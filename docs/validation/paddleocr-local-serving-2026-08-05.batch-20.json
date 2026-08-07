@@ -1,0 +1,230 @@
+{
+  "schemaVersion": 1,
+  "recordedAt": "2026-08-05T12:17:00+08:00",
+  "endpoint": "http://127.0.0.1:8081/ocr",
+  "pipeline": "OCR",
+  "device": "cpu",
+  "versions": {
+    "paddlepaddle": "3.2.1",
+    "paddleocr": "3.7.0",
+    "paddlex": "3.7.2"
+  },
+  "sampleSet": "docs/validation/feathered-material-rendering-2026-07-29/run/thumbs/001-source.jpg through 020-source.jpg",
+  "sampleDimensions": {
+    "width": 240,
+    "height": 320
+  },
+  "sampleCount": 20,
+  "successCount": 20,
+  "latencySeconds": {
+    "min": 1.842993,
+    "p50": 2.322685,
+    "p90": 3.327679,
+    "p95": 3.378057,
+    "max": 3.970888,
+    "mean": 2.47661295
+  },
+  "meanTextCount": 9,
+  "samples": [
+    {
+      "image": "docs/validation/feathered-material-rendering-2026-07-29/run/thumbs/001-source.jpg",
+      "inputBytes": 7502,
+      "httpCode": 200,
+      "errorCode": 0,
+      "timeTotalSeconds": 2.322685,
+      "uploadBytes": 10282,
+      "downloadBytes": 2117,
+      "textCount": 10
+    },
+    {
+      "image": "docs/validation/feathered-material-rendering-2026-07-29/run/thumbs/002-source.jpg",
+      "inputBytes": 7640,
+      "httpCode": 200,
+      "errorCode": 0,
+      "timeTotalSeconds": 2.157177,
+      "uploadBytes": 10466,
+      "downloadBytes": 2115,
+      "textCount": 10
+    },
+    {
+      "image": "docs/validation/feathered-material-rendering-2026-07-29/run/thumbs/003-source.jpg",
+      "inputBytes": 7539,
+      "httpCode": 200,
+      "errorCode": 0,
+      "timeTotalSeconds": 2.172920,
+      "uploadBytes": 10330,
+      "downloadBytes": 2118,
+      "textCount": 10
+    },
+    {
+      "image": "docs/validation/feathered-material-rendering-2026-07-29/run/thumbs/004-source.jpg",
+      "inputBytes": 7644,
+      "httpCode": 200,
+      "errorCode": 0,
+      "timeTotalSeconds": 2.170198,
+      "uploadBytes": 10470,
+      "downloadBytes": 2116,
+      "textCount": 10
+    },
+    {
+      "image": "docs/validation/feathered-material-rendering-2026-07-29/run/thumbs/005-source.jpg",
+      "inputBytes": 7510,
+      "httpCode": 200,
+      "errorCode": 0,
+      "timeTotalSeconds": 2.331599,
+      "uploadBytes": 10294,
+      "downloadBytes": 2117,
+      "textCount": 10
+    },
+    {
+      "image": "docs/validation/feathered-material-rendering-2026-07-29/run/thumbs/006-source.jpg",
+      "inputBytes": 7641,
+      "httpCode": 200,
+      "errorCode": 0,
+      "timeTotalSeconds": 2.306611,
+      "uploadBytes": 10466,
+      "downloadBytes": 2115,
+      "textCount": 10
+    },
+    {
+      "image": "docs/validation/feathered-material-rendering-2026-07-29/run/thumbs/007-source.jpg",
+      "inputBytes": 7546,
+      "httpCode": 200,
+      "errorCode": 0,
+      "timeTotalSeconds": 2.348169,
+      "uploadBytes": 10342,
+      "downloadBytes": 2118,
+      "textCount": 10
+    },
+    {
+      "image": "docs/validation/feathered-material-rendering-2026-07-29/run/thumbs/008-source.jpg",
+      "inputBytes": 7634,
+      "httpCode": 200,
+      "errorCode": 0,
+      "timeTotalSeconds": 2.438223,
+      "uploadBytes": 10458,
+      "downloadBytes": 2116,
+      "textCount": 10
+    },
+    {
+      "image": "docs/validation/feathered-material-rendering-2026-07-29/run/thumbs/009-source.jpg",
+      "inputBytes": 7494,
+      "httpCode": 200,
+      "errorCode": 0,
+      "timeTotalSeconds": 2.437743,
+      "uploadBytes": 10270,
+      "downloadBytes": 2117,
+      "textCount": 10
+    },
+    {
+      "image": "docs/validation/feathered-material-rendering-2026-07-29/run/thumbs/010-source.jpg",
+      "inputBytes": 7648,
+      "httpCode": 200,
+      "errorCode": 0,
+      "timeTotalSeconds": 2.462074,
+      "uploadBytes": 10478,
+      "downloadBytes": 2115,
+      "textCount": 10
+    },
+    {
+      "image": "docs/validation/feathered-material-rendering-2026-07-29/run/thumbs/011-source.jpg",
+      "inputBytes": 7691,
+      "httpCode": 200,
+      "errorCode": 0,
+      "timeTotalSeconds": 3.970888,
+      "uploadBytes": 10534,
+      "downloadBytes": 1806,
+      "textCount": 8
+    },
+    {
+      "image": "docs/validation/feathered-material-rendering-2026-07-29/run/thumbs/012-source.jpg",
+      "inputBytes": 7671,
+      "httpCode": 200,
+      "errorCode": 0,
+      "timeTotalSeconds": 3.378057,
+      "uploadBytes": 10506,
+      "downloadBytes": 1807,
+      "textCount": 8
+    },
+    {
+      "image": "docs/validation/feathered-material-rendering-2026-07-29/run/thumbs/013-source.jpg",
+      "inputBytes": 7697,
+      "httpCode": 200,
+      "errorCode": 0,
+      "timeTotalSeconds": 2.138937,
+      "uploadBytes": 10542,
+      "downloadBytes": 1806,
+      "textCount": 8
+    },
+    {
+      "image": "docs/validation/feathered-material-rendering-2026-07-29/run/thumbs/014-source.jpg",
+      "inputBytes": 7661,
+      "httpCode": 200,
+      "errorCode": 0,
+      "timeTotalSeconds": 3.052136,
+      "uploadBytes": 10494,
+      "downloadBytes": 1808,
+      "textCount": 8
+    },
+    {
+      "image": "docs/validation/feathered-material-rendering-2026-07-29/run/thumbs/015-source.jpg",
+      "inputBytes": 7705,
+      "httpCode": 200,
+      "errorCode": 0,
+      "timeTotalSeconds": 3.327679,
+      "uploadBytes": 10554,
+      "downloadBytes": 1806,
+      "textCount": 8
+    },
+    {
+      "image": "docs/validation/feathered-material-rendering-2026-07-29/run/thumbs/016-source.jpg",
+      "inputBytes": 7666,
+      "httpCode": 200,
+      "errorCode": 0,
+      "timeTotalSeconds": 2.890843,
+      "uploadBytes": 10502,
+      "downloadBytes": 1806,
+      "textCount": 8
+    },
+    {
+      "image": "docs/validation/feathered-material-rendering-2026-07-29/run/thumbs/017-source.jpg",
+      "inputBytes": 7691,
+      "httpCode": 200,
+      "errorCode": 0,
+      "timeTotalSeconds": 1.961084,
+      "uploadBytes": 10534,
+      "downloadBytes": 1806,
+      "textCount": 8
+    },
+    {
+      "image": "docs/validation/feathered-material-rendering-2026-07-29/run/thumbs/018-source.jpg",
+      "inputBytes": 7671,
+      "httpCode": 200,
+      "errorCode": 0,
+      "timeTotalSeconds": 1.882830,
+      "uploadBytes": 10506,
+      "downloadBytes": 1807,
+      "textCount": 8
+    },
+    {
+      "image": "docs/validation/feathered-material-rendering-2026-07-29/run/thumbs/019-source.jpg",
+      "inputBytes": 7697,
+      "httpCode": 200,
+      "errorCode": 0,
+      "timeTotalSeconds": 1.842993,
+      "uploadBytes": 10542,
+      "downloadBytes": 1806,
+      "textCount": 8
+    },
+    {
+      "image": "docs/validation/feathered-material-rendering-2026-07-29/run/thumbs/020-source.jpg",
+      "inputBytes": 7661,
+      "httpCode": 200,
+      "errorCode": 0,
+      "timeTotalSeconds": 1.939413,
+      "uploadBytes": 10494,
+      "downloadBytes": 1808,
+      "textCount": 8
+    }
+  ]
+}

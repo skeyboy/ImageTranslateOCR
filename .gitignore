@@ -41,6 +41,20 @@ build/
 
 # Maven
 target/
+**/target/
+
+# Local translation service runtime configuration
+translation-service/.env
+translation-service/.artifacts/
+translation-service/hy-mt2-runtime/
+demo-server/.env
+demo-server/*.sqlite3
+demo-server/*.sqlite3-*
+demo-server/request-images/
+app/libs/*.aar
+/.tmp/
+/artifacts/
+/demo-server.sqlite3
 
 # Local install artifacts
 output/apk/*.apk

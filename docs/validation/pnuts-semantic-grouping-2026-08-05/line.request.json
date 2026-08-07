@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "requestId": "beb582d9-b2ad-4665-822b-6c509e1bfedd",
+  "generation": 0,
+  "scene": "SEMANTIC_GROUPING_AB_LINE",
+  "translation": {
+    "mode": "ENGLISH_TO_CHINESE",
+    "sourceLanguage": "en",
+    "targetLanguage": "zh",
+    "preserveIdentifiers": true,
+    "useContext": true
+  },
+  "regions": [
+    {
+      "regionId": "line-1",
+      "text": "The Web3 industry tried, and we did",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh"
+    },
+    {
+      "regionId": "line-2",
+      "text": "quite well. Until the country decided",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh"
+    },
+    {
+      "regionId": "line-3",
+      "text": "to invest in projects that fit neither",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh"
+    },
+    {
+      "regionId": "line-4",
+      "text": "the country nor the Web3 community.",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh"
+    },
+    {
+      "regionId": "line-5",
+      "text": "Then all hell broke loose. The rest",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh"
+    },
+    {
+      "regionId": "line-6",
+      "text": "is history.",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh"
+    }
+  ]
+}

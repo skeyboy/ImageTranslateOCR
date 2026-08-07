@@ -1,0 +1,1207 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "path": "/data/user/0/com.example.imagetranslate/files/validation/source.png",
+    "width": 388,
+    "height": 894
+  },
+  "ocr": {
+    "engine": "ML_KIT",
+    "mode": "AUTO",
+    "elapsedMs": 1573,
+    "regionCount": 27,
+    "regions": [
+      {
+        "regionId": "ocr-region-0",
+        "text": "23113RKC6C",
+        "bounds": {
+          "left": 85,
+          "top": 12,
+          "right": 167,
+          "bottom": 21
+        },
+        "modelConfidence": 0.8511718511581421,
+        "consensusScore": 0.9999999403953552,
+        "passCount": 3,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": 0
+      },
+      {
+        "regionId": "ocr-region-1",
+        "text": "9:42",
+        "bounds": {
+          "left": 21,
+          "top": 43,
+          "right": 48,
+          "bottom": 54
+        },
+        "modelConfidence": 0.806640625,
+        "consensusScore": 0.8853333592414856,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": "mlkit-0-65-129-145-163",
+        "sourceLineIndex": 0
+      },
+      {
+        "regionId": "ocr-region-2",
+        "text": "Xi Story:Six-foot alley revea...",
+        "bounds": {
+          "left": 112,
+          "top": 79,
+          "right": 296,
+          "bottom": 92
+        },
+        "modelConfidence": 0.8251616358757019,
+        "consensusScore": 0.8862069249153137,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": 0
+      },
+      {
+        "regionId": "ocr-region-3",
+        "text": "During the Anhui inspection,Xi also",
+        "bounds": {
+          "left": 8,
+          "top": 115,
+          "right": 316,
+          "bottom": 135
+        },
+        "modelConfidence": 0.8722278475761414,
+        "consensusScore": 0.9000000357627869,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": 0
+      },
+      {
+        "regionId": "ocr-region-4",
+        "text": "emphasized the need to strengthen the",
+        "bounds": {
+          "left": 8,
+          "top": 149,
+          "right": 347,
+          "bottom": 167
+        },
+        "modelConfidence": 0.904541015625,
+        "consensusScore": 0.9000000357627869,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": null
+      },
+      {
+        "regionId": "ocr-region-5",
+        "text": "protection of historical and cultural",
+        "bounds": {
+          "left": 8,
+          "top": 178,
+          "right": 310,
+          "bottom": 196
+        },
+        "modelConfidence": 0.9074336886405945,
+        "consensusScore": 0.9000000357627869,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": null
+      },
+      {
+        "regionId": "ocr-region-6",
+        "text": "heritage,as well as the promotion of",
+        "bounds": {
+          "left": 8,
+          "top": 209,
+          "right": 322,
+          "bottom": 226
+        },
+        "modelConfidence": 0.8984375,
+        "consensusScore": 0.9000000357627869,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": null
+      },
+      {
+        "regionId": "ocr-region-7",
+        "text": "creative transformation and innovative",
+        "bounds": {
+          "left": 8,
+          "top": 239,
+          "right": 338,
+          "bottom": 254
+        },
+        "modelConfidence": 0.9006696343421936,
+        "consensusScore": 0.9000000357627869,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": null
+      },
+      {
+        "regionId": "ocr-region-8",
+        "text": "development of fine traditional culture.",
+        "bounds": {
+          "left": 8,
+          "top": 269,
+          "right": 342,
+          "bottom": 286
+        },
+        "modelConfidence": 0.8902994990348816,
+        "consensusScore": 0.8977778553962708,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": null
+      },
+      {
+        "regionId": "ocr-region-9",
+        "text": "Tongcheng has woven the values",
+        "bounds": {
+          "left": 7,
+          "top": 318,
+          "right": 292,
+          "bottom": 336
+        },
+        "modelConfidence": 0.903245210647583,
+        "consensusScore": 0.9000000357627869,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": 0
+      },
+      {
+        "regionId": "ocr-region-10",
+        "text": "associated with the alley into community",
+        "bounds": {
+          "left": 8,
+          "top": 348,
+          "right": 359,
+          "bottom": 366
+        },
+        "modelConfidence": 0.9017857313156128,
+        "consensusScore": 0.9000000357627869,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": 1
+      },
+      {
+        "regionId": "ocr-region-11",
+        "text": "work and grassroots governance,using",
+        "bounds": {
+          "left": 7,
+          "top": 378,
+          "right": 344,
+          "bottom": 398
+        },
+        "modelConfidence": 0.8870738744735718,
+        "consensusScore": 0.9000000357627869,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": 2
+      },
+      {
+        "regionId": "ocr-region-12",
+        "text": "persuasion,empathy and compromise to",
+        "bounds": {
+          "left": 9,
+          "top": 409,
+          "right": 358,
+          "bottom": 428
+        },
+        "modelConfidence": 0.8726325631141663,
+        "consensusScore": 0.9000000357627869,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": 3
+      },
+      {
+        "regionId": "ocr-region-13",
+        "text": "help resolve disputes before they escalate.",
+        "bounds": {
+          "left": 9,
+          "top": 440,
+          "right": 373,
+          "bottom": 457
+        },
+        "modelConfidence": 0.8990542888641357,
+        "consensusScore": 0.8978947997093201,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": 4
+      },
+      {
+        "regionId": "ocr-region-14",
+        "text": "That emphasis on accommodation,Zhang",
+        "bounds": {
+          "left": 7,
+          "top": 488,
+          "right": 367,
+          "bottom": 506
+        },
+        "modelConfidence": 0.8857717514038086,
+        "consensusScore": 0.9000000357627869,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": 0
+      },
+      {
+        "regionId": "ocr-region-15",
+        "text": "stressed,does not mean asking people to",
+        "bounds": {
+          "left": 8,
+          "top": 518,
+          "right": 366,
+          "bottom": 535
+        },
+        "modelConfidence": 0.886603832244873,
+        "consensusScore": 0.9000000357627869,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": 1
+      },
+      {
+        "regionId": "ocr-region-16",
+        "text": "yield without principle.\"It's not simply",
+        "bounds": {
+          "left": 8,
+          "top": 547,
+          "right": 334,
+          "bottom": 567
+        },
+        "modelConfidence": 0.8395182490348816,
+        "consensusScore": 0.9000000357627869,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": 2
+      },
+      {
+        "regionId": "ocr-region-17",
+        "text": "giving way,still less forcing someone to do",
+        "bounds": {
+          "left": 8,
+          "top": 578,
+          "right": 375,
+          "bottom": 596
+        },
+        "modelConfidence": 0.872994065284729,
+        "consensusScore": 0.9000000357627869,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": 3
+      },
+      {
+        "regionId": "ocr-region-18",
+        "text": "so,\"he said.\"It is a gesture the stronger",
+        "bounds": {
+          "left": 12,
+          "top": 606,
+          "right": 372,
+          "bottom": 626
+        },
+        "modelConfidence": 0.8336148858070374,
+        "consensusScore": 0.9000000357627869,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": 4
+      },
+      {
+        "regionId": "ocr-region-19",
+        "text": "side takes the first step,while morality and",
+        "bounds": {
+          "left": 8,
+          "top": 638,
+          "right": 375,
+          "bottom": 656
+        },
+        "modelConfidence": 0.9020353555679321,
+        "consensusScore": 0.9000000357627869,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": 5
+      },
+      {
+        "regionId": "ocr-region-20",
+        "text": "law work together.",
+        "bounds": {
+          "left": 8,
+          "top": 668,
+          "right": 165,
+          "bottom": 687
+        },
+        "modelConfidence": 0.90478515625,
+        "consensusScore": 0.8950000405311584,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": 6
+      },
+      {
+        "regionId": "ocr-region-21",
+        "text": "XA EEM",
+        "bounds": {
+          "left": 181,
+          "top": 678,
+          "right": 263,
+          "bottom": 695
+        },
+        "modelConfidence": 0.359375,
+        "consensusScore": 0.8680000305175781,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": 0
+      },
+      {
+        "regionId": "ocr-region-22",
+        "text": "The approach is also gaining broader",
+        "bounds": {
+          "left": 8,
+          "top": 718,
+          "right": 326,
+          "bottom": 737
+        },
+        "modelConfidence": 0.8826864957809448,
+        "consensusScore": 0.9000000357627869,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": 0
+      },
+      {
+        "regionId": "ocr-region-23",
+        "text": "institutional backing.On July 24,the",
+        "bounds": {
+          "left": 8,
+          "top": 748,
+          "right": 322,
+          "bottom": 767
+        },
+        "modelConfidence": 0.8896780014038086,
+        "consensusScore": 0.9000000357627869,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": 1
+      },
+      {
+        "regionId": "ocr-region-24",
+        "text": "Standing Committee of the Anhui",
+        "bounds": {
+          "left": 9,
+          "top": 779,
+          "right": 296,
+          "bottom": 798
+        },
+        "modelConfidence": 0.8816550970077515,
+        "consensusScore": 0.9000000357627869,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": 2
+      },
+      {
+        "regionId": "ocr-region-25",
+        "text": "Provincial People's Congress adopted",
+        "bounds": {
+          "left": 8,
+          "top": 806,
+          "right": 328,
+          "bottom": 827
+        },
+        "modelConfidence": 0.8823529481887817,
+        "consensusScore": 0.9000000357627869,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": 3
+      },
+      {
+        "regionId": "ocr-region-26",
+        "text": "Ai",
+        "bounds": {
+          "left": 181,
+          "top": 845,
+          "right": 209,
+          "bottom": 868
+        },
+        "modelConfidence": 0.7057291865348816,
+        "consensusScore": 0.9000000357627869,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": 4
+      }
+    ]
+  },
+  "semanticGrouping": {
+    "groupCount": 13,
+    "documentContext": "[BODY] 23113RKC6C\n[TIMESTAMP] 9:42\n[BODY] Xi Story:Six-foot alley revea...\n[BODY] During the Anhui inspection,Xi also\n[BODY] emphasized the need to strengthen the\nprotection of historical and cultural\n[BODY] heritage,as well as the promotion of\n[BODY] creative transformation and innovative\n[BODY] development of fine traditional culture.\n[BODY] Tongcheng has woven the values\nassociated with the alley into community\nwork and grassroots governance,using\npersuasion,empathy and compromise to\nhelp resolve disputes before they escalate.\n[BODY] That emphasis on accommodation,Zhang\nstressed,does not mean asking people to\nyield without principle.\"It's not simply\ngiving way,still less forcing someone to do\nso,\"he said.\"It is a gesture the stronger\nside takes the first step,while morality and\nlaw work together.\n[BODY] XA EEM\n[BODY] The approach is also gaining broader\ninstitutional backing.On July 24,the\nStanding Committee of the Anhui\nProvincial People's Congress adopted\n[BODY] Ai"
+  },
+  "translation": {
+    "elapsedMs": 34834,
+    "resultCount": 13,
+    "succeededCount": 11,
+    "failedCount": 2
+  },
+  "groups": [
+    {
+      "request": {
+        "groupId": "semantic-55aa762d",
+        "role": "BODY",
+        "translationUnit": "GROUP",
+        "sourceText": "23113RKC6C",
+        "memberRegionIds": [
+          "semantic-55aa762d-region-0"
+        ],
+        "bounds": {
+          "left": 85,
+          "top": 12,
+          "right": 167,
+          "bottom": 21
+        },
+        "groupingConfidence": 1,
+        "groupingEvidence": []
+      },
+      "serviceResponse": {
+        "groupId": "semantic-55aa762d",
+        "status": "TRANSLATED",
+        "renderMode": "GROUP",
+        "translatedText": "23113RKC6C",
+        "memberRegionIds": [
+          "semantic-55aa762d-region-0"
+        ],
+        "detectedSourceLanguage": "en",
+        "targetLanguage": "zh",
+        "anchorBounds": {
+          "left": 85,
+          "top": 12,
+          "right": 167,
+          "bottom": 21
+        },
+        "layoutHint": {
+          "preferredMaxLines": 1,
+          "minimumTextScale": 0.86,
+          "alignment": "START",
+          "overflowStrategy": "REFLOW_THEN_SCALE"
+        }
+      },
+      "androidOutcome": {
+        "succeeded": false,
+        "translatedText": "23113RKC6C",
+        "provider": "none",
+        "failureCode": "LOCAL_TRANSLATION_FAILED",
+        "layoutHint": null
+      }
+    },
+    {
+      "request": {
+        "groupId": "semantic-cd8ea013",
+        "role": "TIMESTAMP",
+        "translationUnit": "PRESERVED",
+        "sourceText": "9:42",
+        "memberRegionIds": [
+          "semantic-cd8ea013-region-0"
+        ],
+        "bounds": {
+          "left": 21,
+          "top": 43,
+          "right": 48,
+          "bottom": 54
+        },
+        "groupingConfidence": 1,
+        "groupingEvidence": []
+      },
+      "serviceResponse": {
+        "groupId": "semantic-cd8ea013",
+        "status": "PRESERVED",
+        "renderMode": "NONE",
+        "memberRegionIds": [
+          "semantic-cd8ea013-region-0"
+        ],
+        "detectedSourceLanguage": "auto",
+        "targetLanguage": "zh",
+        "anchorBounds": {
+          "left": 21,
+          "top": 43,
+          "right": 48,
+          "bottom": 54
+        },
+        "layoutHint": {
+          "preferredMaxLines": 1,
+          "minimumTextScale": 0.86,
+          "alignment": "CENTER",
+          "overflowStrategy": "REFLOW_THEN_SCALE"
+        }
+      },
+      "androidOutcome": {
+        "succeeded": true,
+        "translatedText": "9:42",
+        "provider": "self-hosted-qwen-v2",
+        "failureCode": null,
+        "layoutHint": {
+          "preferredMaxLines": 1,
+          "minimumTextScale": 0.8600000143051147,
+          "alignment": "CENTER",
+          "overflowStrategy": "REFLOW_THEN_SCALE"
+        }
+      }
+    },
+    {
+      "request": {
+        "groupId": "semantic-17dbe43e",
+        "role": "BODY",
+        "translationUnit": "GROUP",
+        "sourceText": "Xi Story:Six-foot alley revea...",
+        "memberRegionIds": [
+          "semantic-17dbe43e-region-0"
+        ],
+        "bounds": {
+          "left": 112,
+          "top": 79,
+          "right": 296,
+          "bottom": 92
+        },
+        "groupingConfidence": 1,
+        "groupingEvidence": []
+      },
+      "serviceResponse": {
+        "groupId": "semantic-17dbe43e",
+        "status": "TRANSLATED",
+        "renderMode": "GROUP",
+        "translatedText": "习故事：六尺巷揭...",
+        "memberRegionIds": [
+          "semantic-17dbe43e-region-0"
+        ],
+        "detectedSourceLanguage": "en",
+        "targetLanguage": "zh",
+        "anchorBounds": {
+          "left": 112,
+          "top": 79,
+          "right": 296,
+          "bottom": 92
+        },
+        "layoutHint": {
+          "preferredMaxLines": 1,
+          "minimumTextScale": 0.86,
+          "alignment": "START",
+          "overflowStrategy": "REFLOW_THEN_SCALE"
+        }
+      },
+      "androidOutcome": {
+        "succeeded": true,
+        "translatedText": "习故事：六尺巷揭...",
+        "provider": "self-hosted-qwen-v2",
+        "failureCode": null,
+        "layoutHint": {
+          "preferredMaxLines": 1,
+          "minimumTextScale": 0.8600000143051147,
+          "alignment": "START",
+          "overflowStrategy": "REFLOW_THEN_SCALE"
+        }
+      }
+    },
+    {
+      "request": {
+        "groupId": "semantic-8e80201a",
+        "role": "BODY",
+        "translationUnit": "GROUP",
+        "sourceText": "During the Anhui inspection,Xi also",
+        "memberRegionIds": [
+          "semantic-8e80201a-region-0"
+        ],
+        "bounds": {
+          "left": 8,
+          "top": 115,
+          "right": 316,
+          "bottom": 135
+        },
+        "groupingConfidence": 1,
+        "groupingEvidence": []
+      },
+      "serviceResponse": {
+        "groupId": "semantic-8e80201a",
+        "status": "TRANSLATED",
+        "renderMode": "GROUP",
+        "translatedText": "在安徽考察期间，习近平还",
+        "memberRegionIds": [
+          "semantic-8e80201a-region-0"
+        ],
+        "detectedSourceLanguage": "en",
+        "targetLanguage": "zh",
+        "anchorBounds": {
+          "left": 8,
+          "top": 115,
+          "right": 316,
+          "bottom": 135
+        },
+        "layoutHint": {
+          "preferredMaxLines": 1,
+          "minimumTextScale": 0.86,
+          "alignment": "START",
+          "overflowStrategy": "REFLOW_THEN_SCALE"
+        }
+      },
+      "androidOutcome": {
+        "succeeded": true,
+        "translatedText": "在安徽考察期间，习近平还",
+        "provider": "self-hosted-qwen-v2",
+        "failureCode": null,
+        "layoutHint": {
+          "preferredMaxLines": 1,
+          "minimumTextScale": 0.8600000143051147,
+          "alignment": "START",
+          "overflowStrategy": "REFLOW_THEN_SCALE"
+        }
+      }
+    },
+    {
+      "request": {
+        "groupId": "semantic-b6de9e6a",
+        "role": "BODY",
+        "translationUnit": "GROUP",
+        "sourceText": "emphasized the need to strengthen the\nprotection of historical and cultural",
+        "memberRegionIds": [
+          "semantic-b6de9e6a-region-0",
+          "semantic-b6de9e6a-region-1"
+        ],
+        "bounds": {
+          "left": 8,
+          "top": 149,
+          "right": 347,
+          "bottom": 196
+        },
+        "groupingConfidence": 0.8199999928474426,
+        "groupingEvidence": [
+          "CENTER_ALIGNED",
+          "GEOMETRY_INFERRED",
+          "HORIZONTAL_OVERLAP",
+          "LEFT_ALIGNED",
+          "LINE_GAP",
+          "PUNCTUATION_CONTINUATION"
+        ]
+      },
+      "serviceResponse": {
+        "groupId": "semantic-b6de9e6a",
+        "status": "TRANSLATED",
+        "renderMode": "GROUP",
+        "translatedText": "强调要加强历史文化遗产保护，以及推动优秀传统文化的创造性转化和创新性发展。",
+        "memberRegionIds": [
+          "semantic-b6de9e6a-region-0",
+          "semantic-b6de9e6a-region-1"
+        ],
+        "detectedSourceLanguage": "en",
+        "targetLanguage": "zh",
+        "anchorBounds": {
+          "left": 8,
+          "top": 149,
+          "right": 347,
+          "bottom": 196
+        },
+        "layoutHint": {
+          "preferredMaxLines": 2,
+          "minimumTextScale": 0.86,
+          "alignment": "START",
+          "overflowStrategy": "REFLOW_THEN_SCALE"
+        }
+      },
+      "androidOutcome": {
+        "succeeded": true,
+        "translatedText": "强调要加强历史文化遗产保护，以及推动优秀传统文化的创造性转化和创新性发展。",
+        "provider": "self-hosted-qwen-v2",
+        "failureCode": null,
+        "layoutHint": {
+          "preferredMaxLines": 2,
+          "minimumTextScale": 0.8600000143051147,
+          "alignment": "START",
+          "overflowStrategy": "REFLOW_THEN_SCALE"
+        }
+      }
+    },
+    {
+      "request": {
+        "groupId": "semantic-5132eda2",
+        "role": "BODY",
+        "translationUnit": "GROUP",
+        "sourceText": "heritage,as well as the promotion of",
+        "memberRegionIds": [
+          "semantic-5132eda2-region-0"
+        ],
+        "bounds": {
+          "left": 8,
+          "top": 209,
+          "right": 322,
+          "bottom": 226
+        },
+        "groupingConfidence": 1,
+        "groupingEvidence": []
+      },
+      "serviceResponse": {
+        "groupId": "semantic-5132eda2",
+        "status": "TRANSLATED",
+        "renderMode": "GROUP",
+        "translatedText": "遗产的保护，同时促进",
+        "memberRegionIds": [
+          "semantic-5132eda2-region-0"
+        ],
+        "detectedSourceLanguage": "en",
+        "targetLanguage": "zh",
+        "anchorBounds": {
+          "left": 8,
+          "top": 209,
+          "right": 322,
+          "bottom": 226
+        },
+        "layoutHint": {
+          "preferredMaxLines": 1,
+          "minimumTextScale": 0.86,
+          "alignment": "START",
+          "overflowStrategy": "REFLOW_THEN_SCALE"
+        }
+      },
+      "androidOutcome": {
+        "succeeded": true,
+        "translatedText": "遗产的保护，同时促进",
+        "provider": "self-hosted-qwen-v2",
+        "failureCode": null,
+        "layoutHint": {
+          "preferredMaxLines": 1,
+          "minimumTextScale": 0.8600000143051147,
+          "alignment": "START",
+          "overflowStrategy": "REFLOW_THEN_SCALE"
+        }
+      }
+    },
+    {
+      "request": {
+        "groupId": "semantic-216ae9",
+        "role": "BODY",
+        "translationUnit": "GROUP",
+        "sourceText": "creative transformation and innovative",
+        "memberRegionIds": [
+          "semantic-216ae9-region-0"
+        ],
+        "bounds": {
+          "left": 8,
+          "top": 239,
+          "right": 338,
+          "bottom": 254
+        },
+        "groupingConfidence": 1,
+        "groupingEvidence": []
+      },
+      "serviceResponse": {
+        "groupId": "semantic-216ae9",
+        "status": "TRANSLATED",
+        "renderMode": "GROUP",
+        "translatedText": "创造性转化和创新性发展。",
+        "memberRegionIds": [
+          "semantic-216ae9-region-0"
+        ],
+        "detectedSourceLanguage": "en",
+        "targetLanguage": "zh",
+        "anchorBounds": {
+          "left": 8,
+          "top": 239,
+          "right": 338,
+          "bottom": 254
+        },
+        "layoutHint": {
+          "preferredMaxLines": 1,
+          "minimumTextScale": 0.86,
+          "alignment": "START",
+          "overflowStrategy": "REFLOW_THEN_SCALE"
+        }
+      },
+      "androidOutcome": {
+        "succeeded": true,
+        "translatedText": "创造性转化和创新性发展。",
+        "provider": "self-hosted-qwen-v2",
+        "failureCode": null,
+        "layoutHint": {
+          "preferredMaxLines": 1,
+          "minimumTextScale": 0.8600000143051147,
+          "alignment": "START",
+          "overflowStrategy": "REFLOW_THEN_SCALE"
+        }
+      }
+    },
+    {
+      "request": {
+        "groupId": "semantic-9a56658b",
+        "role": "BODY",
+        "translationUnit": "GROUP",
+        "sourceText": "development of fine traditional culture.",
+        "memberRegionIds": [
+          "semantic-9a56658b-region-0"
+        ],
+        "bounds": {
+          "left": 8,
+          "top": 269,
+          "right": 342,
+          "bottom": 286
+        },
+        "groupingConfidence": 1,
+        "groupingEvidence": []
+      },
+      "serviceResponse": {
+        "groupId": "semantic-9a56658b",
+        "status": "TRANSLATED",
+        "renderMode": "GROUP",
+        "translatedText": "优秀传统文化的传承与发展。”",
+        "memberRegionIds": [
+          "semantic-9a56658b-region-0"
+        ],
+        "detectedSourceLanguage": "en",
+        "targetLanguage": "zh",
+        "anchorBounds": {
+          "left": 8,
+          "top": 269,
+          "right": 342,
+          "bottom": 286
+        },
+        "layoutHint": {
+          "preferredMaxLines": 1,
+          "minimumTextScale": 0.86,
+          "alignment": "START",
+          "overflowStrategy": "REFLOW_THEN_SCALE"
+        }
+      },
+      "androidOutcome": {
+        "succeeded": true,
+        "translatedText": "优秀传统文化的传承与发展。”",
+        "provider": "self-hosted-qwen-v2",
+        "failureCode": null,
+        "layoutHint": {
+          "preferredMaxLines": 1,
+          "minimumTextScale": 0.8600000143051147,
+          "alignment": "START",
+          "overflowStrategy": "REFLOW_THEN_SCALE"
+        }
+      }
+    },
+    {
+      "request": {
+        "groupId": "semantic-10dfad85",
+        "role": "BODY",
+        "translationUnit": "GROUP",
+        "sourceText": "Tongcheng has woven the values\nassociated with the alley into community\nwork and grassroots governance,using\npersuasion,empathy and compromise to\nhelp resolve disputes before they escalate.",
+        "memberRegionIds": [
+          "semantic-10dfad85-region-0",
+          "semantic-10dfad85-region-1",
+          "semantic-10dfad85-region-2",
+          "semantic-10dfad85-region-3",
+          "semantic-10dfad85-region-4"
+        ],
+        "bounds": {
+          "left": 7,
+          "top": 318,
+          "right": 373,
+          "bottom": 457
+        },
+        "groupingConfidence": 0.8199999928474426,
+        "groupingEvidence": [
+          "CENTER_ALIGNED",
+          "GEOMETRY_INFERRED",
+          "HORIZONTAL_OVERLAP",
+          "LEFT_ALIGNED",
+          "LINE_GAP",
+          "PUNCTUATION_CONTINUATION"
+        ]
+      },
+      "serviceResponse": {
+        "groupId": "semantic-10dfad85",
+        "status": "TRANSLATED",
+        "renderMode": "GROUP",
+        "translatedText": "桐城将小巷所蕴含的价值融入社区工作和基层治理，运用说服、共情和妥协的方式帮助化解矛盾于萌芽状态。",
+        "memberRegionIds": [
+          "semantic-10dfad85-region-0",
+          "semantic-10dfad85-region-1",
+          "semantic-10dfad85-region-2",
+          "semantic-10dfad85-region-3",
+          "semantic-10dfad85-region-4"
+        ],
+        "detectedSourceLanguage": "en",
+        "targetLanguage": "zh",
+        "anchorBounds": {
+          "left": 7,
+          "top": 318,
+          "right": 373,
+          "bottom": 457
+        },
+        "layoutHint": {
+          "preferredMaxLines": 5,
+          "minimumTextScale": 0.86,
+          "alignment": "START",
+          "overflowStrategy": "REFLOW_THEN_SCALE"
+        }
+      },
+      "androidOutcome": {
+        "succeeded": true,
+        "translatedText": "桐城将小巷所蕴含的价值融入社区工作和基层治理，运用说服、共情和妥协的方式帮助化解矛盾于萌芽状态。",
+        "provider": "self-hosted-qwen-v2",
+        "failureCode": null,
+        "layoutHint": {
+          "preferredMaxLines": 5,
+          "minimumTextScale": 0.8600000143051147,
+          "alignment": "START",
+          "overflowStrategy": "REFLOW_THEN_SCALE"
+        }
+      }
+    },
+    {
+      "request": {
+        "groupId": "semantic-3bcf99ec",
+        "role": "BODY",
+        "translationUnit": "GROUP",
+        "sourceText": "That emphasis on accommodation,Zhang\nstressed,does not mean asking people to\nyield without principle.\"It's not simply\ngiving way,still less forcing someone to do\nso,\"he said.\"It is a gesture the stronger\nside takes the first step,while morality and\nlaw work together.",
+        "memberRegionIds": [
+          "semantic-3bcf99ec-region-0",
+          "semantic-3bcf99ec-region-1",
+          "semantic-3bcf99ec-region-2",
+          "semantic-3bcf99ec-region-3",
+          "semantic-3bcf99ec-region-4",
+          "semantic-3bcf99ec-region-5",
+          "semantic-3bcf99ec-region-6"
+        ],
+        "bounds": {
+          "left": 7,
+          "top": 488,
+          "right": 375,
+          "bottom": 687
+        },
+        "groupingConfidence": 0.8199999928474426,
+        "groupingEvidence": [
+          "CENTER_ALIGNED",
+          "GEOMETRY_INFERRED",
+          "HORIZONTAL_OVERLAP",
+          "LEFT_ALIGNED",
+          "LINE_GAP",
+          "PUNCTUATION_CONTINUATION"
+        ]
+      },
+      "serviceResponse": {
+        "groupId": "semantic-3bcf99ec",
+        "status": "TRANSLATED",
+        "renderMode": "GROUP",
+        "translatedText": "张强调，这种对包容的强调并不意味着要求人们无原则地退让。“这不仅仅是让步，更不是强迫别人这样做，”他说，“这是强势一方主动迈出的一步，同时道德与法律共同发挥作用。”",
+        "memberRegionIds": [
+          "semantic-3bcf99ec-region-0",
+          "semantic-3bcf99ec-region-1",
+          "semantic-3bcf99ec-region-2",
+          "semantic-3bcf99ec-region-3",
+          "semantic-3bcf99ec-region-4",
+          "semantic-3bcf99ec-region-5",
+          "semantic-3bcf99ec-region-6"
+        ],
+        "detectedSourceLanguage": "en",
+        "targetLanguage": "zh",
+        "anchorBounds": {
+          "left": 7,
+          "top": 488,
+          "right": 375,
+          "bottom": 687
+        },
+        "layoutHint": {
+          "preferredMaxLines": 6,
+          "minimumTextScale": 0.86,
+          "alignment": "START",
+          "overflowStrategy": "REFLOW_THEN_SCALE"
+        }
+      },
+      "androidOutcome": {
+        "succeeded": true,
+        "translatedText": "张强调，这种对包容的强调并不意味着要求人们无原则地退让。“这不仅仅是让步，更不是强迫别人这样做，”他说，“这是强势一方主动迈出的一步，同时道德与法律共同发挥作用。”",
+        "provider": "self-hosted-qwen-v2",
+        "failureCode": null,
+        "layoutHint": {
+          "preferredMaxLines": 6,
+          "minimumTextScale": 0.8600000143051147,
+          "alignment": "START",
+          "overflowStrategy": "REFLOW_THEN_SCALE"
+        }
+      }
+    },
+    {
+      "request": {
+        "groupId": "semantic-bc63d3cf",
+        "role": "BODY",
+        "translationUnit": "GROUP",
+        "sourceText": "XA EEM",
+        "memberRegionIds": [
+          "semantic-bc63d3cf-region-0"
+        ],
+        "bounds": {
+          "left": 181,
+          "top": 678,
+          "right": 263,
+          "bottom": 695
+        },
+        "groupingConfidence": 1,
+        "groupingEvidence": []
+      },
+      "serviceResponse": {
+        "groupId": "semantic-bc63d3cf",
+        "status": "TRANSLATED",
+        "renderMode": "GROUP",
+        "translatedText": "XA EEM",
+        "memberRegionIds": [
+          "semantic-bc63d3cf-region-0"
+        ],
+        "detectedSourceLanguage": "en",
+        "targetLanguage": "zh",
+        "anchorBounds": {
+          "left": 181,
+          "top": 678,
+          "right": 263,
+          "bottom": 695
+        },
+        "layoutHint": {
+          "preferredMaxLines": 1,
+          "minimumTextScale": 0.86,
+          "alignment": "START",
+          "overflowStrategy": "REFLOW_THEN_SCALE"
+        }
+      },
+      "androidOutcome": {
+        "succeeded": false,
+        "translatedText": "XA EEM",
+        "provider": "none",
+        "failureCode": "LOCAL_TRANSLATION_FAILED",
+        "layoutHint": null
+      }
+    },
+    {
+      "request": {
+        "groupId": "semantic-86cb33cc",
+        "role": "BODY",
+        "translationUnit": "GROUP",
+        "sourceText": "The approach is also gaining broader\ninstitutional backing.On July 24,the\nStanding Committee of the Anhui\nProvincial People's Congress adopted",
+        "memberRegionIds": [
+          "semantic-86cb33cc-region-0",
+          "semantic-86cb33cc-region-1",
+          "semantic-86cb33cc-region-2",
+          "semantic-86cb33cc-region-3"
+        ],
+        "bounds": {
+          "left": 8,
+          "top": 718,
+          "right": 328,
+          "bottom": 827
+        },
+        "groupingConfidence": 0.8199999928474426,
+        "groupingEvidence": [
+          "CENTER_ALIGNED",
+          "GEOMETRY_INFERRED",
+          "HORIZONTAL_OVERLAP",
+          "LEFT_ALIGNED",
+          "LINE_GAP",
+          "PUNCTUATION_CONTINUATION"
+        ]
+      },
+      "serviceResponse": {
+        "groupId": "semantic-86cb33cc",
+        "status": "TRANSLATED",
+        "renderMode": "GROUP",
+        "translatedText": "这一做法也获得了更广泛的制度支持。7月24日，安徽省人大常委会通过",
+        "memberRegionIds": [
+          "semantic-86cb33cc-region-0",
+          "semantic-86cb33cc-region-1",
+          "semantic-86cb33cc-region-2",
+          "semantic-86cb33cc-region-3"
+        ],
+        "detectedSourceLanguage": "en",
+        "targetLanguage": "zh",
+        "anchorBounds": {
+          "left": 8,
+          "top": 718,
+          "right": 328,
+          "bottom": 827
+        },
+        "layoutHint": {
+          "preferredMaxLines": 4,
+          "minimumTextScale": 0.86,
+          "alignment": "START",
+          "overflowStrategy": "REFLOW_THEN_SCALE"
+        }
+      },
+      "androidOutcome": {
+        "succeeded": true,
+        "translatedText": "这一做法也获得了更广泛的制度支持。7月24日，安徽省人大常委会通过",
+        "provider": "self-hosted-qwen-v2",
+        "failureCode": null,
+        "layoutHint": {
+          "preferredMaxLines": 4,
+          "minimumTextScale": 0.8600000143051147,
+          "alignment": "START",
+          "overflowStrategy": "REFLOW_THEN_SCALE"
+        }
+      }
+    },
+    {
+      "request": {
+        "groupId": "semantic-9362cec7",
+        "role": "BODY",
+        "translationUnit": "GROUP",
+        "sourceText": "Ai",
+        "memberRegionIds": [
+          "semantic-9362cec7-region-0"
+        ],
+        "bounds": {
+          "left": 181,
+          "top": 845,
+          "right": 209,
+          "bottom": 868
+        },
+        "groupingConfidence": 1,
+        "groupingEvidence": []
+      },
+      "serviceResponse": {
+        "groupId": "semantic-9362cec7",
+        "status": "TRANSLATED",
+        "renderMode": "GROUP",
+        "translatedText": "艾",
+        "memberRegionIds": [
+          "semantic-9362cec7-region-0"
+        ],
+        "detectedSourceLanguage": "en",
+        "targetLanguage": "zh",
+        "anchorBounds": {
+          "left": 181,
+          "top": 845,
+          "right": 209,
+          "bottom": 868
+        },
+        "layoutHint": {
+          "preferredMaxLines": 1,
+          "minimumTextScale": 0.86,
+          "alignment": "CENTER",
+          "overflowStrategy": "REFLOW_THEN_SCALE"
+        }
+      },
+      "androidOutcome": {
+        "succeeded": true,
+        "translatedText": "艾",
+        "provider": "self-hosted-qwen-v2",
+        "failureCode": null,
+        "layoutHint": {
+          "preferredMaxLines": 1,
+          "minimumTextScale": 0.8600000143051147,
+          "alignment": "CENTER",
+          "overflowStrategy": "REFLOW_THEN_SCALE"
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "requestId": "57b793e5-dc2c-408c-8b06-1d6a8d24b9b5",
+  "generation": 0,
+  "scene": "SEMANTIC_GROUPING_AB_GROUP",
+  "translation": {
+    "mode": "ENGLISH_TO_CHINESE",
+    "sourceLanguage": "en",
+    "targetLanguage": "zh",
+    "preserveIdentifiers": true,
+    "useContext": false
+  },
+  "regions": [
+    {
+      "regionId": "semantic-group-1",
+      "text": "The Web3 industry tried, and we did quite well. Until the country decided to invest in projects that fit neither the country nor the Web3 community. Then all hell broke loose. The rest is history.",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh"
+    }
+  ]
+}

@@ -1,0 +1,61 @@
+{
+  "device": "23113RKC6C",
+  "input": { "width": 1440, "height": 3200 },
+  "method": {
+    "warmups": 2,
+    "runs": 5,
+    "clock": "SystemClock.elapsedRealtime"
+  },
+  "reports": [
+    {
+      "name": "mlkit",
+      "p50_ms": 397,
+      "p90_ms": 441,
+      "regions": 26,
+      "characters": 792,
+      "durations_ms": [441, 397, 419, 376, 390]
+    },
+    {
+      "name": "paddle_parallel_1600_t6_b4",
+      "p50_ms": 875,
+      "p90_ms": 881,
+      "regions": 28,
+      "characters": 810,
+      "durations_ms": [864, 875, 875, 845, 881]
+    },
+    {
+      "name": "paddle_sequential_1600_t6_b4",
+      "p50_ms": 745,
+      "p90_ms": 749,
+      "regions": 28,
+      "characters": 810,
+      "durations_ms": [723, 735, 745, 749, 745]
+    },
+    {
+      "name": "paddle_sequential_1600_t4_b4",
+      "p50_ms": 740,
+      "p90_ms": 745,
+      "regions": 28,
+      "characters": 810,
+      "durations_ms": [745, 741, 734, 734, 740]
+    },
+    {
+      "name": "paddle_sequential_1600_t6_b8",
+      "p50_ms": 864,
+      "p90_ms": 881,
+      "regions": 28,
+      "characters": 811,
+      "durations_ms": [846, 868, 864, 848, 881]
+    },
+    {
+      "name": "paddle_sequential_1280_t6_b4",
+      "p50_ms": 727,
+      "p90_ms": 748,
+      "regions": 28,
+      "characters": 810,
+      "durations_ms": [738, 708, 727, 712, 748]
+    }
+  ],
+  "selected": "paddle_sequential_1280_t6_b4",
+  "selection_reason": "Lowest P50 with identical Paddle region and character counts on the fixed page"
+}

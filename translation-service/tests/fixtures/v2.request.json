@@ -1,0 +1,94 @@
+{
+  "schemaVersion": 2,
+  "requestId": "0198a8ca-5b3a-7b4d-89ea-18d7ae7583fb",
+  "sessionId": "session-local-hy-mt2",
+  "generation": 42,
+  "translationRevision": 7,
+  "batchPartIndex": 0,
+  "batchPartCount": 1,
+  "scene": "LIVE_SCREEN",
+  "capture": {
+    "sourceWidth": 1080,
+    "sourceHeight": 2400,
+    "orientation": "PORTRAIT",
+    "capturedAtEpochMs": 1785404123456,
+    "segmentation": "DIFFERENTIAL",
+    "contentShiftY": -286,
+    "registrationConfidence": 0.94
+  },
+  "translation": {
+    "source": {
+      "mode": "AUTO_PER_REGION",
+      "languageTag": null,
+      "fallbackLanguageTag": null
+    },
+    "target": {
+      "languageTag": "zh-Hans"
+    },
+    "mixedLanguagePolicy": "PER_REGION",
+    "preserveIdentifiers": true,
+    "useContext": true
+  },
+  "regions": [
+    {
+      "regionId": "track-1042",
+      "sourceRevision": 3,
+      "role": "TRANSLATE",
+      "text": "Start recognition",
+      "script": "LATIN",
+      "readingOrder": 0,
+      "bounds": {
+        "left": 64,
+        "top": 318,
+        "right": 512,
+        "bottom": 376
+      },
+      "ocr": {
+        "engine": "ML_KIT_V2",
+        "model": "LATIN",
+        "modelConfidence": 0.94,
+        "consensusScore": 0.82,
+        "passCount": 3
+      },
+      "language": {
+        "detectedTag": "en",
+        "confidence": 0.91,
+        "detectionSource": "ML_KIT_LANGUAGE_ID",
+        "candidates": [],
+        "userOverride": false
+      },
+      "contextGroupId": "toolbar"
+    },
+    {
+      "regionId": "track-1041",
+      "sourceRevision": 1,
+      "role": "CONTEXT_ONLY",
+      "text": "Screen Translate",
+      "script": "LATIN",
+      "readingOrder": 1,
+      "bounds": {
+        "left": 64,
+        "top": 240,
+        "right": 480,
+        "bottom": 300
+      },
+      "ocr": {
+        "engine": "ML_KIT_V2",
+        "model": "LATIN"
+      },
+      "language": {
+        "detectedTag": "en",
+        "confidence": 0.97,
+        "detectionSource": "ML_KIT_LANGUAGE_ID",
+        "candidates": [],
+        "userOverride": false
+      },
+      "contextGroupId": "toolbar"
+    }
+  ],
+  "client": {
+    "platform": "ANDROID",
+    "appVersion": "1.0",
+    "locale": "zh-CN"
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "requestId": "6c6c03a2-ec30-4138-b634-2d4fb3439d6a",
+  "generation": 0,
+  "scene": "ANDROID_CLIENT_CURRENT_PAGE_SINGLE_GROUP",
+  "translation": {
+    "mode": "ENGLISH_TO_CHINESE",
+    "sourceLanguage": "en",
+    "targetLanguage": "zh",
+    "preserveIdentifiers": true,
+    "useContext": false
+  },
+  "regions": [
+    {
+      "regionId": "semantic-75ab1c6b",
+      "text": "Xi's Archive",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh"
+    }
+  ]
+}

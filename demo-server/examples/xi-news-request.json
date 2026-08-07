@@ -1,0 +1,236 @@
+{
+  "schemaVersion": 2,
+  "requestId": "manual-xi-news-20260805",
+  "sessionId": "manual-validation",
+  "generation": 1,
+  "translationRevision": 1,
+  "scene": "STATIC_IMAGE",
+  "viewport": {
+    "width": 381,
+    "height": 878,
+    "rotationDegrees": 0
+  },
+  "translation": {
+    "mode": "ENGLISH_TO_CHINESE",
+    "sourceLanguage": "en",
+    "targetLanguage": "zh",
+    "preserveIdentifiers": true,
+    "useDocumentContext": true
+  },
+  "documentContext": {
+    "text": "[CAPTION] Xi holds talks with Slovak president in Beijing\n[BODY] Xi Story: Six-foot alley reveals Chinese wisdom of making room for others\n[TIMESTAMP] 2026-08-04\n[BODY] PLA celebrates 99th founding anniversary in march toward world-class military, with peace as enduring mission\n[TIMESTAMP] 2026-08-01\n[BODY] Xi signs order to commend outstanding military individual",
+    "sourceLanguage": "en",
+    "readingOrderRegionIds": [
+      "caption-1",
+      "story-1",
+      "story-2",
+      "date-1",
+      "pla-1",
+      "pla-2",
+      "pla-3",
+      "date-2",
+      "order-1",
+      "order-2"
+    ]
+  },
+  "groups": [
+    {
+      "groupId": "group-caption",
+      "role": "CAPTION",
+      "translationUnit": "GROUP",
+      "sourceText": "Xi holds talks with Slovak president in Beijing",
+      "memberRegionIds": ["caption-1"],
+      "readingOrder": 0,
+      "groupingConfidence": 0.98,
+      "groupingEvidence": ["OCR_BLOCK", "LINE_SPACING"],
+      "bounds": {"left": 8, "top": 485, "right": 302, "bottom": 503}
+    },
+    {
+      "groupId": "group-story",
+      "role": "BODY",
+      "translationUnit": "GROUP",
+      "sourceText": "Xi Story: Six-foot alley reveals Chinese wisdom\nof making room for others",
+      "memberRegionIds": ["story-1", "story-2"],
+      "readingOrder": 1,
+      "groupingConfidence": 0.97,
+      "groupingEvidence": ["OCR_BLOCK", "LEFT_ALIGNMENT", "PUNCTUATION"],
+      "bounds": {"left": 18, "top": 537, "right": 369, "bottom": 581}
+    },
+    {
+      "groupId": "group-date-1",
+      "role": "TIMESTAMP",
+      "translationUnit": "PRESERVED",
+      "sourceText": "2026-08-04",
+      "memberRegionIds": ["date-1"],
+      "readingOrder": 2,
+      "groupingConfidence": 1.0,
+      "groupingEvidence": ["ROLE_CLASSIFICATION"],
+      "bounds": {"left": 8, "top": 585, "right": 76, "bottom": 599}
+    },
+    {
+      "groupId": "group-pla",
+      "role": "BODY",
+      "translationUnit": "GROUP",
+      "sourceText": "PLA celebrates 99th founding anniversary in\nmarch toward world-class military, with peace\nas enduring mission",
+      "memberRegionIds": ["pla-1", "pla-2", "pla-3"],
+      "readingOrder": 3,
+      "groupingConfidence": 0.98,
+      "groupingEvidence": ["OCR_BLOCK", "LEFT_ALIGNMENT", "LINE_SPACING"],
+      "bounds": {"left": 18, "top": 616, "right": 371, "bottom": 673}
+    },
+    {
+      "groupId": "group-date-2",
+      "role": "TIMESTAMP",
+      "translationUnit": "PRESERVED",
+      "sourceText": "2026-08-01",
+      "memberRegionIds": ["date-2"],
+      "readingOrder": 4,
+      "groupingConfidence": 1.0,
+      "groupingEvidence": ["ROLE_CLASSIFICATION"],
+      "bounds": {"left": 8, "top": 680, "right": 76, "bottom": 695}
+    },
+    {
+      "groupId": "group-order",
+      "role": "BODY",
+      "translationUnit": "GROUP",
+      "sourceText": "Xi signs order to commend outstanding\nmilitary individual",
+      "memberRegionIds": ["order-1", "order-2"],
+      "readingOrder": 5,
+      "groupingConfidence": 0.97,
+      "groupingEvidence": ["OCR_BLOCK", "LEFT_ALIGNMENT", "PUNCTUATION"],
+      "bounds": {"left": 18, "top": 716, "right": 367, "bottom": 757}
+    }
+  ],
+  "regions": [
+    {
+      "regionId": "caption-1",
+      "groupId": "group-caption",
+      "sourceRevision": 1,
+      "text": "Xi holds talks with Slovak president in Beijing",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh",
+      "readingOrder": 0,
+      "blockId": "caption",
+      "lineIndex": 0,
+      "confidence": 0.96,
+      "bounds": {"left": 8, "top": 485, "right": 302, "bottom": 503}
+    },
+    {
+      "regionId": "story-1",
+      "groupId": "group-story",
+      "sourceRevision": 1,
+      "text": "Xi Story: Six-foot alley reveals Chinese wisdom",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh",
+      "readingOrder": 1,
+      "blockId": "story",
+      "lineIndex": 0,
+      "confidence": 0.97,
+      "bounds": {"left": 18, "top": 537, "right": 369, "bottom": 558}
+    },
+    {
+      "regionId": "story-2",
+      "groupId": "group-story",
+      "sourceRevision": 1,
+      "text": "of making room for others",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh",
+      "readingOrder": 2,
+      "blockId": "story",
+      "lineIndex": 1,
+      "confidence": 0.98,
+      "bounds": {"left": 18, "top": 559, "right": 212, "bottom": 581}
+    },
+    {
+      "regionId": "date-1",
+      "groupId": "group-date-1",
+      "sourceRevision": 1,
+      "text": "2026-08-04",
+      "sourceLanguage": null,
+      "targetLanguage": null,
+      "readingOrder": 3,
+      "blockId": "date-1",
+      "lineIndex": 0,
+      "confidence": 0.99,
+      "bounds": {"left": 8, "top": 585, "right": 76, "bottom": 599}
+    },
+    {
+      "regionId": "pla-1",
+      "groupId": "group-pla",
+      "sourceRevision": 1,
+      "text": "PLA celebrates 99th founding anniversary in",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh",
+      "readingOrder": 4,
+      "blockId": "pla",
+      "lineIndex": 0,
+      "confidence": 0.97,
+      "bounds": {"left": 18, "top": 616, "right": 368, "bottom": 636}
+    },
+    {
+      "regionId": "pla-2",
+      "groupId": "group-pla",
+      "sourceRevision": 1,
+      "text": "march toward world-class military, with peace",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh",
+      "readingOrder": 5,
+      "blockId": "pla",
+      "lineIndex": 1,
+      "confidence": 0.97,
+      "bounds": {"left": 18, "top": 636, "right": 371, "bottom": 655}
+    },
+    {
+      "regionId": "pla-3",
+      "groupId": "group-pla",
+      "sourceRevision": 1,
+      "text": "as enduring mission",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh",
+      "readingOrder": 6,
+      "blockId": "pla",
+      "lineIndex": 2,
+      "confidence": 0.98,
+      "bounds": {"left": 18, "top": 655, "right": 169, "bottom": 673}
+    },
+    {
+      "regionId": "date-2",
+      "groupId": "group-date-2",
+      "sourceRevision": 1,
+      "text": "2026-08-01",
+      "sourceLanguage": null,
+      "targetLanguage": null,
+      "readingOrder": 7,
+      "blockId": "date-2",
+      "lineIndex": 0,
+      "confidence": 0.99,
+      "bounds": {"left": 8, "top": 680, "right": 76, "bottom": 695}
+    },
+    {
+      "regionId": "order-1",
+      "groupId": "group-order",
+      "sourceRevision": 1,
+      "text": "Xi signs order to commend outstanding",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh",
+      "readingOrder": 8,
+      "blockId": "order",
+      "lineIndex": 0,
+      "confidence": 0.96,
+      "bounds": {"left": 18, "top": 716, "right": 367, "bottom": 736}
+    },
+    {
+      "regionId": "order-2",
+      "groupId": "group-order",
+      "sourceRevision": 1,
+      "text": "military individual",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh",
+      "readingOrder": 9,
+      "blockId": "order",
+      "lineIndex": 1,
+      "confidence": 0.97,
+      "bounds": {"left": 18, "top": 737, "right": 172, "bottom": 757}
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "requestId": "ac3c2ff4-a04d-46f9-a656-0afb26c69d9e",
+  "generation": 0,
+  "scene": "ANDROID_CLIENT_CURRENT_PAGE_SINGLE_GROUP",
+  "translation": {
+    "mode": "ENGLISH_TO_CHINESE",
+    "sourceLanguage": "en",
+    "targetLanguage": "zh",
+    "preserveIdentifiers": true,
+    "useContext": false
+  },
+  "regions": [
+    {
+      "regionId": "semantic-e86f3d04",
+      "text": "net corm",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh"
+    }
+  ]
+}

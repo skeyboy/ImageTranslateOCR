@@ -19,7 +19,8 @@
 
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
+            android:layout_height="56dp"
+            android:layout_gravity="top"
             android:gravity="center_vertical"
             android:orientation="horizontal"
             android:paddingStart="2dp"
@@ -140,10 +141,11 @@
                         android:layout_height="wrap_content"
                         android:ellipsize="end"
                         android:letterSpacing="0"
-                        android:maxLines="1"
+                        android:lineSpacingExtra="1dp"
+                        android:maxLines="2"
                         android:text="@string/active_screenshot_processing_short"
                         android:textColor="#FFFFFF"
-                        android:textSize="11sp" />
+                        android:textSize="10sp" />
                 </LinearLayout>
             </FrameLayout>
 
@@ -182,6 +184,20 @@
                 android:tooltipText="@string/active_screenshot_action_stop"
                 app:tint="#D9FFFFFF" />
         </LinearLayout>
+
+        <TextView
+            android:id="@+id/tvActiveOverlayPerformance"
+            android:layout_width="match_parent"
+            android:layout_height="22dp"
+            android:layout_gravity="bottom"
+            android:background="#B3121418"
+            android:gravity="center"
+            android:letterSpacing="0"
+            android:maxLines="1"
+            android:paddingHorizontal="8dp"
+            android:textColor="#D9FFFFFF"
+            android:textSize="10sp"
+            android:visibility="gone" />
     </com.google.android.material.card.MaterialCardView>
 
     <com.google.android.material.card.MaterialCardView

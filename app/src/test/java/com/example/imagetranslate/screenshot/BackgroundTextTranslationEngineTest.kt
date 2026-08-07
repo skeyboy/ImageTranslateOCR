@@ -70,6 +70,25 @@ class BackgroundTextTranslationEngineTest {
     }
 
     @Test
+    fun batchTranslationSendsAllDistinctTextsOnce() = runBlocking {
+        var requested = emptyList<String>()
+
+        val result = BackgroundTextTranslationEngine.translateBatch(
+            listOf("  你好  ", "你好", "12345", "失败")
+        ) { sources ->
+            requested = sources
+            listOf("Hello", "12345", null)
+        }
+
+        assertEquals(listOf("你好", "12345", "失败"), requested)
+        assertEquals(3, result.recognizedCount)
+        assertEquals(
+            listOf(BackgroundTranslationLine("你好", "Hello")),
+            result.translatedLines
+        )
+    }
+
+    @Test
     fun notificationFormatterLimitsSensitiveTextVolume() {
         val lines = (1..10).map { index ->
             BackgroundTranslationLine(

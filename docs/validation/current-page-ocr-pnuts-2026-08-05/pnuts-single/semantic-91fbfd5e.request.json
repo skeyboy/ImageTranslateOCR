@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "requestId": "c5d24df5-855c-4aac-9641-a03a0a31fc95",
+  "generation": 0,
+  "scene": "ANDROID_CLIENT_CURRENT_PAGE_SINGLE_GROUP",
+  "translation": {
+    "mode": "ENGLISH_TO_CHINESE",
+    "sourceLanguage": "en",
+    "targetLanguage": "zh",
+    "preserveIdentifiers": true,
+    "useContext": false
+  },
+  "regions": [
+    {
+      "regionId": "semantic-91fbfd5e",
+      "text": "as enduring mission",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh"
+    }
+  ]
+}

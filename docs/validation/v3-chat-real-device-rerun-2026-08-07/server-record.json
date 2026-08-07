@@ -1,0 +1,2080 @@
+{
+  "id": "6ca1170d-a287-42d5-b4d6-174e3122ca74",
+  "request_id": "e96152c4-4000-4b79-bb74-d1320c674dd7",
+  "status": "SUCCEEDED",
+  "scene": "STATIC_IMAGE",
+  "group_count": 13,
+  "region_count": 29,
+  "input_chars": 680,
+  "model": "qwen3.5:9b",
+  "duration_ms": 45466,
+  "request": {
+    "schemaVersion": 3,
+    "requestId": "e96152c4-4000-4b79-bb74-d1320c674dd7",
+    "sessionId": "1d1a0295-8a42-464d-98bd-af16a3e1a198",
+    "generation": 1,
+    "translationRevision": 2,
+    "scene": "STATIC_IMAGE",
+    "viewport": {
+      "width": 486,
+      "height": 1080,
+      "rotationDegrees": 0
+    },
+    "translation": {
+      "mode": "AUTO_BIDIRECTIONAL",
+      "sourceLanguage": "auto",
+      "targetLanguage": "auto",
+      "preserveIdentifiers": true,
+      "useDocumentContext": true
+    },
+    "documentContext": {
+      "text": "[BODY] 17:27 | 0.9K/s O\n[BODY] MO 99)\n[CONTROL] Al for Humanity Com...\n[BODY] 22AELË\n[BODY] Feux Lee E instagram:\n[IDENTIFIER] instagram.com\n[TIMESTAMP] 22:08\n[BODY] Instagram Eüi\n[IDENTIFIER] +65 9684 3435\n[BODY] The Web3 industry tried and we did\nquite well.Until the country decided\nto invest in something that did not\nfit intothe country nor the Web3\ncommunity.Then all hell broke\nloose.The rest is history.After that,\nwe were suddenly All in AI,that was\nreally dangerous and riskier than\nWeb3.Gladthat recently we are\nComing back to our senses.Now,\nthe few solid Web3 projects in the\nUS are from Singapore.Indeed,\nthese youngsters have made us\nproud.They left for a good reason,\nand they will come back for sure\nbecause this place is good for those\nwho have made it.\n[TIMESTAMP] 22:43\n[METADATA] Lim CW\n[IDENTIFIER] +65 9478 2794",
+      "sourceLanguage": "auto",
+      "readingOrderRegionIds": [
+        "semantic-1a066e43-region-0",
+        "semantic-7db81755-region-0",
+        "semantic-41385cd8-region-0",
+        "semantic-dbe46f1f-region-0",
+        "semantic-ff8a7eeb-region-0",
+        "semantic-c9dc8970-region-0",
+        "semantic-a145042f-region-0",
+        "semantic-e20212cb-region-0",
+        "semantic-f1e4da8d-region-0",
+        "semantic-7595f3d7-region-0",
+        "semantic-7595f3d7-region-1",
+        "semantic-7595f3d7-region-2",
+        "semantic-7595f3d7-region-3",
+        "semantic-7595f3d7-region-4",
+        "semantic-7595f3d7-region-5",
+        "semantic-7595f3d7-region-6",
+        "semantic-7595f3d7-region-7",
+        "semantic-7595f3d7-region-8",
+        "semantic-7595f3d7-region-9",
+        "semantic-7595f3d7-region-10",
+        "semantic-7595f3d7-region-11",
+        "semantic-7595f3d7-region-12",
+        "semantic-7595f3d7-region-13",
+        "semantic-7595f3d7-region-14",
+        "semantic-7595f3d7-region-15",
+        "semantic-7595f3d7-region-16",
+        "semantic-eea5beaa-region-0",
+        "semantic-e0a37130-region-0",
+        "semantic-8469b486-region-0"
+      ]
+    },
+    "groups": [
+      {
+        "groupId": "semantic-1a066e43",
+        "role": "BODY",
+        "translationUnit": "PRESERVED",
+        "sourceText": "17:27 | 0.9K/s O",
+        "memberRegionIds": [
+          "semantic-1a066e43-region-0"
+        ],
+        "readingOrder": 0,
+        "groupingConfidence": 1.0,
+        "groupingEvidence": [],
+        "sourceLineCount": 1,
+        "bounds": {
+          "left": 82,
+          "top": 19,
+          "right": 209,
+          "bottom": 38
+        },
+        "renderSlots": [
+          {
+            "left": 82,
+            "top": 19,
+            "right": 209,
+            "bottom": 38
+          }
+        ],
+        "layoutShape": "RECT"
+      },
+      {
+        "groupId": "semantic-7db81755",
+        "role": "BODY",
+        "translationUnit": "GROUP",
+        "sourceText": "MO 99)",
+        "memberRegionIds": [
+          "semantic-7db81755-region-0"
+        ],
+        "readingOrder": 1,
+        "groupingConfidence": 1.0,
+        "groupingEvidence": [],
+        "sourceLineCount": 1,
+        "bounds": {
+          "left": 321,
+          "top": 22,
+          "right": 455,
+          "bottom": 36
+        },
+        "renderSlots": [
+          {
+            "left": 321,
+            "top": 22,
+            "right": 455,
+            "bottom": 36
+          }
+        ],
+        "layoutShape": "RECT"
+      },
+      {
+        "groupId": "semantic-41385cd8",
+        "role": "CONTROL",
+        "translationUnit": "PRESERVED",
+        "sourceText": "Al for Humanity Com...",
+        "memberRegionIds": [
+          "semantic-41385cd8-region-0"
+        ],
+        "readingOrder": 2,
+        "groupingConfidence": 1.0,
+        "groupingEvidence": [],
+        "sourceLineCount": 1,
+        "bounds": {
+          "left": 132,
+          "top": 59,
+          "right": 377,
+          "bottom": 82
+        },
+        "renderSlots": [
+          {
+            "left": 132,
+            "top": 59,
+            "right": 377,
+            "bottom": 82
+          }
+        ],
+        "layoutShape": "RECT"
+      },
+      {
+        "groupId": "semantic-dbe46f1f",
+        "role": "BODY",
+        "translationUnit": "GROUP",
+        "sourceText": "22AELË",
+        "memberRegionIds": [
+          "semantic-dbe46f1f-region-0"
+        ],
+        "readingOrder": 3,
+        "groupingConfidence": 1.0,
+        "groupingEvidence": [],
+        "sourceLineCount": 1,
+        "bounds": {
+          "left": 124,
+          "top": 87,
+          "right": 186,
+          "bottom": 101
+        },
+        "renderSlots": [
+          {
+            "left": 124,
+            "top": 87,
+            "right": 186,
+            "bottom": 101
+          }
+        ],
+        "layoutShape": "RECT"
+      },
+      {
+        "groupId": "semantic-ff8a7eeb",
+        "role": "BODY",
+        "translationUnit": "GROUP",
+        "sourceText": "Feux Lee E instagram:",
+        "memberRegionIds": [
+          "semantic-ff8a7eeb-region-0"
+        ],
+        "readingOrder": 4,
+        "groupingConfidence": 1.0,
+        "groupingEvidence": [],
+        "sourceLineCount": 1,
+        "bounds": {
+          "left": 75,
+          "top": 114,
+          "right": 284,
+          "bottom": 139
+        },
+        "renderSlots": [
+          {
+            "left": 75,
+            "top": 114,
+            "right": 284,
+            "bottom": 139
+          }
+        ],
+        "layoutShape": "RECT"
+      },
+      {
+        "groupId": "semantic-c9dc8970",
+        "role": "IDENTIFIER",
+        "translationUnit": "PRESERVED",
+        "sourceText": "instagram.com",
+        "memberRegionIds": [
+          "semantic-c9dc8970-region-0"
+        ],
+        "readingOrder": 5,
+        "groupingConfidence": 1.0,
+        "groupingEvidence": [],
+        "sourceLineCount": 1,
+        "bounds": {
+          "left": 96,
+          "top": 173,
+          "right": 218,
+          "bottom": 191
+        },
+        "renderSlots": [
+          {
+            "left": 96,
+            "top": 173,
+            "right": 218,
+            "bottom": 191
+          }
+        ],
+        "layoutShape": "RECT"
+      },
+      {
+        "groupId": "semantic-a145042f",
+        "role": "TIMESTAMP",
+        "translationUnit": "PRESERVED",
+        "sourceText": "22:08",
+        "memberRegionIds": [
+          "semantic-a145042f-region-0"
+        ],
+        "readingOrder": 6,
+        "groupingConfidence": 1.0,
+        "groupingEvidence": [],
+        "sourceLineCount": 1,
+        "bounds": {
+          "left": 272,
+          "top": 212,
+          "right": 312,
+          "bottom": 224
+        },
+        "renderSlots": [
+          {
+            "left": 272,
+            "top": 212,
+            "right": 312,
+            "bottom": 224
+          }
+        ],
+        "layoutShape": "RECT"
+      },
+      {
+        "groupId": "semantic-e20212cb",
+        "role": "BODY",
+        "translationUnit": "GROUP",
+        "sourceText": "Instagram Eüi",
+        "memberRegionIds": [
+          "semantic-e20212cb-region-0"
+        ],
+        "readingOrder": 7,
+        "groupingConfidence": 1.0,
+        "groupingEvidence": [],
+        "sourceLineCount": 1,
+        "bounds": {
+          "left": 123,
+          "top": 252,
+          "right": 279,
+          "bottom": 272
+        },
+        "renderSlots": [
+          {
+            "left": 123,
+            "top": 252,
+            "right": 279,
+            "bottom": 272
+          }
+        ],
+        "layoutShape": "RECT"
+      },
+      {
+        "groupId": "semantic-f1e4da8d",
+        "role": "IDENTIFIER",
+        "translationUnit": "PRESERVED",
+        "sourceText": "+65 9684 3435",
+        "memberRegionIds": [
+          "semantic-f1e4da8d-region-0"
+        ],
+        "readingOrder": 8,
+        "groupingConfidence": 1.0,
+        "groupingEvidence": [],
+        "sourceLineCount": 1,
+        "bounds": {
+          "left": 295,
+          "top": 337,
+          "right": 403,
+          "bottom": 349
+        },
+        "renderSlots": [
+          {
+            "left": 295,
+            "top": 337,
+            "right": 403,
+            "bottom": 349
+          }
+        ],
+        "layoutShape": "RECT"
+      },
+      {
+        "groupId": "semantic-7595f3d7",
+        "role": "BODY",
+        "translationUnit": "GROUP",
+        "sourceText": "The Web3 industry tried and we did\nquite well.Until the country decided\nto invest in something that did not\nfit intothe country nor the Web3\ncommunity.Then all hell broke\nloose.The rest is history.After that,\nwe were suddenly All in AI,that was\nreally dangerous and riskier than\nWeb3.Gladthat recently we are\nComing back to our senses.Now,\nthe few solid Web3 projects in the\nUS are from Singapore.Indeed,\nthese youngsters have made us\nproud.They left for a good reason,\nand they will come back for sure\nbecause this place is good for those\nwho have made it.",
+        "memberRegionIds": [
+          "semantic-7595f3d7-region-0",
+          "semantic-7595f3d7-region-1",
+          "semantic-7595f3d7-region-2",
+          "semantic-7595f3d7-region-3",
+          "semantic-7595f3d7-region-4",
+          "semantic-7595f3d7-region-5",
+          "semantic-7595f3d7-region-6",
+          "semantic-7595f3d7-region-7",
+          "semantic-7595f3d7-region-8",
+          "semantic-7595f3d7-region-9",
+          "semantic-7595f3d7-region-10",
+          "semantic-7595f3d7-region-11",
+          "semantic-7595f3d7-region-12",
+          "semantic-7595f3d7-region-13",
+          "semantic-7595f3d7-region-14",
+          "semantic-7595f3d7-region-15",
+          "semantic-7595f3d7-region-16"
+        ],
+        "readingOrder": 9,
+        "groupingConfidence": 0.82,
+        "groupingEvidence": [
+          "CENTER_ALIGNED",
+          "GEOMETRY_INFERRED",
+          "HORIZONTAL_OVERLAP",
+          "LEFT_ALIGNED",
+          "LINE_GAP",
+          "PUNCTUATION_CONTINUATION",
+          "REGION_OCCUPANCY"
+        ],
+        "sourceLineCount": 17,
+        "bounds": {
+          "left": 68,
+          "top": 362,
+          "right": 407,
+          "bottom": 796
+        },
+        "renderSlots": [
+          {
+            "left": 68,
+            "top": 362,
+            "right": 407,
+            "bottom": 796
+          }
+        ],
+        "layoutShape": "RECT"
+      },
+      {
+        "groupId": "semantic-eea5beaa",
+        "role": "TIMESTAMP",
+        "translationUnit": "PRESERVED",
+        "sourceText": "22:43",
+        "memberRegionIds": [
+          "semantic-eea5beaa-region-0"
+        ],
+        "readingOrder": 10,
+        "groupingConfidence": 1.0,
+        "groupingEvidence": [],
+        "sourceLineCount": 1,
+        "bounds": {
+          "left": 371,
+          "top": 792,
+          "right": 410,
+          "bottom": 804
+        },
+        "renderSlots": [
+          {
+            "left": 371,
+            "top": 792,
+            "right": 410,
+            "bottom": 804
+          }
+        ],
+        "layoutShape": "RECT"
+      },
+      {
+        "groupId": "semantic-e0a37130",
+        "role": "METADATA",
+        "translationUnit": "PRESERVED",
+        "sourceText": "Lim CW",
+        "memberRegionIds": [
+          "semantic-e0a37130-region-0"
+        ],
+        "readingOrder": 11,
+        "groupingConfidence": 1.0,
+        "groupingEvidence": [],
+        "sourceLineCount": 1,
+        "bounds": {
+          "left": 82,
+          "top": 878,
+          "right": 145,
+          "bottom": 891
+        },
+        "renderSlots": [
+          {
+            "left": 82,
+            "top": 878,
+            "right": 145,
+            "bottom": 891
+          }
+        ],
+        "layoutShape": "RECT"
+      },
+      {
+        "groupId": "semantic-8469b486",
+        "role": "IDENTIFIER",
+        "translationUnit": "PRESERVED",
+        "sourceText": "+65 9478 2794",
+        "memberRegionIds": [
+          "semantic-8469b486-region-0"
+        ],
+        "readingOrder": 12,
+        "groupingConfidence": 1.0,
+        "groupingEvidence": [],
+        "sourceLineCount": 1,
+        "bounds": {
+          "left": 199,
+          "top": 879,
+          "right": 305,
+          "bottom": 891
+        },
+        "renderSlots": [
+          {
+            "left": 199,
+            "top": 879,
+            "right": 305,
+            "bottom": 891
+          }
+        ],
+        "layoutShape": "RECT"
+      }
+    ],
+    "regions": [
+      {
+        "regionId": "semantic-1a066e43-region-0",
+        "groupId": "semantic-1a066e43",
+        "sourceRevision": 1,
+        "text": "17:27 | 0.9K/s O",
+        "rawText": "17:27 | 0.9K/s O",
+        "corrections": [],
+        "sourceLanguage": "en",
+        "targetLanguage": "zh",
+        "readingOrder": 0,
+        "blockId": null,
+        "lineIndex": 0,
+        "confidence": 0.7761418,
+        "bounds": {
+          "left": 82,
+          "top": 19,
+          "right": 209,
+          "bottom": 38
+        },
+        "componentBounds": []
+      },
+      {
+        "regionId": "semantic-7db81755-region-0",
+        "groupId": "semantic-7db81755",
+        "sourceRevision": 1,
+        "text": "MO 99)",
+        "rawText": "MO 99)",
+        "corrections": [],
+        "sourceLanguage": "en",
+        "targetLanguage": "zh",
+        "readingOrder": 1000,
+        "blockId": null,
+        "lineIndex": 0,
+        "confidence": 0.43945312,
+        "bounds": {
+          "left": 321,
+          "top": 22,
+          "right": 455,
+          "bottom": 36
+        },
+        "componentBounds": []
+      },
+      {
+        "regionId": "semantic-41385cd8-region-0",
+        "groupId": "semantic-41385cd8",
+        "sourceRevision": 1,
+        "text": "Al for Humanity Com...",
+        "rawText": "Al for Humanity Com...",
+        "corrections": [],
+        "sourceLanguage": "en",
+        "targetLanguage": "zh",
+        "readingOrder": 2000,
+        "blockId": null,
+        "lineIndex": 0,
+        "confidence": 0.78945315,
+        "bounds": {
+          "left": 132,
+          "top": 59,
+          "right": 377,
+          "bottom": 82
+        },
+        "componentBounds": []
+      },
+      {
+        "regionId": "semantic-dbe46f1f-region-0",
+        "groupId": "semantic-dbe46f1f",
+        "sourceRevision": 1,
+        "text": "22AELË",
+        "rawText": "22AELË",
+        "corrections": [],
+        "sourceLanguage": "en",
+        "targetLanguage": "zh",
+        "readingOrder": 3000,
+        "blockId": null,
+        "lineIndex": 0,
+        "confidence": 0.41601562,
+        "bounds": {
+          "left": 124,
+          "top": 87,
+          "right": 186,
+          "bottom": 101
+        },
+        "componentBounds": []
+      },
+      {
+        "regionId": "semantic-ff8a7eeb-region-0",
+        "groupId": "semantic-ff8a7eeb",
+        "sourceRevision": 1,
+        "text": "Feux Lee E instagram:",
+        "rawText": "Feux Lee E instagram:",
+        "corrections": [],
+        "sourceLanguage": "en",
+        "targetLanguage": "zh",
+        "readingOrder": 4000,
+        "blockId": null,
+        "lineIndex": 0,
+        "confidence": 0.8272569,
+        "bounds": {
+          "left": 75,
+          "top": 114,
+          "right": 284,
+          "bottom": 139
+        },
+        "componentBounds": []
+      },
+      {
+        "regionId": "semantic-c9dc8970-region-0",
+        "groupId": "semantic-c9dc8970",
+        "sourceRevision": 1,
+        "text": "instagram.com",
+        "rawText": "instagram.com",
+        "corrections": [],
+        "sourceLanguage": "en",
+        "targetLanguage": "zh",
+        "readingOrder": 5000,
+        "blockId": null,
+        "lineIndex": 0,
+        "confidence": 0.84465146,
+        "bounds": {
+          "left": 96,
+          "top": 173,
+          "right": 218,
+          "bottom": 191
+        },
+        "componentBounds": []
+      },
+      {
+        "regionId": "semantic-a145042f-region-0",
+        "groupId": "semantic-a145042f",
+        "sourceRevision": 1,
+        "text": "22:08",
+        "rawText": "22:08",
+        "corrections": [],
+        "sourceLanguage": null,
+        "targetLanguage": null,
+        "readingOrder": 6000,
+        "blockId": null,
+        "lineIndex": 0,
+        "confidence": 0.91328126,
+        "bounds": {
+          "left": 272,
+          "top": 212,
+          "right": 312,
+          "bottom": 224
+        },
+        "componentBounds": []
+      },
+      {
+        "regionId": "semantic-e20212cb-region-0",
+        "groupId": "semantic-e20212cb",
+        "sourceRevision": 1,
+        "text": "Instagram Eüi",
+        "rawText": "Instagram Eüi",
+        "corrections": [],
+        "sourceLanguage": "en",
+        "targetLanguage": "zh",
+        "readingOrder": 7000,
+        "blockId": null,
+        "lineIndex": 0,
+        "confidence": 0.62530047,
+        "bounds": {
+          "left": 123,
+          "top": 252,
+          "right": 279,
+          "bottom": 272
+        },
+        "componentBounds": []
+      },
+      {
+        "regionId": "semantic-f1e4da8d-region-0",
+        "groupId": "semantic-f1e4da8d",
+        "sourceRevision": 1,
+        "text": "+65 9684 3435",
+        "rawText": "+65 9684 3435",
+        "corrections": [],
+        "sourceLanguage": null,
+        "targetLanguage": null,
+        "readingOrder": 8000,
+        "blockId": null,
+        "lineIndex": 0,
+        "confidence": 0.93927556,
+        "bounds": {
+          "left": 295,
+          "top": 337,
+          "right": 403,
+          "bottom": 349
+        },
+        "componentBounds": []
+      },
+      {
+        "regionId": "semantic-7595f3d7-region-0",
+        "groupId": "semantic-7595f3d7",
+        "sourceRevision": 1,
+        "text": "The Web3 industry tried and we did",
+        "rawText": "The Web3 industry tried and we did",
+        "corrections": [],
+        "sourceLanguage": "en",
+        "targetLanguage": "zh",
+        "readingOrder": 9000,
+        "blockId": null,
+        "lineIndex": 0,
+        "confidence": 0.8998326,
+        "bounds": {
+          "left": 68,
+          "top": 362,
+          "right": 399,
+          "bottom": 381
+        },
+        "componentBounds": []
+      },
+      {
+        "regionId": "semantic-7595f3d7-region-1",
+        "groupId": "semantic-7595f3d7",
+        "sourceRevision": 1,
+        "text": "quite well.Until the country decided",
+        "rawText": "quite well.Until the country decided",
+        "corrections": [],
+        "sourceLanguage": "en",
+        "targetLanguage": "zh",
+        "readingOrder": 9001,
+        "blockId": null,
+        "lineIndex": 1,
+        "confidence": 0.88830566,
+        "bounds": {
+          "left": 69,
+          "top": 388,
+          "right": 405,
+          "bottom": 408
+        },
+        "componentBounds": []
+      },
+      {
+        "regionId": "semantic-7595f3d7-region-2",
+        "groupId": "semantic-7595f3d7",
+        "sourceRevision": 1,
+        "text": "to invest in something that did not",
+        "rawText": "to invest in something that did not",
+        "corrections": [],
+        "sourceLanguage": "en",
+        "targetLanguage": "zh",
+        "readingOrder": 9002,
+        "blockId": null,
+        "lineIndex": 2,
+        "confidence": 0.8914332,
+        "bounds": {
+          "left": 68,
+          "top": 414,
+          "right": 389,
+          "bottom": 434
+        },
+        "componentBounds": []
+      },
+      {
+        "regionId": "semantic-7595f3d7-region-3",
+        "groupId": "semantic-7595f3d7",
+        "sourceRevision": 1,
+        "text": "fit intothe country nor the Web3",
+        "rawText": "fit intothe country nor the Web3",
+        "corrections": [],
+        "sourceLanguage": "en",
+        "targetLanguage": "zh",
+        "readingOrder": 9003,
+        "blockId": null,
+        "lineIndex": 3,
+        "confidence": 0.90176505,
+        "bounds": {
+          "left": 68,
+          "top": 440,
+          "right": 379,
+          "bottom": 460
+        },
+        "componentBounds": []
+      },
+      {
+        "regionId": "semantic-7595f3d7-region-4",
+        "groupId": "semantic-7595f3d7",
+        "sourceRevision": 1,
+        "text": "community.Then all hell broke",
+        "rawText": "community.Then all hell broke",
+        "corrections": [],
+        "sourceLanguage": "en",
+        "targetLanguage": "zh",
+        "readingOrder": 9004,
+        "blockId": null,
+        "lineIndex": 4,
+        "confidence": 0.8694411,
+        "bounds": {
+          "left": 69,
+          "top": 467,
+          "right": 356,
+          "bottom": 486
+        },
+        "componentBounds": []
+      },
+      {
+        "regionId": "semantic-7595f3d7-region-5",
+        "groupId": "semantic-7595f3d7",
+        "sourceRevision": 1,
+        "text": "loose.The rest is history.After that,",
+        "rawText": "loose.The rest is history.After that,",
+        "corrections": [],
+        "sourceLanguage": "en",
+        "targetLanguage": "zh",
+        "readingOrder": 9005,
+        "blockId": null,
+        "lineIndex": 5,
+        "confidence": 0.87227744,
+        "bounds": {
+          "left": 69,
+          "top": 492,
+          "right": 401,
+          "bottom": 511
+        },
+        "componentBounds": []
+      },
+      {
+        "regionId": "semantic-7595f3d7-region-6",
+        "groupId": "semantic-7595f3d7",
+        "sourceRevision": 1,
+        "text": "we were suddenly All in AI,that was",
+        "rawText": "we were suddenly All in AI,that was",
+        "corrections": [],
+        "sourceLanguage": "en",
+        "targetLanguage": "zh",
+        "readingOrder": 9006,
+        "blockId": null,
+        "lineIndex": 6,
+        "confidence": 0.8597791,
+        "bounds": {
+          "left": 68,
+          "top": 519,
+          "right": 407,
+          "bottom": 538
+        },
+        "componentBounds": []
+      },
+      {
+        "regionId": "semantic-7595f3d7-region-7",
+        "groupId": "semantic-7595f3d7",
+        "sourceRevision": 1,
+        "text": "really dangerous and riskier than",
+        "rawText": "really dangerous and riskier than",
+        "corrections": [],
+        "sourceLanguage": "en",
+        "targetLanguage": "zh",
+        "readingOrder": 9007,
+        "blockId": null,
+        "lineIndex": 7,
+        "confidence": 0.8961476,
+        "bounds": {
+          "left": 69,
+          "top": 546,
+          "right": 369,
+          "bottom": 565
+        },
+        "componentBounds": []
+      },
+      {
+        "regionId": "semantic-7595f3d7-region-8",
+        "groupId": "semantic-7595f3d7",
+        "sourceRevision": 1,
+        "text": "Web3.Gladthat recently we are",
+        "rawText": "Web3.Gladthat recently we are",
+        "corrections": [],
+        "sourceLanguage": "en",
+        "targetLanguage": "zh",
+        "readingOrder": 9008,
+        "blockId": null,
+        "lineIndex": 8,
+        "confidence": 0.88341343,
+        "bounds": {
+          "left": 84,
+          "top": 570,
+          "right": 369,
+          "bottom": 591
+        },
+        "componentBounds": []
+      },
+      {
+        "regionId": "semantic-7595f3d7-region-9",
+        "groupId": "semantic-7595f3d7",
+        "sourceRevision": 1,
+        "text": "Coming back to our senses.Now,",
+        "rawText": "Coming back to our senses.Now,",
+        "corrections": [],
+        "sourceLanguage": "en",
+        "targetLanguage": "zh",
+        "readingOrder": 9009,
+        "blockId": null,
+        "lineIndex": 9,
+        "confidence": 0.81640625,
+        "bounds": {
+          "left": 68,
+          "top": 598,
+          "right": 375,
+          "bottom": 616
+        },
+        "componentBounds": []
+      },
+      {
+        "regionId": "semantic-7595f3d7-region-10",
+        "groupId": "semantic-7595f3d7",
+        "sourceRevision": 1,
+        "text": "the few solid Web3 projects in the",
+        "rawText": "the few solid Web3 projects in the",
+        "corrections": [],
+        "sourceLanguage": "en",
+        "targetLanguage": "zh",
+        "readingOrder": 9010,
+        "blockId": null,
+        "lineIndex": 10,
+        "confidence": 0.8839286,
+        "bounds": {
+          "left": 68,
+          "top": 624,
+          "right": 388,
+          "bottom": 643
+        },
+        "componentBounds": []
+      },
+      {
+        "regionId": "semantic-7595f3d7-region-11",
+        "groupId": "semantic-7595f3d7",
+        "sourceRevision": 1,
+        "text": "US are from Singapore.Indeed,",
+        "rawText": "US are from Singapore.Indeed,",
+        "corrections": [],
+        "sourceLanguage": "en",
+        "targetLanguage": "zh",
+        "readingOrder": 9011,
+        "blockId": null,
+        "lineIndex": 11,
+        "confidence": 0.87469953,
+        "bounds": {
+          "left": 69,
+          "top": 649,
+          "right": 361,
+          "bottom": 669
+        },
+        "componentBounds": []
+      },
+      {
+        "regionId": "semantic-7595f3d7-region-12",
+        "groupId": "semantic-7595f3d7",
+        "sourceRevision": 1,
+        "text": "these youngsters have made us",
+        "rawText": "these youngsters have made us",
+        "corrections": [],
+        "sourceLanguage": "en",
+        "targetLanguage": "zh",
+        "readingOrder": 9012,
+        "blockId": null,
+        "lineIndex": 12,
+        "confidence": 0.898125,
+        "bounds": {
+          "left": 68,
+          "top": 676,
+          "right": 361,
+          "bottom": 695
+        },
+        "componentBounds": []
+      },
+      {
+        "regionId": "semantic-7595f3d7-region-13",
+        "groupId": "semantic-7595f3d7",
+        "sourceRevision": 1,
+        "text": "proud.They left for a good reason,",
+        "rawText": "proud.They left for a good reason,",
+        "corrections": [],
+        "sourceLanguage": "en",
+        "targetLanguage": "zh",
+        "readingOrder": 9013,
+        "blockId": null,
+        "lineIndex": 13,
+        "confidence": 0.8782328,
+        "bounds": {
+          "left": 69,
+          "top": 701,
+          "right": 395,
+          "bottom": 722
+        },
+        "componentBounds": []
+      },
+      {
+        "regionId": "semantic-7595f3d7-region-14",
+        "groupId": "semantic-7595f3d7",
+        "sourceRevision": 1,
+        "text": "and they will come back for sure",
+        "rawText": "and they will come back for sure",
+        "corrections": [],
+        "sourceLanguage": "en",
+        "targetLanguage": "zh",
+        "readingOrder": 9014,
+        "blockId": null,
+        "lineIndex": 14,
+        "confidence": 0.88461536,
+        "bounds": {
+          "left": 73,
+          "top": 728,
+          "right": 373,
+          "bottom": 747
+        },
+        "componentBounds": []
+      },
+      {
+        "regionId": "semantic-7595f3d7-region-15",
+        "groupId": "semantic-7595f3d7",
+        "sourceRevision": 1,
+        "text": "because this place is good for those",
+        "rawText": "because this place is good for those",
+        "corrections": [],
+        "sourceLanguage": "en",
+        "targetLanguage": "zh",
+        "readingOrder": 9015,
+        "blockId": null,
+        "lineIndex": 15,
+        "confidence": 0.91627604,
+        "bounds": {
+          "left": 74,
+          "top": 754,
+          "right": 404,
+          "bottom": 773
+        },
+        "componentBounds": []
+      },
+      {
+        "regionId": "semantic-7595f3d7-region-16",
+        "groupId": "semantic-7595f3d7",
+        "sourceRevision": 1,
+        "text": "who have made it.",
+        "rawText": "who have made it.",
+        "corrections": [],
+        "sourceLanguage": "en",
+        "targetLanguage": "zh",
+        "readingOrder": 9016,
+        "blockId": null,
+        "lineIndex": 16,
+        "confidence": 0.87834823,
+        "bounds": {
+          "left": 68,
+          "top": 780,
+          "right": 238,
+          "bottom": 796
+        },
+        "componentBounds": []
+      },
+      {
+        "regionId": "semantic-eea5beaa-region-0",
+        "groupId": "semantic-eea5beaa",
+        "sourceRevision": 1,
+        "text": "22:43",
+        "rawText": "22:43",
+        "corrections": [],
+        "sourceLanguage": null,
+        "targetLanguage": null,
+        "readingOrder": 10000,
+        "blockId": null,
+        "lineIndex": 0,
+        "confidence": 0.9164063,
+        "bounds": {
+          "left": 371,
+          "top": 792,
+          "right": 410,
+          "bottom": 804
+        },
+        "componentBounds": []
+      },
+      {
+        "regionId": "semantic-e0a37130-region-0",
+        "groupId": "semantic-e0a37130",
+        "sourceRevision": 1,
+        "text": "Lim CW",
+        "rawText": "Lim CW",
+        "corrections": [],
+        "sourceLanguage": "en",
+        "targetLanguage": "zh",
+        "readingOrder": 11000,
+        "blockId": null,
+        "lineIndex": 0,
+        "confidence": 0.765625,
+        "bounds": {
+          "left": 82,
+          "top": 878,
+          "right": 145,
+          "bottom": 891
+        },
+        "componentBounds": []
+      },
+      {
+        "regionId": "semantic-8469b486-region-0",
+        "groupId": "semantic-8469b486",
+        "sourceRevision": 1,
+        "text": "+65 9478 2794",
+        "rawText": "+65 9478 2794",
+        "corrections": [],
+        "sourceLanguage": null,
+        "targetLanguage": null,
+        "readingOrder": 12000,
+        "blockId": null,
+        "lineIndex": 0,
+        "confidence": 0.934304,
+        "bounds": {
+          "left": 199,
+          "top": 879,
+          "right": 305,
+          "bottom": 891
+        },
+        "componentBounds": []
+      }
+    ],
+    "debugCapture": null
+  },
+  "response": {
+    "schemaVersion": 3,
+    "requestId": "e96152c4-4000-4b79-bb74-d1320c674dd7",
+    "sessionId": "1d1a0295-8a42-464d-98bd-af16a3e1a198",
+    "generation": 1,
+    "translationRevision": 2,
+    "provider": "self-hosted-qwen-layout-plan-v3",
+    "modelVersion": "qwen3.5:9b",
+    "promptVersion": "semantic-translation-qwen-v4-geometry-safe-output",
+    "results": [
+      {
+        "groupId": "semantic-1a066e43",
+        "sourceGroupIds": [
+          "semantic-1a066e43"
+        ],
+        "role": "BODY",
+        "groupingConfidence": 1.0,
+        "status": "PRESERVED",
+        "renderMode": "NONE",
+        "memberRegionIds": [
+          "semantic-1a066e43-region-0"
+        ],
+        "detectedSourceLanguage": "en",
+        "targetLanguage": "zh",
+        "anchorBounds": {
+          "left": 82,
+          "top": 19,
+          "right": 209,
+          "bottom": 38
+        },
+        "layoutHint": {
+          "preferredMaxLines": 1,
+          "minimumTextScale": 0.86,
+          "maximumTextScale": 1.0,
+          "lineSpacingMultiplier": 1.0,
+          "alignment": "START",
+          "overflowStrategy": "REFLOW_THEN_SCALE",
+          "allowMore": false,
+          "sourceLineCount": 1,
+          "layoutShape": "RECT",
+          "renderSlots": [
+            {
+              "left": 82,
+              "top": 19,
+              "right": 209,
+              "bottom": 38
+            }
+          ]
+        }
+      },
+      {
+        "groupId": "semantic-7db81755",
+        "sourceGroupIds": [
+          "semantic-7db81755"
+        ],
+        "role": "BODY",
+        "groupingConfidence": 1.0,
+        "status": "TRANSLATED",
+        "renderMode": "GROUP",
+        "translatedText": "MO 99)",
+        "memberRegionIds": [
+          "semantic-7db81755-region-0"
+        ],
+        "detectedSourceLanguage": "en",
+        "targetLanguage": "zh",
+        "anchorBounds": {
+          "left": 321,
+          "top": 22,
+          "right": 455,
+          "bottom": 36
+        },
+        "layoutHint": {
+          "preferredMaxLines": 1,
+          "minimumTextScale": 0.86,
+          "maximumTextScale": 1.0,
+          "lineSpacingMultiplier": 1.0,
+          "alignment": "START",
+          "overflowStrategy": "REFLOW_THEN_SCALE",
+          "allowMore": false,
+          "sourceLineCount": 1,
+          "layoutShape": "RECT",
+          "renderSlots": [
+            {
+              "left": 321,
+              "top": 22,
+              "right": 455,
+              "bottom": 36
+            }
+          ]
+        }
+      },
+      {
+        "groupId": "semantic-41385cd8",
+        "sourceGroupIds": [
+          "semantic-41385cd8"
+        ],
+        "role": "CONTROL",
+        "groupingConfidence": 1.0,
+        "status": "PRESERVED",
+        "renderMode": "NONE",
+        "memberRegionIds": [
+          "semantic-41385cd8-region-0"
+        ],
+        "detectedSourceLanguage": "en",
+        "targetLanguage": "zh",
+        "anchorBounds": {
+          "left": 132,
+          "top": 59,
+          "right": 377,
+          "bottom": 82
+        },
+        "layoutHint": {
+          "preferredMaxLines": 1,
+          "minimumTextScale": 0.86,
+          "maximumTextScale": 1.0,
+          "lineSpacingMultiplier": 1.0,
+          "alignment": "START",
+          "overflowStrategy": "REFLOW_THEN_SCALE",
+          "allowMore": false,
+          "sourceLineCount": 1,
+          "layoutShape": "RECT",
+          "renderSlots": [
+            {
+              "left": 132,
+              "top": 59,
+              "right": 377,
+              "bottom": 82
+            }
+          ]
+        }
+      },
+      {
+        "groupId": "semantic-dbe46f1f",
+        "sourceGroupIds": [
+          "semantic-dbe46f1f"
+        ],
+        "role": "BODY",
+        "groupingConfidence": 1.0,
+        "status": "TRANSLATED",
+        "renderMode": "GROUP",
+        "translatedText": "22AELË",
+        "memberRegionIds": [
+          "semantic-dbe46f1f-region-0"
+        ],
+        "detectedSourceLanguage": "en",
+        "targetLanguage": "zh",
+        "anchorBounds": {
+          "left": 124,
+          "top": 87,
+          "right": 186,
+          "bottom": 101
+        },
+        "layoutHint": {
+          "preferredMaxLines": 1,
+          "minimumTextScale": 0.86,
+          "maximumTextScale": 1.0,
+          "lineSpacingMultiplier": 1.0,
+          "alignment": "START",
+          "overflowStrategy": "REFLOW_THEN_SCALE",
+          "allowMore": false,
+          "sourceLineCount": 1,
+          "layoutShape": "RECT",
+          "renderSlots": [
+            {
+              "left": 124,
+              "top": 87,
+              "right": 186,
+              "bottom": 101
+            }
+          ]
+        }
+      },
+      {
+        "groupId": "semantic-ff8a7eeb",
+        "sourceGroupIds": [
+          "semantic-ff8a7eeb"
+        ],
+        "role": "BODY",
+        "groupingConfidence": 1.0,
+        "status": "TRANSLATED",
+        "renderMode": "GROUP",
+        "translatedText": "Feux Lee E instagram:",
+        "memberRegionIds": [
+          "semantic-ff8a7eeb-region-0"
+        ],
+        "detectedSourceLanguage": "en",
+        "targetLanguage": "zh",
+        "anchorBounds": {
+          "left": 75,
+          "top": 114,
+          "right": 284,
+          "bottom": 139
+        },
+        "layoutHint": {
+          "preferredMaxLines": 1,
+          "minimumTextScale": 0.86,
+          "maximumTextScale": 1.0,
+          "lineSpacingMultiplier": 1.0,
+          "alignment": "START",
+          "overflowStrategy": "REFLOW_THEN_SCALE",
+          "allowMore": false,
+          "sourceLineCount": 1,
+          "layoutShape": "RECT",
+          "renderSlots": [
+            {
+              "left": 75,
+              "top": 114,
+              "right": 284,
+              "bottom": 139
+            }
+          ]
+        }
+      },
+      {
+        "groupId": "semantic-c9dc8970",
+        "sourceGroupIds": [
+          "semantic-c9dc8970"
+        ],
+        "role": "IDENTIFIER",
+        "groupingConfidence": 1.0,
+        "status": "PRESERVED",
+        "renderMode": "NONE",
+        "memberRegionIds": [
+          "semantic-c9dc8970-region-0"
+        ],
+        "detectedSourceLanguage": "en",
+        "targetLanguage": "zh",
+        "anchorBounds": {
+          "left": 96,
+          "top": 173,
+          "right": 218,
+          "bottom": 191
+        },
+        "layoutHint": {
+          "preferredMaxLines": 1,
+          "minimumTextScale": 0.86,
+          "maximumTextScale": 1.0,
+          "lineSpacingMultiplier": 1.0,
+          "alignment": "START",
+          "overflowStrategy": "REFLOW_THEN_SCALE",
+          "allowMore": false,
+          "sourceLineCount": 1,
+          "layoutShape": "RECT",
+          "renderSlots": [
+            {
+              "left": 96,
+              "top": 173,
+              "right": 218,
+              "bottom": 191
+            }
+          ]
+        }
+      },
+      {
+        "groupId": "semantic-a145042f",
+        "sourceGroupIds": [
+          "semantic-a145042f"
+        ],
+        "role": "TIMESTAMP",
+        "groupingConfidence": 1.0,
+        "status": "PRESERVED",
+        "renderMode": "NONE",
+        "memberRegionIds": [
+          "semantic-a145042f-region-0"
+        ],
+        "detectedSourceLanguage": "auto",
+        "targetLanguage": "auto",
+        "anchorBounds": {
+          "left": 272,
+          "top": 212,
+          "right": 312,
+          "bottom": 224
+        },
+        "layoutHint": {
+          "preferredMaxLines": 1,
+          "minimumTextScale": 0.86,
+          "maximumTextScale": 1.0,
+          "lineSpacingMultiplier": 1.0,
+          "alignment": "START",
+          "overflowStrategy": "REFLOW_THEN_SCALE",
+          "allowMore": false,
+          "sourceLineCount": 1,
+          "layoutShape": "RECT",
+          "renderSlots": [
+            {
+              "left": 272,
+              "top": 212,
+              "right": 312,
+              "bottom": 224
+            }
+          ]
+        }
+      },
+      {
+        "groupId": "semantic-e20212cb",
+        "sourceGroupIds": [
+          "semantic-e20212cb"
+        ],
+        "role": "BODY",
+        "groupingConfidence": 1.0,
+        "status": "TRANSLATED",
+        "renderMode": "GROUP",
+        "translatedText": "Instagram Eüi",
+        "memberRegionIds": [
+          "semantic-e20212cb-region-0"
+        ],
+        "detectedSourceLanguage": "en",
+        "targetLanguage": "zh",
+        "anchorBounds": {
+          "left": 123,
+          "top": 252,
+          "right": 279,
+          "bottom": 272
+        },
+        "layoutHint": {
+          "preferredMaxLines": 1,
+          "minimumTextScale": 0.86,
+          "maximumTextScale": 1.0,
+          "lineSpacingMultiplier": 1.0,
+          "alignment": "START",
+          "overflowStrategy": "REFLOW_THEN_SCALE",
+          "allowMore": false,
+          "sourceLineCount": 1,
+          "layoutShape": "RECT",
+          "renderSlots": [
+            {
+              "left": 123,
+              "top": 252,
+              "right": 279,
+              "bottom": 272
+            }
+          ]
+        }
+      },
+      {
+        "groupId": "semantic-f1e4da8d",
+        "sourceGroupIds": [
+          "semantic-f1e4da8d"
+        ],
+        "role": "IDENTIFIER",
+        "groupingConfidence": 1.0,
+        "status": "PRESERVED",
+        "renderMode": "NONE",
+        "memberRegionIds": [
+          "semantic-f1e4da8d-region-0"
+        ],
+        "detectedSourceLanguage": "auto",
+        "targetLanguage": "auto",
+        "anchorBounds": {
+          "left": 295,
+          "top": 337,
+          "right": 403,
+          "bottom": 349
+        },
+        "layoutHint": {
+          "preferredMaxLines": 1,
+          "minimumTextScale": 0.86,
+          "maximumTextScale": 1.0,
+          "lineSpacingMultiplier": 1.0,
+          "alignment": "START",
+          "overflowStrategy": "REFLOW_THEN_SCALE",
+          "allowMore": false,
+          "sourceLineCount": 1,
+          "layoutShape": "RECT",
+          "renderSlots": [
+            {
+              "left": 295,
+              "top": 337,
+              "right": 403,
+              "bottom": 349
+            }
+          ]
+        }
+      },
+      {
+        "groupId": "semantic-7595f3d7",
+        "sourceGroupIds": [
+          "semantic-7595f3d7"
+        ],
+        "role": "BODY",
+        "groupingConfidence": 0.82,
+        "status": "TRANSLATED",
+        "renderMode": "GROUP",
+        "translatedText": "Web3 行业曾尝试过，我们也做得相当不错。直到该国决定投资一些既不符合国家利益也不符合 Web3 社区的项目时，一切才彻底改变。随后局势失控，其余皆为历史。在那之后，我们突然全面转向人工智能（AI），那真的非常危险且风险比 Web3 更高。很高兴最近我们正在重新回归理智。如今，美国仅有的几个扎实的 Web3 项目均来自新加坡。确实，这些年轻人让我们感到自豪。他们离开是有正当理由的，而他们肯定会回来的，因为这个地方对于那些成功的人来说是理想的所在。",
+        "memberRegionIds": [
+          "semantic-7595f3d7-region-0",
+          "semantic-7595f3d7-region-1",
+          "semantic-7595f3d7-region-2",
+          "semantic-7595f3d7-region-3",
+          "semantic-7595f3d7-region-4",
+          "semantic-7595f3d7-region-5",
+          "semantic-7595f3d7-region-6",
+          "semantic-7595f3d7-region-7",
+          "semantic-7595f3d7-region-8",
+          "semantic-7595f3d7-region-9",
+          "semantic-7595f3d7-region-10",
+          "semantic-7595f3d7-region-11",
+          "semantic-7595f3d7-region-12",
+          "semantic-7595f3d7-region-13",
+          "semantic-7595f3d7-region-14",
+          "semantic-7595f3d7-region-15",
+          "semantic-7595f3d7-region-16"
+        ],
+        "detectedSourceLanguage": "en",
+        "targetLanguage": "zh",
+        "anchorBounds": {
+          "left": 68,
+          "top": 362,
+          "right": 407,
+          "bottom": 796
+        },
+        "layoutHint": {
+          "preferredMaxLines": 17,
+          "minimumTextScale": 0.86,
+          "maximumTextScale": 1.0,
+          "lineSpacingMultiplier": 0.92,
+          "alignment": "START",
+          "overflowStrategy": "REFLOW_THEN_SCALE_THEN_MORE",
+          "allowMore": true,
+          "sourceLineCount": 17,
+          "layoutShape": "RECT",
+          "renderSlots": [
+            {
+              "left": 68,
+              "top": 362,
+              "right": 407,
+              "bottom": 796
+            }
+          ]
+        }
+      },
+      {
+        "groupId": "semantic-eea5beaa",
+        "sourceGroupIds": [
+          "semantic-eea5beaa"
+        ],
+        "role": "TIMESTAMP",
+        "groupingConfidence": 1.0,
+        "status": "PRESERVED",
+        "renderMode": "NONE",
+        "memberRegionIds": [
+          "semantic-eea5beaa-region-0"
+        ],
+        "detectedSourceLanguage": "auto",
+        "targetLanguage": "auto",
+        "anchorBounds": {
+          "left": 371,
+          "top": 792,
+          "right": 410,
+          "bottom": 804
+        },
+        "layoutHint": {
+          "preferredMaxLines": 1,
+          "minimumTextScale": 0.86,
+          "maximumTextScale": 1.0,
+          "lineSpacingMultiplier": 1.0,
+          "alignment": "START",
+          "overflowStrategy": "REFLOW_THEN_SCALE",
+          "allowMore": false,
+          "sourceLineCount": 1,
+          "layoutShape": "RECT",
+          "renderSlots": [
+            {
+              "left": 371,
+              "top": 792,
+              "right": 410,
+              "bottom": 804
+            }
+          ]
+        }
+      },
+      {
+        "groupId": "semantic-e0a37130",
+        "sourceGroupIds": [
+          "semantic-e0a37130"
+        ],
+        "role": "METADATA",
+        "groupingConfidence": 1.0,
+        "status": "PRESERVED",
+        "renderMode": "NONE",
+        "memberRegionIds": [
+          "semantic-e0a37130-region-0"
+        ],
+        "detectedSourceLanguage": "en",
+        "targetLanguage": "zh",
+        "anchorBounds": {
+          "left": 82,
+          "top": 878,
+          "right": 145,
+          "bottom": 891
+        },
+        "layoutHint": {
+          "preferredMaxLines": 1,
+          "minimumTextScale": 0.86,
+          "maximumTextScale": 1.0,
+          "lineSpacingMultiplier": 1.0,
+          "alignment": "START",
+          "overflowStrategy": "REFLOW_THEN_SCALE",
+          "allowMore": false,
+          "sourceLineCount": 1,
+          "layoutShape": "RECT",
+          "renderSlots": [
+            {
+              "left": 82,
+              "top": 878,
+              "right": 145,
+              "bottom": 891
+            }
+          ]
+        }
+      },
+      {
+        "groupId": "semantic-8469b486",
+        "sourceGroupIds": [
+          "semantic-8469b486"
+        ],
+        "role": "IDENTIFIER",
+        "groupingConfidence": 1.0,
+        "status": "PRESERVED",
+        "renderMode": "NONE",
+        "memberRegionIds": [
+          "semantic-8469b486-region-0"
+        ],
+        "detectedSourceLanguage": "auto",
+        "targetLanguage": "auto",
+        "anchorBounds": {
+          "left": 199,
+          "top": 879,
+          "right": 305,
+          "bottom": 891
+        },
+        "layoutHint": {
+          "preferredMaxLines": 1,
+          "minimumTextScale": 0.86,
+          "maximumTextScale": 1.0,
+          "lineSpacingMultiplier": 1.0,
+          "alignment": "START",
+          "overflowStrategy": "REFLOW_THEN_SCALE",
+          "allowMore": false,
+          "sourceLineCount": 1,
+          "layoutShape": "RECT",
+          "renderSlots": [
+            {
+              "left": 199,
+              "top": 879,
+              "right": 305,
+              "bottom": 891
+            }
+          ]
+        }
+      }
+    ],
+    "documentPlan": {
+      "mode": "AUTHORITATIVE",
+      "planVersion": "server-semantic-plan-v2",
+      "groups": [
+        {
+          "groupId": "semantic-1a066e43",
+          "sourceGroupIds": [
+            "semantic-1a066e43"
+          ],
+          "memberRegionIds": [
+            "semantic-1a066e43-region-0"
+          ],
+          "role": "BODY",
+          "translationUnit": "PRESERVED",
+          "sourceText": "17:27 | 0.9K/s O",
+          "readingOrder": 0,
+          "groupingConfidence": 1.0,
+          "groupingEvidence": [],
+          "sourceLineCount": 1,
+          "bounds": {
+            "left": 82,
+            "top": 19,
+            "right": 209,
+            "bottom": 38
+          },
+          "renderSlots": [
+            {
+              "left": 82,
+              "top": 19,
+              "right": 209,
+              "bottom": 38
+            }
+          ],
+          "layoutShape": "RECT",
+          "authoritativeEligible": true
+        },
+        {
+          "groupId": "semantic-7db81755",
+          "sourceGroupIds": [
+            "semantic-7db81755"
+          ],
+          "memberRegionIds": [
+            "semantic-7db81755-region-0"
+          ],
+          "role": "BODY",
+          "translationUnit": "GROUP",
+          "sourceText": "MO 99)",
+          "readingOrder": 1,
+          "groupingConfidence": 1.0,
+          "groupingEvidence": [],
+          "sourceLineCount": 1,
+          "bounds": {
+            "left": 321,
+            "top": 22,
+            "right": 455,
+            "bottom": 36
+          },
+          "renderSlots": [
+            {
+              "left": 321,
+              "top": 22,
+              "right": 455,
+              "bottom": 36
+            }
+          ],
+          "layoutShape": "RECT",
+          "authoritativeEligible": true
+        },
+        {
+          "groupId": "semantic-41385cd8",
+          "sourceGroupIds": [
+            "semantic-41385cd8"
+          ],
+          "memberRegionIds": [
+            "semantic-41385cd8-region-0"
+          ],
+          "role": "CONTROL",
+          "translationUnit": "PRESERVED",
+          "sourceText": "Al for Humanity Com...",
+          "readingOrder": 2,
+          "groupingConfidence": 1.0,
+          "groupingEvidence": [],
+          "sourceLineCount": 1,
+          "bounds": {
+            "left": 132,
+            "top": 59,
+            "right": 377,
+            "bottom": 82
+          },
+          "renderSlots": [
+            {
+              "left": 132,
+              "top": 59,
+              "right": 377,
+              "bottom": 82
+            }
+          ],
+          "layoutShape": "RECT",
+          "authoritativeEligible": true
+        },
+        {
+          "groupId": "semantic-dbe46f1f",
+          "sourceGroupIds": [
+            "semantic-dbe46f1f"
+          ],
+          "memberRegionIds": [
+            "semantic-dbe46f1f-region-0"
+          ],
+          "role": "BODY",
+          "translationUnit": "GROUP",
+          "sourceText": "22AELË",
+          "readingOrder": 3,
+          "groupingConfidence": 1.0,
+          "groupingEvidence": [],
+          "sourceLineCount": 1,
+          "bounds": {
+            "left": 124,
+            "top": 87,
+            "right": 186,
+            "bottom": 101
+          },
+          "renderSlots": [
+            {
+              "left": 124,
+              "top": 87,
+              "right": 186,
+              "bottom": 101
+            }
+          ],
+          "layoutShape": "RECT",
+          "authoritativeEligible": true
+        },
+        {
+          "groupId": "semantic-ff8a7eeb",
+          "sourceGroupIds": [
+            "semantic-ff8a7eeb"
+          ],
+          "memberRegionIds": [
+            "semantic-ff8a7eeb-region-0"
+          ],
+          "role": "BODY",
+          "translationUnit": "GROUP",
+          "sourceText": "Feux Lee E instagram:",
+          "readingOrder": 4,
+          "groupingConfidence": 1.0,
+          "groupingEvidence": [],
+          "sourceLineCount": 1,
+          "bounds": {
+            "left": 75,
+            "top": 114,
+            "right": 284,
+            "bottom": 139
+          },
+          "renderSlots": [
+            {
+              "left": 75,
+              "top": 114,
+              "right": 284,
+              "bottom": 139
+            }
+          ],
+          "layoutShape": "RECT",
+          "authoritativeEligible": true
+        },
+        {
+          "groupId": "semantic-c9dc8970",
+          "sourceGroupIds": [
+            "semantic-c9dc8970"
+          ],
+          "memberRegionIds": [
+            "semantic-c9dc8970-region-0"
+          ],
+          "role": "IDENTIFIER",
+          "translationUnit": "PRESERVED",
+          "sourceText": "instagram.com",
+          "readingOrder": 5,
+          "groupingConfidence": 1.0,
+          "groupingEvidence": [],
+          "sourceLineCount": 1,
+          "bounds": {
+            "left": 96,
+            "top": 173,
+            "right": 218,
+            "bottom": 191
+          },
+          "renderSlots": [
+            {
+              "left": 96,
+              "top": 173,
+              "right": 218,
+              "bottom": 191
+            }
+          ],
+          "layoutShape": "RECT",
+          "authoritativeEligible": true
+        },
+        {
+          "groupId": "semantic-a145042f",
+          "sourceGroupIds": [
+            "semantic-a145042f"
+          ],
+          "memberRegionIds": [
+            "semantic-a145042f-region-0"
+          ],
+          "role": "TIMESTAMP",
+          "translationUnit": "PRESERVED",
+          "sourceText": "22:08",
+          "readingOrder": 6,
+          "groupingConfidence": 1.0,
+          "groupingEvidence": [],
+          "sourceLineCount": 1,
+          "bounds": {
+            "left": 272,
+            "top": 212,
+            "right": 312,
+            "bottom": 224
+          },
+          "renderSlots": [
+            {
+              "left": 272,
+              "top": 212,
+              "right": 312,
+              "bottom": 224
+            }
+          ],
+          "layoutShape": "RECT",
+          "authoritativeEligible": true
+        },
+        {
+          "groupId": "semantic-e20212cb",
+          "sourceGroupIds": [
+            "semantic-e20212cb"
+          ],
+          "memberRegionIds": [
+            "semantic-e20212cb-region-0"
+          ],
+          "role": "BODY",
+          "translationUnit": "GROUP",
+          "sourceText": "Instagram Eüi",
+          "readingOrder": 7,
+          "groupingConfidence": 1.0,
+          "groupingEvidence": [],
+          "sourceLineCount": 1,
+          "bounds": {
+            "left": 123,
+            "top": 252,
+            "right": 279,
+            "bottom": 272
+          },
+          "renderSlots": [
+            {
+              "left": 123,
+              "top": 252,
+              "right": 279,
+              "bottom": 272
+            }
+          ],
+          "layoutShape": "RECT",
+          "authoritativeEligible": true
+        },
+        {
+          "groupId": "semantic-f1e4da8d",
+          "sourceGroupIds": [
+            "semantic-f1e4da8d"
+          ],
+          "memberRegionIds": [
+            "semantic-f1e4da8d-region-0"
+          ],
+          "role": "IDENTIFIER",
+          "translationUnit": "PRESERVED",
+          "sourceText": "+65 9684 3435",
+          "readingOrder": 8,
+          "groupingConfidence": 1.0,
+          "groupingEvidence": [],
+          "sourceLineCount": 1,
+          "bounds": {
+            "left": 295,
+            "top": 337,
+            "right": 403,
+            "bottom": 349
+          },
+          "renderSlots": [
+            {
+              "left": 295,
+              "top": 337,
+              "right": 403,
+              "bottom": 349
+            }
+          ],
+          "layoutShape": "RECT",
+          "authoritativeEligible": true
+        },
+        {
+          "groupId": "semantic-7595f3d7",
+          "sourceGroupIds": [
+            "semantic-7595f3d7"
+          ],
+          "memberRegionIds": [
+            "semantic-7595f3d7-region-0",
+            "semantic-7595f3d7-region-1",
+            "semantic-7595f3d7-region-2",
+            "semantic-7595f3d7-region-3",
+            "semantic-7595f3d7-region-4",
+            "semantic-7595f3d7-region-5",
+            "semantic-7595f3d7-region-6",
+            "semantic-7595f3d7-region-7",
+            "semantic-7595f3d7-region-8",
+            "semantic-7595f3d7-region-9",
+            "semantic-7595f3d7-region-10",
+            "semantic-7595f3d7-region-11",
+            "semantic-7595f3d7-region-12",
+            "semantic-7595f3d7-region-13",
+            "semantic-7595f3d7-region-14",
+            "semantic-7595f3d7-region-15",
+            "semantic-7595f3d7-region-16"
+          ],
+          "role": "BODY",
+          "translationUnit": "GROUP",
+          "sourceText": "The Web3 industry tried and we did\nquite well.Until the country decided\nto invest in something that did not\nfit intothe country nor the Web3\ncommunity.Then all hell broke\nloose.The rest is history.After that,\nwe were suddenly All in AI,that was\nreally dangerous and riskier than\nWeb3.Gladthat recently we are\nComing back to our senses.Now,\nthe few solid Web3 projects in the\nUS are from Singapore.Indeed,\nthese youngsters have made us\nproud.They left for a good reason,\nand they will come back for sure\nbecause this place is good for those\nwho have made it.",
+          "readingOrder": 9,
+          "groupingConfidence": 0.82,
+          "groupingEvidence": [
+            "CENTER_ALIGNED",
+            "GEOMETRY_INFERRED",
+            "HORIZONTAL_OVERLAP",
+            "LEFT_ALIGNED",
+            "LINE_GAP",
+            "PUNCTUATION_CONTINUATION",
+            "REGION_OCCUPANCY"
+          ],
+          "sourceLineCount": 17,
+          "bounds": {
+            "left": 68,
+            "top": 362,
+            "right": 407,
+            "bottom": 796
+          },
+          "renderSlots": [
+            {
+              "left": 68,
+              "top": 362,
+              "right": 407,
+              "bottom": 796
+            }
+          ],
+          "layoutShape": "RECT",
+          "authoritativeEligible": false
+        },
+        {
+          "groupId": "semantic-eea5beaa",
+          "sourceGroupIds": [
+            "semantic-eea5beaa"
+          ],
+          "memberRegionIds": [
+            "semantic-eea5beaa-region-0"
+          ],
+          "role": "TIMESTAMP",
+          "translationUnit": "PRESERVED",
+          "sourceText": "22:43",
+          "readingOrder": 10,
+          "groupingConfidence": 1.0,
+          "groupingEvidence": [],
+          "sourceLineCount": 1,
+          "bounds": {
+            "left": 371,
+            "top": 792,
+            "right": 410,
+            "bottom": 804
+          },
+          "renderSlots": [
+            {
+              "left": 371,
+              "top": 792,
+              "right": 410,
+              "bottom": 804
+            }
+          ],
+          "layoutShape": "RECT",
+          "authoritativeEligible": true
+        },
+        {
+          "groupId": "semantic-e0a37130",
+          "sourceGroupIds": [
+            "semantic-e0a37130"
+          ],
+          "memberRegionIds": [
+            "semantic-e0a37130-region-0"
+          ],
+          "role": "METADATA",
+          "translationUnit": "PRESERVED",
+          "sourceText": "Lim CW",
+          "readingOrder": 11,
+          "groupingConfidence": 1.0,
+          "groupingEvidence": [],
+          "sourceLineCount": 1,
+          "bounds": {
+            "left": 82,
+            "top": 878,
+            "right": 145,
+            "bottom": 891
+          },
+          "renderSlots": [
+            {
+              "left": 82,
+              "top": 878,
+              "right": 145,
+              "bottom": 891
+            }
+          ],
+          "layoutShape": "RECT",
+          "authoritativeEligible": true
+        },
+        {
+          "groupId": "semantic-8469b486",
+          "sourceGroupIds": [
+            "semantic-8469b486"
+          ],
+          "memberRegionIds": [
+            "semantic-8469b486-region-0"
+          ],
+          "role": "IDENTIFIER",
+          "translationUnit": "PRESERVED",
+          "sourceText": "+65 9478 2794",
+          "readingOrder": 12,
+          "groupingConfidence": 1.0,
+          "groupingEvidence": [],
+          "sourceLineCount": 1,
+          "bounds": {
+            "left": 199,
+            "top": 879,
+            "right": 305,
+            "bottom": 891
+          },
+          "renderSlots": [
+            {
+              "left": 199,
+              "top": 879,
+              "right": 305,
+              "bottom": 891
+            }
+          ],
+          "layoutShape": "RECT",
+          "authoritativeEligible": true
+        }
+      ],
+      "metrics": {
+        "clientGroupCount": 13,
+        "plannedGroupCount": 13,
+        "mergedGroupCount": 0,
+        "authoritativeEligibleCount": 12
+      }
+    },
+    "metrics": {
+      "groupCount": 13,
+      "translatedGroupCount": 5,
+      "preservedGroupCount": 8,
+      "failedGroupCount": 0,
+      "totalMs": 45466
+    }
+  }
+}

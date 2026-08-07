@@ -3,11 +3,26 @@ package com.example.imagetranslate.screenshot
 import org.json.JSONObject
 
 internal object LiveRecognitionTelemetry {
-    fun hiddenForMovement(generation: Int, motionToHiddenMs: Long): String = JSONObject()
+    fun hiddenForMovement(
+        generation: Int,
+        motionToHiddenMs: Long,
+        translationLayerCleared: Boolean
+    ): String = JSONObject()
         .put("schema", SCHEMA_VERSION)
         .put("event", "overlay_translation_hidden_for_movement")
         .put("generation", generation)
         .put("motion_to_hidden_ms", motionToHiddenMs)
+        .put("translation_layer_cleared", translationLayerCleared)
+        .toString()
+
+    fun stalePresentationDropped(
+        resultGeneration: Int,
+        currentGeneration: Int
+    ): String = JSONObject()
+        .put("schema", SCHEMA_VERSION)
+        .put("event", "overlay_translation_stale_presentation_dropped")
+        .put("result_generation", resultGeneration)
+        .put("current_generation", currentGeneration)
         .toString()
 
     fun presented(
@@ -43,6 +58,8 @@ internal object LiveRecognitionTelemetry {
         .put("applied_strategy", metrics.appliedStrategy.name)
         .put("total_ms", totalMs)
         .put("ocr_translate_ms", metrics.recognitionAndTranslationMs)
+        .put("ocr_ms", metrics.ocrMs)
+        .put("translation_ms", metrics.translationMs)
         .put("render_ms", metrics.renderingMs)
         .put("shift_y", capturePlan?.contentShiftY ?: 0)
         .put("registration_confidence", capturePlan?.confidence?.toDouble())
@@ -115,6 +132,8 @@ internal object LiveRecognitionTelemetry {
         .put("requested_segmentation", metrics.requestedSegmentation.name)
         .put("applied_strategy", metrics.appliedStrategy.name)
         .put("ocr_translate_ms", metrics.recognitionAndTranslationMs)
+        .put("ocr_ms", metrics.ocrMs)
+        .put("translation_ms", metrics.translationMs)
         .put("render_ms", metrics.renderingMs)
         .put("recognized", metrics.recognizedCount)
         .put("translated_regions", metrics.translatedRegionCount)
@@ -144,7 +163,7 @@ internal object LiveRecognitionTelemetry {
         .put("suspicious_joins", metrics.suspiciousJoinCount)
         .put("largest_patch_area_ratio", metrics.largestPatchAreaRatio.toDouble())
 
-    private const val SCHEMA_VERSION = 6
+    private const val SCHEMA_VERSION = 7
 }
 
 internal data class LiveInteractionTimingMetrics(

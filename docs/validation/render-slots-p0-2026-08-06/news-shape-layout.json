@@ -1,0 +1,30 @@
+{
+  "outcome": "FULL",
+  "displayedText": "加拿大政府已拨款 2,000 万加元（合 1940 万美元），在未来四年内资助非洲数学科学研究所的五个中心。这些中心遍布整个大陆，由 AIMS-Next 爱因斯坦计划运营。它们将培训有才华的年轻非洲研究生从事数学科学研究工作。",
+  "displayedCharacterCount": 113,
+  "textSizePx": 13.984375,
+  "lineSpacingMultiplier": 1,
+  "segments": [
+    {
+      "left": 176,
+      "top": 461,
+      "right": 373,
+      "bottom": 511,
+      "lineCount": 2
+    },
+    {
+      "left": 130,
+      "top": 517,
+      "right": 373,
+      "bottom": 569,
+      "lineCount": 2
+    },
+    {
+      "left": 7,
+      "top": 573,
+      "right": 373,
+      "bottom": 642,
+      "lineCount": 2
+    }
+  ]
+}

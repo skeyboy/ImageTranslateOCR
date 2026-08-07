@@ -133,7 +133,7 @@ internal class ScreenFrameChangeDetector(
     private var movementReported = false
     private var lastMovementAt = 0L
     private var lastCaptureAt = Long.MIN_VALUE
-    private var ignoreUntil = 0L
+    private var presentationPatchMaskUntil = 0L
     private var peakMovementRatio = 0f
     private var captureBaseline: ScreenFrameSignature? = null
     private var pendingCapturePlan: ScrollCapturePlan? = null
@@ -148,8 +148,6 @@ internal class ScreenFrameChangeDetector(
             rememberStableFrame(signature, reset = true)
             return ScreenFrameAction.NONE
         }
-        if (nowMs < ignoreUntil) return ScreenFrameAction.NONE
-
         val differenceRatio = ScreenFrameSignaturePolicy.differenceRatio(
             prior,
             signature,
@@ -160,8 +158,12 @@ internal class ScreenFrameChangeDetector(
             dirty = true
             lastMovementAt = nowMs
             peakMovementRatio = maxOf(peakMovementRatio, differenceRatio)
-            latestMotionPlan = captureBaseline?.let { baseline ->
-                ScrollFrameMotionEstimator.estimate(baseline, signature)
+            latestMotionPlan = if (shouldMaskTranslationPatches(nowMs)) {
+                null
+            } else {
+                captureBaseline?.let { baseline ->
+                    ScrollFrameMotionEstimator.estimate(baseline, signature)
+                }
             }
             return if (movementReported) {
                 ScreenFrameAction.MOVING_UPDATE
@@ -197,7 +199,7 @@ internal class ScreenFrameChangeDetector(
         latestMotionPlan = null
         stableFrames.clear()
         lastCaptureAt = nowMs
-        ignoreUntil = nowMs + POST_RENDER_IGNORE_MS
+        presentationPatchMaskUntil = nowMs + POST_RENDER_PATCH_MASK_MS
     }
 
     fun onCaptureStarted(signature: ScreenFrameSignature, nowMs: Long) {
@@ -212,7 +214,7 @@ internal class ScreenFrameChangeDetector(
         rememberStableFrame(signature, reset = true)
         lastMovementAt = nowMs
         lastCaptureAt = nowMs
-        ignoreUntil = 0L
+        presentationPatchMaskUntil = 0L
     }
 
     fun reset() {
@@ -221,7 +223,7 @@ internal class ScreenFrameChangeDetector(
         movementReported = false
         lastMovementAt = 0L
         lastCaptureAt = Long.MIN_VALUE
-        ignoreUntil = 0L
+        presentationPatchMaskUntil = 0L
         peakMovementRatio = 0f
         captureBaseline = null
         pendingCapturePlan = null
@@ -233,6 +235,9 @@ internal class ScreenFrameChangeDetector(
     fun consumeCapturePlan(): ScrollCapturePlan? = pendingCapturePlan.also {
         pendingCapturePlan = null
     }
+
+    fun shouldMaskTranslationPatches(nowMs: Long): Boolean =
+        nowMs < presentationPatchMaskUntil
 
     fun isAwaitingStableFrames(): Boolean = dirty
 
@@ -301,7 +306,7 @@ internal class ScreenFrameChangeDetector(
         const val DEFAULT_CHANGED_SAMPLE_RATIO = 0.055f
         const val DEFAULT_LUMINANCE_DELTA = 20
         const val DEFAULT_FAST_MOVEMENT_RATIO = 0.28f
-        const val POST_RENDER_IGNORE_MS = 280L
+        const val POST_RENDER_PATCH_MASK_MS = 420L
         const val STABLE_FRAME_BUFFER_CAPACITY = 5
         const val DEFAULT_MINIMUM_STABLE_FRAME_SAMPLES = 4
         const val RETURN_TO_BASELINE_RATIO_FACTOR = 0.5f

@@ -14,12 +14,14 @@ class LiveRecognitionTelemetryTest {
         val hidden = JSONObject(
             LiveRecognitionTelemetry.hiddenForMovement(
                 generation = 8,
-                motionToHiddenMs = 24
+                motionToHiddenMs = 24,
+                translationLayerCleared = true
             )
         )
         assertEquals("overlay_translation_hidden_for_movement", hidden.getString("event"))
         assertEquals(8, hidden.getInt("generation"))
         assertEquals(24, hidden.getLong("motion_to_hidden_ms"))
+        assertTrue(hidden.getBoolean("translation_layer_cleared"))
 
         val presented = JSONObject(
             LiveRecognitionTelemetry.presented(
@@ -39,6 +41,19 @@ class LiveRecognitionTelemetryTest {
         )
         assertEquals("overlay_translation_visibility_changed", visibility.getString("event"))
         assertEquals(false, visibility.getBoolean("visible"))
+
+        val dropped = JSONObject(
+            LiveRecognitionTelemetry.stalePresentationDropped(
+                resultGeneration = 8,
+                currentGeneration = 9
+            )
+        )
+        assertEquals(
+            "overlay_translation_stale_presentation_dropped",
+            dropped.getString("event")
+        )
+        assertEquals(8, dropped.getInt("result_generation"))
+        assertEquals(9, dropped.getInt("current_generation"))
     }
 
     @Test

@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "requestId": "4142533c-18e3-4749-b3d8-122203c353a1",
+  "generation": 0,
+  "scene": "ANDROID_CLIENT_CURRENT_PAGE_SINGLE_GROUP",
+  "translation": {
+    "mode": "ENGLISH_TO_CHINESE",
+    "sourceLanguage": "en",
+    "targetLanguage": "zh",
+    "preserveIdentifiers": true,
+    "useContext": false
+  },
+  "regions": [
+    {
+      "regionId": "semantic-8895378",
+      "text": "EWS",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh"
+    }
+  ]
+}

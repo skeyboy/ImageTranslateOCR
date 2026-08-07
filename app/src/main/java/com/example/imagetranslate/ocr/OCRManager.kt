@@ -47,8 +47,13 @@ data class RecognizedText(
     val consensusScore: Float = 0.5f,
     val passCount: Int = 1,
     val modelConfidence: Float = 0f,
-    val recognizerScript: RecognizerScript = RecognizerScript.CHINESE
-)
+    val recognizerScript: RecognizerScript = RecognizerScript.CHINESE,
+    val sourceBlockId: String? = null,
+    val sourceLineIndex: Int? = null,
+    val componentBounds: List<Rect> = emptyList()
+) {
+    fun textEraseBounds(): List<Rect> = componentBounds.ifEmpty { listOf(bounds) }
+}
 
 internal object OcrWordSpacingPolicy {
     fun shouldInsertSeparator(
@@ -69,7 +74,7 @@ internal object OcrWordSpacingPolicy {
         this in 'A'..'Z' || this in 'a'..'z'
 }
 
-internal class OCRManager(context: Context) {
+internal class MlKitOcrEngine(context: Context) : OcrEngine {
     private data class OcrCandidate(
         val result: RecognizedText,
         val pass: Int,
@@ -97,9 +102,9 @@ internal class OCRManager(context: Context) {
     private val modelMutex = Mutex()
     private val readyModels = ConcurrentHashMap.newKeySet<OcrModel>()
 
-    suspend fun recognize(
+    override suspend fun recognize(
         bitmap: Bitmap,
-        recognitionMode: OcrRecognitionMode = OcrRecognitionMode.AUTO
+        recognitionMode: OcrRecognitionMode
     ): List<RecognizedText> {
         ensureModels(recognitionMode.startupModels)
         val script = recognitionMode.recognizerScript
@@ -118,7 +123,7 @@ internal class OCRManager(context: Context) {
         return refinedResults.sortedWith(compareBy({ it.bounds.top }, { it.bounds.left }))
     }
 
-    suspend fun recognizeFast(
+    override suspend fun recognizeFast(
         bitmap: Bitmap,
         recognitionMode: OcrRecognitionMode
     ): List<RecognizedText> {
@@ -182,7 +187,7 @@ internal class OCRManager(context: Context) {
             .sortedWith(compareBy({ it.bounds.top }, { it.bounds.left }))
     }
 
-    suspend fun modelStates(): Map<OcrModel, OcrModelState> = OcrModel.entries.associateWith {
+    override suspend fun modelStates(): Map<OcrModel, OcrModelState> = OcrModel.entries.associateWith {
         modelState(it)
     }
 
@@ -211,14 +216,14 @@ internal class OCRManager(context: Context) {
         OcrModelState.FAILED
     }
 
-    suspend fun downloadModel(
+    override suspend fun downloadModel(
         model: OcrModel,
-        onState: (OcrModel, OcrModelState) -> Unit = { _, _ -> }
+        onState: (OcrModel, OcrModelState) -> Unit
     ) = ensureModels(setOf(model), onState)
 
-    suspend fun ensureModels(
+    override suspend fun ensureModels(
         models: Set<OcrModel>,
-        onState: (OcrModel, OcrModelState) -> Unit = { _, _ -> }
+        onState: (OcrModel, OcrModelState) -> Unit
     ) = modelMutex.withLock {
         val missingModels = mutableSetOf<OcrModel>()
         for (model in models) {
@@ -771,6 +776,8 @@ internal class OCRManager(context: Context) {
                 else -> 0.46f
             }
             val quality = textQuality(selected.result.text).coerceIn(0f, 1f)
+            val sourceBlockIds = cluster.mapNotNull { it.result.sourceBlockId }.distinct()
+            val sourceLineIndices = cluster.mapNotNull { it.result.sourceLineIndex }.distinct()
             selected.result.copy(
                 consensusScore = (evidence + averageAgreement * 0.16f + quality * 0.08f)
                     .coerceIn(0f, 1f),
@@ -779,7 +786,9 @@ internal class OCRManager(context: Context) {
                     RecognizerScript.FUSED
                 } else {
                     selected.script
-                }
+                },
+                sourceBlockId = sourceBlockIds.singleOrNull(),
+                sourceLineIndex = sourceLineIndices.singleOrNull()
             )
         }
     }
@@ -795,9 +804,15 @@ internal class OCRManager(context: Context) {
                 .addOnSuccessListener { visionText ->
                     if (!continuation.isActive) return@addOnSuccessListener
                     val results = mutableListOf<RecognizedText>()
-                    for (block in visionText.textBlocks) {
-                        for (line in block.lines) {
-                            refineLine(line, script)?.let(results::add)
+                    for ((blockIndex, block) in visionText.textBlocks.withIndex()) {
+                        val blockId = sourceBlockId(blockIndex, block.boundingBox)
+                        for ((lineIndex, line) in block.lines.withIndex()) {
+                            refineLine(
+                                line = line,
+                                script = script,
+                                sourceBlockId = blockId,
+                                sourceLineIndex = lineIndex
+                            )?.let(results::add)
                         }
                     }
                     continuation.resume(results)
@@ -807,13 +822,27 @@ internal class OCRManager(context: Context) {
                 }
         }
 
-    private fun refineLine(line: Text.Line, script: RecognizerScript): RecognizedText? {
+    private fun sourceBlockId(blockIndex: Int, bounds: Rect?): String {
+        val geometry = bounds?.let {
+            "${it.left}-${it.top}-${it.right}-${it.bottom}"
+        } ?: "unbounded"
+        return "mlkit-$blockIndex-$geometry"
+    }
+
+    private fun refineLine(
+        line: Text.Line,
+        script: RecognizerScript,
+        sourceBlockId: String,
+        sourceLineIndex: Int
+    ): RecognizedText? {
         val lineBounds = line.boundingBox ?: return null
         fun result(text: String, bounds: Rect) = RecognizedText(
             text = text,
             bounds = bounds,
             modelConfidence = line.confidence.coerceIn(0f, 1f),
-            recognizerScript = script
+            recognizerScript = script,
+            sourceBlockId = sourceBlockId,
+            sourceLineIndex = sourceLineIndex
         )
         val elements = line.elements.mapNotNull { element ->
             val bounds = element.boundingBox ?: return@mapNotNull null
@@ -1051,7 +1080,14 @@ internal class OCRManager(context: Context) {
                 left.recognizerScript
             } else {
                 RecognizerScript.FUSED
-            }
+            },
+            sourceBlockId = listOfNotNull(left.sourceBlockId, right.sourceBlockId)
+                .distinct()
+                .singleOrNull(),
+            sourceLineIndex = listOfNotNull(left.sourceLineIndex, right.sourceLineIndex)
+                .distinct()
+                .singleOrNull(),
+            componentBounds = (left.componentBounds + right.componentBounds).map(::Rect)
         )
     }
 
@@ -1125,7 +1161,7 @@ internal class OCRManager(context: Context) {
         return samples > 0 && luminanceTotal / samples < 145
     }
 
-    fun close() {
+    override fun close() {
         chineseRecognizer.close()
         latinRecognizer.close()
     }

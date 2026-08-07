@@ -1,0 +1,5 @@
+FROM qwen3.5:9b
+
+# The OpenAI-compatible endpoint cannot set num_ctx per request. Keep enough
+# room for the full-page prompt, response schema, and complete group results.
+PARAMETER num_ctx 16384

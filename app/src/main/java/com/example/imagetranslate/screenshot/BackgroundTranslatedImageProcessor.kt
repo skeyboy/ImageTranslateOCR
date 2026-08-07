@@ -13,7 +13,9 @@ import android.os.SystemClock
 import android.text.Layout
 import android.text.StaticLayout
 import android.text.TextPaint
+import android.util.Log
 import com.example.imagetranslate.App
+import com.example.imagetranslate.BuildConfig
 import com.example.imagetranslate.inpaint.ImageInpainter
 import com.example.imagetranslate.ocr.OCRManager
 import com.example.imagetranslate.ocr.OcrModel
@@ -21,8 +23,20 @@ import com.example.imagetranslate.ocr.OcrModelState
 import com.example.imagetranslate.ocr.OcrRecognitionMode
 import com.example.imagetranslate.ocr.RecognizedText
 import com.example.imagetranslate.ocr.RecognizerScript
+import com.example.imagetranslate.semantic.SemanticTextGrouper
+import com.example.imagetranslate.semantic.SemanticTextGroup
+import com.example.imagetranslate.semantic.SemanticRenderShape
+import com.example.imagetranslate.semantic.StaticImageTextFilter
 import com.example.imagetranslate.translate.TranslateManager
+import com.example.imagetranslate.translate.SemanticDebugCaptureEncoder
+import com.example.imagetranslate.translate.SemanticDebugCaptureUploadPolicy
+import com.example.imagetranslate.translate.SemanticTranslationTrace
+import com.example.imagetranslate.translate.TranslationBackend
+import com.example.imagetranslate.translate.TranslationBackendSettings
 import com.example.imagetranslate.translate.TranslationMode
+import com.example.imagetranslate.translate.toSemanticTranslationSource
+import com.example.imagetranslate.ui.ShapeAwareTextLayout
+import com.example.imagetranslate.ui.StaticImageTextLayoutPolicy
 import com.example.experimentaltranslation.ExperimentalTranslationEngine
 import com.example.smartassist.api.AssistScript
 import com.example.smartassist.api.AssistTrackRole
@@ -31,8 +45,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.sync.Semaphore
-import kotlinx.coroutines.sync.withPermit
+import java.util.UUID
 import kotlin.math.pow
 import kotlin.math.sqrt
 
@@ -69,6 +82,8 @@ internal data class BackgroundTranslatedOverlayResult(
     val backgroundMode: LivePatchBackgroundMode = LivePatchBackgroundMode.THEME_SURFACE,
     val backgroundDetailRetentionRatio: Float = 0f,
     val differentialFallbackReason: String? = null,
+    val ocrMs: Long = 0L,
+    val translationMs: Long = 0L,
     val recognitionAndTranslationMs: Long = 0L,
     val renderingMs: Long = 0L,
     val smartAssistApplied: Boolean = false,
@@ -85,7 +100,8 @@ internal data class BackgroundTranslatedOverlayResult(
     val retainedLatinTokenCount: Int = 0,
     val retainedLatinRatio: Float = 0f,
     val suspiciousJoinCount: Int = 0,
-    val largestPatchAreaRatio: Float = 0f
+    val largestPatchAreaRatio: Float = 0f,
+    val translationTraces: List<SemanticTranslationTrace> = emptyList()
 ) {
     fun metrics(): LiveRecognitionRunMetrics = LiveRecognitionRunMetrics(
         requestedSegmentation = requestedSegmentation,
@@ -109,6 +125,8 @@ internal data class BackgroundTranslatedOverlayResult(
         patchCoverage = patchCoverage,
         recognitionAndTranslationMs = recognitionAndTranslationMs,
         renderingMs = renderingMs,
+        ocrMs = ocrMs,
+        translationMs = translationMs,
         renderedTrackCacheHitCount = renderedTrackCacheHitCount,
         renderedTrackCacheMissCount = renderedTrackCacheMissCount,
         themeSurfacePatchCount = themeSurfacePatchCount,
@@ -124,24 +142,34 @@ internal data class BackgroundTranslatedOverlayResult(
 private data class BackgroundImageRegion(
     val source: RecognizedText,
     val translation: String,
+    val groupId: String? = null,
     val trackId: Long? = null,
-    val smartAssistDisplayHints: SmartAssistDisplayHints? = null
+    val smartAssistDisplayHints: SmartAssistDisplayHints? = null,
+    val renderSlots: List<Rect> = emptyList()
 )
 
 internal data class SmartAssistDisplayHints(
     val preferredMaxLines: Int,
-    val minimumTextScale: Float
+    val minimumTextScale: Float,
+    val maximumTextScale: Float = 1f,
+    val lineSpacingMultiplier: Float = 1f,
+    val alignment: String = "START",
+    val allowMore: Boolean = false,
+    val sourceLineCount: Int = 1
 )
 
 private data class BackgroundTranslationBatch(
     val recognizedCount: Int,
     val regions: List<BackgroundImageRegion>,
     val failedCount: Int,
+    val ocrMs: Long = 0L,
+    val translationMs: Long = 0L,
     val smartAssistApplied: Boolean = false,
     val smartAssistScene: String? = null,
     val smartAssistGroupCount: Int = 0,
     val smartAssistProtectedCount: Int = 0,
-    val smartAssistMs: Long = 0L
+    val smartAssistMs: Long = 0L,
+    val translationTraces: List<SemanticTranslationTrace> = emptyList()
 )
 
 private data class SmartAssistApplication(
@@ -187,7 +215,8 @@ private data class DifferentialTranslationBatch(
 
 private data class TranslationOutcome(
     val region: BackgroundImageRegion? = null,
-    val failed: Boolean = false
+    val failed: Boolean = false,
+    val semanticTrace: SemanticTranslationTrace? = null
 )
 
 private data class RenderedOverlayPatch(
@@ -200,7 +229,10 @@ private data class RenderedOverlayPatch(
 internal data class LiveDeterministicTranslationRegion(
     val sourceText: String,
     val translation: String,
-    val bounds: Rect
+    val bounds: Rect,
+    val sourceLineBounds: List<Rect> = emptyList(),
+    val renderSlots: List<Rect> = emptyList(),
+    val displayHints: SmartAssistDisplayHints? = null
 )
 
 internal data class LiveRenderedTextEvidence(
@@ -233,7 +265,8 @@ internal data class RenderedTrackCacheKey(
     val surfaceColor: Int,
     val overlayAlphaPercent: Int,
     val drawBackground: Boolean,
-    val displayHints: SmartAssistDisplayHints?
+    val displayHints: SmartAssistDisplayHints?,
+    val renderSlotSignature: List<Int> = emptyList()
 )
 
 private data class CachedRenderedTrack(
@@ -273,8 +306,11 @@ internal class BackgroundTranslatedImageProcessor(
     context: Context,
     private val reuseResources: Boolean = false
 ) {
-    private val ocrManager = OCRManager(context.applicationContext)
-    private val translateManager = TranslateManager(context.applicationContext)
+    private val appContext = context.applicationContext
+    private val ocrManagerDelegate = lazy { OCRManager(appContext) }
+    private val ocrManager by ocrManagerDelegate
+    private val translateManagerDelegate = lazy { TranslateManager(appContext) }
+    private val translateManager by translateManagerDelegate
     private val smartAssistAdapterDelegate = lazy(::LiveSmartAssistAdapter)
     private val translationCache = object : LinkedHashMap<String, String>(64, 0.75f, true) {
         override fun removeEldestEntry(
@@ -298,6 +334,8 @@ internal class BackgroundTranslatedImageProcessor(
     private var liveOverlaySnapshot: LiveOverlaySnapshot? = null
     private var nextTrackId = 1L
     private var lastDifferentialFallbackReason: String? = null
+    private val liveNetworkSessionId = UUID.randomUUID().toString()
+    private val integratedEngineRegistry = LiveOcrTranslationEngineRegistry(appContext)
     @Volatile
     private var experimentalTranslationEngine = ExperimentalTranslationEngine.DISABLED
 
@@ -308,9 +346,13 @@ internal class BackgroundTranslatedImageProcessor(
         clearLiveOverlaySnapshot()
     }
 
-    suspend fun prepareForLiveTranslation() {
+    suspend fun prepareForLiveTranslation(
+        engineType: LiveOcrTranslationEngineType = LiveOcrTranslationEngineType.LOCAL_PIPELINE
+    ) {
         check(!closed) { "Image processor is closed" }
-        translateManager.downloadModelIfNeeded()
+        if (engineType == LiveOcrTranslationEngineType.LOCAL_PIPELINE) {
+            translateManager.downloadModelIfNeeded()
+        }
     }
 
     suspend fun prepareOcrModels(
@@ -361,16 +403,18 @@ internal class BackgroundTranslatedImageProcessor(
 
             check(App.isOpenCVReady) { "OpenCV is not ready" }
 
-            val inpaintResult = ImageInpainter().eraseWithPreciseMask(
-                bitmap,
-                batch.regions.map { it.source.bounds }
-            )
+            val requestedEraseBounds = batch.regions
+                .flatMap { region -> region.source.textEraseBounds() }
+                .distinct()
+            val inpaintResult = ImageInpainter().eraseWithPreciseMask(bitmap, requestedEraseBounds)
             val output = inpaintResult.bitmap
             val erasedBounds = inpaintResult.erasedRegions.toSet()
             try {
                 val renderedRegions = BackgroundTranslatedImageRenderer.render(
                     output,
-                    batch.regions.filter { it.source.bounds in erasedBounds },
+                    batch.regions.filter { region ->
+                        region.source.textEraseBounds().all(erasedBounds::contains)
+                    },
                     styleSourceBitmap = bitmap
                 )
                 BackgroundTranslatedImageResult(
@@ -392,19 +436,27 @@ internal class BackgroundTranslatedImageProcessor(
     suspend fun translateForOverlay(
         bitmap: Bitmap,
         mode: TranslationMode,
+        generation: Int = 0,
+        engineType: LiveOcrTranslationEngineType =
+            LiveOcrTranslationEngineType.LOCAL_PIPELINE,
         recognitionMode: OcrRecognitionMode = OcrRecognitionMode.AUTO,
         capturePlan: ScrollCapturePlan? = null,
         overlayAlpha: Float = ScreenThemeColorEstimator.DEFAULT_OVERLAY_ALPHA,
         segmentation: LiveRecognitionSegmentation = LiveRecognitionSegmentation.ADAPTIVE,
         executionProfile: LiveRecognitionExecutionProfile = LiveRecognitionExecutionProfile.CURRENT,
         drawPatchBackgrounds: Boolean = true,
-        smartAssistEnabled: Boolean = false
+        smartAssistEnabled: Boolean = false,
+        onRecognitionSucceeded: (Int) -> Unit = {}
     ): BackgroundTranslatedOverlayResult {
         check(!closed) { "Image processor is closed" }
         return try {
             lastDifferentialFallbackReason = null
             val recognitionStartedAt = SystemClock.elapsedRealtime()
-            val differential = if (segmentation == LiveRecognitionSegmentation.ADAPTIVE) {
+            val usesIntegratedNetworkEngine =
+                engineType == LiveOcrTranslationEngineType.PADDLE_NETWORK
+            val differential = if (!usesIntegratedNetworkEngine &&
+                segmentation == LiveRecognitionSegmentation.ADAPTIVE
+            ) {
                 capturePlan?.let { plan ->
                     recognizeDifferentialViewport(
                         bitmap,
@@ -412,20 +464,25 @@ internal class BackgroundTranslatedImageProcessor(
                         recognitionMode,
                         plan,
                         executionProfile.contextProfile,
-                        smartAssistEnabled
+                        smartAssistEnabled,
+                        onRecognitionSucceeded
                     )
                 }
             } else {
                 null
             }
-            val batch = differential?.batch
-                ?: when (segmentation) {
+            val batch = if (usesIntegratedNetworkEngine) {
+                recognizeAndTranslateWithIntegratedEngine(bitmap, mode, generation, engineType)
+                    .also { onRecognitionSucceeded(it.recognizedCount) }
+            } else {
+                differential?.batch ?: when (segmentation) {
                     LiveRecognitionSegmentation.VERTICAL_BANDS ->
                         recognizeVerticalBandsAndTranslate(
                             bitmap,
                             mode,
                             recognitionMode,
-                            smartAssistEnabled
+                            smartAssistEnabled,
+                            onRecognitionSucceeded
                         )
                     LiveRecognitionSegmentation.ADAPTIVE,
                     LiveRecognitionSegmentation.FULL_FRAME ->
@@ -434,17 +491,19 @@ internal class BackgroundTranslatedImageProcessor(
                             mode,
                             fastOcr = true,
                             recognitionMode = recognitionMode,
-                            smartAssistEnabled = smartAssistEnabled
+                            smartAssistEnabled = smartAssistEnabled,
+                            onRecognitionSucceeded = onRecognitionSucceeded
                         )
                 }
+            }
             val recognitionAndTranslationMs = SystemClock.elapsedRealtime() - recognitionStartedAt
             val smartAssistStartedAt = SystemClock.elapsedRealtime()
-            val smartAssistOutcome = if (smartAssistEnabled) {
+            val smartAssistOutcome = if (smartAssistEnabled && !usesIntegratedNetworkEngine) {
                 applySmartAssist(bitmap.width, bitmap.height, batch.regions)
             } else {
                 SmartAssistApplication(batch.regions)
             }
-            val smartAssistMs = if (smartAssistEnabled) {
+            val smartAssistMs = if (smartAssistEnabled && !usesIntegratedNetworkEngine) {
                 SystemClock.elapsedRealtime() - smartAssistStartedAt
             } else {
                 0L
@@ -495,6 +554,7 @@ internal class BackgroundTranslatedImageProcessor(
                 failedCount = batch.failedCount + (displayRegions.size - renderedPatches.size),
                 requestedSegmentation = segmentation,
                 appliedStrategy = when {
+                    usesIntegratedNetworkEngine -> LiveRecognitionAppliedStrategy.FULL_FRAME
                     differential != null -> LiveRecognitionAppliedStrategy.DIFFERENTIAL
                     segmentation == LiveRecognitionSegmentation.VERTICAL_BANDS ->
                         LiveRecognitionAppliedStrategy.VERTICAL_BANDS
@@ -523,6 +583,7 @@ internal class BackgroundTranslatedImageProcessor(
                 backgroundMode = executionProfile.backgroundMode,
                 backgroundDetailRetentionRatio = backgroundDetailRetentionRatio,
                 differentialFallbackReason = if (
+                    !usesIntegratedNetworkEngine &&
                     segmentation == LiveRecognitionSegmentation.ADAPTIVE &&
                     capturePlan != null && differential == null
                 ) {
@@ -531,6 +592,8 @@ internal class BackgroundTranslatedImageProcessor(
                     null
                 },
                 recognitionAndTranslationMs = recognitionAndTranslationMs,
+                ocrMs = batch.ocrMs,
+                translationMs = batch.translationMs,
                 renderingMs = SystemClock.elapsedRealtime() - renderingStartedAt,
                 smartAssistApplied = batch.smartAssistApplied || smartAssistOutcome.applied,
                 smartAssistScene = smartAssistOutcome.scene ?: batch.smartAssistScene,
@@ -556,9 +619,11 @@ internal class BackgroundTranslatedImageProcessor(
                 retainedLatinTokenCount = textQuality.retainedLatinTokenCount,
                 retainedLatinRatio = textQuality.retainedLatinRatio,
                 suspiciousJoinCount = textQuality.suspiciousJoinCount,
-                largestPatchAreaRatio = largestPatchAreaRatio
+                largestPatchAreaRatio = largestPatchAreaRatio,
+                translationTraces = batch.translationTraces
             ).also { result ->
-                if (LiveCaptureTimingPolicy.shouldUpdateLiveSnapshot(
+                if (!usesIntegratedNetworkEngine &&
+                    LiveCaptureTimingPolicy.shouldUpdateLiveSnapshot(
                         patchCount = result.patches.size,
                         translatedRegionCount = displayRegions.size
                     )
@@ -590,9 +655,12 @@ internal class BackgroundTranslatedImageProcessor(
                     consensusScore = 1f,
                     passCount = 2,
                     modelConfidence = 1f,
-                    recognizerScript = RecognizerScript.LATIN
+                    recognizerScript = RecognizerScript.LATIN,
+                    componentBounds = region.sourceLineBounds.map(::Rect)
                 ),
-                translation = region.translation
+                translation = region.translation,
+                smartAssistDisplayHints = region.displayHints,
+                renderSlots = region.renderSlots.map(::Rect)
             )
         }
         val startedAtMs = SystemClock.elapsedRealtime()
@@ -626,8 +694,9 @@ internal class BackgroundTranslatedImageProcessor(
     fun close() {
         if (closed) return
         closed = true
-        ocrManager.close()
-        translateManager.close()
+        if (ocrManagerDelegate.isInitialized()) ocrManager.close()
+        if (translateManagerDelegate.isInitialized()) translateManager.close()
+        integratedEngineRegistry.close()
         if (smartAssistAdapterDelegate.isInitialized()) smartAssistAdapterDelegate.value.close()
         synchronized(translationCache) { translationCache.clear() }
         clearRenderedTrackCache()
@@ -636,6 +705,39 @@ internal class BackgroundTranslatedImageProcessor(
 
     private fun ensureTrackIds(regions: List<BackgroundImageRegion>): List<BackgroundImageRegion> =
         regions.map { region -> region.trackId?.let { region } ?: region.copy(trackId = nextTrackId++) }
+
+    private suspend fun recognizeAndTranslateWithIntegratedEngine(
+        bitmap: Bitmap,
+        mode: TranslationMode,
+        generation: Int,
+        engineType: LiveOcrTranslationEngineType
+    ): BackgroundTranslationBatch {
+        val engine = integratedEngine(engineType)
+        val result = engine.recognizeAndTranslate(
+            LiveOcrTranslationRequest(
+                bitmap = bitmap,
+                mode = mode,
+                sessionId = liveNetworkSessionId,
+                generation = generation
+            )
+        )
+        check(result.sourceWidth == bitmap.width && result.sourceHeight == bitmap.height) {
+            "Integrated OCR response dimensions do not match the captured frame"
+        }
+        return BackgroundTranslationBatch(
+            recognizedCount = result.recognizedCount,
+            regions = result.regions.map { region ->
+                BackgroundImageRegion(region.source, region.translation)
+            },
+            failedCount = result.failedCount,
+            ocrMs = result.ocrMs,
+            translationMs = result.translationMs
+        )
+    }
+
+    private fun integratedEngine(
+        engineType: LiveOcrTranslationEngineType
+    ): LiveOcrTranslationEngine = integratedEngineRegistry.get(engineType)
 
     private fun clearRenderedTrackCache() {
         synchronized(renderedTrackCache) {
@@ -666,7 +768,7 @@ internal class BackgroundTranslatedImageProcessor(
         var layoutHintCount = 0
         val assistedRegions = indexedRegions.mapNotNull { (regionId, region) ->
             val decision = outcome.decisions[regionId] ?: return@mapNotNull region
-            if (decision.protectTranslation) {
+            if (decision.protectTranslation && region.smartAssistDisplayHints == null) {
                 protectedCount++
                 return@mapNotNull null
             }
@@ -683,7 +785,9 @@ internal class BackgroundTranslatedImageProcessor(
             } else {
                 null
             }
-            region.copy(smartAssistDisplayHints = displayHints)
+            region.copy(
+                smartAssistDisplayHints = region.smartAssistDisplayHints ?: displayHints
+            )
         }
         return SmartAssistApplication(
             regions = assistedRegions,
@@ -769,8 +873,10 @@ internal class BackgroundTranslatedImageProcessor(
         recognitionMode: OcrRecognitionMode = OcrRecognitionMode.AUTO,
         recognitionBounds: Rect? = null,
         preferredRecognitionMode: OcrRecognitionMode? = null,
-        smartAssistEnabled: Boolean = false
+        smartAssistEnabled: Boolean = false,
+        onRecognitionSucceeded: (Int) -> Unit = {}
     ): BackgroundTranslationBatch {
+        val ocrStartedAt = SystemClock.elapsedRealtime()
         val croppedBitmap = recognitionBounds?.let { bounds ->
             Bitmap.createBitmap(bitmap, bounds.left, bounds.top, bounds.width(), bounds.height())
         } ?: bitmap
@@ -791,34 +897,47 @@ internal class BackgroundTranslatedImageProcessor(
             } else {
                 ocrManager.recognize(ocrBitmap, recognitionMode)
             }
-            localRecognized.map { item ->
+            val mapToSourceBounds: (Rect) -> Rect = { localBounds ->
                 val sourceBounds = if (inputSize != sourceSize) {
                     Rect(
-                        LiveOcrScalePolicy.mapX(item.bounds.left, inputSize, sourceSize),
-                        LiveOcrScalePolicy.mapY(item.bounds.top, inputSize, sourceSize),
-                        LiveOcrScalePolicy.mapX(item.bounds.right, inputSize, sourceSize),
-                        LiveOcrScalePolicy.mapY(item.bounds.bottom, inputSize, sourceSize)
+                        LiveOcrScalePolicy.mapX(localBounds.left, inputSize, sourceSize),
+                        LiveOcrScalePolicy.mapY(localBounds.top, inputSize, sourceSize),
+                        LiveOcrScalePolicy.mapX(localBounds.right, inputSize, sourceSize),
+                        LiveOcrScalePolicy.mapY(localBounds.bottom, inputSize, sourceSize)
                     )
                 } else {
-                    Rect(item.bounds)
+                    Rect(localBounds)
                 }
                 recognitionBounds?.let { bounds -> sourceBounds.offset(bounds.left, bounds.top) }
-                item.copy(bounds = sourceBounds)
+                sourceBounds
+            }
+            localRecognized.map { item ->
+                item.copy(
+                    bounds = mapToSourceBounds(item.bounds),
+                    componentBounds = item.componentBounds.map(mapToSourceBounds)
+                )
             }
         } finally {
             if (ocrBitmap !== croppedBitmap && !ocrBitmap.isRecycled) ocrBitmap.recycle()
             if (croppedBitmap !== bitmap && !croppedBitmap.isRecycled) croppedBitmap.recycle()
         }
-        val recognized = if (fastOcr) {
-            groupLiveTextBlocks(rawRecognized, bitmap.width, bitmap.height)
-        } else {
-            rawRecognized
-        }
+        onRecognitionSucceeded(rawRecognized.size)
+        val initialGroups = groupSemanticText(
+            recognized = rawRecognized,
+            sourceWidth = bitmap.width,
+            sourceHeight = bitmap.height,
+            restrictToLiveContent = fastOcr
+        )
+        val ocrMs = SystemClock.elapsedRealtime() - ocrStartedAt
         val smartAssistStartedAt = SystemClock.elapsedRealtime()
         val preparedSources = if (fastOcr && smartAssistEnabled) {
-            prepareContextualTranslationSources(bitmap.width, bitmap.height, recognized)
+            prepareContextualTranslationSources(
+                bitmap.width,
+                bitmap.height,
+                initialGroups.map(SemanticTextGroup::toRecognizedText)
+            )
         } else {
-            ContextualTranslationSources(recognized)
+            ContextualTranslationSources(initialGroups.map(SemanticTextGroup::toRecognizedText))
         }
         val smartAssistMs = if (smartAssistEnabled) {
             SystemClock.elapsedRealtime() - smartAssistStartedAt
@@ -830,66 +949,174 @@ internal class BackgroundTranslatedImageProcessor(
         } else {
             MAX_IMAGE_TRANSLATION_TEXTS
         }
-        val translationSemaphore = Semaphore(
-            if (fastOcr) MAXIMUM_CONCURRENT_LIVE_TRANSLATIONS else MAXIMUM_CONCURRENT_TRANSLATIONS
+        val translationStartedAt = SystemClock.elapsedRealtime()
+        val translationGroups = SemanticTextGrouper.group(
+            preparedSources.sources,
+            bitmap.width,
+            bitmap.height
+        ).take(maximumTexts)
+        val outcomes = translateRegions(
+            translationGroups,
+            bitmap,
+            bitmap.width,
+            bitmap.height,
+            mode,
+            if (fastOcr) "LIVE_SCREEN" else "STATIC_IMAGE"
         )
-        val outcomes = coroutineScope {
-            preparedSources.sources.take(maximumTexts).map { source ->
-                async {
-                    translationSemaphore.withPermit {
-                        translateRegion(source, mode)
-                    }
-                }
-            }.awaitAll()
-        }
+        val translationMs = SystemClock.elapsedRealtime() - translationStartedAt
         return BackgroundTranslationBatch(
             recognizedCount = rawRecognized.size,
             regions = outcomes.mapNotNull(TranslationOutcome::region),
             failedCount = outcomes.count(TranslationOutcome::failed),
+            ocrMs = ocrMs,
+            translationMs = translationMs,
             smartAssistApplied = preparedSources.applied,
             smartAssistScene = preparedSources.scene,
             smartAssistGroupCount = preparedSources.groupCount,
             smartAssistProtectedCount = preparedSources.protectedCount,
-            smartAssistMs = smartAssistMs
+            smartAssistMs = smartAssistMs,
+            translationTraces = outcomes.mapNotNull(TranslationOutcome::semanticTrace).distinct()
         )
     }
 
-    private suspend fun translateRegion(
-        source: RecognizedText,
-        mode: TranslationMode
-    ): TranslationOutcome {
-        val translationSource = normalizeCacheText(source.text)
-        val translation = try {
-            val activeExperimentalEngine = experimentalTranslationEngine
-            val cacheKey = "${activeExperimentalEngine.name}:${mode.name}:$translationSource"
-            synchronized(translationCache) { translationCache[cacheKey] }
-                ?: translateManager.translate(
-                    translationSource,
-                    mode,
-                    activeExperimentalEngine
-                ).trim().also { translatedText ->
-                    synchronized(translationCache) {
-                        translationCache[cacheKey] = translatedText
-                    }
+    private suspend fun translateRegions(
+        groups: List<SemanticTextGroup>,
+        sourceBitmap: Bitmap,
+        viewportWidth: Int,
+        viewportHeight: Int,
+        mode: TranslationMode,
+        scene: String
+    ): List<TranslationOutcome> {
+        if (groups.isEmpty()) return emptyList()
+        val activeExperimentalEngine = experimentalTranslationEngine
+        val activeBackend = TranslationBackendSettings.get(appContext)
+        val contextHash = groups.joinToString("|") { group ->
+            "${group.groupId}:${normalizeCacheText(group.sourceText)}"
+        }.hashCode()
+        data class PreparedRegion(
+            val group: SemanticTextGroup,
+            val source: RecognizedText,
+            val translationSource: String,
+            val cacheKey: String,
+            val cachedTranslation: String?
+        )
+        val prepared = groups.map { group ->
+            val source = group.toRecognizedText()
+            val translationSource = normalizeCacheText(source.text)
+            val cacheKey = "${activeBackend.name}:${activeExperimentalEngine.name}:" +
+                "${mode.name}:$contextHash:$translationSource"
+            PreparedRegion(
+                group = group,
+                source = source,
+                translationSource = translationSource,
+                cacheKey = cacheKey,
+                cachedTranslation = if (activeBackend == TranslationBackend.SELF_HOSTED) {
+                    null
+                } else {
+                    synchronized(translationCache) { translationCache[cacheKey] }
                 }
-        } catch (error: CancellationException) {
-            throw error
-        } catch (_: Exception) {
-            return TranslationOutcome(failed = true)
+            )
         }
-        val region = if (translation.isNotEmpty() && translation != translationSource) {
-            BackgroundImageRegion(source, translation)
+        val missing = prepared.filter { it.cachedTranslation == null }
+        val debugCapture = if (SemanticDebugCaptureUploadPolicy.shouldUpload(
+                isDebugBuild = BuildConfig.DEBUG,
+                scene = scene,
+                backend = activeBackend,
+                uploadEnabled = TranslationBackendSettings.isDebugCaptureUploadEnabled(appContext),
+                missingGroupCount = missing.size
+            )
+        ) {
+            SemanticDebugCaptureEncoder.encode(sourceBitmap)
         } else {
             null
         }
-        return TranslationOutcome(region = region)
+        val translatedMissing = try {
+            translateManager.translateSemanticGroups(
+                sources = missing.map { it.group.toSemanticTranslationSource() },
+                viewportWidth = viewportWidth,
+                viewportHeight = viewportHeight,
+                mode = mode,
+                scene = scene,
+                experimentalEngine = activeExperimentalEngine,
+                debugCapture = debugCapture
+            )
+        } catch (error: CancellationException) {
+            throw error
+        } catch (_: Exception) {
+            emptyList()
+        }
+        val preparedByGroup = prepared.associateBy { it.group.groupId }
+        val cachedOutcomes = prepared.filter { it.cachedTranslation != null }.map { item ->
+            val translation = checkNotNull(item.cachedTranslation).trim()
+            TranslationOutcome(
+                region = translation.takeIf { it.isNotEmpty() && it != item.translationSource }?.let {
+                    BackgroundImageRegion(item.source, it, item.group.groupId)
+                }
+            )
+        }
+        val translatedOutcomes = translatedMissing.map { execution ->
+            if (!execution.succeeded) return@map TranslationOutcome(failed = true)
+            val members = execution.sourceGroupIds.mapNotNull(preparedByGroup::get)
+            if (members.size != execution.sourceGroupIds.size || members.isEmpty()) {
+                return@map TranslationOutcome(failed = true)
+            }
+            val sourceText = members.joinToString("\n") { it.source.text }
+            val translation = execution.translatedText.trim()
+            if (translation.isEmpty() || translation == sourceText.trim()) {
+                return@map TranslationOutcome()
+            }
+            val renderSlots = execution.layoutHint?.renderSlots.orEmpty()
+            val requestedRenderSlots = if (renderSlots.isNotEmpty()) {
+                renderSlots.map { bounds ->
+                    Rect(bounds.left, bounds.top, bounds.right, bounds.bottom)
+                }
+            } else {
+                members.flatMap { it.source.textEraseBounds() }.map(::Rect)
+            }
+            val sourceLineBounds = members.flatMap { it.source.textEraseBounds() }.map(::Rect)
+            val anchor = execution.anchorBounds
+            val union = anchor?.let { bounds ->
+                Rect(bounds.left, bounds.top, bounds.right, bounds.bottom)
+            } ?: requestedRenderSlots.drop(1).fold(Rect(requestedRenderSlots.first())) { result, bounds ->
+                result.apply { union(bounds) }
+            }
+            val source = members.first().source.copy(
+                text = sourceText,
+                bounds = union,
+                sourceBlockId = members.mapNotNull { it.source.sourceBlockId }.distinct()
+                    .singleOrNull(),
+                sourceLineIndex = members.mapNotNull { it.source.sourceLineIndex }.minOrNull(),
+                componentBounds = sourceLineBounds
+            )
+            BackgroundImageRegion(
+                source = source,
+                translation = translation,
+                groupId = execution.regionId,
+                smartAssistDisplayHints = execution.layoutHint?.let { hint ->
+                    SmartAssistDisplayHints(
+                        preferredMaxLines = maxOf(hint.preferredMaxLines, hint.sourceLineCount),
+                        minimumTextScale = hint.minimumTextScale,
+                        maximumTextScale = hint.maximumTextScale,
+                        lineSpacingMultiplier = hint.lineSpacingMultiplier,
+                        alignment = hint.alignment,
+                        allowMore = hint.allowMore,
+                        sourceLineCount = hint.sourceLineCount
+                    )
+                },
+                renderSlots = requestedRenderSlots
+            ).let {
+                TranslationOutcome(region = it, semanticTrace = execution.semanticTrace)
+            }
+        }
+        return cachedOutcomes + translatedOutcomes
     }
 
     private suspend fun recognizeVerticalBandsAndTranslate(
         bitmap: Bitmap,
         mode: TranslationMode,
         recognitionMode: OcrRecognitionMode,
-        smartAssistEnabled: Boolean
+        smartAssistEnabled: Boolean,
+        onRecognitionSucceeded: (Int) -> Unit
     ): BackgroundTranslationBatch {
         val batches = LiveCaptureSettingsPolicy.verticalBands(bitmap.width, bitmap.height).map { band ->
             recognizeAndTranslate(
@@ -898,7 +1125,8 @@ internal class BackgroundTranslatedImageProcessor(
                 fastOcr = true,
                 recognitionMode = recognitionMode,
                 recognitionBounds = Rect(band.left, band.top, band.right, band.bottom),
-                smartAssistEnabled = smartAssistEnabled
+                smartAssistEnabled = smartAssistEnabled,
+                onRecognitionSucceeded = onRecognitionSucceeded
             )
         }
         val mergedRegions = mutableListOf<BackgroundImageRegion>()
@@ -913,6 +1141,8 @@ internal class BackgroundTranslatedImageProcessor(
             recognizedCount = batches.sumOf(BackgroundTranslationBatch::recognizedCount),
             regions = mergedRegions.take(MAX_LIVE_TRANSLATION_TEXTS),
             failedCount = batches.sumOf(BackgroundTranslationBatch::failedCount),
+            ocrMs = batches.sumOf(BackgroundTranslationBatch::ocrMs),
+            translationMs = batches.sumOf(BackgroundTranslationBatch::translationMs),
             smartAssistApplied = batches.any(BackgroundTranslationBatch::smartAssistApplied),
             smartAssistScene = batches.mapNotNull(BackgroundTranslationBatch::smartAssistScene)
                 .firstOrNull(),
@@ -920,7 +1150,10 @@ internal class BackgroundTranslatedImageProcessor(
             smartAssistProtectedCount = batches.sumOf(
                 BackgroundTranslationBatch::smartAssistProtectedCount
             ),
-            smartAssistMs = batches.sumOf(BackgroundTranslationBatch::smartAssistMs)
+            smartAssistMs = batches.sumOf(BackgroundTranslationBatch::smartAssistMs),
+            translationTraces = batches
+                .flatMap(BackgroundTranslationBatch::translationTraces)
+                .distinct()
         )
     }
 
@@ -946,7 +1179,8 @@ internal class BackgroundTranslatedImageProcessor(
         recognitionMode: OcrRecognitionMode,
         capturePlan: ScrollCapturePlan,
         contextProfile: LiveDifferentialContextProfile,
-        smartAssistEnabled: Boolean
+        smartAssistEnabled: Boolean,
+        onRecognitionSucceeded: (Int) -> Unit
     ): DifferentialTranslationBatch? {
         val snapshot = liveOverlaySnapshot ?: return rejectDifferential("NO_SNAPSHOT")
         if (snapshot.width != bitmap.width || snapshot.height != bitmap.height ||
@@ -1079,7 +1313,8 @@ internal class BackgroundTranslatedImageProcessor(
                             snapshot,
                             recognitionMode
                         ),
-                        smartAssistEnabled = smartAssistEnabled
+                        smartAssistEnabled = smartAssistEnabled,
+                        onRecognitionSucceeded = onRecognitionSucceeded
                     )
                 }
             }.awaitAll()
@@ -1129,6 +1364,10 @@ internal class BackgroundTranslatedImageProcessor(
                     compareBy({ it.source.bounds.top }, { it.source.bounds.left })
                 ).take(MAX_LIVE_TRANSLATION_TEXTS),
                 failedCount = recognitionBatches.sumOf(BackgroundTranslationBatch::failedCount),
+                ocrMs = recognitionBatches.maxOfOrNull(BackgroundTranslationBatch::ocrMs) ?: 0L,
+                translationMs = recognitionBatches.maxOfOrNull(
+                    BackgroundTranslationBatch::translationMs
+                ) ?: 0L,
                 smartAssistApplied = recognitionBatches.any(
                     BackgroundTranslationBatch::smartAssistApplied
                 ),
@@ -1141,7 +1380,10 @@ internal class BackgroundTranslatedImageProcessor(
                 smartAssistProtectedCount = recognitionBatches.sumOf(
                     BackgroundTranslationBatch::smartAssistProtectedCount
                 ),
-                smartAssistMs = recognitionBatches.sumOf(BackgroundTranslationBatch::smartAssistMs)
+                smartAssistMs = recognitionBatches.sumOf(BackgroundTranslationBatch::smartAssistMs),
+                translationTraces = recognitionBatches
+                    .flatMap(BackgroundTranslationBatch::translationTraces)
+                    .distinct()
             ),
             reusedRegionCount = reused.size + restoredBoundary.size,
             recognitionRegionCount = recognitionBounds.size,
@@ -1380,7 +1622,15 @@ internal class BackgroundTranslatedImageProcessor(
             surfaceColor = localSurface,
             overlayAlphaPercent = (overlayAlpha.coerceIn(0f, 1f) * 1_000).toInt(),
             drawBackground = drawPatchBackground,
-            displayHints = region.smartAssistDisplayHints
+            displayHints = region.smartAssistDisplayHints,
+            renderSlotSignature = resolvedRenderSlots(region, sourceBounds).flatMap { slot ->
+                listOf(
+                    slot.left - cropBounds.left,
+                    slot.top - cropBounds.top,
+                    slot.right - cropBounds.left,
+                    slot.bottom - cropBounds.top
+                )
+            }
         )
         val cached = region.trackId?.let { trackId ->
             synchronized(renderedTrackCache) {
@@ -1398,7 +1648,7 @@ internal class BackgroundTranslatedImageProcessor(
             val cachedBitmap = cached.bitmap.copy(Bitmap.Config.ARGB_8888, false)
             crop.recycle()
             return RenderedOverlayPatch(
-                patch = ScreenTranslationPatch(Rect(cropBounds), cachedBitmap),
+                patch = ScreenTranslationPatch(Rect(cropBounds), cachedBitmap, region.groupId),
                 backgroundDetailRetentionRatio = cached.backgroundDetailRetentionRatio,
                 cacheHit = true,
                 backgroundMode = cached.backgroundMode
@@ -1411,6 +1661,7 @@ internal class BackgroundTranslatedImageProcessor(
             sourceBounds.bottom - cropBounds.top
         )
         val localMaterialBounds = Rect(0, 0, cropBounds.width(), cropBounds.height())
+        val hasMultipleRenderSlots = resolvedRenderSlots(region, sourceBounds).size > 1
         var output: Bitmap? = null
         var preparedBackground: LivePatchBackground? = null
         var hasPreparedBackground = false
@@ -1421,7 +1672,7 @@ internal class BackgroundTranslatedImageProcessor(
                 Bitmap.Config.ARGB_8888
             )
             output = patchBitmap
-            if (drawPatchBackground) {
+            if (drawPatchBackground && !hasMultipleRenderSlots) {
                 when (resolvedBackgroundMode) {
                     LivePatchBackgroundMode.BLUR_TINT,
                     LivePatchBackgroundMode.FEATHERED_BLUR_TINT -> {
@@ -1461,7 +1712,20 @@ internal class BackgroundTranslatedImageProcessor(
                 }
             }
             val localRegion = region.copy(
-                source = region.source.copy(bounds = localBounds)
+                source = region.source.copy(
+                    bounds = localBounds,
+                    componentBounds = region.source.textEraseBounds().map { component ->
+                        Rect(
+                            component.left - cropBounds.left,
+                            component.top - cropBounds.top,
+                            component.right - cropBounds.left,
+                            component.bottom - cropBounds.top
+                        )
+                    }
+                ),
+                renderSlots = resolvedRenderSlots(region, sourceBounds).map { slot ->
+                    Rect(slot).apply { offset(-cropBounds.left, -cropBounds.top) }
+                }
             )
             val rendered = BackgroundTranslatedImageRenderer.render(
                 patchBitmap,
@@ -1487,7 +1751,7 @@ internal class BackgroundTranslatedImageProcessor(
                 null
             } else {
                 RenderedOverlayPatch(
-                    patch = ScreenTranslationPatch(Rect(cropBounds), patchBitmap),
+                    patch = ScreenTranslationPatch(Rect(cropBounds), patchBitmap, region.groupId),
                     backgroundDetailRetentionRatio =
                         preparedBackground?.detailRetentionRatio ?: 0f,
                     cacheHit = false,
@@ -1512,7 +1776,15 @@ internal class BackgroundTranslatedImageProcessor(
                     }
                 }
             }
-        } catch (_: Exception) {
+        } catch (error: Exception) {
+            Log.w(
+                TAG,
+                "Unable to render translated group " +
+                    "id=${region.groupId ?: "unknown"}, " +
+                    "slots=${region.renderSlots.size}, " +
+                    "sourceLines=${region.smartAssistDisplayHints?.sourceLineCount ?: 1}",
+                error
+            )
             output?.takeIf { !it.isRecycled }?.recycle()
             null
         } finally {
@@ -1521,37 +1793,22 @@ internal class BackgroundTranslatedImageProcessor(
         }
     }
 
-    private fun groupLiveTextBlocks(
+    private fun groupSemanticText(
         recognized: List<RecognizedText>,
         sourceWidth: Int,
-        sourceHeight: Int
-    ): List<RecognizedText> {
-        val contentTop = (sourceHeight * LIVE_CONTENT_TOP_RATIO).toInt()
-        val contentBottom = (sourceHeight * LIVE_CONTENT_BOTTOM_RATIO).toInt()
-        val contentLines = recognized.filter { item ->
-            val centerY = item.bounds.centerY()
-            centerY in contentTop until contentBottom
-        }
-        val lineBounds = contentLines.mapIndexed { index, item ->
-                LiveTextLineBounds(
-                    index = index,
-                    left = item.bounds.left.coerceIn(0, sourceWidth),
-                    top = item.bounds.top.coerceIn(0, sourceHeight),
-                    right = item.bounds.right.coerceIn(0, sourceWidth),
-                    bottom = item.bounds.bottom.coerceIn(0, sourceHeight),
-                    text = item.text,
-                    quality = item.modelConfidence * 0.45f +
-                        item.consensusScore * 0.35f +
-                        item.passCount.coerceAtMost(2) * 0.1f
-                )
+        sourceHeight: Int,
+        restrictToLiveContent: Boolean
+    ): List<SemanticTextGroup> {
+        val candidates = if (restrictToLiveContent) {
+            val contentTop = (sourceHeight * LIVE_CONTENT_TOP_RATIO).toInt()
+            val contentBottom = (sourceHeight * LIVE_CONTENT_BOTTOM_RATIO).toInt()
+            recognized.filter { item ->
+                item.bounds.centerY() in contentTop until contentBottom
             }
-        val distinctLines = LiveOverlayLayoutPolicy.selectDistinctTextLines(lineBounds)
-            .map(lineBounds::get)
-        val groups = LiveOverlayLayoutPolicy.groupTextLines(distinctLines)
-        return groups.mapNotNull { indices ->
-            val lines = indices.mapNotNull(contentLines::getOrNull)
-            if (lines.isEmpty()) null else mergeLiveTextLines(lines)
+        } else {
+            StaticImageTextFilter.filter(recognized, sourceWidth, sourceHeight)
         }
+        return SemanticTextGrouper.group(candidates, sourceWidth, sourceHeight)
     }
 
     private fun mergeLiveTextLines(lines: List<RecognizedText>): RecognizedText {
@@ -1562,6 +1819,11 @@ internal class BackgroundTranslatedImageProcessor(
             item.text.count { it.isLetterOrDigit() }.coerceAtLeast(1)
         }
         val totalWeight = weights.sum().coerceAtLeast(1)
+        val sourceBlockIds = ordered.mapNotNull(RecognizedText::sourceBlockId).distinct()
+        val componentBounds = ordered
+            .flatMap(RecognizedText::textEraseBounds)
+            .distinct()
+            .map(::Rect)
         return RecognizedText(
             text = ordered.joinToString("\n") { it.text.trim() },
             bounds = bounds,
@@ -1571,7 +1833,10 @@ internal class BackgroundTranslatedImageProcessor(
                 (item.modelConfidence * weight).toDouble()
             }.toFloat() / totalWeight,
             recognizerScript = ordered.map { it.recognizerScript }.distinct().singleOrNull()
-                ?: RecognizerScript.FUSED
+                ?: RecognizerScript.FUSED,
+            sourceBlockId = sourceBlockIds.singleOrNull(),
+            sourceLineIndex = ordered.mapNotNull(RecognizedText::sourceLineIndex).minOrNull(),
+            componentBounds = componentBounds
         )
     }
 
@@ -1615,18 +1880,23 @@ internal class BackgroundTranslatedImageProcessor(
         patches: List<ScreenTranslationPatch>
     ): List<ScreenTranslationPatch> {
         if (patches.size < 2) return patches
-        val groups = LiveOverlayLayoutPolicy.groupIntersectingPatches(
-            patches.mapIndexed { index, patch ->
-                LivePatchBounds(
-                    index,
-                    patch.bounds.left,
-                    patch.bounds.top,
-                    patch.bounds.right,
-                    patch.bounds.bottom
-                )
-            },
-            mergeGap = PATCH_WINDOW_MERGE_GAP_PX
-        )
+        val groups = patches.indices.groupBy { index ->
+            patches[index].groupId ?: "independent-$index"
+        }.values.flatMap { sameSourceIndices ->
+            LiveOverlayLayoutPolicy.groupIntersectingPatches(
+                sameSourceIndices.map { index ->
+                    val patch = patches[index]
+                    LivePatchBounds(
+                        index,
+                        patch.bounds.left,
+                        patch.bounds.top,
+                        patch.bounds.right,
+                        patch.bounds.bottom
+                    )
+                },
+                mergeGap = PATCH_WINDOW_MERGE_GAP_PX
+            )
+        }.sortedBy { indices -> indices.minOrNull() ?: Int.MAX_VALUE }
         return groups.map { indices ->
             val groupedPatches = indices.map(patches::get)
             if (groupedPatches.size == 1) return@map groupedPatches.first()
@@ -1648,16 +1918,15 @@ internal class BackgroundTranslatedImageProcessor(
                 )
             }
             groupedPatches.recyclePatchBitmaps()
-            ScreenTranslationPatch(union, mergedBitmap)
+            ScreenTranslationPatch(union, mergedBitmap, groupedPatches.first().groupId)
         }
     }
 
     private companion object {
+        const val TAG = "BackgroundImageProcessor"
         const val MAX_IMAGE_TRANSLATION_TEXTS = 24
         const val MAX_LIVE_TRANSLATION_TEXTS = 32
         const val MAX_TRANSLATION_CACHE_ENTRIES = 256
-        const val MAXIMUM_CONCURRENT_TRANSLATIONS = 2
-        const val MAXIMUM_CONCURRENT_LIVE_TRANSLATIONS = 3
         const val MAXIMUM_CONTEXTUAL_REGION_COUNT = 4
         const val MAXIMUM_CONTEXTUAL_TEXT_LENGTH = 512
         const val MAX_RENDERED_TRACK_CACHE_ENTRIES = 48
@@ -1706,6 +1975,10 @@ private fun Rect.toDifferentialBounds(): LiveDifferentialBounds = LiveDifferenti
     bottom = bottom
 )
 
+private fun resolvedRenderSlots(region: BackgroundImageRegion, bounds: Rect): List<Rect> =
+    region.renderSlots.takeIf { it.isNotEmpty() }?.map(::Rect)
+        ?: SemanticRenderShape.slots(region.source.textEraseBounds(), bounds)
+
 private object BackgroundTranslatedImageRenderer {
     fun render(
         bitmap: Bitmap,
@@ -1721,6 +1994,8 @@ private object BackgroundTranslatedImageRenderer {
         val renderedRegions = mutableListOf<Rect>()
         regions.forEach { region ->
             val bounds = region.source.bounds.clampedTo(bitmap) ?: return@forEach
+            val renderSlots = resolvedRenderSlots(region, bounds).mapNotNull { it.clampedTo(bitmap) }
+            if (renderSlots.isEmpty()) return@forEach
             val estimatedStyle = estimateTextStyle(
                 styleSourceBitmap,
                 bounds,
@@ -1739,21 +2014,39 @@ private object BackgroundTranslatedImageRenderer {
                 )
             }
             if (overlayBackgroundColor != null && drawOverlayBackground) {
-                drawCompensatedBackground(
-                    canvas,
-                    bitmap,
-                    styleSourceBitmap,
-                    bounds,
-                    overlayBackgroundColor,
-                    overlayAlpha,
-                    overlayMaterialBounds
-                )
+                renderSlots.forEach { slot ->
+                    drawCompensatedBackground(
+                        canvas,
+                        bitmap,
+                        styleSourceBitmap,
+                        slot,
+                        overlayBackgroundColor,
+                        overlayAlpha,
+                        if (renderSlots.size == 1) overlayMaterialBounds else slot
+                    )
+                }
             }
             val isControlLabel = style.isDarkBackground &&
                 region.source.text.filterNot(Char::isWhitespace).length <= 20
-            val horizontalPadding = if (isControlLabel) 0 else maxOf(2, bounds.height() / 8)
-            val layoutWidth = (bounds.width() - horizontalPadding * 2).coerceAtLeast(1)
-            val alignment = if (isControlLabel) {
+            val sourceLineCount = region.smartAssistDisplayHints?.sourceLineCount
+                ?.coerceAtLeast(1) ?: region.source.textEraseBounds().size.coerceAtLeast(1)
+            val layoutMetrics = StaticImageTextLayoutPolicy.resolve(
+                groupBounds = bounds,
+                componentBounds = region.source.textEraseBounds(),
+                fontSizeMultiplier = style.fontSizeMultiplier,
+                preferredMaxLines = region.smartAssistDisplayHints?.preferredMaxLines,
+                minimumTextScale = region.smartAssistDisplayHints?.minimumTextScale,
+                sourceLineCount = sourceLineCount
+            )
+            val sourceLineHeight = layoutMetrics.sourceLineHeightPx
+            val horizontalPadding = if (isControlLabel) {
+                0
+            } else {
+                maxOf(2, (sourceLineHeight / 8f).toInt())
+            }
+            val alignment = if (isControlLabel ||
+                region.smartAssistDisplayHints?.alignment == "CENTER"
+            ) {
                 Layout.Alignment.ALIGN_CENTER
             } else {
                 Layout.Alignment.ALIGN_NORMAL
@@ -1762,45 +2055,82 @@ private object BackgroundTranslatedImageRenderer {
                 color = style.foregroundColor
                 typeface = style.typeface
             }
-            val layout = fittingLayout(
-                region.translation,
-                paint,
-                layoutWidth,
-                bounds.height().coerceAtLeast(1),
-                alignment,
-                style,
-                region.smartAssistDisplayHints
-            )
-            val sourceLineHeight = bounds.height().toFloat() /
-                style.sourceLineCount.coerceAtLeast(1)
+            val preferredSize = layoutMetrics.preferredTextSizePx *
+                (region.smartAssistDisplayHints?.maximumTextScale ?: 1f)
+            val maximumLines = layoutMetrics.maximumLines
+            val shapedLayout = ShapeAwareTextLayout.layout(
+                text = region.translation,
+                paint = paint,
+                renderSlots = renderSlots,
+                preferredTextSizePx = preferredSize,
+                minimumTextSizePx = layoutMetrics.minimumTextSizePx,
+                maximumLines = maximumLines,
+                alignment = alignment,
+                horizontalPadding = horizontalPadding,
+                allowOverflowMore = region.smartAssistDisplayHints?.allowMore == true,
+                lineSpacingMultipliers = region.smartAssistDisplayHints?.lineSpacingMultiplier
+                    ?.let { preferred -> listOf(preferred, 1f, 0.92f, 0.86f).distinct() }
+            ) ?: region.smartAssistDisplayHints?.takeIf { it.allowMore }?.let { hints ->
+                ShapeAwareTextLayout.layout(
+                    text = region.translation,
+                    paint = paint,
+                    renderSlots = renderSlots,
+                    preferredTextSizePx = preferredSize,
+                    minimumTextSizePx = maxOf(
+                        MINIMUM_TEXT_SIZE_PX,
+                        layoutMetrics.minimumTextSizePx * DECLARATIVE_LAYOUT_RETRY_SCALE
+                    ),
+                    maximumLines = maxOf(maximumLines, hints.sourceLineCount + 2),
+                    alignment = alignment,
+                    horizontalPadding = horizontalPadding,
+                    allowOverflowMore = true,
+                    lineSpacingMultipliers = listOf(0.92f, 0.86f, 0.82f)
+                )
+            }
+            if (shapedLayout == null) {
+                renderSlots.forEach { sourceBounds ->
+                    sourceBounds.clampedTo(bitmap)?.let { visible ->
+                        canvas.drawBitmap(styleSourceBitmap, visible, visible, null)
+                    }
+                }
+                return@forEach
+            }
             val evidenceBackground = overlayBackgroundColor ?: if (style.isDarkBackground) {
                 Color.BLACK
             } else {
                 Color.WHITE
             }
+            val usedSlots = shapedLayout.segments.map { segment -> segment.bounds }
+            renderSlots.filterNot { slot -> usedSlots.any { used -> used == slot } }
+                .forEach { unusedSlot ->
+                    canvas.drawBitmap(styleSourceBitmap, unusedSlot, unusedSlot, null)
+                }
             evidenceSink?.invoke(
                 LiveRenderedTextEvidence(
                     bounds = Rect(bounds),
-                    textSizePx = paint.textSize,
+                    textSizePx = shapedLayout.textSizePx,
                     sourceLineHeightPx = sourceLineHeight,
-                    textScale = paint.textSize / sourceLineHeight.coerceAtLeast(1f),
-                    lineCount = layout.lineCount,
-                    layoutHeightPx = layout.height,
-                    availableHeightPx = bounds.height(),
-                    clipped = layout.height > bounds.height() ||
-                        (layout.lineCount > 0 &&
-                            layout.getLineEnd(layout.lineCount - 1) < region.translation.length),
+                    textScale = shapedLayout.textSizePx / sourceLineHeight.coerceAtLeast(1f),
+                    lineCount = shapedLayout.segments.sumOf { it.layout.lineCount },
+                    layoutHeightPx = shapedLayout.segments.sumOf { it.layout.height },
+                    availableHeightPx = renderSlots.sumOf { it.height() },
+                    clipped = false,
                     contrastRatio = contrastRatio(style.foregroundColor, evidenceBackground)
                 )
             )
-            canvas.save()
-            canvas.clipRect(bounds)
-            canvas.translate(
-                bounds.left + horizontalPadding.toFloat(),
-                bounds.top + ((bounds.height() - layout.height) / 2f).coerceAtLeast(0f)
-            )
-            layout.draw(canvas)
-            canvas.restore()
+            paint.textSize = shapedLayout.textSizePx
+            shapedLayout.segments.forEach { segment ->
+                canvas.save()
+                canvas.clipRect(segment.bounds)
+                canvas.translate(
+                    segment.bounds.left + segment.horizontalPadding.toFloat(),
+                    segment.bounds.top +
+                        ((segment.bounds.height() - segment.layout.height) / 2f)
+                            .coerceAtLeast(0f)
+                )
+                segment.layout.draw(canvas)
+                canvas.restore()
+            }
             renderedRegions.add(Rect(bounds))
         }
         return renderedRegions
@@ -2119,6 +2449,7 @@ private object BackgroundTranslatedImageRenderer {
 
     private const val MINIMUM_TEXT_SIZE_PX = 8f
     private const val MINIMUM_FONT_HEIGHT_RATIO = 0.62f
+    private const val DECLARATIVE_LAYOUT_RETRY_SCALE = 0.82f
     private const val LAYOUT_SEARCH_STEPS = 16
     private const val DARK_BACKGROUND_LUMINANCE = 145
     private const val MINIMUM_CONTRAST_DELTA = 90

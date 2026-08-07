@@ -31,24 +31,36 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.IntentCompat
+import com.example.imagetranslate.BuildConfig
 import com.example.imagetranslate.R
+import com.example.imagetranslate.ocr.OcrEngineSettings
+import com.example.imagetranslate.ocr.OcrEngineType
 import com.example.imagetranslate.ocr.OcrModel
 import com.example.imagetranslate.ocr.OcrModelDownloadException
 import com.example.imagetranslate.ocr.OcrModelState
 import com.example.imagetranslate.ocr.OcrRecognitionMode
+import com.example.imagetranslate.ocr.PaddleNetworkSettings
 import com.google.android.gms.common.moduleinstall.ModuleInstallStatusCodes
 import com.example.imagetranslate.ui.ImageTranslateActivity
+import com.example.imagetranslate.translate.TranslationBackend
+import com.example.imagetranslate.translate.TranslationBackendSettings
 import com.example.imagetranslate.translate.TranslationMode
 import com.example.imagetranslate.translate.ExperimentalTranslationSettings
+import com.example.imagetranslate.translate.SelfHostedRenderedCaptureUploader
+import com.example.imagetranslate.translate.SemanticDebugCaptureEncoder
+import com.example.imagetranslate.translate.SemanticRenderedCaptureUploadPolicy
+import com.example.imagetranslate.translate.SemanticTranslationTrace
 import com.example.experimentaltranslation.ExperimentalModelManagerActivity
 import com.example.experimentaltranslation.ExperimentalModelRepository
 import com.example.experimentaltranslation.ExperimentalModelState
 import com.example.experimentaltranslation.ExperimentalTranslationEngine
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -74,6 +86,7 @@ class OneShotScreenCaptureService : Service() {
     private val rotationPermissionRestart = AtomicBoolean(false)
     private val rotationCaptureRecoveryPending = AtomicBoolean(false)
     private val captureGeneration = AtomicInteger(0)
+    private val recognitionSucceededGeneration = AtomicInteger(-1)
     private val firstMotionAtMs = AtomicLong(0L)
     private val lastMotionAtMs = AtomicLong(0L)
     private val captureTriggeredAtMs = AtomicLong(0L)
@@ -82,13 +95,14 @@ class OneShotScreenCaptureService : Service() {
     private val initialCapturePending = AtomicBoolean(false)
     private val initialStabilityGeneration = AtomicInteger(0)
     private val pendingInitialFrame = AtomicReference<PendingInitialFrame?>()
+    private val pendingRenderedCapture = AtomicReference<PendingRenderedCapture?>()
     private var projection: MediaProjection? = null
     private var imageReader: ImageReader? = null
     private var virtualDisplay: VirtualDisplay? = null
     private var captureThread: HandlerThread? = null
     private var captureHandler: Handler? = null
     private var timeoutJob: Job? = null
-    private var processingJob: Job? = null
+    private val processingJob = AtomicReference<Job?>(null)
     private var ocrPreparationJob: Job? = null
     private var activeCapturePlan: ScrollCapturePlan? = null
     @Volatile
@@ -142,6 +156,10 @@ class OneShotScreenCaptureService : Service() {
     @Volatile
     private var captureSettings = LiveCaptureSettingsPolicy.default
     @Volatile
+    private var ocrEngine = OcrEngineType.ML_KIT
+    @Volatile
+    private var liveOcrTranslationEngine = LiveOcrTranslationEngineType.LOCAL_PIPELINE
+    @Volatile
     private var recognitionMode = OcrRecognitionMode.AUTO
     @Volatile
     private var smartAssistEnabled = LiveSmartAssistSettingsPolicy.DEFAULT_ENABLED
@@ -149,6 +167,8 @@ class OneShotScreenCaptureService : Service() {
     private var backgroundExperienceMode = LivePatchBackgroundExperiencePolicy.default
     @Volatile
     private var experimentalTranslationEngine = ExperimentalTranslationEngine.DISABLED
+    @Volatile
+    private var translationBackend = TranslationBackend.LOCAL
     private val liveProcessorDelegate = lazy {
         BackgroundTranslatedImageProcessor(applicationContext, reuseResources = true).also {
             it.setExperimentalTranslationEngine(experimentalTranslationEngine)
@@ -192,18 +212,27 @@ class OneShotScreenCaptureService : Service() {
         isRunning = true
         experienceMode = resolvedExperienceMode()
         captureSettings = LiveCaptureSettingsPreferences.get(this)
+        ocrEngine = OcrEngineSettings.get(this)
+        liveOcrTranslationEngine = LiveOcrTranslationEngineSettings.get(this)
         recognitionMode = LiveOcrRecognitionPreferences.get(this)
         smartAssistEnabled = LiveSmartAssistPreferences.isEnabled(this)
         backgroundExperienceMode = LivePatchBackgroundExperiencePreferences.get(this)
         experimentalTranslationEngine = ExperimentalTranslationSettings.get(this)
+        translationBackend = TranslationBackendSettings.get(this)
         overlayController = ActiveScreenCaptureOverlayController(
             this,
             experienceMode,
             captureSettings,
+            ocrEngine,
             recognitionMode,
             smartAssistEnabled,
             backgroundExperienceMode,
             experimentalTranslationEngine,
+            translationBackend,
+            TranslationBackendSettings.isNetworkConfigured(this),
+            TranslationBackendSettings.isSelfHostedConfigured(this),
+            liveOcrTranslationEngine,
+            PaddleNetworkSettings.isConfigured(this),
             object : ActiveScreenCaptureOverlayController.Listener {
                 override fun onCapture() {
                     beginCaptureFromUser()
@@ -225,6 +254,16 @@ class OneShotScreenCaptureService : Service() {
                     }
                 }
 
+                override fun onTranslationBackendChanged(backend: TranslationBackend) {
+                    applyTranslationBackend(backend)
+                }
+
+                override fun onLiveOcrTranslationEngineChanged(
+                    engine: LiveOcrTranslationEngineType
+                ) {
+                    applyLiveOcrTranslationEngine(engine)
+                }
+
                 override fun onTranslationVisibilityChanged(visible: Boolean) {
                     Log.i(
                         METRICS_TAG,
@@ -244,7 +283,17 @@ class OneShotScreenCaptureService : Service() {
                 }
 
                 override fun onOcrSettingsOpened() {
+                    overlayController.setTranslationBackend(
+                        TranslationBackendSettings.get(this@OneShotScreenCaptureService)
+                    )
                     refreshOcrModelStates()
+                }
+
+                override fun onOcrEngineChanged(engine: OcrEngineType) {
+                    ocrEngine = engine
+                    OcrEngineSettings.set(this@OneShotScreenCaptureService, engine)
+                    liveProcessor.clearLiveOverlaySnapshot()
+                    if (continuousTranslationEnabled.get()) beginCaptureFromUser()
                 }
 
                 override fun onOcrRecognitionModeChanged(mode: OcrRecognitionMode) {
@@ -310,6 +359,10 @@ class OneShotScreenCaptureService : Service() {
                 applyResolvedExperienceMode()
                 return START_NOT_STICKY
             }
+            ACTION_REFRESH_PIPELINE_SETTINGS -> {
+                refreshPipelineSettings()
+                return START_NOT_STICKY
+            }
             ACTION_ACCESSIBILITY_VIEW_SCROLLED -> {
                 handleAccessibilityScroll()
                 return START_NOT_STICKY
@@ -361,7 +414,7 @@ class OneShotScreenCaptureService : Service() {
     override fun onDestroy() {
         isRunning = false
         displayManager.unregisterDisplayListener(displayListener)
-        val activeProcessingJob = processingJob
+        val activeProcessingJob = processingJob.getAndSet(null)
         releaseCaptureResources()
         serviceScope.cancel()
         if (liveProcessorDelegate.isInitialized()) {
@@ -386,7 +439,7 @@ class OneShotScreenCaptureService : Service() {
         )
         overlayController.showReadyExpanded()
         serviceScope.launch {
-            runCatching { liveProcessor.prepareForLiveTranslation() }
+            runCatching { liveProcessor.prepareForLiveTranslation(liveOcrTranslationEngine) }
                 .onFailure { Log.w(TAG, "Unable to prewarm live translation models", it) }
         }
     }
@@ -402,6 +455,15 @@ class OneShotScreenCaptureService : Service() {
     }
 
     private fun beginCaptureFromUser() {
+        if (liveOcrTranslationEngine == LiveOcrTranslationEngineType.PADDLE_NETWORK) {
+            if (projection == null) {
+                overlayController.hideForCapture()
+                ScreenCapturePermissionActivity.request(this)
+            } else {
+                continueCaptureFromUser()
+            }
+            return
+        }
         if (projection == null) {
             prepareOcrModels(continueAfterPreparation = false)
             overlayController.hideForCapture()
@@ -610,6 +672,19 @@ class OneShotScreenCaptureService : Service() {
     }
 
     private fun awaitStableViewport(reason: String) {
+        val handler = captureHandler ?: return
+        if (Looper.myLooper() == handler.looper) {
+            awaitStableViewportOnCaptureThread(reason, handler)
+        } else {
+            handler.post {
+                if (handler === captureHandler) {
+                    awaitStableViewportOnCaptureThread(reason, handler)
+                }
+            }
+        }
+    }
+
+    private fun awaitStableViewportOnCaptureThread(reason: String, handler: Handler) {
         if (!continuousTranslationEnabled.get() || projection == null) return
         val stabilityGeneration = initialStabilityGeneration.incrementAndGet()
         initialCapturePending.set(true)
@@ -621,7 +696,7 @@ class OneShotScreenCaptureService : Service() {
         Log.i(TAG, "Waiting for a stable viewport: $reason")
         drainLatestImage()
         CAPTURE_FRAME_PULSE_DELAYS_MS.forEach { delayMs ->
-            captureHandler?.postDelayed(
+            handler.postDelayed(
                 {
                     if (stabilityGeneration == initialStabilityGeneration.get() &&
                         initialCapturePending.get() && projection != null
@@ -632,7 +707,7 @@ class OneShotScreenCaptureService : Service() {
                 delayMs
             )
         }
-        captureHandler?.postDelayed(
+        handler.postDelayed(
             {
                 processPendingInitialFrame(
                     reason = "stability deadline",
@@ -674,6 +749,22 @@ class OneShotScreenCaptureService : Service() {
     }
 
     private fun onImageAvailable(reader: ImageReader) {
+        val renderedCapture = pendingRenderedCapture.get()
+        if (renderedCapture != null) {
+            val image = reader.acquireLatestImage() ?: return
+            if (!pendingRenderedCapture.compareAndSet(renderedCapture, null)) {
+                image.close()
+                return
+            }
+            if (renderedCapture.generation != captureGeneration.get() ||
+                !continuousTranslationEnabled.get()
+            ) {
+                image.close()
+                return
+            }
+            processRenderedCapture(image, renderedCapture)
+            return
+        }
         if (LiveCaptureTimingPolicy.shouldHoldImageQueue(
                 captureInProgress = captureInProgress.get(),
                 captureRequested = captureRequested.get(),
@@ -685,10 +776,13 @@ class OneShotScreenCaptureService : Service() {
         }
         val image = reader.acquireLatestImage() ?: return
         if (captureRequested.compareAndSet(true, false)) {
-            val signature = runCatching { sampleFrameSignature(image) }.getOrNull()
+            val nowMs = SystemClock.elapsedRealtime()
+            val signature = runCatching {
+                sampleFrameSignature(image, maskTranslationPatches = false)
+            }.getOrNull()
             if (signature != null) {
                 latestObservedSignature = signature
-                changeDetector.onCaptureStarted(signature, SystemClock.elapsedRealtime())
+                changeDetector.onCaptureStarted(signature, nowMs)
                 val accepted = lastAcceptedCaptureSignature
                 if (accepted != null && canRestoreLastResult.get() &&
                     ScreenFrameSignaturePolicy.isDuplicateCapture(accepted, signature)
@@ -726,7 +820,10 @@ class OneShotScreenCaptureService : Service() {
         }
         lastSignatureSampleAt = nowMs
         val signature = try {
-            sampleFrameSignature(image)
+            sampleFrameSignature(
+                image,
+                maskTranslationPatches = changeDetector.shouldMaskTranslationPatches(nowMs)
+            )
         } catch (error: Exception) {
             image.close()
             Log.w(TAG, "Unable to sample screen frame", error)
@@ -749,17 +846,18 @@ class OneShotScreenCaptureService : Service() {
                 if (experienceMode == LiveOverlayExperienceMode.ENHANCED) return
                 firstMotionAtMs.compareAndSet(0L, nowMs)
                 lastMotionAtMs.set(nowMs)
-                overlayController.showWaitingForStable {
+                discardStaleCaptureForMovement()
+                overlayController.showWaitingForStable { translationLayerCleared ->
                     val hiddenAtMs = SystemClock.elapsedRealtime()
                     Log.i(
                         METRICS_TAG,
                         LiveRecognitionTelemetry.hiddenForMovement(
                             generation = captureGeneration.get(),
-                            motionToHiddenMs = (hiddenAtMs - nowMs).coerceAtLeast(0L)
+                            motionToHiddenMs = (hiddenAtMs - nowMs).coerceAtLeast(0L),
+                            translationLayerCleared = translationLayerCleared
                         )
                     )
                 }
-                discardStaleCaptureForMovement()
                 scheduleMovementSettleFallback()
             }
             ScreenFrameAction.MOVING_UPDATE -> {
@@ -794,28 +892,36 @@ class OneShotScreenCaptureService : Service() {
 
     private fun handleAccessibilityScroll() {
         val handler = captureHandler ?: return
+        val eventAtMs = SystemClock.elapsedRealtime()
+        handler.post {
+            if (handler !== captureHandler) return@post
+            handleAccessibilityScrollOnCaptureThread(handler, eventAtMs)
+        }
+    }
+
+    private fun handleAccessibilityScrollOnCaptureThread(handler: Handler, eventAtMs: Long) {
         if (experienceMode != LiveOverlayExperienceMode.ENHANCED ||
             !continuousTranslationEnabled.get() || projection == null
         ) {
             return
         }
-        val nowMs = SystemClock.elapsedRealtime()
-        lastMotionAtMs.set(nowMs)
+        lastMotionAtMs.set(eventAtMs)
         if (accessibilityScrollPending.compareAndSet(false, true)) {
+            discardStaleCaptureForMovement()
             if (accessibilityScrollActive.compareAndSet(false, true)) {
-                firstMotionAtMs.compareAndSet(0L, nowMs)
-                overlayController.showWaitingForStable {
+                firstMotionAtMs.compareAndSet(0L, eventAtMs)
+                overlayController.showWaitingForStable { translationLayerCleared ->
                     val hiddenAtMs = SystemClock.elapsedRealtime()
                     Log.i(
                         METRICS_TAG,
                         LiveRecognitionTelemetry.hiddenForMovement(
                             generation = captureGeneration.get(),
-                            motionToHiddenMs = (hiddenAtMs - nowMs).coerceAtLeast(0L)
+                            motionToHiddenMs = (hiddenAtMs - eventAtMs).coerceAtLeast(0L),
+                            translationLayerCleared = translationLayerCleared
                         )
                     )
                 }
             }
-            discardStaleCaptureForMovement()
             changeDetector.reset()
         }
         handler.removeCallbacks(accessibilityScrollSettle)
@@ -896,15 +1002,23 @@ class OneShotScreenCaptureService : Service() {
         captureSignature: ScreenFrameSignature?
     ) {
         val processingStartedAt = SystemClock.elapsedRealtime()
-        processingJob = serviceScope.launch {
+        val imageReleased = AtomicBoolean(false)
+        val releaseImage = {
+            if (imageReleased.compareAndSet(false, true)) runCatching(image::close)
+        }
+        val job = serviceScope.launch(start = CoroutineStart.LAZY) {
             var sourceBitmap: Bitmap? = null
             var translatedResult: BackgroundTranslatedOverlayResult? = null
             try {
                 if (generation != captureGeneration.get()) {
-                    image.close()
+                    releaseImage()
                     return@launch
                 }
-                sourceBitmap = image.use(::imageToBitmap)
+                sourceBitmap = try {
+                    imageToBitmap(image)
+                } finally {
+                    releaseImage()
+                }
                 val bitmap = sourceBitmap
                 if (!hasVisiblePixels(bitmap)) {
                     bitmap.recycle()
@@ -918,6 +1032,8 @@ class OneShotScreenCaptureService : Service() {
                 timeoutJob = null
                 val activeMode = translationMode
                 val activeRecognitionMode = recognitionMode
+                val activeLiveOcrTranslationEngine = liveOcrTranslationEngine
+                val activeTranslationBackend = translationBackend
                 val activeExperienceMode = experienceMode
                 val activeSmartAssistEnabled = smartAssistEnabled
                 val requestedExperienceMode =
@@ -938,16 +1054,35 @@ class OneShotScreenCaptureService : Service() {
                         resolved = activeExperienceMode,
                         selected = backgroundExperienceMode
                     )
-                val result = withTimeout(LiveCaptureTimingPolicy.TRANSLATION_TIMEOUT_MS) {
+                val translationTimeoutMs = LiveCaptureTimingPolicy.translationTimeoutMs(
+                    backend = activeTranslationBackend,
+                    engine = activeLiveOcrTranslationEngine
+                )
+                Log.i(
+                    TAG,
+                    "Overlay translation started: generation=$generation, " +
+                        "backend=${activeTranslationBackend.name}, " +
+                        "engine=${activeLiveOcrTranslationEngine.name}, " +
+                        "timeoutMs=$translationTimeoutMs"
+                )
+                val result = withTimeout(translationTimeoutMs) {
                     translationMutex.withLock {
                         if (generation != captureGeneration.get()) {
                             throw CancellationException("Stale live OCR frame")
                         }
-                        overlayController.showProcessing()
+                        overlayController.showProcessing {
+                            LiveCaptureTimingPolicy.shouldPresentResult(
+                                resultGeneration = generation,
+                                currentGeneration = captureGeneration.get(),
+                                continuousTranslationEnabled = continuousTranslationEnabled.get()
+                            )
+                        }
                         canRestoreLastResult.set(false)
                         liveProcessor.translateForOverlay(
                             bitmap = bitmap,
                             mode = activeMode,
+                            generation = generation,
+                            engineType = activeLiveOcrTranslationEngine,
                             recognitionMode = activeRecognitionMode,
                             capturePlan = capturePlan,
                             overlayAlpha = LiveOverlayExperiencePolicy.translationWindowAlpha(
@@ -959,7 +1094,18 @@ class OneShotScreenCaptureService : Service() {
                                 LivePatchBackgroundExperiencePolicy.executionProfile(
                                     activeBackgroundExperienceMode
                                 ),
-                            smartAssistEnabled = activeSmartAssistEnabled
+                            smartAssistEnabled = activeSmartAssistEnabled,
+                            onRecognitionSucceeded = { recognizedCount ->
+                                if (generation == captureGeneration.get()) {
+                                    recognitionSucceededGeneration.set(generation)
+                                    Log.i(
+                                        TAG,
+                                        "OCR recognition succeeded: generation=$generation, " +
+                                            "recognized=$recognizedCount"
+                                    )
+                                    overlayController.showRecognitionSucceeded()
+                                }
+                            }
                         )
                     }
                 }
@@ -1025,6 +1171,8 @@ class OneShotScreenCaptureService : Service() {
                     finishScreenshot(result, generation, captureSignature)
                     translatedResult = null
                 }
+            } catch (error: TimeoutCancellationException) {
+                failScreenshot(error, generation)
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Exception) {
@@ -1034,6 +1182,12 @@ class OneShotScreenCaptureService : Service() {
                 sourceBitmap?.takeIf { !it.isRecycled }?.recycle()
             }
         }
+        processingJob.getAndSet(job)?.cancel()
+        job.invokeOnCompletion {
+            releaseImage()
+            processingJob.compareAndSet(job, null)
+        }
+        job.start()
     }
 
     private fun requestScreenshot(capturePlan: ScrollCapturePlan? = null) {
@@ -1051,6 +1205,7 @@ class OneShotScreenCaptureService : Service() {
         emptyResultRetryCount.set(0)
         processingFrameCaptured.set(false)
         val generation = captureGeneration.incrementAndGet()
+        recognitionSucceededGeneration.set(-1)
         captureTriggeredAtMs.set(SystemClock.elapsedRealtime())
         overlayController.hideForCapture()
         if (ScreenshotMonitorService.isRunning) {
@@ -1115,12 +1270,15 @@ class OneShotScreenCaptureService : Service() {
         return result
     }
 
-    private fun sampleFrameSignature(image: Image): ScreenFrameSignature {
+    private fun sampleFrameSignature(
+        image: Image,
+        maskTranslationPatches: Boolean
+    ): ScreenFrameSignature {
         val plane = image.planes.first()
         val buffer = plane.buffer.duplicate()
         val samples = IntArray(SIGNATURE_COLUMNS * SIGNATURE_ROWS)
         val ignoredSamples = BooleanArray(samples.size)
-        val overlayBounds = overlayController.signatureOcclusionBounds()
+        val overlayBounds = overlayController.signatureOcclusionBounds(maskTranslationPatches)
         val top = (image.height * SIGNATURE_TOP_CROP_RATIO).toInt()
         val bottom = (image.height * SIGNATURE_BOTTOM_RATIO).toInt().coerceAtLeast(top + 1)
         var sampleIndex = 0
@@ -1167,7 +1325,45 @@ class OneShotScreenCaptureService : Service() {
         generation: Int,
         captureSignature: ScreenFrameSignature?
     ) {
-        if (generation != captureGeneration.get()) {
+        val handler = captureHandler
+        if (handler == null) {
+            result.patches.recyclePatchBitmaps()
+            return
+        }
+        if (Looper.myLooper() == handler.looper) {
+            finishScreenshotOnCaptureThread(result, generation, captureSignature, handler)
+            return
+        }
+        val posted = handler.post {
+            if (handler !== captureHandler) {
+                result.patches.recyclePatchBitmaps()
+                return@post
+            }
+            finishScreenshotOnCaptureThread(result, generation, captureSignature, handler)
+        }
+        if (!posted) result.patches.recyclePatchBitmaps()
+    }
+
+    private fun finishScreenshotOnCaptureThread(
+        result: BackgroundTranslatedOverlayResult,
+        generation: Int,
+        captureSignature: ScreenFrameSignature?,
+        handler: Handler
+    ) {
+        val currentGeneration = captureGeneration.get()
+        if (!LiveCaptureTimingPolicy.shouldPresentResult(
+                resultGeneration = generation,
+                currentGeneration = currentGeneration,
+                continuousTranslationEnabled = continuousTranslationEnabled.get()
+            )
+        ) {
+            Log.i(
+                METRICS_TAG,
+                LiveRecognitionTelemetry.stalePresentationDropped(
+                    resultGeneration = generation,
+                    currentGeneration = currentGeneration
+                )
+            )
             result.patches.recyclePatchBitmaps()
             return
         }
@@ -1188,7 +1384,7 @@ class OneShotScreenCaptureService : Service() {
             NOTIFICATION_ID,
             buildSessionNotification(capturing = false)
         )
-        captureHandler?.postDelayed(
+        handler.postDelayed(
             { resumeFrameObservation(generation) },
             LiveCaptureTimingPolicy.PRESENTATION_GATE_TIMEOUT_MS
         )
@@ -1198,6 +1394,27 @@ class OneShotScreenCaptureService : Service() {
             sourceWidth = result.sourceWidth,
             sourceHeight = result.sourceHeight,
             recognizedCount = result.recognizedCount,
+            ocrMs = result.ocrMs,
+            translationMs = result.translationMs,
+            renderingMs = result.renderingMs,
+            shouldPresent = {
+                val currentGeneration = captureGeneration.get()
+                val shouldPresent = LiveCaptureTimingPolicy.shouldPresentResult(
+                    resultGeneration = generation,
+                    currentGeneration = currentGeneration,
+                    continuousTranslationEnabled = continuousTranslationEnabled.get()
+                )
+                if (!shouldPresent) {
+                    Log.i(
+                        METRICS_TAG,
+                        LiveRecognitionTelemetry.stalePresentationDropped(
+                            resultGeneration = generation,
+                            currentGeneration = currentGeneration
+                        )
+                    )
+                }
+                shouldPresent
+            },
             onPresented = {
                 captureHandler?.removeCallbacks(accessibilityScrollSettle)
                 accessibilityScrollPending.set(false)
@@ -1212,15 +1429,99 @@ class OneShotScreenCaptureService : Service() {
                             ).coerceAtLeast(0L)
                     )
                 )
+                scheduleRenderedCaptureUpload(result, generation)
                 resumeFrameObservation(generation)
             }
         )
     }
 
+    private fun scheduleRenderedCaptureUpload(
+        result: BackgroundTranslatedOverlayResult,
+        generation: Int
+    ) {
+        if (!SemanticRenderedCaptureUploadPolicy.shouldUpload(
+                isDebugBuild = BuildConfig.DEBUG,
+                backend = translationBackend,
+                uploadEnabled = TranslationBackendSettings
+                    .isDebugRenderedCaptureUploadEnabled(this),
+                patchCount = result.patches.size,
+                traceCount = result.translationTraces.size
+            )
+        ) {
+            return
+        }
+        val traces = result.translationTraces.distinct()
+        captureHandler?.postDelayed(
+            {
+                if (generation != captureGeneration.get() ||
+                    !continuousTranslationEnabled.get() ||
+                    translationBackend != TranslationBackend.SELF_HOSTED
+                ) {
+                    return@postDelayed
+                }
+                pendingRenderedCapture.set(PendingRenderedCapture(generation, traces))
+                drainLatestImage()
+            },
+            RENDERED_CAPTURE_SETTLE_MS
+        )
+    }
+
+    private fun processRenderedCapture(image: Image, pending: PendingRenderedCapture) {
+        serviceScope.launch {
+            var bitmap: Bitmap? = null
+            try {
+                bitmap = imageToBitmap(image)
+                val capture = SemanticDebugCaptureEncoder.encode(bitmap)
+                val uploader = SelfHostedRenderedCaptureUploader(
+                    baseUrl = TranslationBackendSettings.selfHostedBaseUrl(
+                        this@OneShotScreenCaptureService
+                    ),
+                    bearerToken = TranslationBackendSettings.selfHostedBearerToken(
+                        this@OneShotScreenCaptureService
+                    )
+                )
+                pending.traces.forEach { trace ->
+                    runCatching { uploader.upload(trace, capture) }
+                        .onSuccess {
+                            Log.i(TAG, "Uploaded rendered capture for request ${trace.requestId}")
+                        }
+                        .onFailure { error ->
+                            Log.w(
+                                TAG,
+                                "Unable to upload rendered capture for request ${trace.requestId}",
+                                error
+                            )
+                        }
+                }
+            } catch (error: Exception) {
+                Log.w(TAG, "Unable to encode rendered screen capture", error)
+            } finally {
+                runCatching(image::close)
+                bitmap?.takeIf { !it.isRecycled }?.recycle()
+            }
+        }
+    }
+
     private fun failScreenshot(error: Throwable? = null, generation: Int? = null) {
+        val handler = captureHandler
+        if (handler == null) {
+            if (error != null) Log.w(TAG, "Ignoring capture failure after capture thread release", error)
+            return
+        }
+        if (Looper.myLooper() == handler.looper) {
+            failScreenshotOnCaptureThread(error, generation)
+            return
+        }
+        handler.post {
+            if (handler === captureHandler) failScreenshotOnCaptureThread(error, generation)
+        }
+    }
+
+    private fun failScreenshotOnCaptureThread(error: Throwable?, generation: Int?) {
         if (generation != null && generation != captureGeneration.get()) return
         if (!captureInProgress.compareAndSet(true, false)) return
         if (error != null) Log.e(TAG, "Screen capture failed", error)
+        val translationTimedOut = error is TimeoutCancellationException
         timeoutJob?.cancel()
         timeoutJob = null
         captureRequested.set(false)
@@ -1237,7 +1538,20 @@ class OneShotScreenCaptureService : Service() {
             NOTIFICATION_ID,
             buildSessionNotification(capturing = false)
         )
-        overlayController.showCaptureFailed()
+        if (recognitionSucceededGeneration.get() == generation) {
+            overlayController.showCaptureFailed()
+        } else {
+            overlayController.showRecognitionFailed()
+        }
+        if (translationTimedOut) {
+            mainHandler.post {
+                Toast.makeText(
+                    applicationContext,
+                    R.string.active_screenshot_translation_timeout,
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+        }
         postFailureNotification()
     }
 
@@ -1261,6 +1575,7 @@ class OneShotScreenCaptureService : Service() {
         initialCapturePending.set(false)
         initialStabilityGeneration.incrementAndGet()
         pendingInitialFrame.getAndSet(null)?.image?.close()
+        pendingRenderedCapture.set(null)
         activeCapturePlan = null
         lastSignatureSampleAt = Long.MIN_VALUE
         resetInteractionTiming()
@@ -1271,10 +1586,13 @@ class OneShotScreenCaptureService : Service() {
         if (!keepContinuousMode) continuousTranslationEnabled.set(false)
         timeoutJob?.cancel()
         timeoutJob = null
-        processingJob?.cancel()
-        processingJob = null
+        val activeJob = processingJob.getAndSet(null)
+        activeJob?.cancel()
         captureHandler?.post(changeDetector::reset)
         overlayController.clearTranslations()
+        if (!keepContinuousMode && activeJob?.isCompleted == false) {
+            overlayController.showRecognitionCancelled()
+        }
     }
 
     private fun discardStaleCaptureForMovement() {
@@ -1283,9 +1601,14 @@ class OneShotScreenCaptureService : Service() {
         captureRequested.set(false)
         processingFrameCaptured.set(false)
         presentationInProgress.set(false)
+        canRestoreLastResult.set(false)
+        lastAcceptedCaptureSignature = null
         activeCapturePlan = null
+        pendingRenderedCapture.set(null)
         timeoutJob?.cancel()
         timeoutJob = null
+        processingJob.getAndSet(null)?.cancel()
+        overlayController.clearTranslations()
         getSystemService(NotificationManager::class.java).notify(
             NOTIFICATION_ID,
             buildSessionNotification(capturing = false)
@@ -1471,6 +1794,65 @@ class OneShotScreenCaptureService : Service() {
         requestScreenshot()
     }
 
+    private fun applyTranslationBackend(backend: TranslationBackend) {
+        if (translationBackend == backend) return
+        if (!TranslationBackendSettings.isConfigured(this, backend)) {
+            Toast.makeText(
+                this,
+                R.string.network_translation_not_configured,
+                Toast.LENGTH_LONG
+            ).show()
+            return
+        }
+        TranslationBackendSettings.set(this, backend)
+        translationBackend = backend
+        Log.i(TAG, "Translation backend changed: ${backend.name}")
+        if (liveProcessorDelegate.isInitialized()) liveProcessor.clearLiveOverlaySnapshot()
+        if (projection == null || !continuousTranslationEnabled.get()) return
+        cancelActiveCapture(keepContinuousMode = true)
+        requestScreenshot()
+    }
+
+    private fun applyLiveOcrTranslationEngine(engine: LiveOcrTranslationEngineType) {
+        if (liveOcrTranslationEngine == engine) return
+        if (engine == LiveOcrTranslationEngineType.PADDLE_NETWORK &&
+            !PaddleNetworkSettings.isConfigured(this)
+        ) {
+            Toast.makeText(
+                this,
+                R.string.paddle_network_not_configured,
+                Toast.LENGTH_LONG
+            ).show()
+            overlayController.setLiveOcrTranslationEngine(
+                liveOcrTranslationEngine,
+                PaddleNetworkSettings.isConfigured(this)
+            )
+            return
+        }
+        LiveOcrTranslationEngineSettings.set(this, engine)
+        liveOcrTranslationEngine = engine
+        Log.i(TAG, "Live OCR translation engine changed: ${engine.name}")
+        overlayController.setLiveOcrTranslationEngine(
+            engine,
+            PaddleNetworkSettings.isConfigured(this)
+        )
+        if (liveProcessorDelegate.isInitialized()) liveProcessor.clearLiveOverlaySnapshot()
+        if (projection == null || !continuousTranslationEnabled.get()) return
+        cancelActiveCapture(keepContinuousMode = true)
+        beginCaptureFromUser()
+    }
+
+    private fun refreshPipelineSettings() {
+        val configured = PaddleNetworkSettings.isConfigured(this)
+        val resolvedEngine = LiveOcrTranslationEngineSettings.get(this)
+        liveOcrTranslationEngine = resolvedEngine
+        overlayController.setLiveOcrTranslationEngine(resolvedEngine, configured)
+        if (liveProcessorDelegate.isInitialized()) liveProcessor.clearLiveOverlaySnapshot()
+        if (projection == null || !continuousTranslationEnabled.get()) return
+        cancelActiveCapture(keepContinuousMode = true)
+        beginCaptureFromUser()
+    }
+
     private fun reconfigureCaptureForSettings() {
         val handler = captureHandler ?: return
         if (projection == null) return
@@ -1629,6 +2011,11 @@ class OneShotScreenCaptureService : Service() {
         val signature: ScreenFrameSignature
     )
 
+    private data class PendingRenderedCapture(
+        val generation: Int,
+        val traces: List<SemanticTranslationTrace>
+    )
+
     companion object {
         const val ACTION_SHOW_OVERLAY =
             "com.example.imagetranslate.screenshot.SHOW_TRANSLATION_OVERLAY"
@@ -1640,6 +2027,8 @@ class OneShotScreenCaptureService : Service() {
             "com.example.imagetranslate.screenshot.STOP_CAPTURE_SESSION"
         const val ACTION_REFRESH_OVERLAY_MODE =
             "com.example.imagetranslate.screenshot.REFRESH_OVERLAY_MODE"
+        const val ACTION_REFRESH_PIPELINE_SETTINGS =
+            "com.example.imagetranslate.screenshot.REFRESH_PIPELINE_SETTINGS"
         const val ACTION_ACCESSIBILITY_VIEW_SCROLLED =
             "com.example.imagetranslate.screenshot.ACCESSIBILITY_VIEW_SCROLLED"
         const val ACTION_CAPTURE_FAILED =
@@ -1668,6 +2057,7 @@ class OneShotScreenCaptureService : Service() {
         private const val INITIAL_STABILITY_MAX_WAIT_MS = 1_800L
         private const val MOVEMENT_SETTLE_FALLBACK_MS = 650L
         private const val ACCESSIBILITY_SCROLL_SETTLE_MS = 700L
+        private const val RENDERED_CAPTURE_SETTLE_MS = 280L
         private val CAPTURE_FRAME_PULSE_DELAYS_MS = longArrayOf(250L, 650L, 1_050L)
         private const val TAG = "ScreenCaptureSession"
         private const val METRICS_TAG = "LiveOcrMetrics"
@@ -1679,6 +2069,14 @@ class OneShotScreenCaptureService : Service() {
         fun showOverlay(context: android.content.Context) {
             val serviceIntent = Intent(context, OneShotScreenCaptureService::class.java).apply {
                 action = ACTION_SHOW_OVERLAY
+            }
+            ContextCompat.startForegroundService(context, serviceIntent)
+        }
+
+        fun refreshPipelineSettings(context: android.content.Context) {
+            if (!isRunning) return
+            val serviceIntent = Intent(context, OneShotScreenCaptureService::class.java).apply {
+                action = ACTION_REFRESH_PIPELINE_SETTINGS
             }
             ContextCompat.startForegroundService(context, serviceIntent)
         }

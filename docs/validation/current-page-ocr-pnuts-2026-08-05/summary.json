@@ -1,0 +1,187 @@
+{
+  "schemaVersion": 1,
+  "validationId": "V002",
+  "date": "2026-08-05",
+  "source": {
+    "file": "source-original.png",
+    "width": 1440,
+    "height": 3200,
+    "sha256": "4962524bf167753e9ff7a102cda0ce93a309946acd2886b6248ce3b00fca9c9d"
+  },
+  "ocr": {
+    "engine": "ML_KIT",
+    "recognitionMode": "ENGLISH",
+    "elapsedMs": 557,
+    "lineCount": 21,
+    "groupCount": 19
+  },
+  "pnutsBatch": {
+    "endpoint": "https://api-dev.pnutsai.com/api/v1/translate/regions",
+    "requestId": "d0fe643c-7ac9-4912-9643-d4af6cd0a98b",
+    "regionCount": 12,
+    "globalSourceLanguage": "auto",
+    "globalTargetLanguage": "auto",
+    "useContext": true,
+    "httpStatus": 200,
+    "elapsedMs": 8276,
+    "translatedCount": 0,
+    "failedCount": 12
+  },
+  "pnutsSingleGroup": {
+    "regionCount": 12,
+    "globalSourceLanguage": "auto",
+    "globalTargetLanguage": "auto",
+    "useContext": false,
+    "totalElapsedMs": 48588,
+    "translatedCount": 9,
+    "failedCount": 3,
+    "results": [
+      {
+        "regionId": "semantic-b0675a81",
+        "sourceText": "N'sTime",
+        "status": "TRANSLATED",
+        "translatedText": "N'sTime",
+        "provider": "pnuts-translate-v1",
+        "detectedSourceLanguage": "en",
+        "targetLanguage": "zh"
+      },
+      {
+        "regionId": "semantic-11afce8b",
+        "sourceText": "www.news.cn",
+        "status": "TRANSLATED",
+        "translatedText": "www.news.cn",
+        "provider": "pnuts-translate-v1",
+        "detectedSourceLanguage": "en",
+        "targetLanguage": "zh"
+      },
+      {
+        "regionId": "semantic-8895378",
+        "sourceText": "EWS",
+        "status": "TRANSLATED",
+        "translatedText": "EWS",
+        "provider": "pnuts-translate-v1",
+        "detectedSourceLanguage": "en",
+        "targetLanguage": "zh"
+      },
+      {
+        "regionId": "semantic-e86f3d04",
+        "sourceText": "net corm",
+        "status": "FAILED",
+        "translatedText": null,
+        "provider": "pnuts-translate-v1",
+        "detectedSourceLanguage": "en",
+        "targetLanguage": "zh"
+      },
+      {
+        "regionId": "semantic-55749d7a",
+        "sourceText": "Home)(Xi Story Xiplomacy Xi Focus",
+        "status": "TRANSLATED",
+        "translatedText": "首页)(习近平的故事 习式外交 习近平聚焦",
+        "provider": "pnuts-translate-v1",
+        "detectedSourceLanguage": "en",
+        "targetLanguage": "zh"
+      },
+      {
+        "regionId": "semantic-8b380923",
+        "sourceText": "Xi holds talks with Slovak president in Beijing",
+        "status": "TRANSLATED",
+        "translatedText": "习近平在北京同斯洛伐克总统举行会谈",
+        "provider": "pnuts-translate-v1",
+        "detectedSourceLanguage": "en",
+        "targetLanguage": "zh"
+      },
+      {
+        "regionId": "semantic-631d7a9d",
+        "sourceText": "Xi Story:Six-foot alley reveals Chinese wisdom",
+        "status": "TRANSLATED",
+        "translatedText": "习语故事：六尺巷展现中国智慧",
+        "provider": "pnuts-translate-v1",
+        "detectedSourceLanguage": "en",
+        "targetLanguage": "zh"
+      },
+      {
+        "regionId": "semantic-fa793555",
+        "sourceText": "of making roomn for others",
+        "status": "FAILED",
+        "translatedText": null,
+        "provider": "pnuts-translate-v1",
+        "detectedSourceLanguage": "en",
+        "targetLanguage": "zh"
+      },
+      {
+        "regionId": "semantic-9f094989",
+        "sourceText": "PLA celebrates 99th founding anniversary in march toward world-class military,with peace",
+        "status": "FAILED",
+        "translatedText": null,
+        "provider": "pnuts-translate-v1",
+        "detectedSourceLanguage": "en",
+        "targetLanguage": "zh"
+      },
+      {
+        "regionId": "semantic-91fbfd5e",
+        "sourceText": "as enduring mission",
+        "status": "TRANSLATED",
+        "translatedText": "作为持久的使命",
+        "provider": "pnuts-translate-v1",
+        "detectedSourceLanguage": "en",
+        "targetLanguage": "zh"
+      },
+      {
+        "regionId": "semantic-17d2690e",
+        "sourceText": "Xi signs order to commend outstanding military individual",
+        "status": "TRANSLATED",
+        "translatedText": "习近平签署命令表彰优秀军事个人",
+        "provider": "pnuts-translate-v1",
+        "detectedSourceLanguage": "en",
+        "targetLanguage": "zh"
+      },
+      {
+        "regionId": "semantic-75ab1c6b",
+        "sourceText": "Xi's Archive",
+        "status": "TRANSLATED",
+        "translatedText": "习近平文库",
+        "provider": "pnuts-translate-v1",
+        "detectedSourceLanguage": "en",
+        "targetLanguage": "zh"
+      }
+    ]
+  },
+  "pnutsSingleGroupExplicitLanguages": {
+    "regionCount": 12,
+    "globalSourceLanguage": "en",
+    "globalTargetLanguage": "zh",
+    "useContext": false,
+    "totalElapsedMs": 33903,
+    "translatedCount": 10,
+    "failedCount": 2
+  },
+  "manualReviewCandidates": [
+    {
+      "type": "OCR_ERROR",
+      "actual": "N'sTime",
+      "expected": "Xi's Time"
+    },
+    {
+      "type": "OCR_ERROR",
+      "actual": "roomn",
+      "expected": "room"
+    },
+    {
+      "type": "UNDER_GROUPING",
+      "source": "Xi Story: Six-foot alley reveals Chinese wisdom / of making room for others",
+      "actualGroupCount": 2,
+      "expectedGroupCount": 1
+    },
+    {
+      "type": "UNDER_GROUPING",
+      "source": "PLA celebrates ... / march ... / as enduring mission",
+      "actualGroupCount": 2,
+      "expectedGroupCount": 1
+    },
+    {
+      "type": "BATCH_COMPATIBILITY",
+      "actual": "12/12 FAILED with useContext=true",
+      "control": "9/12 TRANSLATED as strict single-group requests"
+    }
+  ]
+}

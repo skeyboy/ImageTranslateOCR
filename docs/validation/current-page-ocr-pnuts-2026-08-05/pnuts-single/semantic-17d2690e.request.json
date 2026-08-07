@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "requestId": "da48ed73-1b79-4a5f-a2b8-2903ff96a9d4",
+  "generation": 0,
+  "scene": "ANDROID_CLIENT_CURRENT_PAGE_SINGLE_GROUP",
+  "translation": {
+    "mode": "ENGLISH_TO_CHINESE",
+    "sourceLanguage": "en",
+    "targetLanguage": "zh",
+    "preserveIdentifiers": true,
+    "useContext": false
+  },
+  "regions": [
+    {
+      "regionId": "semantic-17d2690e",
+      "text": "Xi signs order to commend outstanding military individual",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh"
+    }
+  ]
+}

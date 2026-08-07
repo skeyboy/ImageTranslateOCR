@@ -18,6 +18,37 @@ android {
 
     buildFeatures {
         viewBinding = true
+        buildConfig = true
+    }
+
+    val configuredRemoteTranslationBaseUrl = providers
+        .gradleProperty("REMOTE_TRANSLATION_BASE_URL")
+        .orNull
+        ?.trim()
+        .orEmpty()
+    fun buildConfigString(value: String): String = value
+        .replace("\\", "\\\\")
+        .replace("\"", "\\\"")
+        .let { "\"$it\"" }
+
+    buildTypes {
+        getByName("debug") {
+            val endpoint = configuredRemoteTranslationBaseUrl.ifBlank {
+                "https://api-dev.pnutsai.com"
+            }
+            buildConfigField(
+                "String",
+                "REMOTE_TRANSLATION_BASE_URL",
+                buildConfigString(endpoint)
+            )
+        }
+        getByName("release") {
+            buildConfigField(
+                "String",
+                "REMOTE_TRANSLATION_BASE_URL",
+                buildConfigString(configuredRemoteTranslationBaseUrl)
+            )
+        }
     }
 
     compileOptions {
@@ -48,6 +79,8 @@ android {
 }
 
 dependencies {
+    implementation(files("libs/ppocr-sdk-release.aar"))
+    implementation("com.microsoft.onnxruntime:onnxruntime-android:1.22.0")
     implementation(project(":smart-assist-core"))
     implementation(project(":experimental-translation"))
     implementation("androidx.core:core-ktx") {
@@ -58,7 +91,7 @@ dependencies {
     implementation("com.google.android.gms:play-services-mlkit-text-recognition:19.0.1")
     implementation("com.google.android.gms:play-services-mlkit-text-recognition-chinese:16.0.1")
     implementation("com.google.android.material:material:1.14.0")
-    implementation("androidx.constraintlayout:constraintlayout:2.2.1")
+    implementation("androidx.constraintlayout:constraintlayout:2.2.2")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx") {
         version { strictly("2.9.2") }
     }
@@ -69,7 +102,8 @@ dependencies {
     //noinspection Aligned16KB
     implementation("com.quickbirdstudios:opencv:4.5.3.0")
     testImplementation("junit:junit:4.13.2")
-    androidTestImplementation("androidx.test:core-ktx:1.6.1")
-    androidTestImplementation("androidx.test.ext:junit:1.2.1")
-    androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")
+    testImplementation("org.json:json:20240303")
+    androidTestImplementation("androidx.test:core-ktx:1.7.0")
+    androidTestImplementation("androidx.test.ext:junit:1.3.0")
+    androidTestImplementation("androidx.test.espresso:espresso-core:3.7.0")
 }

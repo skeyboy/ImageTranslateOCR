@@ -1,0 +1,670 @@
+{
+  "schemaVersion": 1,
+  "inputPath": "\/sdcard\/Download\/imagetranslate-current-page.png",
+  "width": 1440,
+  "height": 3200,
+  "engine": "ML_KIT",
+  "recognitionMode": "ENGLISH",
+  "elapsedMs": 557,
+  "lineCount": 21,
+  "groupCount": 19,
+  "lines": [
+    {
+      "lineId": "line-1",
+      "text": "VPNX16",
+      "bounds": {
+        "left": 1009,
+        "top": 43,
+        "right": 1300,
+        "bottom": 86
+      },
+      "modelConfidence": 0.6333705186843872,
+      "consensusScore": 0.6399999856948853,
+      "passCount": 1,
+      "recognizerScript": "LATIN",
+      "sourceBlockId": "mlkit-8-1009-43-1347-86",
+      "sourceLineIndex": 0
+    },
+    {
+      "lineId": "line-2",
+      "text": "16:32",
+      "bounds": {
+        "left": 97,
+        "top": 44,
+        "right": 220,
+        "bottom": 87
+      },
+      "modelConfidence": 0.913281261920929,
+      "consensusScore": 0.6306666731834412,
+      "passCount": 1,
+      "recognizerScript": "LATIN",
+      "sourceBlockId": "mlkit-0-97-44-220-87",
+      "sourceLineIndex": 0
+    },
+    {
+      "lineId": "line-3",
+      "text": "Xi's Time",
+      "bounds": {
+        "left": 218,
+        "top": 206,
+        "right": 442,
+        "bottom": 258
+      },
+      "modelConfidence": 0.77490234375,
+      "consensusScore": 0.6399999856948853,
+      "passCount": 1,
+      "recognizerScript": "LATIN",
+      "sourceBlockId": "mlkit-1-218-206-442-258",
+      "sourceLineIndex": 0
+    },
+    {
+      "lineId": "line-4",
+      "text": "N'sTime",
+      "bounds": {
+        "left": 692,
+        "top": 419,
+        "right": 1401,
+        "bottom": 617
+      },
+      "modelConfidence": 0.5870535969734192,
+      "consensusScore": 0.6379047632217407,
+      "passCount": 1,
+      "recognizerScript": "LATIN",
+      "sourceBlockId": "mlkit-5-692-418-1401-617",
+      "sourceLineIndex": 0
+    },
+    {
+      "lineId": "line-5",
+      "text": "www.news.cn",
+      "bounds": {
+        "left": 1238,
+        "top": 676,
+        "right": 1365,
+        "bottom": 686
+      },
+      "modelConfidence": 0.7400568127632141,
+      "consensusScore": 0.6399999856948853,
+      "passCount": 1,
+      "recognizerScript": "LATIN",
+      "sourceBlockId": "mlkit-15-1238-676-1365-686",
+      "sourceLineIndex": 0
+    },
+    {
+      "lineId": "line-6",
+      "text": "EWS",
+      "bounds": {
+        "left": 1280,
+        "top": 737,
+        "right": 1333,
+        "bottom": 767
+      },
+      "modelConfidence": 0.75,
+      "consensusScore": 0.6399999856948853,
+      "passCount": 1,
+      "recognizerScript": "LATIN",
+      "sourceBlockId": "mlkit-18-1280-737-1333-767",
+      "sourceLineIndex": 0
+    },
+    {
+      "lineId": "line-7",
+      "text": "net corm",
+      "bounds": {
+        "left": 1322,
+        "top": 760,
+        "right": 1364,
+        "bottom": 781
+      },
+      "modelConfidence": 0.5072544813156128,
+      "consensusScore": 0.6399999856948853,
+      "passCount": 1,
+      "recognizerScript": "LATIN",
+      "sourceBlockId": "mlkit-19-1322-760-1364-781",
+      "sourceLineIndex": 0
+    },
+    {
+      "lineId": "line-8",
+      "text": "Home)(Xi Story Xiplomacy Xi Focus",
+      "bounds": {
+        "left": 83,
+        "top": 875,
+        "right": 1329,
+        "bottom": 950
+      },
+      "modelConfidence": 0.7717013955116272,
+      "consensusScore": 0.6399999856948853,
+      "passCount": 1,
+      "recognizerScript": "LATIN",
+      "sourceBlockId": "mlkit-6-83-875-1445-950",
+      "sourceLineIndex": 0
+    },
+    {
+      "lineId": "line-9",
+      "text": "Xi holds talks with Slovak president in Beijing",
+      "bounds": {
+        "left": 35,
+        "top": 1722,
+        "right": 1102,
+        "bottom": 1772
+      },
+      "modelConfidence": 0.878613293170929,
+      "consensusScore": 0.6399999856948853,
+      "passCount": 1,
+      "recognizerScript": "LATIN",
+      "sourceBlockId": "mlkit-2-35-1722-1102-1772",
+      "sourceLineIndex": 0
+    },
+    {
+      "lineId": "line-10",
+      "text": "Xi Story:Six-foot alley reveals Chinese wisdom",
+      "bounds": {
+        "left": 68,
+        "top": 1900,
+        "right": 1391,
+        "bottom": 1977
+      },
+      "modelConfidence": 0.8800495266914368,
+      "consensusScore": 0.6399999856948853,
+      "passCount": 1,
+      "recognizerScript": "LATIN",
+      "sourceBlockId": "mlkit-9-68-1900-1391-2055",
+      "sourceLineIndex": 0
+    },
+    {
+      "lineId": "line-11",
+      "text": "of making roomn for others",
+      "bounds": {
+        "left": 71,
+        "top": 2002,
+        "right": 818,
+        "bottom": 2052
+      },
+      "modelConfidence": 0.8884943127632141,
+      "consensusScore": 0.6399999856948853,
+      "passCount": 1,
+      "recognizerScript": "LATIN",
+      "sourceBlockId": "mlkit-9-68-1900-1391-2055",
+      "sourceLineIndex": 1
+    },
+    {
+      "lineId": "line-12",
+      "text": "2026-08-04",
+      "bounds": {
+        "left": 37,
+        "top": 2077,
+        "right": 248,
+        "bottom": 2107
+      },
+      "modelConfidence": 0.916015625,
+      "consensusScore": 0.637333333492279,
+      "passCount": 1,
+      "recognizerScript": "LATIN",
+      "sourceBlockId": "mlkit-3-37-2077-248-2107",
+      "sourceLineIndex": 0
+    },
+    {
+      "lineId": "line-13",
+      "text": "PLA celebrates 99th founding anniversary in",
+      "bounds": {
+        "left": 72,
+        "top": 2203,
+        "right": 1327,
+        "bottom": 2266
+      },
+      "modelConfidence": 0.9119037985801697,
+      "consensusScore": 0.6399999856948853,
+      "passCount": 1,
+      "recognizerScript": "LATIN",
+      "sourceBlockId": "mlkit-12-70-2197-1385-2352",
+      "sourceLineIndex": 0
+    },
+    {
+      "lineId": "line-14",
+      "text": "march toward world-class military,with peace",
+      "bounds": {
+        "left": 70,
+        "top": 2283,
+        "right": 1385,
+        "bottom": 2352
+      },
+      "modelConfidence": 0.893847644329071,
+      "consensusScore": 0.6399999856948853,
+      "passCount": 1,
+      "recognizerScript": "LATIN",
+      "sourceBlockId": "mlkit-12-70-2197-1385-2352",
+      "sourceLineIndex": 1
+    },
+    {
+      "lineId": "line-15",
+      "text": "as enduring mission",
+      "bounds": {
+        "left": 73,
+        "top": 2377,
+        "right": 638,
+        "bottom": 2434
+      },
+      "modelConfidence": 0.9085478186607361,
+      "consensusScore": 0.6399999856948853,
+      "passCount": 1,
+      "recognizerScript": "LATIN",
+      "sourceBlockId": "mlkit-4-73-2377-638-2434",
+      "sourceLineIndex": 0
+    },
+    {
+      "lineId": "line-16",
+      "text": "2026-08-01",
+      "bounds": {
+        "left": 37,
+        "top": 2451,
+        "right": 244,
+        "bottom": 2481
+      },
+      "modelConfidence": 0.9281250238418579,
+      "consensusScore": 0.637333333492279,
+      "passCount": 1,
+      "recognizerScript": "LATIN",
+      "sourceBlockId": "mlkit-7-37-2451-244-2481",
+      "sourceLineIndex": 0
+    },
+    {
+      "lineId": "line-17",
+      "text": "Xi signs order to commend outstanding",
+      "bounds": {
+        "left": 71,
+        "top": 2583,
+        "right": 1184,
+        "bottom": 2637
+      },
+      "modelConfidence": 0.9110107421875,
+      "consensusScore": 0.6399999856948853,
+      "passCount": 1,
+      "recognizerScript": "LATIN",
+      "sourceBlockId": "mlkit-11-69-2573-1184-2724",
+      "sourceLineIndex": 0
+    },
+    {
+      "lineId": "line-18",
+      "text": "military individual",
+      "bounds": {
+        "left": 70,
+        "top": 2658,
+        "right": 607,
+        "bottom": 2724
+      },
+      "modelConfidence": 0.8791232705116272,
+      "consensusScore": 0.6399999856948853,
+      "passCount": 1,
+      "recognizerScript": "LATIN",
+      "sourceBlockId": "mlkit-11-69-2573-1184-2724",
+      "sourceLineIndex": 1
+    },
+    {
+      "lineId": "line-19",
+      "text": "2026-07-31",
+      "bounds": {
+        "left": 37,
+        "top": 2741,
+        "right": 245,
+        "bottom": 2771
+      },
+      "modelConfidence": 0.9261718988418579,
+      "consensusScore": 0.637333333492279,
+      "passCount": 1,
+      "recognizerScript": "LATIN",
+      "sourceBlockId": "mlkit-10-37-2741-245-2771",
+      "sourceLineIndex": 0
+    },
+    {
+      "lineId": "line-20",
+      "text": "Xi's Archive",
+      "bounds": {
+        "left": 432,
+        "top": 2869,
+        "right": 1005,
+        "bottom": 2943
+      },
+      "modelConfidence": 0.8409090638160706,
+      "consensusScore": 0.6399999856948853,
+      "passCount": 1,
+      "recognizerScript": "LATIN",
+      "sourceBlockId": "mlkit-13-432-2869-1005-2943",
+      "sourceLineIndex": 0
+    },
+    {
+      "lineId": "line-21",
+      "text": "Ai",
+      "bounds": {
+        "left": 674,
+        "top": 3017,
+        "right": 755,
+        "bottom": 3091
+      },
+      "modelConfidence": 0.689453125,
+      "consensusScore": 0.6399999856948853,
+      "passCount": 1,
+      "recognizerScript": "LATIN",
+      "sourceBlockId": "mlkit-16-674-3017-755-3091",
+      "sourceLineIndex": 0
+    }
+  ],
+  "groups": [
+    {
+      "groupId": "semantic-18a2e556",
+      "sourceText": "VPNX16",
+      "bounds": {
+        "left": 1009,
+        "top": 43,
+        "right": 1300,
+        "bottom": 86
+      },
+      "role": "BODY",
+      "groupingConfidence": 1,
+      "evidence": [],
+      "memberTexts": [
+        "VPNX16"
+      ]
+    },
+    {
+      "groupId": "semantic-be3a8faa",
+      "sourceText": "16:32",
+      "bounds": {
+        "left": 97,
+        "top": 44,
+        "right": 220,
+        "bottom": 87
+      },
+      "role": "TIMESTAMP",
+      "groupingConfidence": 1,
+      "evidence": [],
+      "memberTexts": [
+        "16:32"
+      ]
+    },
+    {
+      "groupId": "semantic-9e664325",
+      "sourceText": "Xi's Time",
+      "bounds": {
+        "left": 218,
+        "top": 206,
+        "right": 442,
+        "bottom": 258
+      },
+      "role": "BODY",
+      "groupingConfidence": 1,
+      "evidence": [],
+      "memberTexts": [
+        "Xi's Time"
+      ]
+    },
+    {
+      "groupId": "semantic-b0675a81",
+      "sourceText": "N'sTime",
+      "bounds": {
+        "left": 692,
+        "top": 419,
+        "right": 1401,
+        "bottom": 617
+      },
+      "role": "TITLE",
+      "groupingConfidence": 1,
+      "evidence": [],
+      "memberTexts": [
+        "N'sTime"
+      ]
+    },
+    {
+      "groupId": "semantic-11afce8b",
+      "sourceText": "www.news.cn",
+      "bounds": {
+        "left": 1238,
+        "top": 676,
+        "right": 1365,
+        "bottom": 686
+      },
+      "role": "IDENTIFIER",
+      "groupingConfidence": 1,
+      "evidence": [],
+      "memberTexts": [
+        "www.news.cn"
+      ]
+    },
+    {
+      "groupId": "semantic-8895378",
+      "sourceText": "EWS",
+      "bounds": {
+        "left": 1280,
+        "top": 737,
+        "right": 1333,
+        "bottom": 767
+      },
+      "role": "BODY",
+      "groupingConfidence": 1,
+      "evidence": [],
+      "memberTexts": [
+        "EWS"
+      ]
+    },
+    {
+      "groupId": "semantic-e86f3d04",
+      "sourceText": "net corm",
+      "bounds": {
+        "left": 1322,
+        "top": 760,
+        "right": 1364,
+        "bottom": 781
+      },
+      "role": "BODY",
+      "groupingConfidence": 1,
+      "evidence": [],
+      "memberTexts": [
+        "net corm"
+      ]
+    },
+    {
+      "groupId": "semantic-55749d7a",
+      "sourceText": "Home)(Xi Story Xiplomacy Xi Focus",
+      "bounds": {
+        "left": 83,
+        "top": 875,
+        "right": 1329,
+        "bottom": 950
+      },
+      "role": "BODY",
+      "groupingConfidence": 1,
+      "evidence": [],
+      "memberTexts": [
+        "Home)(Xi Story Xiplomacy Xi Focus"
+      ]
+    },
+    {
+      "groupId": "semantic-8b380923",
+      "sourceText": "Xi holds talks with Slovak president in Beijing",
+      "bounds": {
+        "left": 35,
+        "top": 1722,
+        "right": 1102,
+        "bottom": 1772
+      },
+      "role": "BODY",
+      "groupingConfidence": 1,
+      "evidence": [],
+      "memberTexts": [
+        "Xi holds talks with Slovak president in Beijing"
+      ]
+    },
+    {
+      "groupId": "semantic-631d7a9d",
+      "sourceText": "Xi Story:Six-foot alley reveals Chinese wisdom",
+      "bounds": {
+        "left": 68,
+        "top": 1900,
+        "right": 1391,
+        "bottom": 1977
+      },
+      "role": "BODY",
+      "groupingConfidence": 1,
+      "evidence": [],
+      "memberTexts": [
+        "Xi Story:Six-foot alley reveals Chinese wisdom"
+      ]
+    },
+    {
+      "groupId": "semantic-fa793555",
+      "sourceText": "of making roomn for others",
+      "bounds": {
+        "left": 71,
+        "top": 2002,
+        "right": 818,
+        "bottom": 2052
+      },
+      "role": "BODY",
+      "groupingConfidence": 1,
+      "evidence": [],
+      "memberTexts": [
+        "of making roomn for others"
+      ]
+    },
+    {
+      "groupId": "semantic-c9368b85",
+      "sourceText": "2026-08-04",
+      "bounds": {
+        "left": 37,
+        "top": 2077,
+        "right": 248,
+        "bottom": 2107
+      },
+      "role": "BODY",
+      "groupingConfidence": 1,
+      "evidence": [],
+      "memberTexts": [
+        "2026-08-04"
+      ]
+    },
+    {
+      "groupId": "semantic-9f094989",
+      "sourceText": "PLA celebrates 99th founding anniversary in\nmarch toward world-class military,with peace",
+      "bounds": {
+        "left": 70,
+        "top": 2203,
+        "right": 1385,
+        "bottom": 2352
+      },
+      "role": "BODY",
+      "groupingConfidence": 0.949999988079071,
+      "evidence": [
+        "CENTER_ALIGNED",
+        "HORIZONTAL_OVERLAP",
+        "LEFT_ALIGNED",
+        "LINE_GAP",
+        "OCR_BLOCK",
+        "PUNCTUATION_CONTINUATION"
+      ],
+      "memberTexts": [
+        "PLA celebrates 99th founding anniversary in",
+        "march toward world-class military,with peace"
+      ]
+    },
+    {
+      "groupId": "semantic-91fbfd5e",
+      "sourceText": "as enduring mission",
+      "bounds": {
+        "left": 73,
+        "top": 2377,
+        "right": 638,
+        "bottom": 2434
+      },
+      "role": "BODY",
+      "groupingConfidence": 1,
+      "evidence": [],
+      "memberTexts": [
+        "as enduring mission"
+      ]
+    },
+    {
+      "groupId": "semantic-8f9ef39e",
+      "sourceText": "2026-08-01",
+      "bounds": {
+        "left": 37,
+        "top": 2451,
+        "right": 244,
+        "bottom": 2481
+      },
+      "role": "BODY",
+      "groupingConfidence": 1,
+      "evidence": [],
+      "memberTexts": [
+        "2026-08-01"
+      ]
+    },
+    {
+      "groupId": "semantic-17d2690e",
+      "sourceText": "Xi signs order to commend outstanding\nmilitary individual",
+      "bounds": {
+        "left": 70,
+        "top": 2583,
+        "right": 1184,
+        "bottom": 2724
+      },
+      "role": "BODY",
+      "groupingConfidence": 0.949999988079071,
+      "evidence": [
+        "HORIZONTAL_OVERLAP",
+        "LEFT_ALIGNED",
+        "LINE_GAP",
+        "OCR_BLOCK",
+        "PUNCTUATION_CONTINUATION"
+      ],
+      "memberTexts": [
+        "Xi signs order to commend outstanding",
+        "military individual"
+      ]
+    },
+    {
+      "groupId": "semantic-befd7d68",
+      "sourceText": "2026-07-31",
+      "bounds": {
+        "left": 37,
+        "top": 2741,
+        "right": 245,
+        "bottom": 2771
+      },
+      "role": "BODY",
+      "groupingConfidence": 1,
+      "evidence": [],
+      "memberTexts": [
+        "2026-07-31"
+      ]
+    },
+    {
+      "groupId": "semantic-75ab1c6b",
+      "sourceText": "Xi's Archive",
+      "bounds": {
+        "left": 432,
+        "top": 2869,
+        "right": 1005,
+        "bottom": 2943
+      },
+      "role": "TITLE",
+      "groupingConfidence": 1,
+      "evidence": [],
+      "memberTexts": [
+        "Xi's Archive"
+      ]
+    },
+    {
+      "groupId": "semantic-fd9ee683",
+      "sourceText": "Ai",
+      "bounds": {
+        "left": 674,
+        "top": 3017,
+        "right": 755,
+        "bottom": 3091
+      },
+      "role": "TITLE",
+      "groupingConfidence": 1,
+      "evidence": [],
+      "memberTexts": [
+        "Ai"
+      ]
+    }
+  ]
+}

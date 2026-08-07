@@ -1,0 +1,1195 @@
+{
+  "schemaVersion": 1,
+  "event": "self_hosted_actual_page_translation",
+  "source": {
+    "path": "\/data\/local\/tmp\/news-page-source.png",
+    "width": 387,
+    "height": 892
+  },
+  "service": {
+    "baseUrl": "http:\/\/192.168.0.63:8090",
+    "backend": "SELF_HOSTED"
+  },
+  "ocr": {
+    "engine": "ML_KIT",
+    "mode": "AUTO",
+    "elapsedMs": 1641,
+    "regionCount": 29,
+    "regions": [
+      {
+        "regionId": "ocr-region-0",
+        "text": "23113RKC6C",
+        "bounds": {
+          "left": 84,
+          "top": 11,
+          "right": 167,
+          "bottom": 21
+        },
+        "modelConfidence": 0.8558593988418579,
+        "consensusScore": 0.9999999403953552,
+        "passCount": 3,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": 0
+      },
+      {
+        "regionId": "ocr-region-1",
+        "text": "13:35",
+        "bounds": {
+          "left": 23,
+          "top": 43,
+          "right": 55,
+          "bottom": 54
+        },
+        "modelConfidence": 0.9195312261581421,
+        "consensusScore": 0.8906667232513428,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": 0
+      },
+      {
+        "regionId": "ocr-region-2",
+        "text": "AFRICA-CANADA:Boost for",
+        "bounds": {
+          "left": 58,
+          "top": 87,
+          "right": 245,
+          "bottom": 103
+        },
+        "modelConfidence": 0.8318536877632141,
+        "consensusScore": 0.892727255821228,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": 0
+      },
+      {
+        "regionId": "ocr-region-3",
+        "text": "University World News",
+        "bounds": {
+          "left": 6,
+          "top": 132,
+          "right": 208,
+          "bottom": 159
+        },
+        "modelConfidence": 0.8770559430122375,
+        "consensusScore": 0.8157894611358643,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": 0
+      },
+      {
+        "regionId": "ocr-region-4",
+        "text": "Global Edition Africa Edition",
+        "bounds": {
+          "left": 14,
+          "top": 180,
+          "right": 243,
+          "bottom": 193
+        },
+        "modelConfidence": 0.870192289352417,
+        "consensusScore": 0.810769259929657,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": 0
+      },
+      {
+        "regionId": "ocr-region-5",
+        "text": "Asia Hub",
+        "bounds": {
+          "left": 289,
+          "top": 180,
+          "right": 355,
+          "bottom": 193
+        },
+        "modelConfidence": 0.8526785969734192,
+        "consensusScore": 0.8600000143051147,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": 0
+      },
+      {
+        "regionId": "ocr-region-6",
+        "text": "AFRICA",
+        "bounds": {
+          "left": 8,
+          "top": 332,
+          "right": 46,
+          "bottom": 340
+        },
+        "modelConfidence": 0.8411458134651184,
+        "consensusScore": 0.9000000357627869,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": 0
+      },
+      {
+        "regionId": "ocr-region-7",
+        "text": "AFRICA-CANADA:Boost for Next",
+        "bounds": {
+          "left": 7,
+          "top": 344,
+          "right": 323,
+          "bottom": 364
+        },
+        "modelConfidence": 0.8333333134651184,
+        "consensusScore": 0.9000000357627869,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": 0
+      },
+      {
+        "regionId": "ocr-region-8",
+        "text": "Einstein centres",
+        "bounds": {
+          "left": 8,
+          "top": 368,
+          "right": 160,
+          "bottom": 382
+        },
+        "modelConfidence": 0.8979166746139526,
+        "consensusScore": 0.9000000357627869,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": 1
+      },
+      {
+        "regionId": "ocr-region-9",
+        "text": "Munyaradzi Makoni 18 July 2010",
+        "bounds": {
+          "left": 8,
+          "top": 399,
+          "right": 182,
+          "bottom": 410
+        },
+        "modelConfidence": 0.8451021909713745,
+        "consensusScore": 0.9000000357627869,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": 0
+      },
+      {
+        "regionId": "ocr-region-10",
+        "text": "Iweet Whatsapp",
+        "bounds": {
+          "left": 6,
+          "top": 421,
+          "right": 130,
+          "bottom": 441
+        },
+        "modelConfidence": 0.8191105723381042,
+        "consensusScore": 0.9000000357627869,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": 0
+      },
+      {
+        "regionId": "ocr-region-11",
+        "text": "The Canadian government",
+        "bounds": {
+          "left": 178,
+          "top": 461,
+          "right": 355,
+          "bottom": 475
+        },
+        "modelConfidence": 0.8783482313156128,
+        "consensusScore": 0.9000000357627869,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": 0
+      },
+      {
+        "regionId": "ocr-region-12",
+        "text": "has awarded CS20 million",
+        "bounds": {
+          "left": 178,
+          "top": 479,
+          "right": 351,
+          "bottom": 491
+        },
+        "modelConfidence": 0.883184552192688,
+        "consensusScore": 0.9000000357627869,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": 1
+      },
+      {
+        "regionId": "ocr-region-13",
+        "text": "(USS19.4million)over the",
+        "bounds": {
+          "left": 176,
+          "top": 497,
+          "right": 350,
+          "bottom": 511
+        },
+        "modelConfidence": 0.84375,
+        "consensusScore": 0.8750197887420654,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": 2
+      },
+      {
+        "regionId": "ocr-region-14",
+        "text": "next four years to five centres of the",
+        "bounds": {
+          "left": 131,
+          "top": 517,
+          "right": 373,
+          "bottom": 530
+        },
+        "modelConfidence": 0.8704637289047241,
+        "consensusScore": 0.8948387503623962,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": 0
+      },
+      {
+        "regionId": "ocr-region-15",
+        "text": "African Institute for Mathematical",
+        "bounds": {
+          "left": 130,
+          "top": 535,
+          "right": 361,
+          "bottom": 547
+        },
+        "modelConfidence": 0.8999496102333069,
+        "consensusScore": 0.9000000357627869,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": 1
+      },
+      {
+        "regionId": "ocr-region-16",
+        "text": "Sciences.The centres are spread",
+        "bounds": {
+          "left": 130,
+          "top": 554,
+          "right": 347,
+          "bottom": 569
+        },
+        "modelConfidence": 0.884765625,
+        "consensusScore": 0.9000000357627869,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": 0
+      },
+      {
+        "regionId": "ocr-region-17",
+        "text": "across the continent and run through the AIMS-Next",
+        "bounds": {
+          "left": 8,
+          "top": 573,
+          "right": 359,
+          "bottom": 587
+        },
+        "modelConfidence": 0.8925327062606812,
+        "consensusScore": 0.9000000357627869,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": 0
+      },
+      {
+        "regionId": "ocr-region-18",
+        "text": "Einstein Initiative.They will train talented young",
+        "bounds": {
+          "left": 7,
+          "top": 592,
+          "right": 337,
+          "bottom": 607
+        },
+        "modelConfidence": 0.8713541626930237,
+        "consensusScore": 0.8964444398880005,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": 1
+      },
+      {
+        "regionId": "ocr-region-19",
+        "text": "African postgraduate rescarchers in mathematical",
+        "bounds": {
+          "left": 7,
+          "top": 610,
+          "right": 345,
+          "bottom": 626
+        },
+        "modelConfidence": 0.8694957494735718,
+        "consensusScore": 0.8963636755943298,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": 2
+      },
+      {
+        "regionId": "ocr-region-20",
+        "text": "sciences.",
+        "bounds": {
+          "left": 7,
+          "top": 629,
+          "right": 65,
+          "bottom": 642
+        },
+        "modelConfidence": 0.83984375,
+        "consensusScore": 0.8871111869812012,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": 3
+      },
+      {
+        "regionId": "ocr-region-21",
+        "text": "The funding for AIMS was championed by the Ontario",
+        "bounds": {
+          "left": 8,
+          "top": 666,
+          "right": 374,
+          "bottom": 682
+        },
+        "modelConfidence": 0.8591024875640869,
+        "consensusScore": 0.9000000357627869,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": 0
+      },
+      {
+        "regionId": "ocr-region-22",
+        "text": "based non-profit Perimeter Institute for Theoretical",
+        "bounds": {
+          "left": 8,
+          "top": 686,
+          "right": 352,
+          "bottom": 701
+        },
+        "modelConfidence": 0.8704288601875305,
+        "consensusScore": 0.9000000357627869,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": 1
+      },
+      {
+        "regionId": "ocr-region-23",
+        "text": "Physics'new global outreach programme headed by",
+        "bounds": {
+          "left": 8,
+          "top": 705,
+          "right": 357,
+          "bottom": 720
+        },
+        "modelConfidence": 0.876767098903656,
+        "consensusScore": 0.9000000357627869,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": 2
+      },
+      {
+        "regionId": "ocr-region-24",
+        "text": "South African-born scientist Dr Neil Turok,who is also",
+        "bounds": {
+          "left": 7,
+          "top": 723,
+          "right": 373,
+          "bottom": 737
+        },
+        "modelConfidence": 0.884973406791687,
+        "consensusScore": 0.9000000357627869,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": 3
+      },
+      {
+        "regionId": "ocr-region-25",
+        "text": "the founder of AIMS and initiator of the AIMS-Next",
+        "bounds": {
+          "left": 8,
+          "top": 742,
+          "right": 349,
+          "bottom": 754
+        },
+        "modelConfidence": 0.8579798936843872,
+        "consensusScore": 0.9000000357627869,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": 4
+      },
+      {
+        "regionId": "ocr-region-26",
+        "text": "Einstein Initiative.",
+        "bounds": {
+          "left": 7,
+          "top": 761,
+          "right": 130,
+          "bottom": 773
+        },
+        "modelConfidence": 0.8548519611358643,
+        "consensusScore": 0.8957895040512085,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": 5
+      },
+      {
+        "regionId": "ocr-region-27",
+        "text": "Privacy",
+        "bounds": {
+          "left": 325,
+          "top": 809,
+          "right": 373,
+          "bottom": 828
+        },
+        "modelConfidence": 0.8978794813156128,
+        "consensusScore": 0.9000000357627869,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": 0
+      },
+      {
+        "regionId": "ocr-region-28",
+        "text": "Ai",
+        "bounds": {
+          "left": 181,
+          "top": 843,
+          "right": 204,
+          "bottom": 865
+        },
+        "modelConfidence": 0.7265625,
+        "consensusScore": 0.9000000357627869,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": 0
+      }
+    ]
+  },
+  "contentFilter": {
+    "inputCount": 29,
+    "includedCount": 16,
+    "excludedCount": 13,
+    "excludedRegions": [
+      {
+        "regionId": "ocr-region-0",
+        "text": "23113RKC6C",
+        "bounds": {
+          "left": 84,
+          "top": 11,
+          "right": 167,
+          "bottom": 21
+        },
+        "modelConfidence": 0.8558593988418579,
+        "consensusScore": 0.9999999403953552,
+        "passCount": 3,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": 0
+      },
+      {
+        "regionId": "ocr-region-1",
+        "text": "13:35",
+        "bounds": {
+          "left": 23,
+          "top": 43,
+          "right": 55,
+          "bottom": 54
+        },
+        "modelConfidence": 0.9195312261581421,
+        "consensusScore": 0.8906667232513428,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": 0
+      },
+      {
+        "regionId": "ocr-region-2",
+        "text": "AFRICA-CANADA:Boost for",
+        "bounds": {
+          "left": 58,
+          "top": 87,
+          "right": 245,
+          "bottom": 103
+        },
+        "modelConfidence": 0.8318536877632141,
+        "consensusScore": 0.892727255821228,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": 0
+      },
+      {
+        "regionId": "ocr-region-3",
+        "text": "University World News",
+        "bounds": {
+          "left": 6,
+          "top": 132,
+          "right": 208,
+          "bottom": 159
+        },
+        "modelConfidence": 0.8770559430122375,
+        "consensusScore": 0.8157894611358643,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": 0
+      },
+      {
+        "regionId": "ocr-region-4",
+        "text": "Asia Hub",
+        "bounds": {
+          "left": 289,
+          "top": 180,
+          "right": 355,
+          "bottom": 193
+        },
+        "modelConfidence": 0.8526785969734192,
+        "consensusScore": 0.8600000143051147,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": 0
+      },
+      {
+        "regionId": "ocr-region-5",
+        "text": "The Canadian government",
+        "bounds": {
+          "left": 178,
+          "top": 461,
+          "right": 355,
+          "bottom": 475
+        },
+        "modelConfidence": 0.8783482313156128,
+        "consensusScore": 0.9000000357627869,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": 0
+      },
+      {
+        "regionId": "ocr-region-6",
+        "text": "has awarded CS20 million",
+        "bounds": {
+          "left": 178,
+          "top": 479,
+          "right": 351,
+          "bottom": 491
+        },
+        "modelConfidence": 0.883184552192688,
+        "consensusScore": 0.9000000357627869,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": 1
+      },
+      {
+        "regionId": "ocr-region-7",
+        "text": "(USS19.4million)over the",
+        "bounds": {
+          "left": 176,
+          "top": 497,
+          "right": 350,
+          "bottom": 511
+        },
+        "modelConfidence": 0.84375,
+        "consensusScore": 0.8750197887420654,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": 2
+      },
+      {
+        "regionId": "ocr-region-8",
+        "text": "next four years to five centres of the",
+        "bounds": {
+          "left": 131,
+          "top": 517,
+          "right": 373,
+          "bottom": 530
+        },
+        "modelConfidence": 0.8704637289047241,
+        "consensusScore": 0.8948387503623962,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": 0
+      },
+      {
+        "regionId": "ocr-region-9",
+        "text": "African Institute for Mathematical",
+        "bounds": {
+          "left": 130,
+          "top": 535,
+          "right": 361,
+          "bottom": 547
+        },
+        "modelConfidence": 0.8999496102333069,
+        "consensusScore": 0.9000000357627869,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": 1
+      },
+      {
+        "regionId": "ocr-region-10",
+        "text": "Sciences.The centres are spread",
+        "bounds": {
+          "left": 130,
+          "top": 554,
+          "right": 347,
+          "bottom": 569
+        },
+        "modelConfidence": 0.884765625,
+        "consensusScore": 0.9000000357627869,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": 0
+      },
+      {
+        "regionId": "ocr-region-11",
+        "text": "Privacy",
+        "bounds": {
+          "left": 325,
+          "top": 809,
+          "right": 373,
+          "bottom": 828
+        },
+        "modelConfidence": 0.8978794813156128,
+        "consensusScore": 0.9000000357627869,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": 0
+      },
+      {
+        "regionId": "ocr-region-12",
+        "text": "Ai",
+        "bounds": {
+          "left": 181,
+          "top": 843,
+          "right": 204,
+          "bottom": 865
+        },
+        "modelConfidence": 0.7265625,
+        "consensusScore": 0.9000000357627869,
+        "passCount": 2,
+        "recognizerScript": "LATIN",
+        "sourceBlockId": null,
+        "sourceLineIndex": 0
+      }
+    ]
+  },
+  "semanticGrouping": {
+    "groupCount": 8,
+    "documentContext": "[BODY] Global Edition Africa Edition\n[BODY] AFRICA\n[TITLE] AFRICA-CANADA:Boost for Next\n[BODY] Einstein centres\n[BODY] Munyaradzi Makoni 18 July 2010\n[TITLE] Iweet Whatsapp\n[BODY] across the continent and run through the AIMS-Next\nEinstein Initiative.They will train talented young\nAfrican postgraduate rescarchers in mathematical\nsciences.\n[BODY] The funding for AIMS was championed by the Ontario\nbased non-profit Perimeter Institute for Theoretical\nPhysics'new global outreach programme headed by\nSouth African-born scientist Dr Neil Turok,who is also\nthe founder of AIMS and initiator of the AIMS-Next\nEinstein Initiative.",
+    "groups": [
+      {
+        "groupId": "semantic-ac15d57e",
+        "role": "BODY",
+        "translationUnit": "GROUP",
+        "sourceText": "Global Edition Africa Edition",
+        "memberRegionIds": [
+          "semantic-ac15d57e-region-0"
+        ],
+        "readingOrder": 0,
+        "groupingConfidence": 1,
+        "groupingEvidence": [],
+        "bounds": {
+          "left": 14,
+          "top": 180,
+          "right": 243,
+          "bottom": 193
+        },
+        "regions": [
+          {
+            "regionId": "semantic-ac15d57e-region-0",
+            "text": "Global Edition Africa Edition",
+            "confidence": 0.870192289352417,
+            "blockId": null,
+            "lineIndex": 0,
+            "bounds": {
+              "left": 14,
+              "top": 180,
+              "right": 243,
+              "bottom": 193
+            }
+          }
+        ],
+        "translation": {
+          "succeeded": true,
+          "translatedText": "全球版 非洲版",
+          "provider": "self-hosted-qwen-v2",
+          "failureCode": null,
+          "layoutHint": {
+            "preferredMaxLines": 1,
+            "minimumTextScale": 0.8600000143051147,
+            "alignment": "START",
+            "overflowStrategy": "REFLOW_THEN_SCALE"
+          }
+        }
+      },
+      {
+        "groupId": "semantic-a7217504",
+        "role": "BODY",
+        "translationUnit": "GROUP",
+        "sourceText": "AFRICA",
+        "memberRegionIds": [
+          "semantic-a7217504-region-0"
+        ],
+        "readingOrder": 1,
+        "groupingConfidence": 1,
+        "groupingEvidence": [],
+        "bounds": {
+          "left": 8,
+          "top": 332,
+          "right": 46,
+          "bottom": 340
+        },
+        "regions": [
+          {
+            "regionId": "semantic-a7217504-region-0",
+            "text": "AFRICA",
+            "confidence": 0.8411458134651184,
+            "blockId": null,
+            "lineIndex": 0,
+            "bounds": {
+              "left": 8,
+              "top": 332,
+              "right": 46,
+              "bottom": 340
+            }
+          }
+        ],
+        "translation": {
+          "succeeded": true,
+          "translatedText": "非洲",
+          "provider": "self-hosted-qwen-v2",
+          "failureCode": null,
+          "layoutHint": {
+            "preferredMaxLines": 1,
+            "minimumTextScale": 0.8600000143051147,
+            "alignment": "START",
+            "overflowStrategy": "REFLOW_THEN_SCALE"
+          }
+        }
+      },
+      {
+        "groupId": "semantic-32361b4c",
+        "role": "TITLE",
+        "translationUnit": "GROUP",
+        "sourceText": "AFRICA-CANADA:Boost for Next",
+        "memberRegionIds": [
+          "semantic-32361b4c-region-0"
+        ],
+        "readingOrder": 2,
+        "groupingConfidence": 1,
+        "groupingEvidence": [],
+        "bounds": {
+          "left": 7,
+          "top": 344,
+          "right": 323,
+          "bottom": 364
+        },
+        "regions": [
+          {
+            "regionId": "semantic-32361b4c-region-0",
+            "text": "AFRICA-CANADA:Boost for Next",
+            "confidence": 0.8333333134651184,
+            "blockId": null,
+            "lineIndex": 0,
+            "bounds": {
+              "left": 7,
+              "top": 344,
+              "right": 323,
+              "bottom": 364
+            }
+          }
+        ],
+        "translation": {
+          "succeeded": true,
+          "translatedText": "加拿大 - 非洲：为未来注入动力",
+          "provider": "self-hosted-qwen-v2",
+          "failureCode": null,
+          "layoutHint": {
+            "preferredMaxLines": 1,
+            "minimumTextScale": 0.8600000143051147,
+            "alignment": "START",
+            "overflowStrategy": "REFLOW_THEN_SCALE"
+          }
+        }
+      },
+      {
+        "groupId": "semantic-b3ec258c",
+        "role": "BODY",
+        "translationUnit": "GROUP",
+        "sourceText": "Einstein centres",
+        "memberRegionIds": [
+          "semantic-b3ec258c-region-0"
+        ],
+        "readingOrder": 3,
+        "groupingConfidence": 1,
+        "groupingEvidence": [],
+        "bounds": {
+          "left": 8,
+          "top": 368,
+          "right": 160,
+          "bottom": 382
+        },
+        "regions": [
+          {
+            "regionId": "semantic-b3ec258c-region-0",
+            "text": "Einstein centres",
+            "confidence": 0.8979166746139526,
+            "blockId": null,
+            "lineIndex": 1,
+            "bounds": {
+              "left": 8,
+              "top": 368,
+              "right": 160,
+              "bottom": 382
+            }
+          }
+        ],
+        "translation": {
+          "succeeded": true,
+          "translatedText": "爱因斯坦中心",
+          "provider": "self-hosted-qwen-v2",
+          "failureCode": null,
+          "layoutHint": {
+            "preferredMaxLines": 1,
+            "minimumTextScale": 0.8600000143051147,
+            "alignment": "START",
+            "overflowStrategy": "REFLOW_THEN_SCALE"
+          }
+        }
+      },
+      {
+        "groupId": "semantic-d27edea1",
+        "role": "BODY",
+        "translationUnit": "GROUP",
+        "sourceText": "Munyaradzi Makoni 18 July 2010",
+        "memberRegionIds": [
+          "semantic-d27edea1-region-0"
+        ],
+        "readingOrder": 4,
+        "groupingConfidence": 1,
+        "groupingEvidence": [],
+        "bounds": {
+          "left": 8,
+          "top": 399,
+          "right": 182,
+          "bottom": 410
+        },
+        "regions": [
+          {
+            "regionId": "semantic-d27edea1-region-0",
+            "text": "Munyaradzi Makoni 18 July 2010",
+            "confidence": 0.8451021909713745,
+            "blockId": null,
+            "lineIndex": 0,
+            "bounds": {
+              "left": 8,
+              "top": 399,
+              "right": 182,
+              "bottom": 410
+            }
+          }
+        ],
+        "translation": {
+          "succeeded": true,
+          "translatedText": "穆纳拉兹迪·马科尼 2010年7月18日",
+          "provider": "self-hosted-qwen-v2",
+          "failureCode": null,
+          "layoutHint": {
+            "preferredMaxLines": 1,
+            "minimumTextScale": 0.8600000143051147,
+            "alignment": "START",
+            "overflowStrategy": "REFLOW_THEN_SCALE"
+          }
+        }
+      },
+      {
+        "groupId": "semantic-5b9a10bf",
+        "role": "TITLE",
+        "translationUnit": "GROUP",
+        "sourceText": "Iweet Whatsapp",
+        "memberRegionIds": [
+          "semantic-5b9a10bf-region-0"
+        ],
+        "readingOrder": 5,
+        "groupingConfidence": 1,
+        "groupingEvidence": [],
+        "bounds": {
+          "left": 6,
+          "top": 421,
+          "right": 130,
+          "bottom": 441
+        },
+        "regions": [
+          {
+            "regionId": "semantic-5b9a10bf-region-0",
+            "text": "Iweet Whatsapp",
+            "confidence": 0.8191105723381042,
+            "blockId": null,
+            "lineIndex": 0,
+            "bounds": {
+              "left": 6,
+              "top": 421,
+              "right": 130,
+              "bottom": 441
+            }
+          }
+        ],
+        "translation": {
+          "succeeded": false,
+          "translatedText": "Iweet Whatsapp",
+          "provider": "none",
+          "failureCode": "LOCAL_TRANSLATION_FAILED",
+          "layoutHint": null
+        }
+      },
+      {
+        "groupId": "semantic-91d28a64",
+        "role": "BODY",
+        "translationUnit": "GROUP",
+        "sourceText": "across the continent and run through the AIMS-Next\nEinstein Initiative.They will train talented young\nAfrican postgraduate rescarchers in mathematical\nsciences.",
+        "memberRegionIds": [
+          "semantic-91d28a64-region-0",
+          "semantic-91d28a64-region-1",
+          "semantic-91d28a64-region-2",
+          "semantic-91d28a64-region-3"
+        ],
+        "readingOrder": 6,
+        "groupingConfidence": 0.8199999928474426,
+        "groupingEvidence": [
+          "CENTER_ALIGNED",
+          "GEOMETRY_INFERRED",
+          "HORIZONTAL_OVERLAP",
+          "LEFT_ALIGNED",
+          "LINE_GAP",
+          "PUNCTUATION_CONTINUATION",
+          "REGION_OCCUPANCY"
+        ],
+        "bounds": {
+          "left": 7,
+          "top": 573,
+          "right": 359,
+          "bottom": 642
+        },
+        "regions": [
+          {
+            "regionId": "semantic-91d28a64-region-0",
+            "text": "across the continent and run through the AIMS-Next",
+            "confidence": 0.8925327062606812,
+            "blockId": null,
+            "lineIndex": 0,
+            "bounds": {
+              "left": 8,
+              "top": 573,
+              "right": 359,
+              "bottom": 587
+            }
+          },
+          {
+            "regionId": "semantic-91d28a64-region-1",
+            "text": "Einstein Initiative.They will train talented young",
+            "confidence": 0.8713541626930237,
+            "blockId": null,
+            "lineIndex": 1,
+            "bounds": {
+              "left": 7,
+              "top": 592,
+              "right": 337,
+              "bottom": 607
+            }
+          },
+          {
+            "regionId": "semantic-91d28a64-region-2",
+            "text": "African postgraduate rescarchers in mathematical",
+            "confidence": 0.8694957494735718,
+            "blockId": null,
+            "lineIndex": 2,
+            "bounds": {
+              "left": 7,
+              "top": 610,
+              "right": 345,
+              "bottom": 626
+            }
+          },
+          {
+            "regionId": "semantic-91d28a64-region-3",
+            "text": "sciences.",
+            "confidence": 0.83984375,
+            "blockId": null,
+            "lineIndex": 3,
+            "bounds": {
+              "left": 7,
+              "top": 629,
+              "right": 65,
+              "bottom": 642
+            }
+          }
+        ],
+        "translation": {
+          "succeeded": true,
+          "translatedText": "遍布整个大陆，并贯穿“非洲数学科学研究所 - 下一代爱因斯坦计划”。它们将培训有才华的年轻非洲研究生从事数学科学研究。",
+          "provider": "self-hosted-qwen-v2",
+          "failureCode": null,
+          "layoutHint": {
+            "preferredMaxLines": 4,
+            "minimumTextScale": 0.8600000143051147,
+            "alignment": "START",
+            "overflowStrategy": "REFLOW_THEN_SCALE"
+          }
+        }
+      },
+      {
+        "groupId": "semantic-6e808f46",
+        "role": "BODY",
+        "translationUnit": "GROUP",
+        "sourceText": "The funding for AIMS was championed by the Ontario\nbased non-profit Perimeter Institute for Theoretical\nPhysics'new global outreach programme headed by\nSouth African-born scientist Dr Neil Turok,who is also\nthe founder of AIMS and initiator of the AIMS-Next\nEinstein Initiative.",
+        "memberRegionIds": [
+          "semantic-6e808f46-region-0",
+          "semantic-6e808f46-region-1",
+          "semantic-6e808f46-region-2",
+          "semantic-6e808f46-region-3",
+          "semantic-6e808f46-region-4",
+          "semantic-6e808f46-region-5"
+        ],
+        "readingOrder": 7,
+        "groupingConfidence": 0.8199999928474426,
+        "groupingEvidence": [
+          "CENTER_ALIGNED",
+          "GEOMETRY_INFERRED",
+          "HORIZONTAL_OVERLAP",
+          "LEFT_ALIGNED",
+          "LINE_GAP",
+          "PUNCTUATION_CONTINUATION",
+          "REGION_OCCUPANCY"
+        ],
+        "bounds": {
+          "left": 7,
+          "top": 666,
+          "right": 374,
+          "bottom": 773
+        },
+        "regions": [
+          {
+            "regionId": "semantic-6e808f46-region-0",
+            "text": "The funding for AIMS was championed by the Ontario",
+            "confidence": 0.8591024875640869,
+            "blockId": null,
+            "lineIndex": 0,
+            "bounds": {
+              "left": 8,
+              "top": 666,
+              "right": 374,
+              "bottom": 682
+            }
+          },
+          {
+            "regionId": "semantic-6e808f46-region-1",
+            "text": "based non-profit Perimeter Institute for Theoretical",
+            "confidence": 0.8704288601875305,
+            "blockId": null,
+            "lineIndex": 1,
+            "bounds": {
+              "left": 8,
+              "top": 686,
+              "right": 352,
+              "bottom": 701
+            }
+          },
+          {
+            "regionId": "semantic-6e808f46-region-2",
+            "text": "Physics'new global outreach programme headed by",
+            "confidence": 0.876767098903656,
+            "blockId": null,
+            "lineIndex": 2,
+            "bounds": {
+              "left": 8,
+              "top": 705,
+              "right": 357,
+              "bottom": 720
+            }
+          },
+          {
+            "regionId": "semantic-6e808f46-region-3",
+            "text": "South African-born scientist Dr Neil Turok,who is also",
+            "confidence": 0.884973406791687,
+            "blockId": null,
+            "lineIndex": 3,
+            "bounds": {
+              "left": 7,
+              "top": 723,
+              "right": 373,
+              "bottom": 737
+            }
+          },
+          {
+            "regionId": "semantic-6e808f46-region-4",
+            "text": "the founder of AIMS and initiator of the AIMS-Next",
+            "confidence": 0.8579798936843872,
+            "blockId": null,
+            "lineIndex": 4,
+            "bounds": {
+              "left": 8,
+              "top": 742,
+              "right": 349,
+              "bottom": 754
+            }
+          },
+          {
+            "regionId": "semantic-6e808f46-region-5",
+            "text": "Einstein Initiative.",
+            "confidence": 0.8548519611358643,
+            "blockId": null,
+            "lineIndex": 5,
+            "bounds": {
+              "left": 7,
+              "top": 761,
+              "right": 130,
+              "bottom": 773
+            }
+          }
+        ],
+        "translation": {
+          "succeeded": true,
+          "translatedText": "对非洲数学科学研究所（AIMS）的资金支持由位于安大略省的“理论物理中心”非营利组织的全球推广项目所倡导，该项目由南非出生的科学家尼尔·图罗克博士领导。他也是非洲数学科学研究所的创始人和“非洲数学科学研究所 - 下一代爱因斯坦计划”的发起人。",
+          "provider": "self-hosted-qwen-v2",
+          "failureCode": null,
+          "layoutHint": {
+            "preferredMaxLines": 6,
+            "minimumTextScale": 0.8600000143051147,
+            "alignment": "START",
+            "overflowStrategy": "REFLOW_THEN_SCALE"
+          }
+        }
+      }
+    ]
+  },
+  "translation": {
+    "elapsedMs": 38199,
+    "resultCount": 8,
+    "succeededCount": 7,
+    "failedCount": 1
+  }
+}

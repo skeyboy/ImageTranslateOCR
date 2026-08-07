@@ -1,0 +1,254 @@
+[
+  {
+    "schemaVersion": 1,
+    "requestId": "94a5d158-8656-41e7-b675-718dbcbfa58b",
+    "generation": 0,
+    "scene": "ANDROID_CLIENT_CURRENT_PAGE_SINGLE_GROUP_STRICT",
+    "translation": {
+      "mode": "ENGLISH_TO_CHINESE",
+      "sourceLanguage": "auto",
+      "targetLanguage": "auto",
+      "preserveIdentifiers": true,
+      "useContext": false
+    },
+    "regions": [
+      {
+        "regionId": "semantic-11afce8b",
+        "text": "www.news.cn",
+        "sourceLanguage": "en",
+        "targetLanguage": "zh"
+      }
+    ]
+  },
+  {
+    "schemaVersion": 1,
+    "requestId": "2a3deaf6-339b-469a-bc72-1a998b3fe1d1",
+    "generation": 0,
+    "scene": "ANDROID_CLIENT_CURRENT_PAGE_SINGLE_GROUP_STRICT",
+    "translation": {
+      "mode": "ENGLISH_TO_CHINESE",
+      "sourceLanguage": "auto",
+      "targetLanguage": "auto",
+      "preserveIdentifiers": true,
+      "useContext": false
+    },
+    "regions": [
+      {
+        "regionId": "semantic-17d2690e",
+        "text": "Xi signs order to commend outstanding military individual",
+        "sourceLanguage": "en",
+        "targetLanguage": "zh"
+      }
+    ]
+  },
+  {
+    "schemaVersion": 1,
+    "requestId": "ae90ba53-958f-43ab-8b9f-bc9ce79bc54b",
+    "generation": 0,
+    "scene": "ANDROID_CLIENT_CURRENT_PAGE_SINGLE_GROUP_STRICT",
+    "translation": {
+      "mode": "ENGLISH_TO_CHINESE",
+      "sourceLanguage": "auto",
+      "targetLanguage": "auto",
+      "preserveIdentifiers": true,
+      "useContext": false
+    },
+    "regions": [
+      {
+        "regionId": "semantic-55749d7a",
+        "text": "Home)(Xi Story Xiplomacy Xi Focus",
+        "sourceLanguage": "en",
+        "targetLanguage": "zh"
+      }
+    ]
+  },
+  {
+    "schemaVersion": 1,
+    "requestId": "3d210bfe-cfdb-451f-b891-e290abdd85d8",
+    "generation": 0,
+    "scene": "ANDROID_CLIENT_CURRENT_PAGE_SINGLE_GROUP_STRICT",
+    "translation": {
+      "mode": "ENGLISH_TO_CHINESE",
+      "sourceLanguage": "auto",
+      "targetLanguage": "auto",
+      "preserveIdentifiers": true,
+      "useContext": false
+    },
+    "regions": [
+      {
+        "regionId": "semantic-631d7a9d",
+        "text": "Xi Story:Six-foot alley reveals Chinese wisdom",
+        "sourceLanguage": "en",
+        "targetLanguage": "zh"
+      }
+    ]
+  },
+  {
+    "schemaVersion": 1,
+    "requestId": "73462188-a3fd-4055-94ba-5049322d99c5",
+    "generation": 0,
+    "scene": "ANDROID_CLIENT_CURRENT_PAGE_SINGLE_GROUP_STRICT",
+    "translation": {
+      "mode": "ENGLISH_TO_CHINESE",
+      "sourceLanguage": "auto",
+      "targetLanguage": "auto",
+      "preserveIdentifiers": true,
+      "useContext": false
+    },
+    "regions": [
+      {
+        "regionId": "semantic-75ab1c6b",
+        "text": "Xi's Archive",
+        "sourceLanguage": "en",
+        "targetLanguage": "zh"
+      }
+    ]
+  },
+  {
+    "schemaVersion": 1,
+    "requestId": "624f26f9-15f3-4412-a433-376c4dc3f3cc",
+    "generation": 0,
+    "scene": "ANDROID_CLIENT_CURRENT_PAGE_SINGLE_GROUP_STRICT",
+    "translation": {
+      "mode": "ENGLISH_TO_CHINESE",
+      "sourceLanguage": "auto",
+      "targetLanguage": "auto",
+      "preserveIdentifiers": true,
+      "useContext": false
+    },
+    "regions": [
+      {
+        "regionId": "semantic-8895378",
+        "text": "EWS",
+        "sourceLanguage": "en",
+        "targetLanguage": "zh"
+      }
+    ]
+  },
+  {
+    "schemaVersion": 1,
+    "requestId": "df82004c-fb89-4776-a19f-aed27fd218ab",
+    "generation": 0,
+    "scene": "ANDROID_CLIENT_CURRENT_PAGE_SINGLE_GROUP_STRICT",
+    "translation": {
+      "mode": "ENGLISH_TO_CHINESE",
+      "sourceLanguage": "auto",
+      "targetLanguage": "auto",
+      "preserveIdentifiers": true,
+      "useContext": false
+    },
+    "regions": [
+      {
+        "regionId": "semantic-8b380923",
+        "text": "Xi holds talks with Slovak president in Beijing",
+        "sourceLanguage": "en",
+        "targetLanguage": "zh"
+      }
+    ]
+  },
+  {
+    "schemaVersion": 1,
+    "requestId": "833d0c7b-da7a-4d2c-a39d-46d8fb582969",
+    "generation": 0,
+    "scene": "ANDROID_CLIENT_CURRENT_PAGE_SINGLE_GROUP_STRICT",
+    "translation": {
+      "mode": "ENGLISH_TO_CHINESE",
+      "sourceLanguage": "auto",
+      "targetLanguage": "auto",
+      "preserveIdentifiers": true,
+      "useContext": false
+    },
+    "regions": [
+      {
+        "regionId": "semantic-91fbfd5e",
+        "text": "as enduring mission",
+        "sourceLanguage": "en",
+        "targetLanguage": "zh"
+      }
+    ]
+  },
+  {
+    "schemaVersion": 1,
+    "requestId": "5a237982-3045-4a15-b320-bc6afe2072dc",
+    "generation": 0,
+    "scene": "ANDROID_CLIENT_CURRENT_PAGE_SINGLE_GROUP_STRICT",
+    "translation": {
+      "mode": "ENGLISH_TO_CHINESE",
+      "sourceLanguage": "auto",
+      "targetLanguage": "auto",
+      "preserveIdentifiers": true,
+      "useContext": false
+    },
+    "regions": [
+      {
+        "regionId": "semantic-9f094989",
+        "text": "PLA celebrates 99th founding anniversary in march toward world-class military,with peace",
+        "sourceLanguage": "en",
+        "targetLanguage": "zh"
+      }
+    ]
+  },
+  {
+    "schemaVersion": 1,
+    "requestId": "2b6b03ae-d527-401e-ac5a-6635173333bc",
+    "generation": 0,
+    "scene": "ANDROID_CLIENT_CURRENT_PAGE_SINGLE_GROUP_STRICT",
+    "translation": {
+      "mode": "ENGLISH_TO_CHINESE",
+      "sourceLanguage": "auto",
+      "targetLanguage": "auto",
+      "preserveIdentifiers": true,
+      "useContext": false
+    },
+    "regions": [
+      {
+        "regionId": "semantic-b0675a81",
+        "text": "N'sTime",
+        "sourceLanguage": "en",
+        "targetLanguage": "zh"
+      }
+    ]
+  },
+  {
+    "schemaVersion": 1,
+    "requestId": "c3d9e8a3-d44b-4b19-878e-30df98ae8bcc",
+    "generation": 0,
+    "scene": "ANDROID_CLIENT_CURRENT_PAGE_SINGLE_GROUP_STRICT",
+    "translation": {
+      "mode": "ENGLISH_TO_CHINESE",
+      "sourceLanguage": "auto",
+      "targetLanguage": "auto",
+      "preserveIdentifiers": true,
+      "useContext": false
+    },
+    "regions": [
+      {
+        "regionId": "semantic-e86f3d04",
+        "text": "net corm",
+        "sourceLanguage": "en",
+        "targetLanguage": "zh"
+      }
+    ]
+  },
+  {
+    "schemaVersion": 1,
+    "requestId": "2f8950e0-0bd7-48a7-9292-3418bcbc9a63",
+    "generation": 0,
+    "scene": "ANDROID_CLIENT_CURRENT_PAGE_SINGLE_GROUP_STRICT",
+    "translation": {
+      "mode": "ENGLISH_TO_CHINESE",
+      "sourceLanguage": "auto",
+      "targetLanguage": "auto",
+      "preserveIdentifiers": true,
+      "useContext": false
+    },
+    "regions": [
+      {
+        "regionId": "semantic-fa793555",
+        "text": "of making roomn for others",
+        "sourceLanguage": "en",
+        "targetLanguage": "zh"
+      }
+    ]
+  }
+]

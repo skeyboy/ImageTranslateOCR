@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "requestId": "226568dc-c56f-46e6-a168-9b4b4609925c",
+  "generation": 0,
+  "scene": "ANDROID_CLIENT_CURRENT_PAGE_SINGLE_GROUP",
+  "translation": {
+    "mode": "ENGLISH_TO_CHINESE",
+    "sourceLanguage": "en",
+    "targetLanguage": "zh",
+    "preserveIdentifiers": true,
+    "useContext": false
+  },
+  "regions": [
+    {
+      "regionId": "semantic-55749d7a",
+      "text": "Home)(Xi Story Xiplomacy Xi Focus",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh"
+    }
+  ]
+}

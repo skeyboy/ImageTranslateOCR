@@ -2,6 +2,9 @@ package com.example.imagetranslate.screenshot
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
 import android.graphics.Rect
 import android.view.ContextThemeWrapper
 import android.view.LayoutInflater
@@ -17,9 +20,74 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
+import kotlinx.coroutines.runBlocking
 
 @RunWith(AndroidJUnit4::class)
 class ScreenshotOverlayLayoutTest {
+    @Test
+    fun authoritativeTwoSlotLongBodyProducesAnOverlayPatch() = runBlocking {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val bitmap = Bitmap.createBitmap(1440, 3200, Bitmap.Config.ARGB_8888)
+        val lines = listOf(
+            "Meanwhile,the Department of" to Rect(64, 1206, 1008, 1278),
+            "Meteorology and Hydrology under the Lao" to Rect(34, 1323, 1384, 1391),
+            "Ministry of Agriculture and Environment" to Rect(64, 1424, 1314, 1500),
+            "issued warning on Wednesday that" to Rect(33, 1546, 1210, 1608),
+            "widespread thunderstorms,moderate to" to Rect(29, 1658, 1317, 1723),
+            "heavy rainfall,and occasional strong winds" to Rect(53, 1762, 1398, 1833),
+            "are expected to continue in sonme areas." to Rect(31, 1883, 1301, 1944),
+            "The department identified 30districts" to Rect(31, 1983, 1246, 2059),
+            "across 10 provinces as being at high risk of" to Rect(32, 2106, 1402, 2173),
+            "flash floods and landslides." to Rect(30, 2218, 889, 2272)
+        )
+        Canvas(bitmap).apply {
+            drawColor(Color.WHITE)
+            val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = Color.BLACK
+                textSize = 62f
+            }
+            lines.forEach { (text, bounds) ->
+                drawText(text, bounds.left.toFloat(), bounds.bottom - 6f, paint)
+            }
+        }
+        val processor = BackgroundTranslatedImageProcessor(context)
+        try {
+            val result = processor.renderDeterministicOverlay(
+                bitmap = bitmap,
+                regions = listOf(
+                    LiveDeterministicTranslationRegion(
+                        sourceText = lines.joinToString("\n") { it.first },
+                        translation = "与此同时，老挝农业与环境部下属的气象与水文局于周三发出警告称，" +
+                            "部分地区预计将持续出现大范围雷暴、中到大雨以及偶尔的强风。" +
+                            "该局已确定全国10个省共30个地区面临山洪和泥石流的高风险。",
+                        bounds = Rect(29, 1206, 1402, 2272),
+                        sourceLineBounds = lines.map { Rect(it.second) },
+                        renderSlots = listOf(
+                            Rect(64, 1206, 1008, 1278),
+                            Rect(29, 1323, 1402, 2272)
+                        ),
+                        displayHints = SmartAssistDisplayHints(
+                            preferredMaxLines = 10,
+                            minimumTextScale = 0.86f,
+                            lineSpacingMultiplier = 0.92f,
+                            allowMore = true,
+                            sourceLineCount = 10
+                        )
+                    )
+                )
+            )
+
+            assertEquals(1, result.expectedRegionCount)
+            assertEquals(1, result.renderedRegionCount)
+            assertEquals(0, result.failedRegionCount)
+            assertEquals(1, result.patches.size)
+            assertEquals(1, result.renderedText.size)
+        } finally {
+            processor.close()
+            bitmap.recycle()
+        }
+    }
+
     @Test
     fun activeCaptureOverlayProvidesContinuousTranslationControls() {
         val context = ApplicationProvider.getApplicationContext<Context>()
@@ -76,17 +144,16 @@ class ScreenshotOverlayLayoutTest {
             assertEquals(View.VISIBLE, view.visibility)
             assertEquals(listOf(Rect(8, 12, 32, 28)), view.signatureOcclusionBounds())
 
-            view.hideForViewportMovement()
+            assertTrue(view.clearForViewportMovement())
             assertEquals(View.INVISIBLE, view.visibility)
-            assertFalse(patchBitmap.isRecycled)
-            assertEquals(listOf(Rect(8, 12, 32, 28)), view.signatureOcclusionBounds())
+            assertTrue(patchBitmap.isRecycled)
+            assertTrue(view.signatureOcclusionBounds().isEmpty())
 
             view.setPatchesVisible(false, animateChange = false)
             assertTrue(view.signatureOcclusionBounds().isEmpty())
 
             view.clearPatches()
             assertEquals(View.INVISIBLE, view.visibility)
-            assertTrue(patchBitmap.isRecycled)
         }
     }
 

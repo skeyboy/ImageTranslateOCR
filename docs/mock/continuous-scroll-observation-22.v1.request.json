@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "requestId": "bcb31972-6c09-4f7b-9a0c-220000000011",
+  "generation": 0,
+  "scene": "ANDROID_CLIENT",
+  "translation": {
+    "mode": "AUTO_BIDIRECTIONAL",
+    "sourceLanguage": "auto",
+    "targetLanguage": "auto",
+    "preserveIdentifiers": true,
+    "useContext": true
+  },
+  "regions": [
+    {
+      "regionId": "region-0-bcb31972-6c09-4f7b-9a0c-220000000011",
+      "text": "Atlas Operations",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh"
+    },
+    {
+      "regionId": "region-1-bcb31972-6c09-4f7b-9a0c-220000000011",
+      "text": "22. Visible completion is the real delivery point",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh"
+    },
+    {
+      "regionId": "region-2-bcb31972-6c09-4f7b-9a0c-220000000011",
+      "text": "Performance matters after correctness and completeness. Track the time until the whole visible result is committed, not the first partial line that happens to appear.",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh"
+    },
+    {
+      "regionId": "region-3-bcb31972-6c09-4f7b-9a0c-220000000011",
+      "text": "suspend fun commit(frame: Frame) {\n  require(frame.generation == current)\n  publish(\"stable viewport 22\", frame)\n}",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh"
+    }
+  ]
+}

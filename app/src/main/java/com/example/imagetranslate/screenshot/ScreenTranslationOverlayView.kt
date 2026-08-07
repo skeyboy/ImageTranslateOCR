@@ -11,7 +11,8 @@ import android.view.animation.DecelerateInterpolator
 
 internal data class ScreenTranslationPatch(
     val bounds: Rect,
-    val bitmap: Bitmap
+    val bitmap: Bitmap,
+    val groupId: String? = null
 )
 
 internal fun Iterable<ScreenTranslationPatch>.recyclePatchBitmaps() {
@@ -85,10 +86,10 @@ internal class ScreenTranslationOverlayView @JvmOverloads constructor(
         }
     }
 
-    fun hideForViewportMovement() {
-        animate().cancel()
-        alpha = 1f
-        visibility = INVISIBLE
+    fun clearForViewportMovement(): Boolean {
+        clearPatches()
+        return patches.isEmpty() && sourceWidth == 0 && sourceHeight == 0 &&
+            visibility == INVISIBLE
     }
 
     fun clearPatches() {

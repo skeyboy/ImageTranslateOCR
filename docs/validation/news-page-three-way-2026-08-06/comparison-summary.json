@@ -1,0 +1,73 @@
+{
+  "schemaVersion": 1,
+  "validatedAt": "2026-08-06",
+  "source": {
+    "file": "source.png",
+    "width": 387,
+    "height": 892,
+    "ocrElapsedMs": 1641,
+    "ocrRegionCount": 29,
+    "filterIncludedCount": 16,
+    "filterExcludedCount": 13,
+    "firstParagraphLineCount": 10,
+    "firstParagraphIncludedLineCount": 4,
+    "firstParagraphRecall": 0.4,
+    "allBodyLineCount": 16,
+    "allBodyIncludedLineCount": 10,
+    "allBodyRecall": 0.625,
+    "highImpactOcrErrors": [
+      { "recognized": "CS20", "expected": "C$20" },
+      { "recognized": "USS19.4", "expected": "US$19.4" },
+      { "recognized": "rescarchers", "expected": "researchers" },
+      { "recognized": "Iweet", "expected": "Tweet" }
+    ]
+  },
+  "currentStaticImage": {
+    "requestId": "92835e01-8b6a-4001-be98-e1e87b6f7297",
+    "scene": "STATIC_IMAGE",
+    "provider": "qwen3.5:9b",
+    "serviceStatus": "SUCCEEDED",
+    "serviceDurationMs": 48188,
+    "groupCount": 8,
+    "regionCount": 16,
+    "inputChars": 553,
+    "uiReplacedCount": 6,
+    "uiFailedCount": 2,
+    "strength": "Best bounded static rendering and good translation for the complete second paragraph",
+    "failure": "The wrapped first paragraph loses 6 of 10 lines before grouping"
+  },
+  "translationRunA": {
+    "file": "translation-run-a.png",
+    "requestId": "c3beeaec-8ce9-482d-9c84-e08bef8679ac",
+    "scene": "LIVE_SCREEN",
+    "provider": "qwen3.5:9b",
+    "serviceStatus": "SUCCEEDED",
+    "serviceDurationMs": 54625,
+    "clientTotalMs": 55317,
+    "groupCount": 15,
+    "regionCount": 15,
+    "inputChars": 785,
+    "strength": "Most complete and semantically strongest translation",
+    "failure": "Unsafe patch expansion, giant Privacy block and unreadably compressed body text"
+  },
+  "translationRunB": {
+    "file": "translation-run-b.png",
+    "requestId": "ae8f512c-199d-4c2c-b1a1-b1c610c9f029",
+    "scene": "LIVE_SCREEN",
+    "provider": "local fallback after self-hosted failure",
+    "serviceStatus": "FAILED",
+    "serviceDurationMs": 51511,
+    "clientTotalMs": 52453,
+    "groupCount": 14,
+    "regionCount": 14,
+    "inputChars": 786,
+    "strength": "Patches mostly remain inside the original paragraph areas",
+    "failure": "Fragment translation corrupts currencies, amounts, entities and paragraph meaning"
+  },
+  "recommendedNextBatch": [
+    "Recover text flow around image exclusion zones",
+    "Constrain each semantic group to protected render slots or a polygon",
+    "Use shape-aware paragraph layout with bounded compact and overflow-more states",
+    "Preserve long body source text when Qwen fails instead of silently using fragment fallback"
+  ]
+}
