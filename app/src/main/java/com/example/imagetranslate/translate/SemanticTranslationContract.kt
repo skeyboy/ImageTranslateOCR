@@ -82,7 +82,8 @@ internal data class SemanticLayoutHint(
     val allowMore: Boolean = false,
     val sourceLineCount: Int = 1,
     val layoutShape: String = "RECT",
-    val renderSlots: List<TranslationBounds> = emptyList()
+    val renderSlots: List<TranslationBounds> = emptyList(),
+    val sourceCoverSlots: List<TranslationBounds> = emptyList()
 )
 
 internal data class SemanticGroupTranslationResult(

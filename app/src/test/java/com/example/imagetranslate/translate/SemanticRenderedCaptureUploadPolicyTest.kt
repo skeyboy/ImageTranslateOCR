@@ -13,6 +13,7 @@ class SemanticRenderedCaptureUploadPolicyTest {
                 backend = TranslationBackend.SELF_HOSTED,
                 uploadEnabled = true,
                 patchCount = 2,
+                failedCount = 0,
                 traceCount = 1
             )
         )
@@ -22,6 +23,7 @@ class SemanticRenderedCaptureUploadPolicyTest {
                 backend = TranslationBackend.SELF_HOSTED,
                 uploadEnabled = true,
                 patchCount = 2,
+                failedCount = 0,
                 traceCount = 1
             )
         )
@@ -31,6 +33,7 @@ class SemanticRenderedCaptureUploadPolicyTest {
                 backend = TranslationBackend.LOCAL,
                 uploadEnabled = true,
                 patchCount = 2,
+                failedCount = 0,
                 traceCount = 1
             )
         )
@@ -40,6 +43,7 @@ class SemanticRenderedCaptureUploadPolicyTest {
                 backend = TranslationBackend.SELF_HOSTED,
                 uploadEnabled = true,
                 patchCount = 0,
+                failedCount = 0,
                 traceCount = 1
             )
         )
@@ -49,7 +53,22 @@ class SemanticRenderedCaptureUploadPolicyTest {
                 backend = TranslationBackend.SELF_HOSTED,
                 uploadEnabled = true,
                 patchCount = 2,
+                failedCount = 0,
                 traceCount = 0
+            )
+        )
+    }
+
+    @Test
+    fun uploadsFailedRenderWithoutPatchesWhenRequestTraceExists() {
+        assertTrue(
+            SemanticRenderedCaptureUploadPolicy.shouldUpload(
+                isDebugBuild = true,
+                backend = TranslationBackend.SELF_HOSTED,
+                uploadEnabled = true,
+                patchCount = 0,
+                failedCount = 2,
+                traceCount = 1
             )
         )
     }

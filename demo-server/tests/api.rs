@@ -115,6 +115,13 @@ async fn translates_semantic_group_and_echoes_generation() {
         body["results"][0]["layoutHint"]["renderSlots"][0],
         json!({"left": 70, "top": 2200, "right": 1100, "bottom": 2350})
     );
+    assert_eq!(
+        body["results"][0]["layoutHint"]["sourceCoverSlots"],
+        json!([
+            {"left": 70, "top": 2200, "right": 800, "bottom": 2260},
+            {"left": 70, "top": 2280, "right": 1100, "bottom": 2350}
+        ])
+    );
     assert_eq!(database.audit_count().await.unwrap(), 1);
     let audits = database.list_audits(10).await.unwrap();
     assert_eq!(audits.len(), 1);
@@ -149,6 +156,15 @@ async fn translates_semantic_group_and_echoes_generation() {
                         "sessionId": "session-1",
                         "generation": 42,
                         "translationRevision": 3,
+                        "outcome": "RENDER_FAILED",
+                        "stage": "OVERLAY_PARTIAL_DRAW",
+                        "failureCode": "PARTIAL_RENDER",
+                        "failureMessage": "one translated region was not pasted back",
+                        "layoutDiagnostics": {
+                            "schemaVersion": 1,
+                            "renderedPatchCount": 1,
+                            "failedRegionCount": 1
+                        },
                         "capture": {
                             "mimeType": "image/png",
                             "dataBase64": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
@@ -178,6 +194,18 @@ async fn translates_semantic_group_and_echoes_generation() {
     let rendered_image = record_with_rendered_image.rendered_image.unwrap();
     assert_eq!(rendered_image.mime_type, "image/png");
     assert_eq!(rendered_image.byte_size, 68);
+    assert_eq!(rendered_image.outcome, "RENDER_FAILED");
+    assert_eq!(
+        rendered_image.stage.as_deref(),
+        Some("OVERLAY_PARTIAL_DRAW")
+    );
+    assert!(
+        rendered_image
+            .layout_diagnostics_json
+            .as_deref()
+            .unwrap()
+            .contains("failedRegionCount")
+    );
 
     let history = router
         .clone()
@@ -237,7 +265,9 @@ async fn translates_semantic_group_and_echoes_generation() {
     assert!(detail_body.contains("页面布局还原"));
     assert!(detail_body.contains("采集参考"));
     assert!(detail_body.contains("翻译前 OCR 采集图"));
-    assert!(detail_body.contains("显示端侧实际回贴"));
+    assert!(detail_body.contains("显示端侧失败现场"));
+    assert!(detail_body.contains("RENDER_FAILED"));
+    assert!(detail_body.contains("查看端侧布局诊断"));
     assert!(detail_body.contains("loading=\"lazy\""));
     assert!(detail_body.contains("id=\"rendered-capture-toggle\" type=\"checkbox\""));
     assert!(detail_body.contains("id=\"source-capture-view\" class=\"capture-view\""));
@@ -368,6 +398,13 @@ async fn v3_returns_authoritative_layout_plan_and_declarative_rendering_fields()
     assert!(body["results"][0]["layoutHint"]["maximumTextScale"].is_number());
     assert!(body["results"][0]["layoutHint"]["lineSpacingMultiplier"].is_number());
     assert!(body["results"][0]["layoutHint"]["allowMore"].is_boolean());
+    assert_eq!(
+        body["results"][0]["layoutHint"]["sourceCoverSlots"]
+            .as_array()
+            .unwrap()
+            .len(),
+        2
+    );
 }
 
 struct SlowQwen {

@@ -123,6 +123,7 @@ tbody tr:hover { background: #f4f8f6; }
 .legend-meta { color: #6b7280; }
 .legend-control { color: #7c3aed; }
 .legend-id { color: #0f766e; }
+.legend-cover { color: #9a3412; }
 
 .capture-reference-layout { display: block; }
 .layout-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; align-items: start; }
@@ -140,11 +141,17 @@ tbody tr:hover { background: #f4f8f6; }
 .capture-view img { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: contain; }
 .capture-view-placeholder { padding: 20px; display: grid; place-items: center; color: #7b8078; font-size: 12px; text-align: center; }
 .capture-view-meta { margin-top: 8px; color: #666c64; font-size: 11px; }
+.capture-view-meta p { margin: 0; }
+.capture-audit-error { margin-top: 4px !important; color: #a33a32; }
+.capture-audit-details { margin-top: 6px; }
+.capture-audit-details summary { width: max-content; cursor: pointer; color: #0f6a61; font-weight: 650; }
+.capture-audit-details pre { min-height: 0; max-height: 180px; margin-top: 6px; padding: 8px; font-size: 10px; }
 .layout-canvas { position: relative; width: 100%; aspect-ratio: var(--viewport-ratio, 1 / 1); overflow: hidden; border: 2px solid #262a25; background: #fafbf9; }
-.ocr-region, .render-slot, .group-outline { position: absolute; overflow: hidden; }
+.ocr-region, .render-slot, .source-cover-slot, .group-outline { position: absolute; overflow: hidden; }
 .group-outline { border: 1px dashed currentColor; pointer-events: none; z-index: 1; }
 .ocr-region { border: 1px solid currentColor; background: color-mix(in srgb, currentColor 8%, transparent); z-index: 2; line-height: 1.08; overflow-wrap: anywhere; }
 .render-slot { border: 1px solid currentColor; background: color-mix(in srgb, currentColor 9%, #fff); padding: 1px 2px; z-index: 2; overflow: hidden; overflow-wrap: anywhere; word-break: break-word; }
+.source-cover-slot { border: 1px dotted #9a3412; background: rgb(154 52 18 / 9%); z-index: 1; pointer-events: none; }
 .role-body { color: #2563eb; }
 .role-title { color: #b45309; }
 .role-metadata, .role-timestamp { color: #6b7280; }

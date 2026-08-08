@@ -191,10 +191,19 @@ fn merge_confidence(
     second: &TranslationGroup,
     regions: &HashMap<&str, &OcrRegion>,
 ) -> Option<f32> {
+    let same_ocr_block = is_same_ocr_block_continuation(first, second, regions);
+    let same_visible_text = first
+        .source_text
+        .split_whitespace()
+        .collect::<String>()
+        .eq_ignore_ascii_case(&second.source_text.split_whitespace().collect::<String>());
     if first.translation_unit != "GROUP"
         || second.translation_unit != "GROUP"
-        || first.role != second.role
+        || same_visible_text
+        || (!same_ocr_block && first.role != second.role)
         || !matches!(first.role.as_str(), "BODY" | "LIST_ITEM" | "TITLE")
+        || !matches!(second.role.as_str(), "BODY" | "LIST_ITEM" | "TITLE")
+        || looks_like_section_label(&first.source_text)
     {
         return None;
     }
@@ -214,7 +223,11 @@ fn merge_confidence(
     let overlap = first.bounds.horizontal_overlap(&second.bounds) as f32
         / first.bounds.width().min(second.bounds.width()).max(1) as f32;
     let left_delta = (first.bounds.left - second.bounds.left).abs();
-    if overlap < 0.72 || left_delta > height {
+    let returns_below_wrapped_media = first.layout_shape == "FLOW_SLOTS"
+        && first.render_slots.len() >= 2
+        && second.bounds.left + height * 2 < first.bounds.left
+        && overlap >= 0.25;
+    if !returns_below_wrapped_media && (overlap < 0.72 || left_delta > height) {
         return None;
     }
     let first_text = first.source_text.trim_end();
@@ -226,6 +239,49 @@ fn merge_confidence(
     }
     let source_confidence = first.grouping_confidence.min(second.grouping_confidence);
     (source_confidence >= AUTHORITATIVE_CONFIDENCE).then_some(source_confidence.min(0.96))
+}
+
+fn is_same_ocr_block_continuation(
+    first: &TranslationGroup,
+    second: &TranslationGroup,
+    regions: &HashMap<&str, &OcrRegion>,
+) -> bool {
+    let first_region = first
+        .member_region_ids
+        .iter()
+        .filter_map(|id| regions.get(id.as_str()))
+        .max_by_key(|region| region.line_index.unwrap_or(region.reading_order));
+    let second_region = second
+        .member_region_ids
+        .iter()
+        .filter_map(|id| regions.get(id.as_str()))
+        .min_by_key(|region| region.line_index.unwrap_or(region.reading_order));
+    let (Some(first_region), Some(second_region)) = (first_region, second_region) else {
+        return false;
+    };
+    first_region.block_id.as_deref().is_some_and(|block_id| {
+        second_region.block_id.as_deref() == Some(block_id)
+            && first_region
+                .line_index
+                .zip(second_region.line_index)
+                .is_some_and(|(first_line, second_line)| second_line == first_line + 1)
+    })
+}
+
+fn looks_like_section_label(text: &str) -> bool {
+    let words = text.split_whitespace().collect::<Vec<_>>();
+    !words.is_empty()
+        && words.len() <= 3
+        && text
+            .chars()
+            .filter(|character| character.is_alphanumeric())
+            .count()
+            <= 24
+        && text.chars().any(|character| character.is_alphabetic())
+        && text
+            .chars()
+            .filter(|character| character.is_alphabetic())
+            .all(|character| character.is_uppercase())
 }
 
 fn source_line_count(group: &TranslationGroup) -> i32 {
@@ -318,5 +374,166 @@ mod tests {
         assert_eq!(plan.groups[0].source_line_count, 3);
         assert_eq!(plan.groups[0].layout_shape, "FLOW_SLOTS");
         assert_eq!(plan.metrics.merged_group_count, 1);
+    }
+
+    #[test]
+    fn keeps_short_uppercase_section_label_separate() {
+        let mut request: SemanticTranslationRequest =
+            serde_json::from_str(include_str!("../examples/xi-news-request.json")).unwrap();
+        let mut label = request.groups[0].clone();
+        label.role = "BODY".to_owned();
+        label.source_text = "AFRICA".to_owned();
+        label.bounds.right = label.bounds.left + 140;
+        label.render_slots = vec![label.bounds.clone()];
+
+        let mut title = label.clone();
+        title.group_id = "article-title".to_owned();
+        title.source_text = "It is time for new, equitable criteria".to_owned();
+        title.reading_order += 1;
+        title.bounds.top = label.bounds.bottom + 20;
+        title.bounds.bottom = title.bounds.top + 60;
+        title.bounds.right = title.bounds.left + 1_200;
+        title.render_slots = vec![title.bounds.clone()];
+
+        request.groups = vec![label, title];
+        request.regions.clear();
+
+        let plan = DocumentPlan::build(&request, true);
+
+        assert_eq!(plan.groups.len(), 2);
+    }
+
+    #[test]
+    fn keeps_repeated_labels_as_separate_page_elements() {
+        let mut request: SemanticTranslationRequest =
+            serde_json::from_str(include_str!("../examples/xi-news-request.json")).unwrap();
+        let mut brand_label = request.groups[0].clone();
+        brand_label.role = "BODY".to_owned();
+        brand_label.source_text = "Africa Edition".to_owned();
+        brand_label.bounds = Bounds {
+            left: 557,
+            top: 458,
+            right: 777,
+            bottom: 484,
+        };
+        brand_label.render_slots = vec![brand_label.bounds.clone()];
+
+        let mut navigation_label = brand_label.clone();
+        navigation_label.group_id = "navigation-label".to_owned();
+        navigation_label.reading_order += 1;
+        navigation_label.bounds = Bounds {
+            left: 536,
+            top: 548,
+            right: 901,
+            bottom: 606,
+        };
+        navigation_label.render_slots = vec![navigation_label.bounds.clone()];
+
+        request.groups = vec![brand_label, navigation_label];
+        request.regions.clear();
+
+        let plan = DocumentPlan::build(&request, true);
+
+        assert_eq!(plan.groups.len(), 2);
+        assert!(
+            plan.groups
+                .iter()
+                .all(|group| group.source_group_ids.len() == 1)
+        );
+    }
+
+    #[test]
+    fn merges_consecutive_lines_from_same_ocr_block_despite_role_drift() {
+        let mut request: SemanticTranslationRequest =
+            serde_json::from_str(include_str!("../examples/xi-news-request.json")).unwrap();
+        let mut first = request.groups[0].clone();
+        first.role = "BODY".to_owned();
+        first.source_text = "silent struggle has been".to_owned();
+        first.member_region_ids = vec!["line-0".to_owned()];
+        first.source_line_count = Some(1);
+        first.bounds.right = first.bounds.left + 584;
+        first.render_slots = vec![first.bounds.clone()];
+
+        let mut second = first.clone();
+        second.group_id = "continuation".to_owned();
+        second.role = "TITLE".to_owned();
+        second.source_text = "raging within our universities and it is not".to_owned();
+        second.member_region_ids = vec!["line-1".to_owned()];
+        second.reading_order += 1;
+        second.bounds.top = first.bounds.bottom + 17;
+        second.bounds.bottom = second.bounds.top + first.bounds.height() * 2;
+        second.render_slots = vec![second.bounds.clone()];
+
+        let mut first_region = request.regions[0].clone();
+        first_region.region_id = "line-0".to_owned();
+        first_region.group_id = first.group_id.clone();
+        first_region.block_id = Some("mlkit-block".to_owned());
+        first_region.line_index = Some(0);
+        first_region.bounds = first.bounds.clone();
+        let mut second_region = first_region.clone();
+        second_region.region_id = "line-1".to_owned();
+        second_region.group_id = second.group_id.clone();
+        second_region.line_index = Some(1);
+        second_region.bounds = second.bounds.clone();
+
+        request.groups = vec![first, second];
+        request.regions = vec![first_region, second_region];
+
+        let plan = DocumentPlan::build(&request, true);
+
+        assert_eq!(plan.groups.len(), 1);
+        assert_eq!(plan.groups[0].source_group_ids.len(), 2);
+        assert_eq!(plan.groups[0].source_line_count, 2);
+    }
+
+    #[test]
+    fn merges_right_wrapped_text_when_the_next_line_returns_below_media() {
+        let mut request: SemanticTranslationRequest =
+            serde_json::from_str(include_str!("../examples/xi-news-request.json")).unwrap();
+        let mut right_top = request.groups[0].clone();
+        right_top.role = "BODY".to_owned();
+        right_top.source_text = "silent struggle has been".to_owned();
+        right_top.bounds = Bounds {
+            left: 727,
+            top: 858,
+            right: 1311,
+            bottom: 908,
+        };
+        right_top.render_slots = vec![right_top.bounds.clone()];
+
+        let mut right_body = right_top.clone();
+        right_body.group_id = "right-body".to_owned();
+        right_body.source_text =
+            "raging within our universities and specifically about what".to_owned();
+        right_body.reading_order = 1;
+        right_body.bounds = Bounds {
+            left: 680,
+            top: 923,
+            right: 1410,
+            bottom: 1261,
+        };
+        right_body.render_slots = vec![right_body.bounds.clone()];
+
+        let mut below = right_top.clone();
+        below.group_id = "below-media".to_owned();
+        below.source_text = "is perceived as worthy academic work.".to_owned();
+        below.reading_order = 2;
+        below.bounds = Bounds {
+            left: 29,
+            top: 1270,
+            right: 996,
+            bottom: 1331,
+        };
+        below.render_slots = vec![below.bounds.clone()];
+
+        request.groups = vec![right_top, right_body, below];
+        request.regions.clear();
+
+        let plan = DocumentPlan::build(&request, true);
+
+        assert_eq!(plan.groups.len(), 1);
+        assert_eq!(plan.groups[0].source_group_ids.len(), 3);
+        assert_eq!(plan.groups[0].render_slots.len(), 3);
+        assert_eq!(plan.groups[0].layout_shape, "FLOW_SLOTS");
     }
 }

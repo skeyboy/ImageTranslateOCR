@@ -312,6 +312,7 @@ internal class TranslateManager(context: Context? = null) {
                 translatedText = source.sourceText,
                 provider = "none",
                 succeeded = false,
+                semanticTrace = semanticTrace,
                 failure = remoteFailures[source.groupId]?.let { failure ->
                     TranslationFailure(
                         regionId = source.groupId,

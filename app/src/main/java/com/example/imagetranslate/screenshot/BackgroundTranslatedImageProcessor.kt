@@ -145,7 +145,8 @@ private data class BackgroundImageRegion(
     val groupId: String? = null,
     val trackId: Long? = null,
     val smartAssistDisplayHints: SmartAssistDisplayHints? = null,
-    val renderSlots: List<Rect> = emptyList()
+    val renderSlots: List<Rect> = emptyList(),
+    val sourceCoverSlots: List<Rect> = emptyList()
 )
 
 internal data class SmartAssistDisplayHints(
@@ -155,7 +156,8 @@ internal data class SmartAssistDisplayHints(
     val lineSpacingMultiplier: Float = 1f,
     val alignment: String = "START",
     val allowMore: Boolean = false,
-    val sourceLineCount: Int = 1
+    val sourceLineCount: Int = 1,
+    val layoutShape: String = "RECT"
 )
 
 private data class BackgroundTranslationBatch(
@@ -266,7 +268,8 @@ internal data class RenderedTrackCacheKey(
     val overlayAlphaPercent: Int,
     val drawBackground: Boolean,
     val displayHints: SmartAssistDisplayHints?,
-    val renderSlotSignature: List<Int> = emptyList()
+    val renderSlotSignature: List<Int> = emptyList(),
+    val sourceCoverSlotSignature: List<Int> = emptyList()
 )
 
 private data class CachedRenderedTrack(
@@ -1055,7 +1058,12 @@ internal class BackgroundTranslatedImageProcessor(
             )
         }
         val translatedOutcomes = translatedMissing.map { execution ->
-            if (!execution.succeeded) return@map TranslationOutcome(failed = true)
+            if (!execution.succeeded) {
+                return@map TranslationOutcome(
+                    failed = true,
+                    semanticTrace = execution.semanticTrace
+                )
+            }
             val members = execution.sourceGroupIds.mapNotNull(preparedByGroup::get)
             if (members.size != execution.sourceGroupIds.size || members.isEmpty()) {
                 return@map TranslationOutcome(failed = true)
@@ -1100,10 +1108,14 @@ internal class BackgroundTranslatedImageProcessor(
                         lineSpacingMultiplier = hint.lineSpacingMultiplier,
                         alignment = hint.alignment,
                         allowMore = hint.allowMore,
-                        sourceLineCount = hint.sourceLineCount
+                        sourceLineCount = hint.sourceLineCount,
+                        layoutShape = hint.layoutShape
                     )
                 },
-                renderSlots = requestedRenderSlots
+                renderSlots = requestedRenderSlots,
+                sourceCoverSlots = execution.layoutHint?.sourceCoverSlots.orEmpty().map { bounds ->
+                    Rect(bounds.left, bounds.top, bounds.right, bounds.bottom)
+                }.ifEmpty { sourceLineBounds }
             ).let {
                 TranslationOutcome(region = it, semanticTrace = execution.semanticTrace)
             }
@@ -1571,8 +1583,11 @@ internal class BackgroundTranslatedImageProcessor(
             sourceHeight = bitmap.height
         )
         val materialBounds = Rect(material.left, material.top, material.right, material.bottom)
+        val usesDeclarativeCoverage = region.renderSlots.isNotEmpty() ||
+            region.sourceCoverSlots.isNotEmpty()
         val localSurface = if (
-            backgroundMode == LivePatchBackgroundMode.STANDARD || !drawPatchBackground
+            (backgroundMode == LivePatchBackgroundMode.STANDARD && !usesDeclarativeCoverage) ||
+            !drawPatchBackground
         ) {
             fallbackSurface
         } else {
@@ -1630,6 +1645,14 @@ internal class BackgroundTranslatedImageProcessor(
                     slot.right - cropBounds.left,
                     slot.bottom - cropBounds.top
                 )
+            },
+            sourceCoverSlotSignature = resolvedSourceCoverSlots(region).flatMap { slot ->
+                listOf(
+                    slot.left - cropBounds.left,
+                    slot.top - cropBounds.top,
+                    slot.right - cropBounds.left,
+                    slot.bottom - cropBounds.top
+                )
             }
         )
         val cached = region.trackId?.let { trackId ->
@@ -1672,7 +1695,7 @@ internal class BackgroundTranslatedImageProcessor(
                 Bitmap.Config.ARGB_8888
             )
             output = patchBitmap
-            if (drawPatchBackground && !hasMultipleRenderSlots) {
+            if (drawPatchBackground && !hasMultipleRenderSlots && !usesDeclarativeCoverage) {
                 when (resolvedBackgroundMode) {
                     LivePatchBackgroundMode.BLUR_TINT,
                     LivePatchBackgroundMode.FEATHERED_BLUR_TINT -> {
@@ -1724,6 +1747,9 @@ internal class BackgroundTranslatedImageProcessor(
                     }
                 ),
                 renderSlots = resolvedRenderSlots(region, sourceBounds).map { slot ->
+                    Rect(slot).apply { offset(-cropBounds.left, -cropBounds.top) }
+                },
+                sourceCoverSlots = resolvedSourceCoverSlots(region).map { slot ->
                     Rect(slot).apply { offset(-cropBounds.left, -cropBounds.top) }
                 }
             )
@@ -1979,7 +2005,13 @@ private fun resolvedRenderSlots(region: BackgroundImageRegion, bounds: Rect): Li
     region.renderSlots.takeIf { it.isNotEmpty() }?.map(::Rect)
         ?: SemanticRenderShape.slots(region.source.textEraseBounds(), bounds)
 
+private fun resolvedSourceCoverSlots(region: BackgroundImageRegion): List<Rect> =
+    region.sourceCoverSlots.takeIf { it.isNotEmpty() }?.map(::Rect)
+        ?: region.source.textEraseBounds().map(::Rect)
+
 private object BackgroundTranslatedImageRenderer {
+    private const val TAG = "BackgroundImageRenderer"
+
     fun render(
         bitmap: Bitmap,
         regions: List<BackgroundImageRegion>,
@@ -1995,6 +2027,8 @@ private object BackgroundTranslatedImageRenderer {
         regions.forEach { region ->
             val bounds = region.source.bounds.clampedTo(bitmap) ?: return@forEach
             val renderSlots = resolvedRenderSlots(region, bounds).mapNotNull { it.clampedTo(bitmap) }
+            val sourceCoverSlots = resolvedSourceCoverSlots(region)
+                .mapNotNull { it.clampedTo(bitmap) }
             if (renderSlots.isEmpty()) return@forEach
             val estimatedStyle = estimateTextStyle(
                 styleSourceBitmap,
@@ -2012,19 +2046,6 @@ private object BackgroundTranslatedImageRenderer {
                     ),
                     isDarkBackground = isDarkTheme
                 )
-            }
-            if (overlayBackgroundColor != null && drawOverlayBackground) {
-                renderSlots.forEach { slot ->
-                    drawCompensatedBackground(
-                        canvas,
-                        bitmap,
-                        styleSourceBitmap,
-                        slot,
-                        overlayBackgroundColor,
-                        overlayAlpha,
-                        if (renderSlots.size == 1) overlayMaterialBounds else slot
-                    )
-                }
             }
             val isControlLabel = style.isDarkBackground &&
                 region.source.text.filterNot(Char::isWhitespace).length <= 20
@@ -2058,7 +2079,13 @@ private object BackgroundTranslatedImageRenderer {
             val preferredSize = layoutMetrics.preferredTextSizePx *
                 (region.smartAssistDisplayHints?.maximumTextScale ?: 1f)
             val maximumLines = layoutMetrics.maximumLines
-            val shapedLayout = ShapeAwareTextLayout.layout(
+            val translatedCharacterCount = region.translation.count { character ->
+                !character.isWhitespace()
+            }
+            val preserveFlowShape = region.smartAssistDisplayHints?.layoutShape == "FLOW_SLOTS" &&
+                renderSlots.size > 1 &&
+                translatedCharacterCount >= renderSlots.size * MINIMUM_CHARACTERS_PER_FLOW_SLOT
+            val initialLayout = ShapeAwareTextLayout.layout(
                 text = region.translation,
                 paint = paint,
                 renderSlots = renderSlots,
@@ -2069,8 +2096,14 @@ private object BackgroundTranslatedImageRenderer {
                 horizontalPadding = horizontalPadding,
                 allowOverflowMore = region.smartAssistDisplayHints?.allowMore == true,
                 lineSpacingMultipliers = region.smartAssistDisplayHints?.lineSpacingMultiplier
-                    ?.let { preferred -> listOf(preferred, 1f, 0.92f, 0.86f).distinct() }
-            ) ?: region.smartAssistDisplayHints?.takeIf { it.allowMore }?.let { hints ->
+                    ?.let { preferred -> listOf(preferred, 1f, 0.92f, 0.86f).distinct() },
+                requireAllSlots = preserveFlowShape
+            )
+            val leadingSlotRetry = initialLayout?.takeIf { layout ->
+                renderSlots.size > 1 &&
+                    layout.segments.firstOrNull()?.bounds != renderSlots.first() &&
+                    renderSlots.first().height() >= sourceLineHeight * MINIMUM_LEADING_SLOT_RATIO
+            }?.let {
                 ShapeAwareTextLayout.layout(
                     text = region.translation,
                     paint = paint,
@@ -2080,14 +2113,52 @@ private object BackgroundTranslatedImageRenderer {
                         MINIMUM_TEXT_SIZE_PX,
                         layoutMetrics.minimumTextSizePx * DECLARATIVE_LAYOUT_RETRY_SCALE
                     ),
-                    maximumLines = maxOf(maximumLines, hints.sourceLineCount + 2),
+                    maximumLines = maximumLines,
                     alignment = alignment,
                     horizontalPadding = horizontalPadding,
-                    allowOverflowMore = true,
-                    lineSpacingMultipliers = listOf(0.92f, 0.86f, 0.82f)
+                    allowOverflowMore = false,
+                    lineSpacingMultipliers = listOf(0.92f, 0.86f, 0.82f),
+                    requireAllSlots = preserveFlowShape
+                )?.takeIf { layout -> layout.segments.firstOrNull()?.bounds == renderSlots.first() }
+            }
+            val shapedLayout = leadingSlotRetry ?: initialLayout ?: region.smartAssistDisplayHints
+                ?.let { hints ->
+                    ShapeAwareTextLayout.layout(
+                        text = region.translation,
+                        paint = paint,
+                        renderSlots = renderSlots,
+                        preferredTextSizePx = preferredSize,
+                        minimumTextSizePx = maxOf(
+                            MINIMUM_TEXT_SIZE_PX,
+                            layoutMetrics.minimumTextSizePx * DECLARATIVE_LAYOUT_RETRY_SCALE
+                        ),
+                        maximumLines = if (hints.allowMore) {
+                            maxOf(maximumLines, hints.sourceLineCount + 2)
+                        } else {
+                            maximumLines
+                        },
+                        alignment = alignment,
+                        horizontalPadding = horizontalPadding,
+                        allowOverflowMore = hints.allowMore,
+                        lineSpacingMultipliers = listOf(0.92f, 0.86f, 0.82f),
+                        requireAllSlots = preserveFlowShape
+                    )
+                }
+            if (leadingSlotRetry != null) {
+                Log.d(
+                    TAG,
+                    "Reflowed translated group into leading render slot " +
+                        "id=${region.groupId ?: "unknown"}, slots=${renderSlots.size}"
                 )
             }
             if (shapedLayout == null) {
+                Log.w(
+                    TAG,
+                    "Restoring source because translated text does not fit " +
+                        "id=${region.groupId ?: "unknown"}, chars=${region.translation.length}, " +
+                        "slots=${renderSlots.size}, maxLines=$maximumLines, " +
+                        "minimumScale=${region.smartAssistDisplayHints?.minimumTextScale ?: 0f}"
+                )
                 renderSlots.forEach { sourceBounds ->
                     sourceBounds.clampedTo(bitmap)?.let { visible ->
                         canvas.drawBitmap(styleSourceBitmap, visible, visible, null)
@@ -2095,16 +2166,25 @@ private object BackgroundTranslatedImageRenderer {
                 }
                 return@forEach
             }
+            if (overlayBackgroundColor != null && drawOverlayBackground) {
+                val usedRenderSlots = shapedLayout.segments.map { segment -> segment.bounds }
+                (sourceCoverSlots + usedRenderSlots).distinct().forEach { slot ->
+                    drawCompensatedBackground(
+                        canvas,
+                        bitmap,
+                        styleSourceBitmap,
+                        slot,
+                        overlayBackgroundColor,
+                        overlayAlpha,
+                        slot
+                    )
+                }
+            }
             val evidenceBackground = overlayBackgroundColor ?: if (style.isDarkBackground) {
                 Color.BLACK
             } else {
                 Color.WHITE
             }
-            val usedSlots = shapedLayout.segments.map { segment -> segment.bounds }
-            renderSlots.filterNot { slot -> usedSlots.any { used -> used == slot } }
-                .forEach { unusedSlot ->
-                    canvas.drawBitmap(styleSourceBitmap, unusedSlot, unusedSlot, null)
-                }
             evidenceSink?.invoke(
                 LiveRenderedTextEvidence(
                     bounds = Rect(bounds),
@@ -2448,8 +2528,10 @@ private object BackgroundTranslatedImageRenderer {
     }
 
     private const val MINIMUM_TEXT_SIZE_PX = 8f
+    private const val MINIMUM_CHARACTERS_PER_FLOW_SLOT = 2
     private const val MINIMUM_FONT_HEIGHT_RATIO = 0.62f
     private const val DECLARATIVE_LAYOUT_RETRY_SCALE = 0.82f
+    private const val MINIMUM_LEADING_SLOT_RATIO = 0.72f
     private const val LAYOUT_SEARCH_STEPS = 16
     private const val DARK_BACKGROUND_LUMINANCE = 145
     private const val MINIMUM_CONTRAST_DELTA = 90

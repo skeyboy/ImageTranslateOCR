@@ -1,5 +1,7 @@
 package com.example.imagetranslate.translate
 
+import org.json.JSONArray
+import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.fail
 import org.junit.Test
@@ -15,6 +17,13 @@ class SelfHostedLayoutPlanContractTest {
         assertEquals(listOf("a-line", "b-line"), result.memberRegionIds)
         assertEquals(2, result.layoutHint?.sourceLineCount)
         assertEquals(true, result.layoutHint?.allowMore)
+        assertEquals(
+            listOf(
+                TranslationBounds(10, 20, 210, 50),
+                TranslationBounds(10, 55, 210, 85)
+            ),
+            result.layoutHint?.sourceCoverSlots
+        )
     }
 
     @Test
@@ -41,11 +50,104 @@ class SelfHostedLayoutPlanContractTest {
         }
     }
 
+    @Test
+    fun acceptsRoleDriftWhenOcrBlockAndLineageAreContinuous() {
+        val driftedRequest = request(
+            firstRole = "BODY",
+            secondRole = "TITLE",
+            firstBlockId = "body-block",
+            secondBlockId = "body-block",
+            firstLineIndex = 4,
+            secondLineIndex = 5
+        )
+
+        val result = provider().parseResponseForTest(response(0.94f), driftedRequest)
+
+        assertEquals(listOf("a", "b"), result.results.single().sourceGroupIds)
+    }
+
+    @Test
+    fun rejectsRoleDriftWithoutContinuousOcrBlockEvidence() {
+        val driftedRequest = request(
+            firstRole = "BODY",
+            secondRole = "TITLE",
+            firstBlockId = "first-block",
+            secondBlockId = "second-block",
+            firstLineIndex = 4,
+            secondLineIndex = 5
+        )
+        try {
+            provider().parseResponseForTest(response(0.94f), driftedRequest)
+            fail("Expected cross-role merge without OCR continuity to be rejected")
+        } catch (_: IllegalArgumentException) {
+            Unit
+        }
+    }
+
+    @Test
+    fun acceptsExplainedRoleDriftInsideLongerAuthoritativeFlow() {
+        val first = source(
+            "a", "silent struggle has been", TranslationBounds(120, 20, 230, 45), 0,
+            "BODY", "wrapped-block", 0
+        )
+        val drifted = source(
+            "b", "raging within our universities", TranslationBounds(110, 50, 230, 80), 1,
+            "TITLE", "wrapped-block", 1
+        )
+        val fullWidth = source(
+            "c", "is perceived as worthy work", TranslationBounds(10, 85, 210, 115), 2,
+            "BODY", "next-block", 0
+        )
+        val request = request().copy(
+            documentText = listOf(first, drifted, fullWidth).joinToString("\n") { it.sourceText },
+            sources = listOf(first, drifted, fullWidth)
+        )
+        val responseJson = JSONObject(response(0.94f))
+        val item = responseJson.getJSONArray("results").getJSONObject(0)
+        item.put("groupId", "server-a--b--c")
+        item.put("sourceGroupIds", JSONArray(listOf("a", "b", "c")))
+        item.put("memberRegionIds", JSONArray(listOf("a-line", "b-line", "c-line")))
+        item.put("anchorBounds", boundsJson(10, 20, 230, 115))
+        item.getJSONObject("layoutHint").put(
+            "renderSlots",
+            JSONArray(
+                listOf(
+                    boundsJson(120, 20, 230, 45),
+                    boundsJson(110, 50, 230, 80),
+                    boundsJson(10, 85, 210, 115)
+                )
+            )
+        )
+
+        val result = provider().parseResponseForTest(responseJson.toString(), request)
+
+        assertEquals(listOf("a", "b", "c"), result.results.single().sourceGroupIds)
+    }
+
     private fun provider() = SelfHostedSemanticTranslationProvider("http://127.0.0.1:8090", null)
 
-    private fun request(): SemanticTranslationRequest {
-        val first = source("a", "First body line", TranslationBounds(10, 20, 210, 50), 0)
-        val second = source("b", "continues here", TranslationBounds(10, 55, 210, 85), 1)
+    private fun boundsJson(left: Int, top: Int, right: Int, bottom: Int) = JSONObject()
+        .put("left", left)
+        .put("top", top)
+        .put("right", right)
+        .put("bottom", bottom)
+
+    private fun request(
+        firstRole: String = "BODY",
+        secondRole: String = "BODY",
+        firstBlockId: String = "body",
+        secondBlockId: String = "body",
+        firstLineIndex: Int = 0,
+        secondLineIndex: Int = 1
+    ): SemanticTranslationRequest {
+        val first = source(
+            "a", "First body line", TranslationBounds(10, 20, 210, 50), 0,
+            firstRole, firstBlockId, firstLineIndex
+        )
+        val second = source(
+            "b", "continues here", TranslationBounds(10, 55, 210, 85), 1,
+            secondRole, secondBlockId, secondLineIndex
+        )
         return SemanticTranslationRequest(
             requestId = "request",
             sessionId = "session",
@@ -64,7 +166,10 @@ class SelfHostedLayoutPlanContractTest {
         id: String,
         text: String,
         bounds: TranslationBounds,
-        order: Int
+        order: Int,
+        role: String,
+        blockId: String,
+        lineIndex: Int
     ): SemanticTranslationSource {
         val region = SemanticTranslationRegion(
             regionId = "$id-line",
@@ -74,14 +179,14 @@ class SelfHostedLayoutPlanContractTest {
             sourceLanguage = "en",
             targetLanguage = "zh",
             readingOrder = order,
-            blockId = "body",
-            lineIndex = order,
+            blockId = blockId,
+            lineIndex = lineIndex,
             confidence = 0.96f,
             bounds = bounds
         )
         return SemanticTranslationSource(
             groupId = id,
-            role = "BODY",
+            role = role,
             translationUnit = "GROUP",
             sourceText = text,
             memberRegionIds = listOf(region.regionId),

@@ -253,9 +253,10 @@ internal class SelfHostedSemanticTranslationProvider(
                 require(confidence >= AUTHORITATIVE_GROUPING_CONFIDENCE) {
                     "Self-hosted merged group confidence is below the authority threshold"
                 }
-                require(sources.map(SemanticTranslationSource::role).distinct().size == 1 &&
-                    sources.first().role in AUTHORITATIVE_MERGE_ROLES
-                ) { "Self-hosted merged group crosses a protected semantic role" }
+                require(isAuthoritativeMergeAllowed(sources)) {
+                    "Self-hosted merged group crosses a protected semantic role without " +
+                        "continuous OCR block evidence"
+                }
             }
             validateBinding(item, source)
             when (val status = item.optString("status")) {
@@ -356,6 +357,39 @@ internal class SelfHostedSemanticTranslationProvider(
         )
     }
 
+    private fun isAuthoritativeMergeAllowed(
+        sources: List<SemanticTranslationSource>
+    ): Boolean {
+        if (sources.any { it.role !in AUTHORITATIVE_MERGE_ROLES }) return false
+        if (sources.map(SemanticTranslationSource::role).distinct().size == 1) return true
+
+        val dominantRole = sources.groupingBy(SemanticTranslationSource::role)
+            .eachCount()
+            .maxByOrNull(Map.Entry<String, Int>::value)
+            ?.key
+            ?: return false
+        return sources.indices.filter { sources[it].role != dominantRole }.all { index ->
+            (index > 0 && hasContinuousOcrBoundary(sources[index - 1], sources[index])) ||
+                (index < sources.lastIndex &&
+                    hasContinuousOcrBoundary(sources[index], sources[index + 1]))
+        }
+    }
+
+    private fun hasContinuousOcrBoundary(
+        first: SemanticTranslationSource,
+        second: SemanticTranslationSource
+    ): Boolean {
+        val firstRegion = first.regions.maxByOrNull(SemanticTranslationRegion::readingOrder)
+            ?: return false
+        val secondRegion = second.regions.minByOrNull(SemanticTranslationRegion::readingOrder)
+            ?: return false
+        val blockId = firstRegion.blockId?.takeIf(String::isNotBlank)
+        return blockId != null &&
+            blockId == secondRegion.blockId &&
+            firstRegion.lineIndex != null &&
+            secondRegion.lineIndex == firstRegion.lineIndex + 1
+    }
+
     private fun JSONObject.toLayoutHint(source: SemanticTranslationSource): SemanticLayoutHint {
         val preferredMaxLines = optInt("preferredMaxLines", 1).coerceIn(1, 24)
         val minimumTextScale = optDouble("minimumTextScale", 0.6).toFloat().coerceIn(0.5f, 1f)
@@ -364,6 +398,15 @@ internal class SelfHostedSemanticTranslationProvider(
         } ?: source.renderSlots
         require(returnedSlots == source.renderSlots) {
             "Self-hosted result renderSlots do not match the requested geometry"
+        }
+        val expectedCoverSlots = source.regions.flatMap { region ->
+            region.componentBounds.ifEmpty { listOf(region.bounds) }
+        }
+        val returnedCoverSlots = optJSONArray("sourceCoverSlots")?.let { items ->
+            (0 until items.length()).map { index -> items.getJSONObject(index).toBounds() }
+        } ?: expectedCoverSlots
+        require(returnedCoverSlots == expectedCoverSlots) {
+            "Self-hosted result sourceCoverSlots do not match OCR member geometry"
         }
         return SemanticLayoutHint(
             preferredMaxLines = preferredMaxLines,
@@ -382,7 +425,8 @@ internal class SelfHostedSemanticTranslationProvider(
             allowMore = optBoolean("allowMore", false),
             sourceLineCount = optInt("sourceLineCount", source.regions.size).coerceAtLeast(1),
             layoutShape = optString("layoutShape", source.layoutShape),
-            renderSlots = returnedSlots
+            renderSlots = returnedSlots,
+            sourceCoverSlots = returnedCoverSlots
         )
     }
 
@@ -425,7 +469,7 @@ internal class SelfHostedSemanticTranslationProvider(
     private companion object {
         const val CANCEL_REQUEST_PREFIX = "/api/v2/translate/requests/"
         const val CONNECT_TIMEOUT_MS = 10_000
-        const val READ_TIMEOUT_MS = 60_000
+        const val READ_TIMEOUT_MS = 100_000
         const val CANCEL_TIMEOUT_MS = 3_000
         const val AUTHORITATIVE_GROUPING_CONFIDENCE = 0.90f
         const val MAXIMUM_CONCURRENT_REQUESTS = 2

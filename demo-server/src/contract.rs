@@ -184,6 +184,7 @@ pub struct LayoutHint {
     pub source_line_count: i32,
     pub layout_shape: String,
     pub render_slots: Vec<Bounds>,
+    pub source_cover_slots: Vec<Bounds>,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -465,6 +466,7 @@ pub fn layout_hint(
     group: &TranslationGroup,
     translated: &str,
     render_slots: Vec<Bounds>,
+    source_cover_slots: Vec<Bounds>,
 ) -> LayoutHint {
     let text_lines = group
         .source_text
@@ -477,14 +479,7 @@ pub fn layout_hint(
         .unwrap_or_default()
         .max(group.member_region_ids.len().max(1) as i32)
         .max(text_lines);
-    let source = &group.source_text;
-    let source_chars = source.chars().filter(|c| !c.is_whitespace()).count().max(1) as f32;
-    let target_chars = translated
-        .chars()
-        .filter(|c| !c.is_whitespace())
-        .count()
-        .max(1) as f32;
-    let expansion = target_chars / source_chars;
+    let expansion = visual_width_units(translated) / visual_width_units(&group.source_text);
     let preferred_max_lines = if expansion <= 1.15 {
         source_lines
     } else if expansion <= 1.8 {
@@ -525,6 +520,51 @@ pub fn layout_hint(
             "RECT".to_owned()
         },
         render_slots,
+        source_cover_slots,
+    }
+}
+
+fn visual_width_units(text: &str) -> f32 {
+    text.chars()
+        .map(|character| {
+            if character.is_whitespace() {
+                0.3
+            } else if is_full_width_character(character) {
+                1.0
+            } else if character.is_ascii_punctuation() {
+                0.45
+            } else if character.is_ascii_digit() {
+                0.58
+            } else {
+                0.56
+            }
+        })
+        .sum::<f32>()
+        .max(1.0)
+}
+
+fn is_full_width_character(character: char) -> bool {
+    matches!(
+        character as u32,
+        0x2E80..=0x9FFF | 0xAC00..=0xD7AF | 0xF900..=0xFAFF | 0xFF01..=0xFF60
+    )
+}
+
+pub fn source_cover_slots(group: &TranslationGroup, regions: &[&OcrRegion]) -> Vec<Bounds> {
+    let slots = regions
+        .iter()
+        .flat_map(|region| {
+            if region.component_bounds.is_empty() {
+                vec![region.bounds.clone()]
+            } else {
+                region.component_bounds.clone()
+            }
+        })
+        .collect::<Vec<_>>();
+    if slots.is_empty() {
+        vec![group.bounds.clone()]
+    } else {
+        slots
     }
 }
 
@@ -646,9 +686,44 @@ mod tests {
             &group,
             "保存当前修改并返回上一页",
             group.render_slots.clone(),
+            group.render_slots.clone(),
         );
         assert!(hint.preferred_max_lines > 1);
         assert!(hint.minimum_text_scale < 0.8);
+    }
+
+    #[test]
+    fn layout_hints_account_for_full_width_translation_glyphs() {
+        let bounds = Bounds {
+            left: 0,
+            top: 0,
+            right: 320,
+            bottom: 48,
+        };
+        let group = TranslationGroup {
+            group_id: "group".to_owned(),
+            role: "BODY".to_owned(),
+            translation_unit: "GROUP".to_owned(),
+            source_text: "silent struggle has been".to_owned(),
+            member_region_ids: vec!["region".to_owned()],
+            reading_order: 0,
+            grouping_confidence: 1.0,
+            grouping_evidence: vec![],
+            source_line_count: Some(1),
+            bounds: bounds.clone(),
+            render_slots: vec![bounds.clone()],
+            layout_shape: "RECT".to_owned(),
+        };
+
+        let hint = layout_hint(
+            &group,
+            "一场无声的斗争一直在进行着，它并非",
+            vec![bounds.clone()],
+            vec![bounds],
+        );
+
+        assert_eq!(hint.preferred_max_lines, 2);
+        assert_eq!(hint.minimum_text_scale, 0.72);
     }
 
     #[test]

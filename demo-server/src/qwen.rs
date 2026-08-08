@@ -12,7 +12,7 @@ use crate::{
     error::AppError,
 };
 
-pub const PROMPT_VERSION: &str = "semantic-translation-qwen-v4-geometry-safe-output";
+pub const PROMPT_VERSION: &str = "semantic-translation-qwen-v5-strict-group-binding";
 
 #[derive(Clone, Debug)]
 pub struct ModelTranslation {
@@ -367,7 +367,7 @@ impl<'a> ModelPayload<'a> {
         let width = request.viewport.width as f32;
         let height = request.viewport.height as f32;
         Self {
-            task: "Translate every translateGroups.sourceText faithfully and completely into its targetLanguage. Use regionLines and renderSlots only to reconstruct reading order and semantic structure; never split the output back into OCR lines. Preserve currency values, units, numbers, AIMS/AIMS-Next, URLs, brands, names, and organization identities. Do not summarize, invent, merge, delete, or abbreviate content. Output only the required results schema.",
+            task: "Translate every translateGroups.sourceText faithfully and completely into its targetLanguage. Each result may translate only the sourceText with the same groupId. Document context and neighboring groups are disambiguation context only: never copy, move, duplicate, or continue their content into this result. Use regionLines and renderSlots only to reconstruct reading order and semantic structure; never split the output back into OCR lines. Preserve currency values, units, numbers, AIMS/AIMS-Next, URLs, brands, names, and organization identities. Do not summarize, invent, merge, delete, abbreviate, explain OCR errors, or add translator notes. Output only the required results schema.",
             scene: &request.scene,
             translation_mode: &request.translation.mode,
             document_context: request
@@ -528,7 +528,10 @@ fn parse_model_response(
             .iter()
             .find(|group| group.group_id == result.group_id)
             .expect("groupId membership was validated above");
-        let translated_text = normalize_preserved_identifiers(group, translated_text);
+        let translated_text = strip_unsourced_annotation(
+            group,
+            normalize_preserved_identifiers(group, translated_text),
+        );
         validate_critical_invariants(group, &translated_text)?;
         by_id.insert(
             result.group_id.clone(),
@@ -545,10 +548,28 @@ fn parse_model_response(
             "Qwen omitted one or more groupIds".to_owned(),
         ));
     }
-    Ok(groups
+    let mut ordered = groups
         .iter()
         .filter_map(|group| by_id.remove(&group.group_id))
-        .collect())
+        .collect::<Vec<_>>();
+    remove_adjacent_duplicate_suffixes(&mut ordered);
+    Ok(ordered)
+}
+
+fn remove_adjacent_duplicate_suffixes(translations: &mut [ModelTranslation]) {
+    for index in 0..translations.len().saturating_sub(1) {
+        let next = translations[index + 1].translated_text.trim().to_owned();
+        if next.is_empty() {
+            continue;
+        }
+        let current = translations[index].translated_text.trim_end();
+        if let Some(prefix) = current.strip_suffix(&next) {
+            let prefix = prefix.trim_end();
+            if !prefix.is_empty() {
+                translations[index].translated_text = prefix.to_owned();
+            }
+        }
+    }
 }
 
 fn normalize_preserved_identifiers(group: &TranslationGroup, translated: String) -> String {
@@ -559,6 +580,27 @@ fn normalize_preserved_identifiers(group: &TranslationGroup, translated: String)
         .replace("AIM S", "AIMS")
         .replace("AIMS - Next", "AIMS-Next")
         .replace("AIMS–Next", "AIMS-Next")
+}
+
+fn strip_unsourced_annotation(group: &TranslationGroup, translated: String) -> String {
+    let source_lower = group.source_text.to_lowercase();
+    if source_lower.contains("note:") || group.source_text.contains("注：") {
+        return translated;
+    }
+    let markers = ["（注：", "（注:", "(注：", "(注:", "(Note:", "(note:"];
+    let Some(index) = markers
+        .iter()
+        .filter_map(|marker| translated.find(marker))
+        .min()
+    else {
+        return translated;
+    };
+    let prefix = translated[..index].trim().to_owned();
+    if prefix.is_empty() {
+        translated
+    } else {
+        prefix
+    }
 }
 
 fn sanitize_model_translation(raw: &str) -> Result<String, AppError> {
@@ -654,6 +696,8 @@ fn is_loopback_endpoint(endpoint: &str) -> bool {
 const SYSTEM_PROMPT: &str = r#"You are a professional screen OCR translation engine.
 The user supplies a JSON document containing the complete visible context and translateGroups.
 Use documentContext, reading order, roles, and normalized bounds only to disambiguate meaning.
+Bind every output strictly to the sourceText with the identical groupId. Neighboring groups and documentContext are context only.
+Never borrow, copy, move, duplicate, or continue text from another group into the current group.
 Use each group's regionLines and renderSlots to understand wrapped text and reading order, not to produce visual line breaks.
 Translate every translateGroups item as one complete semantic unit.
 Translate faithfully and completely. Every source phrase, modifier, and relationship must be represented in the translation.
@@ -664,6 +708,7 @@ Translate Next Einstein centres as 下一代爱因斯坦中心; never omit Next.
 When document context identifies a person named only by family name in one group, use that person's conventional full target-language name.
 Do not split a translated group back into visual OCR lines.
 Do not summarize, explain, add facts, merge groups, delete groups, or invent IDs.
+Never add translator notes, parenthetical annotations, OCR corrections, guesses, or phrases such as "note" or "the source may mean".
 Never echo or reproduce the input JSON document.
 Preserve numeric values and currency meaning. C$ means Canadian dollars and US$ means US dollars.
 Keep AIMS and AIMS-Next visible and unchanged when they appear in the source.
@@ -906,5 +951,41 @@ mod tests {
             normalize_preserved_identifiers(&group, "AIM S 与 AIMS - Next 计划".to_owned()),
             "AIMS 与 AIMS-Next 计划"
         );
+    }
+
+    #[test]
+    fn removes_model_added_ocr_note_without_changing_the_translation() {
+        let mut group = groups().remove(0);
+        group.source_text = "weet Whatsapp".to_owned();
+
+        let cleaned = strip_unsourced_annotation(
+            &group,
+            "WhatsApp 消息（注：原文可能存在 OCR 错误）".to_owned(),
+        );
+
+        assert_eq!(cleaned, "WhatsApp 消息");
+    }
+
+    #[test]
+    fn removes_translation_copied_from_the_immediately_following_group() {
+        let mut translations = vec![
+            ModelTranslation {
+                group_id: "first".to_owned(),
+                translated_text: "第一段的正确译文。第二段的正确译文。".to_owned(),
+                detected_source_language: "en".to_owned(),
+                target_language: "zh".to_owned(),
+            },
+            ModelTranslation {
+                group_id: "second".to_owned(),
+                translated_text: "第二段的正确译文。".to_owned(),
+                detected_source_language: "en".to_owned(),
+                target_language: "zh".to_owned(),
+            },
+        ];
+
+        remove_adjacent_duplicate_suffixes(&mut translations);
+
+        assert_eq!(translations[0].translated_text, "第一段的正确译文。");
+        assert_eq!(translations[1].translated_text, "第二段的正确译文。");
     }
 }

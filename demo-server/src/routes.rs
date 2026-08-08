@@ -17,7 +17,7 @@ use crate::{
     contract::{
         DebugCapture, GroupTranslationResult, LAYOUT_PLAN_SCHEMA_VERSION, ResponseMetrics,
         SCHEMA_VERSION, SemanticTranslationRequest, SemanticTranslationResponse, TranslationGroup,
-        layout_hint, resolved_render_slots,
+        layout_hint, resolved_render_slots, source_cover_slots,
     },
     database::{
         Database, NewRenderedRequestImage, NewRequestAudit, NewRequestImage, NewRequestPayload,
@@ -107,7 +107,21 @@ pub struct RenderedCaptureUpload {
     session_id: String,
     generation: i64,
     translation_revision: i64,
+    #[serde(default = "default_rendered_capture_outcome")]
+    outcome: String,
+    #[serde(default)]
+    stage: Option<String>,
+    #[serde(default)]
+    failure_code: Option<String>,
+    #[serde(default)]
+    failure_message: Option<String>,
+    #[serde(default)]
+    layout_diagnostics: Option<serde_json::Value>,
     capture: DebugCapture,
+}
+
+fn default_rendered_capture_outcome() -> String {
+    "PRESENTED".to_owned()
 }
 
 #[derive(Serialize)]
@@ -186,15 +200,29 @@ pub async fn upload_rendered_capture(
         )
         .with_request_id(request_id));
     }
+    if !matches!(upload.outcome.as_str(), "PRESENTED" | "RENDER_FAILED") {
+        return Err(
+            AppError::invalid("outcome must be PRESENTED or RENDER_FAILED")
+                .with_request_id(request_id),
+        );
+    }
+    if upload.outcome == "RENDER_FAILED"
+        && upload.stage.as_deref().map(str::is_empty).unwrap_or(true)
+    {
+        return Err(
+            AppError::invalid("stage is required when outcome is RENDER_FAILED")
+                .with_request_id(request_id),
+        );
+    }
     validate_capture(&upload.capture, "capture")
         .map_err(|error| error.with_request_id(&request_id))?;
     let record = state
         .database
-        .successful_request_record(&request_id, &upload.session_id, upload.generation)
+        .matching_request_record(&request_id, &upload.session_id, upload.generation)
         .await
         .map_err(|error| error.with_request_id(&request_id))?
         .ok_or_else(|| {
-            AppError::invalid("matching successful translation request was not found")
+            AppError::invalid("matching translation request was not found")
                 .with_request_id(&request_id)
         })?;
     if record.audit.scene != "LIVE_SCREEN" {
@@ -222,6 +250,10 @@ pub async fn upload_rendered_capture(
     )
     .await
     .map_err(|error| error.with_request_id(&request_id))?;
+    let layout_diagnostics_json = upload
+        .layout_diagnostics
+        .as_ref()
+        .and_then(|value| serde_json::to_string(value).ok());
     let image = NewRenderedRequestImage {
         audit_id: &record.audit.id,
         image_path: &saved.path,
@@ -229,6 +261,11 @@ pub async fn upload_rendered_capture(
         pixel_width: saved.pixel_width,
         pixel_height: saved.pixel_height,
         byte_size: saved.byte_size,
+        outcome: &upload.outcome,
+        stage: upload.stage.as_deref(),
+        failure_code: upload.failure_code.as_deref(),
+        failure_message: upload.failure_message.as_deref(),
+        layout_diagnostics_json: layout_diagnostics_json.as_deref(),
     };
     match state.database.replace_rendered_image(image).await {
         Ok(old_path) => {
@@ -399,7 +436,12 @@ async fn translate_request(
                 detected_source_language: source_language,
                 target_language,
                 anchor_bounds: group.bounds.clone(),
-                layout_hint: layout_hint(group, &group.source_text, render_slots),
+                layout_hint: layout_hint(
+                    group,
+                    &group.source_text,
+                    render_slots,
+                    source_cover_slots(group, &members),
+                ),
                 error: None,
             });
             continue;
@@ -485,7 +527,12 @@ fn translated_result(
         detected_source_language: model_result.detected_source_language.clone(),
         target_language: model_result.target_language.clone(),
         anchor_bounds: group.bounds.clone(),
-        layout_hint: layout_hint(group, &model_result.translated_text, render_slots),
+        layout_hint: layout_hint(
+            group,
+            &model_result.translated_text,
+            render_slots,
+            source_cover_slots(group, regions),
+        ),
         error: None,
     }
 }

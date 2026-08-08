@@ -490,21 +490,59 @@ fn detail_page(record: RequestRecord) -> String {
                 )
             },
             |image| {
+                let is_failed_capture = image.outcome == "RENDER_FAILED";
+                let capture_label = if is_failed_capture {
+                    "端侧回贴失败现场"
+                } else {
+                    "端侧实际回贴"
+                };
+                let stage = image
+                    .stage
+                    .as_deref()
+                    .map(|value| format!(" · {}", escape_html(value)))
+                    .unwrap_or_default();
+                let failure = image
+                    .failure_message
+                    .as_deref()
+                    .map(|value| format!("<p class=\"capture-audit-error\">{}</p>", escape_html(value)))
+                    .unwrap_or_default();
+                let diagnostics = image
+                    .layout_diagnostics_json
+                    .as_deref()
+                    .map(|value| {
+                        format!(
+                            "<details class=\"capture-audit-details\"><summary>查看端侧布局诊断</summary><pre>{}</pre></details>",
+                            escape_html(value)
+                        )
+                    })
+                    .unwrap_or_default();
                 (
                     format!(
                         "<div id=\"rendered-capture-view\" class=\"capture-view\" hidden>\
-                            <img loading=\"lazy\" src=\"/admin/requests/{id}/rendered-image\" alt=\"本次译文回贴后的全屏采集图\">\
+                            <img loading=\"lazy\" src=\"/admin/requests/{id}/rendered-image\" alt=\"{capture_label}\">\
                          </div>",
                         id = escape_html(&audit.id),
+                        capture_label = capture_label,
                     ),
                     format!(
-                        "<p id=\"rendered-capture-meta\" class=\"capture-view-meta\" hidden>{width} x {height} · {bytes} bytes · 端侧实际回贴</p>",
+                        "<div id=\"rendered-capture-meta\" class=\"capture-view-meta\" hidden>\
+                            <p>{width} x {height} · {bytes} bytes · {outcome}{stage}</p>\
+                            {failure}{diagnostics}\
+                         </div>",
                         width = image.pixel_width,
                         height = image.pixel_height,
                         bytes = image.byte_size,
+                        outcome = escape_html(&image.outcome),
+                        stage = stage,
+                        failure = failure,
+                        diagnostics = diagnostics,
                     ),
                     "",
-                    "显示端侧实际回贴",
+                    if is_failed_capture {
+                        "显示端侧失败现场"
+                    } else {
+                        "显示端侧实际回贴"
+                    },
                 )
             },
         );
@@ -550,7 +588,7 @@ fn detail_page(record: RequestRecord) -> String {
                 </section>\
                 <section class=\"layout-section\">\
                     <div class=\"section-heading\"><h2>页面布局还原</h2><span id=\"layout-summary\"></span></div>\
-                    <div class=\"legend\"><span class=\"legend-body\">正文</span><span class=\"legend-title\">标题</span><span class=\"legend-meta\">元数据</span><span class=\"legend-control\">控件</span><span class=\"legend-id\">标识符</span></div>\
+                    <div class=\"legend\"><span class=\"legend-cover\">原文覆盖范围</span><span class=\"legend-body\">正文</span><span class=\"legend-title\">标题</span><span class=\"legend-meta\">元数据</span><span class=\"legend-control\">控件</span><span class=\"legend-id\">标识符</span></div>\
                     <div class=\"layout-grid analysis-grid\">\
                         <div class=\"preview-panel\"><h3>OCR 与语义组</h3><div id=\"source-layout\" class=\"layout-canvas\"></div></div>\
                         <div class=\"preview-panel\"><h3>服务端语义计划</h3><div id=\"server-layout\" class=\"layout-canvas\"></div></div>\

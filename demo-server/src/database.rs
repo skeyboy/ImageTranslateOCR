@@ -59,6 +59,11 @@ table! {
         pixel_width -> Integer,
         pixel_height -> Integer,
         byte_size -> BigInt,
+        outcome -> Text,
+        stage -> Nullable<Text>,
+        failure_code -> Nullable<Text>,
+        failure_message -> Nullable<Text>,
+        layout_diagnostics_json -> Nullable<Text>,
     }
 }
 
@@ -178,6 +183,11 @@ pub struct NewRenderedRequestImage<'a> {
     pub pixel_width: i32,
     pub pixel_height: i32,
     pub byte_size: i64,
+    pub outcome: &'a str,
+    pub stage: Option<&'a str>,
+    pub failure_code: Option<&'a str>,
+    pub failure_message: Option<&'a str>,
+    pub layout_diagnostics_json: Option<&'a str>,
 }
 
 #[derive(Clone, Debug, Queryable)]
@@ -188,6 +198,11 @@ pub struct RenderedRequestImage {
     pub pixel_width: i32,
     pub pixel_height: i32,
     pub byte_size: i64,
+    pub outcome: String,
+    pub stage: Option<String>,
+    pub failure_code: Option<String>,
+    pub failure_message: Option<String>,
+    pub layout_diagnostics_json: Option<String>,
 }
 
 #[derive(Clone, Debug)]
@@ -258,6 +273,11 @@ impl Database {
                     pixel_width INTEGER NOT NULL,\
                     pixel_height INTEGER NOT NULL,\
                     byte_size BIGINT NOT NULL,\
+                    outcome TEXT NOT NULL DEFAULT 'PRESENTED',\
+                    stage TEXT,\
+                    failure_code TEXT,\
+                    failure_message TEXT,\
+                    layout_diagnostics_json TEXT,\
                     FOREIGN KEY(audit_id) REFERENCES request_audits(id) ON DELETE CASCADE\
                 );",
             )
@@ -275,6 +295,26 @@ impl Database {
                 .batch_execute("ALTER TABLE request_payloads ADD COLUMN model_request_json TEXT;")
                 .await
                 .map_err(AppError::database)?;
+        }
+        let rendered_columns = sql_query("PRAGMA table_info(rendered_request_images)")
+            .load::<TableColumnName>(&mut connection)
+            .await
+            .map_err(AppError::database)?;
+        for (name, definition) in [
+            ("outcome", "TEXT NOT NULL DEFAULT 'PRESENTED'"),
+            ("stage", "TEXT"),
+            ("failure_code", "TEXT"),
+            ("failure_message", "TEXT"),
+            ("layout_diagnostics_json", "TEXT"),
+        ] {
+            if !rendered_columns.iter().any(|column| column.name == name) {
+                connection
+                    .batch_execute(&format!(
+                        "ALTER TABLE rendered_request_images ADD COLUMN {name} {definition};"
+                    ))
+                    .await
+                    .map_err(AppError::database)?;
+            }
         }
         Ok(())
     }
@@ -530,7 +570,7 @@ impl Database {
         }))
     }
 
-    pub async fn successful_request_record(
+    pub async fn matching_request_record(
         &self,
         request_id: &str,
         session_id: &str,
@@ -543,7 +583,6 @@ impl Database {
             .filter(request_audits::request_id.eq(request_id))
             .filter(request_audits::session_id.eq(session_id))
             .filter(request_audits::generation.eq(generation))
-            .filter(request_audits::status.eq("SUCCEEDED"))
             .order(request_audits::created_at.desc())
             .select(request_audits::id)
             .first::<String>(&mut connection)

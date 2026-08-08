@@ -37,7 +37,8 @@ internal object ShapeAwareTextLayout {
         alignment: Layout.Alignment,
         horizontalPadding: Int,
         allowOverflowMore: Boolean,
-        lineSpacingMultipliers: List<Float>? = null
+        lineSpacingMultipliers: List<Float>? = null,
+        requireAllSlots: Boolean = false
     ): ShapeAwareTextResult? {
         val slots = renderSlots.filter { it.right > it.left && it.bottom > it.top }
         if (text.isBlank() || slots.isEmpty()) return null
@@ -56,11 +57,14 @@ internal object ShapeAwareTextLayout {
                 lineSpacing,
                 maximumLines,
                 alignment,
-                horizontalPadding
+                horizontalPadding,
+                requireAllSlots
             )
             val requireLeadingSlot = minimumCandidate?.firstUsedSlotIndex == 0
             var best: FlowCandidate? = minimumCandidate?.takeIf { candidate ->
-                candidate.complete && (!requireLeadingSlot || candidate.firstUsedSlotIndex == 0)
+                candidate.complete &&
+                    (!requireLeadingSlot || candidate.firstUsedSlotIndex == 0) &&
+                    (!requireAllSlots || candidate.usedSlotCount == slots.size)
             }
             repeat(LAYOUT_SEARCH_STEPS) {
                 val size = (low + high) / 2f
@@ -72,10 +76,12 @@ internal object ShapeAwareTextLayout {
                     lineSpacing,
                     maximumLines,
                     alignment,
-                    horizontalPadding
+                    horizontalPadding,
+                    requireAllSlots
                 )
                 if (candidate?.complete == true &&
-                    (!requireLeadingSlot || candidate.firstUsedSlotIndex == 0)
+                    (!requireLeadingSlot || candidate.firstUsedSlotIndex == 0) &&
+                    (!requireAllSlots || candidate.usedSlotCount == slots.size)
                 ) {
                     low = size
                     best = candidate
@@ -118,7 +124,8 @@ internal object ShapeAwareTextLayout {
                 lineSpacing,
                 maximumLines,
                 alignment,
-                horizontalPadding
+                horizontalPadding,
+                requireAllSlots
             )
             if (candidate?.complete == true) {
                 bestText = displayed
@@ -147,13 +154,19 @@ internal object ShapeAwareTextLayout {
         lineSpacingMultiplier: Float,
         maximumLines: Int,
         alignment: Layout.Alignment,
-        horizontalPadding: Int
+        horizontalPadding: Int,
+        requireAllSlots: Boolean
     ): FlowCandidate? {
         paint.textSize = textSizePx
         var cursor = skipWhitespace(text, 0)
         var remainingLines = maximumLines.coerceAtLeast(1)
         val segments = mutableListOf<ShapeAwareTextSegment>()
         var firstUsedSlotIndex: Int? = null
+        val slotWeights = slots.map { slot ->
+            slot.width().toLong().coerceAtLeast(1L) * slot.height().toLong().coerceAtLeast(1L)
+        }
+        val totalSlotWeight = slotWeights.sum().coerceAtLeast(1L)
+        var consumedSlotWeight = 0L
         for ((slotIndex, slot) in slots.withIndex()) {
             if (cursor >= text.length || remainingLines <= 0) break
             val width = (slot.right - slot.left - horizontalPadding * 2).coerceAtLeast(1)
@@ -165,6 +178,18 @@ internal object ShapeAwareTextLayout {
                 floor((slot.bottom - slot.top) / lineHeight).toInt().coerceAtLeast(1)
             )
             val remainingText = text.substring(cursor)
+            consumedSlotWeight += slotWeights[slotIndex]
+            val maximumCharacters = if (requireAllSlots && slotIndex < slots.lastIndex) {
+                val remainingSlotCount = slots.lastIndex - slotIndex
+                val proportionalEnd =
+                    ((text.length.toLong() * consumedSlotWeight + totalSlotWeight - 1L) /
+                        totalSlotWeight).toInt()
+                (proportionalEnd - cursor)
+                    .coerceAtLeast(1)
+                    .coerceAtMost((remainingText.length - remainingSlotCount).coerceAtLeast(1))
+            } else {
+                null
+            }
             val fitted = fitPrefix(
                 text = remainingText,
                 paint = paint,
@@ -172,7 +197,8 @@ internal object ShapeAwareTextLayout {
                 alignment = alignment,
                 lineSpacingMultiplier = lineSpacingMultiplier,
                 maximumLines = slotLines,
-                maximumHeight = slot.bottom - slot.top
+                maximumHeight = slot.bottom - slot.top,
+                maximumCharacters = maximumCharacters
             ) ?: continue
             val accepted = fitted.layout
             if (accepted.lineCount <= 0) return null
@@ -188,7 +214,8 @@ internal object ShapeAwareTextLayout {
             segments = segments,
             complete = cursor >= text.length,
             textSizePx = textSizePx,
-            firstUsedSlotIndex = checkNotNull(firstUsedSlotIndex)
+            firstUsedSlotIndex = checkNotNull(firstUsedSlotIndex),
+            usedSlotCount = segments.size
         )
     }
 
@@ -211,7 +238,8 @@ internal object ShapeAwareTextLayout {
         alignment: Layout.Alignment,
         lineSpacingMultiplier: Float,
         maximumLines: Int,
-        maximumHeight: Int
+        maximumHeight: Int,
+        maximumCharacters: Int?
     ): FittedPrefix? {
         fun layout(end: Int) = createLayout(
             text = text.substring(0, end),
@@ -221,13 +249,17 @@ internal object ShapeAwareTextLayout {
             lineSpacingMultiplier = lineSpacingMultiplier
         )
 
-        val complete = layout(text.length)
+        val candidateEnd = maximumCharacters
+            ?.coerceIn(1, text.length)
+            ?.let { requested -> wordBoundaryEnd(text, requested) }
+            ?: text.length
+        val complete = layout(candidateEnd)
         if (complete.lineCount <= maximumLines && complete.height <= maximumHeight) {
-            return FittedPrefix(text.length, complete)
+            return FittedPrefix(candidateEnd, complete)
         }
 
         var low = 1
-        var high = text.length - 1
+        var high = candidateEnd - 1
         var bestEnd = 0
         while (low <= high) {
             val midpoint = (low + high) / 2
@@ -276,7 +308,8 @@ internal object ShapeAwareTextLayout {
         val segments: List<ShapeAwareTextSegment>,
         val complete: Boolean,
         val textSizePx: Float,
-        val firstUsedSlotIndex: Int
+        val firstUsedSlotIndex: Int,
+        val usedSlotCount: Int
     )
 
     private data class FittedPrefix(

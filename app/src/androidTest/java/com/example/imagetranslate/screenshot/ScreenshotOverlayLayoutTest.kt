@@ -25,6 +25,53 @@ import kotlinx.coroutines.runBlocking
 @RunWith(AndroidJUnit4::class)
 class ScreenshotOverlayLayoutTest {
     @Test
+    fun sourceCoverSlotsEraseMemberTextOutsideTheUsedTranslationSlot() = runBlocking {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val bitmap = Bitmap.createBitmap(420, 260, Bitmap.Config.ARGB_8888)
+        Canvas(bitmap).apply {
+            drawColor(Color.WHITE)
+            Paint().apply { color = Color.BLACK }.also { paint ->
+                drawRect(20f, 40f, 390f, 80f, paint)
+                drawRect(20f, 150f, 390f, 190f, paint)
+            }
+        }
+        val processor = BackgroundTranslatedImageProcessor(context)
+        try {
+            val result = processor.renderDeterministicOverlay(
+                bitmap = bitmap,
+                regions = listOf(
+                    LiveDeterministicTranslationRegion(
+                        sourceText = "first source line\nsecond source line",
+                        translation = "译",
+                        bounds = Rect(20, 40, 390, 190),
+                        sourceLineBounds = listOf(
+                            Rect(20, 40, 390, 80),
+                            Rect(20, 150, 390, 190)
+                        ),
+                        renderSlots = listOf(Rect(20, 40, 390, 80)),
+                        displayHints = SmartAssistDisplayHints(
+                            preferredMaxLines = 1,
+                            minimumTextScale = 0.86f,
+                            sourceLineCount = 2
+                        )
+                    )
+                )
+            )
+
+            val patch = result.patches.single()
+            val localX = 200 - patch.bounds.left
+            val localY = 170 - patch.bounds.top
+            assertTrue(
+                "The second OCR member line must be painted even when translation fits earlier",
+                Color.red(patch.bitmap.getPixel(localX, localY)) > 32
+            )
+        } finally {
+            processor.close()
+            bitmap.recycle()
+        }
+    }
+
+    @Test
     fun authoritativeTwoSlotLongBodyProducesAnOverlayPatch() = runBlocking {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val bitmap = Bitmap.createBitmap(1440, 3200, Bitmap.Config.ARGB_8888)

@@ -15,7 +15,10 @@
     if (sourceCaptureMeta) sourceCaptureMeta.hidden = showRendered;
     if (renderedCaptureMeta) renderedCaptureMeta.hidden = !showRendered;
     if (captureTitle) {
-      captureTitle.textContent = showRendered ? "端侧实际回贴截图" : "翻译前 OCR 采集图";
+      const renderedLabel = captureToggle?.nextElementSibling?.textContent || "端侧实际回贴";
+      captureTitle.textContent = showRendered
+        ? renderedLabel.replace(/^显示/u, "")
+        : "翻译前 OCR 采集图";
     }
   };
   captureToggle?.addEventListener("change", updateCaptureView);
@@ -158,10 +161,24 @@
       ? result.layoutHint.renderSlots
       : group.renderSlots?.length ? group.renderSlots : [group.bounds];
     const text = result?.translatedText || group.sourceText;
+    const sourceCoverSlots = result?.layoutHint?.sourceCoverSlots?.length
+      ? result.layoutHint.sourceCoverSlots
+      : (group.memberRegionIds ?? [])
+        .map((id) => regionsById.get(id))
+        .filter(Boolean)
+        .flatMap((region) => region.componentBounds?.length
+          ? region.componentBounds
+          : [region.bounds]);
     const outline = document.createElement("div");
     outline.className = `group-outline ${roleClass(group.role)}`;
     place(outline, group.bounds);
     translationCanvas.append(outline);
+    sourceCoverSlots.forEach((slot) => {
+      const cover = document.createElement("div");
+      cover.className = "source-cover-slot";
+      place(cover, slot);
+      translationCanvas.append(cover);
+    });
     const slotElements = slots.map((slot) => {
       const element = document.createElement("div");
       element.className = `render-slot ${roleClass(group.role)}`;
@@ -169,7 +186,14 @@
       translationCanvas.append(element);
       return element;
     });
-    return { group, result, slots, slotElements, text: text.replace(/\s+/g, " ").trim() };
+    return {
+      group,
+      result,
+      slots,
+      sourceCoverSlots,
+      slotElements,
+      text: text.replace(/\s+/g, " ").trim()
+    };
   });
 
   const boundaryEnd = (text, requested) => {

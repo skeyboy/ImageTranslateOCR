@@ -48,6 +48,7 @@ import com.example.imagetranslate.translate.TranslationMode
 import com.example.imagetranslate.translate.ExperimentalTranslationSettings
 import com.example.imagetranslate.translate.SelfHostedRenderedCaptureUploader
 import com.example.imagetranslate.translate.SemanticDebugCaptureEncoder
+import com.example.imagetranslate.translate.SemanticRenderedCaptureAudit
 import com.example.imagetranslate.translate.SemanticRenderedCaptureUploadPolicy
 import com.example.imagetranslate.translate.SemanticTranslationTrace
 import com.example.experimentaltranslation.ExperimentalModelManagerActivity
@@ -67,6 +68,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeout
+import org.json.JSONObject
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
@@ -1445,12 +1447,39 @@ class OneShotScreenCaptureService : Service() {
                 uploadEnabled = TranslationBackendSettings
                     .isDebugRenderedCaptureUploadEnabled(this),
                 patchCount = result.patches.size,
+                failedCount = result.failedCount,
                 traceCount = result.translationTraces.size
             )
         ) {
             return
         }
         val traces = result.translationTraces.distinct()
+        val diagnostics = JSONObject()
+            .put("schemaVersion", 1)
+            .put("recognizedCount", result.recognizedCount)
+            .put("translatedRegionCount", result.translatedRegionCount)
+            .put("renderedPatchCount", result.patches.size)
+            .put("failedRegionCount", result.failedCount)
+            .put("sourceRegionCount", result.sourceCoverage.regionCount)
+            .put("sourceCoverageRatio", result.sourceCoverage.coverageRatio.toDouble())
+            .put("patchRegionCount", result.patchCoverage.regionCount)
+            .put("patchCoverageRatio", result.patchCoverage.coverageRatio.toDouble())
+            .put("renderingMode", result.renderingMode.name)
+            .put("backgroundMode", result.backgroundMode.name)
+        val audit = if (result.failedCount > 0) {
+            SemanticRenderedCaptureAudit.renderFailed(
+                stage = if (result.patches.isEmpty()) "OVERLAY_LAYOUT" else "OVERLAY_PARTIAL_DRAW",
+                failureCode = if (result.patches.isEmpty()) {
+                    "NO_RENDERABLE_PATCH"
+                } else {
+                    "PARTIAL_RENDER"
+                },
+                failureMessage = "${result.failedCount} translated region(s) were not pasted back",
+                layoutDiagnostics = diagnostics
+            )
+        } else {
+            SemanticRenderedCaptureAudit.presented(diagnostics)
+        }
         captureHandler?.postDelayed(
             {
                 if (generation != captureGeneration.get() ||
@@ -1459,7 +1488,7 @@ class OneShotScreenCaptureService : Service() {
                 ) {
                     return@postDelayed
                 }
-                pendingRenderedCapture.set(PendingRenderedCapture(generation, traces))
+                pendingRenderedCapture.set(PendingRenderedCapture(generation, traces, audit))
                 drainLatestImage()
             },
             RENDERED_CAPTURE_SETTLE_MS
@@ -1481,7 +1510,7 @@ class OneShotScreenCaptureService : Service() {
                     )
                 )
                 pending.traces.forEach { trace ->
-                    runCatching { uploader.upload(trace, capture) }
+                    runCatching { uploader.upload(trace, capture, pending.audit) }
                         .onSuccess {
                             Log.i(TAG, "Uploaded rendered capture for request ${trace.requestId}")
                         }
@@ -2013,7 +2042,8 @@ class OneShotScreenCaptureService : Service() {
 
     private data class PendingRenderedCapture(
         val generation: Int,
-        val traces: List<SemanticTranslationTrace>
+        val traces: List<SemanticTranslationTrace>,
+        val audit: SemanticRenderedCaptureAudit
     )
 
     companion object {

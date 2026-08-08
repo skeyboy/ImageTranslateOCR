@@ -135,6 +135,37 @@ class ShapeAwareTextLayoutInstrumentedTest {
         )
     }
 
+    @Test
+    fun distributesImageWrappedTranslationAcrossEveryDeclaredFlowSlot() {
+        val slots = listOf(
+            Rect(727, 1596, 1311, 1644),
+            Rect(674, 1661, 1410, 1992),
+            Rect(29, 2016, 996, 2068)
+        )
+        val result = ShapeAwareTextLayout.layout(
+            text = "一场无声的斗争正在我们的大学中激烈进行，这并非关于金钱或权力的争端。" +
+                "这是关于认可的问题，具体而言是关于哪些学术工作被认为是有价值的。",
+            paint = TextPaint(Paint.ANTI_ALIAS_FLAG),
+            renderSlots = slots,
+            preferredTextSizePx = 50f,
+            minimumTextSizePx = 40f,
+            maximumLines = 7,
+            alignment = Layout.Alignment.ALIGN_NORMAL,
+            horizontalPadding = 6,
+            allowOverflowMore = true,
+            requireAllSlots = true
+        )
+
+        assertNotNull(result)
+        assertEquals(slots, result!!.segments.map { segment -> segment.bounds })
+        assertEquals(ShapeAwareTextOutcome.COMPACT, result.outcome)
+        assertEquals(
+            "一场无声的斗争正在我们的大学中激烈进行，这并非关于金钱或权力的争端。" +
+                "这是关于认可的问题，具体而言是关于哪些学术工作被认为是有价值的。",
+            result.displayedText
+        )
+    }
+
     private data class LayoutArguments(val text: String) {
         fun layout(allowOverflowMore: Boolean) = ShapeAwareTextLayout.layout(
             text = text,
