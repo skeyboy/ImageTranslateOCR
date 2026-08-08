@@ -321,7 +321,8 @@ async fn translate_request(
     request
         .validate_schema(expected_schema)
         .map_err(|error| error.with_request_id(&request_id))?;
-    let document_plan = DocumentPlan::build(&request, authoritative);
+    let normalized_request = normalized_request_for_translation(&request);
+    let document_plan = DocumentPlan::build(&normalized_request, authoritative);
     let execution_groups = if authoritative {
         document_plan.translation_groups()
     } else {
@@ -538,11 +539,226 @@ fn translated_result(
 }
 
 fn should_preserve(group: &TranslationGroup) -> bool {
-    group.translation_unit == "PRESERVED"
-        || matches!(
-            group.role.as_str(),
-            "CODE" | "IDENTIFIER" | "TIMESTAMP" | "METADATA" | "CONTROL"
-        )
+    let text = group.source_text.trim();
+    if text.is_empty() || looks_like_code(text) {
+        return true;
+    }
+    match group.role.as_str() {
+        "CODE" | "IDENTIFIER" | "CONTROL" => true,
+        "TIMESTAMP" => is_standalone_temporal_value(text),
+        "METADATA" => is_standalone_metadata(text),
+        _ => is_standalone_numeric_identifier(text),
+    }
+}
+
+fn normalized_request_for_translation(
+    request: &SemanticTranslationRequest,
+) -> SemanticTranslationRequest {
+    let mut normalized = request.clone();
+    for group in &mut normalized.groups {
+        let preserve = should_preserve(group);
+        group.translation_unit = if preserve { "PRESERVED" } else { "GROUP" }.to_owned();
+        if !preserve && matches!(group.role.as_str(), "TIMESTAMP" | "METADATA") {
+            group.role = "BODY".to_owned();
+            group
+                .grouping_evidence
+                .push("SERVER_TRANSLATION_ELIGIBILITY_OVERRIDE".to_owned());
+            group.grouping_evidence.sort();
+            group.grouping_evidence.dedup();
+        }
+    }
+    normalized
+}
+
+fn is_standalone_temporal_value(text: &str) -> bool {
+    let mut has_digit = false;
+    let mut alphabetic_runs = Vec::new();
+    let mut current = String::new();
+    for character in text.chars() {
+        if character.is_ascii_digit() {
+            has_digit = true;
+        }
+        if character.is_alphabetic() {
+            current.push(character.to_ascii_lowercase());
+        } else if !current.is_empty() {
+            alphabetic_runs.push(std::mem::take(&mut current));
+        }
+        if !character.is_alphanumeric()
+            && !character.is_whitespace()
+            && !matches!(character, ':' | '-' | '/' | '.' | ',')
+        {
+            return false;
+        }
+    }
+    if !current.is_empty() {
+        alphabetic_runs.push(current);
+    }
+    has_digit
+        && alphabetic_runs.iter().all(|token| {
+            matches!(
+                token.as_str(),
+                "am" | "pm"
+                    | "t"
+                    | "jan"
+                    | "january"
+                    | "feb"
+                    | "february"
+                    | "mar"
+                    | "march"
+                    | "apr"
+                    | "april"
+                    | "may"
+                    | "jun"
+                    | "june"
+                    | "jul"
+                    | "july"
+                    | "aug"
+                    | "august"
+                    | "sep"
+                    | "september"
+                    | "oct"
+                    | "october"
+                    | "nov"
+                    | "november"
+                    | "dec"
+                    | "december"
+                    | "st"
+                    | "nd"
+                    | "rd"
+                    | "th"
+            )
+        })
+}
+
+fn is_standalone_metadata(text: &str) -> bool {
+    let trimmed = text.trim();
+    if is_standalone_temporal_value(trimmed) {
+        return true;
+    }
+    if matches!(trimmed.chars().next(), Some('~' | '-'))
+        && trimmed.chars().any(char::is_alphabetic)
+        && !trimmed.chars().any(char::is_numeric)
+    {
+        return true;
+    }
+    looks_like_author_date_metadata(trimmed)
+}
+
+fn looks_like_author_date_metadata(text: &str) -> bool {
+    let tokens = text.split_whitespace().collect::<Vec<_>>();
+    if tokens.len() < 3 {
+        return false;
+    }
+    let Some(year_index) = tokens.iter().rposition(|token| {
+        token
+            .trim_matches(|character: char| !character.is_ascii_digit())
+            .parse::<u16>()
+            .is_ok_and(|year| (1900..=2200).contains(&year))
+    }) else {
+        return false;
+    };
+    if year_index != tokens.len() - 1 {
+        return false;
+    }
+    let Some(month_index) = tokens[..year_index]
+        .iter()
+        .rposition(|token| is_month_name(token))
+    else {
+        return false;
+    };
+    if month_index == 0 || year_index - month_index > 2 {
+        return false;
+    }
+    let author_end = if month_index > 0 && is_day_number(tokens[month_index - 1]) {
+        month_index - 1
+    } else {
+        month_index
+    };
+    let author_tokens = &tokens[..author_end];
+    if author_tokens.is_empty() || author_tokens.len() > 8 {
+        return false;
+    }
+    author_tokens.iter().all(|token| {
+        let letters = token
+            .chars()
+            .filter(|character| character.is_alphabetic())
+            .collect::<String>();
+        !letters.is_empty()
+            && (is_lowercase_name_particle(&letters)
+                || letters.chars().next().is_some_and(char::is_uppercase))
+    })
+}
+
+fn is_day_number(token: &str) -> bool {
+    token
+        .trim_matches(|character: char| !character.is_ascii_digit())
+        .parse::<u8>()
+        .is_ok_and(|day| (1..=31).contains(&day))
+}
+
+fn is_month_name(token: &&str) -> bool {
+    matches!(
+        token
+            .trim_matches(|character: char| !character.is_alphabetic())
+            .to_ascii_lowercase()
+            .as_str(),
+        "jan"
+            | "january"
+            | "feb"
+            | "february"
+            | "mar"
+            | "march"
+            | "apr"
+            | "april"
+            | "may"
+            | "jun"
+            | "june"
+            | "jul"
+            | "july"
+            | "aug"
+            | "august"
+            | "sep"
+            | "september"
+            | "oct"
+            | "october"
+            | "nov"
+            | "november"
+            | "dec"
+            | "december"
+    )
+}
+
+fn is_lowercase_name_particle(token: &str) -> bool {
+    matches!(
+        token.to_ascii_lowercase().as_str(),
+        "and" | "bin" | "da" | "de" | "del" | "la" | "van" | "von"
+    )
+}
+
+fn is_standalone_numeric_identifier(text: &str) -> bool {
+    let mut has_digit = false;
+    let mut current_latin_run = 0usize;
+    for character in text.chars() {
+        if character.is_ascii_digit() {
+            has_digit = true;
+        }
+        if character.is_ascii_alphabetic() {
+            current_latin_run += 1;
+            if current_latin_run > 1 {
+                return false;
+            }
+        } else {
+            current_latin_run = 0;
+        }
+        if matches!(character as u32, 0x2E80..=0x9FFF | 0xF900..=0xFAFF) {
+            return false;
+        }
+    }
+    has_digit
+}
+
+fn looks_like_code(text: &str) -> bool {
+    text.contains("//") || text.contains('_') || text.contains('@') || text.contains("://")
 }
 
 fn authorize(headers: &HeaderMap, expected: Option<&str>) -> Result<(), AppError> {
@@ -759,5 +975,105 @@ fn normalized_language(value: &str) -> String {
         "auto".to_owned()
     } else {
         normalized
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::should_preserve;
+    use crate::contract::{Bounds, TranslationGroup};
+
+    #[test]
+    fn translates_legacy_preserved_groups_when_time_or_numbers_are_part_of_a_sentence() {
+        assert!(!should_preserve(&group(
+            "METADATA",
+            "The March ended in 1956 but the consequences remained"
+        )));
+        assert!(!should_preserve(&group(
+            "TIMESTAMP",
+            "At 17:27 the meeting started"
+        )));
+        assert!(!should_preserve(&group("BODY", "Version 3 is ready")));
+        assert!(!should_preserve(&group("BODY", "Awarded C$20 million")));
+    }
+
+    #[test]
+    fn preserves_only_structural_time_metadata_and_numeric_identifiers() {
+        assert!(should_preserve(&group("TIMESTAMP", "22:43")));
+        assert!(should_preserve(&group("TIMESTAMP", "2026-08-04")));
+        assert!(should_preserve(&group(
+            "METADATA",
+            "Ngotho Gichuru and Byaruhanga Rukooko 06 August 2026"
+        )));
+        assert!(should_preserve(&group("BODY", "M26-061")));
+        assert!(should_preserve(&group("BODY", "W3000 t5")));
+    }
+
+    #[test]
+    fn normalizes_legacy_mixed_time_roles_before_building_the_document_plan() {
+        let mut request = crate::contract::SemanticTranslationRequest {
+            schema_version: crate::contract::LAYOUT_PLAN_SCHEMA_VERSION,
+            request_id: "request".to_owned(),
+            session_id: "session".to_owned(),
+            generation: 1,
+            translation_revision: 1,
+            scene: "LIVE_SCREEN".to_owned(),
+            viewport: crate::contract::Viewport {
+                width: 100,
+                height: 100,
+                rotation_degrees: 0,
+            },
+            translation: crate::contract::TranslationOptions {
+                mode: "AUTO_BIDIRECTIONAL".to_owned(),
+                source_language: "auto".to_owned(),
+                target_language: "zh".to_owned(),
+                preserve_identifiers: true,
+                use_document_context: true,
+            },
+            document_context: crate::contract::DocumentContext {
+                text: String::new(),
+                source_language: "auto".to_owned(),
+                reading_order_region_ids: Vec::new(),
+            },
+            groups: vec![group(
+                "METADATA",
+                "The March ended in 1956 but the consequences remained",
+            )],
+            regions: Vec::new(),
+            debug_capture: None,
+        };
+        request.groups[0].translation_unit = "PRESERVED".to_owned();
+
+        let normalized = super::normalized_request_for_translation(&request);
+
+        assert_eq!(normalized.groups[0].role, "BODY");
+        assert_eq!(normalized.groups[0].translation_unit, "GROUP");
+        assert!(
+            normalized.groups[0]
+                .grouping_evidence
+                .contains(&"SERVER_TRANSLATION_ELIGIBILITY_OVERRIDE".to_owned())
+        );
+    }
+
+    fn group(role: &str, source_text: &str) -> TranslationGroup {
+        TranslationGroup {
+            group_id: "test-group".to_owned(),
+            role: role.to_owned(),
+            translation_unit: "PRESERVED".to_owned(),
+            source_text: source_text.to_owned(),
+            member_region_ids: vec!["test-region".to_owned()],
+            reading_order: 0,
+            grouping_confidence: 1.0,
+            grouping_evidence: Vec::new(),
+            source_line_count: Some(1),
+            bounds: Bounds {
+                left: 0,
+                top: 0,
+                right: 100,
+                bottom: 20,
+            },
+            render_slots: Vec::new(),
+            layout_shape: "RECT".to_owned(),
+        }
     }
 }

@@ -2,6 +2,7 @@ package com.example.imagetranslate.translate
 
 import com.example.imagetranslate.semantic.SemanticTextGroup
 import com.example.imagetranslate.semantic.SemanticTextRole
+import com.example.imagetranslate.semantic.SemanticContentClassifier
 
 internal fun SemanticTextGroup.toSemanticTranslationSource(): SemanticTranslationSource {
     val atomicMembers = members.flatMapIndexed { memberIndex, member ->
@@ -30,11 +31,18 @@ internal fun SemanticTextGroup.toSemanticTranslationSource(): SemanticTranslatio
             corrections = normalized.corrections
         )
     }
+    val normalizedSourceText = normalizedMembers.joinToString("\n") { it.text }
     return SemanticTranslationSource(
         groupId = groupId,
         role = role.name,
-        translationUnit = if (role.requiresPreservation) "PRESERVED" else "GROUP",
-        sourceText = normalizedMembers.joinToString("\n") { it.text },
+        translationUnit = if (
+            SemanticContentClassifier.shouldPreserve(role.name, normalizedSourceText)
+        ) {
+            "PRESERVED"
+        } else {
+            "GROUP"
+        },
+        sourceText = normalizedSourceText,
         memberRegionIds = regionIds,
         readingOrder = readingOrder,
         groupingConfidence = groupingConfidence.coerceIn(0f, 1f),
@@ -102,11 +110,6 @@ private fun android.graphics.Rect.toTranslationBounds() = TranslationBounds(
     right = right,
     bottom = bottom
 )
-
-private val SemanticTextRole.requiresPreservation: Boolean
-    get() = this == SemanticTextRole.CODE || this == SemanticTextRole.IDENTIFIER ||
-        this == SemanticTextRole.TIMESTAMP || this == SemanticTextRole.METADATA ||
-        this == SemanticTextRole.CONTROL
 
 private fun languageFor(text: String): String? = when {
     text.any(::isHanCharacter) -> "zh"

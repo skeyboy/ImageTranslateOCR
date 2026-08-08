@@ -6,6 +6,7 @@ import com.example.experimentaltranslation.ExperimentalTranslationEngine
 import com.example.experimentaltranslation.ExperimentalTranslationLibrary
 import com.example.experimentaltranslation.ExperimentalTranslationRequest
 import com.example.experimentaltranslation.TranslationLanguage
+import com.example.imagetranslate.semantic.SemanticContentClassifier
 import com.google.mlkit.common.model.DownloadConditions
 import com.google.mlkit.nl.translate.TranslateLanguage
 import com.google.mlkit.nl.translate.Translation
@@ -125,7 +126,7 @@ internal class TranslateManager(context: Context? = null) {
             val sourceLanguage = identifySourceLanguageByScript(inputText)
             val targetLanguage = sourceLanguage?.let { targetLanguageFor(it, mode) }
             val request = if (
-                !shouldPreserveSourceText(inputText) &&
+                !SemanticContentClassifier.shouldPreserve("BODY", inputText) &&
                 sourceLanguage != null &&
                 targetLanguage != null
             ) {
@@ -357,8 +358,7 @@ internal class TranslateManager(context: Context? = null) {
                 bounds = region.bounds.clampedTo(viewportWidth, viewportHeight)
             )
         }
-        val shouldPreserve = translationUnit == "PRESERVED" ||
-            shouldPreserveSourceText(sourceText) ||
+        val shouldPreserve = SemanticContentClassifier.shouldPreserve(role, sourceText) ||
             preparedRegions.none { it.sourceLanguage != null && it.targetLanguage != null }
         return copy(
             translationUnit = if (shouldPreserve) "PRESERVED" else "GROUP",
@@ -393,8 +393,7 @@ internal class TranslateManager(context: Context? = null) {
             val sourceLanguage = identifySourceLanguageByScript(inputText)
             val targetLanguage = sourceLanguage?.let { targetLanguageFor(it, mode) }
             val request = if (
-                source.translationUnit != "PRESERVED" &&
-                !shouldPreserveSourceText(inputText) &&
+                !SemanticContentClassifier.shouldPreserve(source.role, inputText) &&
                 sourceLanguage != null && targetLanguage != null
             ) {
                 TranslationRequest(
@@ -651,25 +650,6 @@ internal class TranslateManager(context: Context? = null) {
         TranslateLanguage.CHINESE -> TranslationLanguage.CHINESE
         TranslateLanguage.ENGLISH -> TranslationLanguage.ENGLISH
         else -> null
-    }
-
-    private fun shouldPreserveSourceText(text: String): Boolean {
-        val visible = text.filterNot(Char::isWhitespace)
-        if (visible.isEmpty()) return true
-
-        val hanCount = visible.count(::isHanCharacter)
-        val latinCount = visible.count { it in 'A'..'Z' || it in 'a'..'z' }
-        val digitCount = visible.count(Char::isDigit)
-        val meaningfulCount = hanCount + latinCount + digitCount
-        val isNumericIdentifier = digitCount >= 4 && hanCount <= 1 &&
-            meaningfulCount > 0 && digitCount.toFloat() / meaningfulCount >= 0.65f
-        if (isNumericIdentifier) return true
-
-        val looksLikeCode = visible.contains("//") || visible.contains('_') ||
-            visible.contains('@') || visible.matches(Regex("[A-Za-z]+://.*"))
-        val looksLikeBrandGroup = hanCount == 0 && latinCount > 0 &&
-            visible.any { it in charArrayOf('×', '©', '®', '™') }
-        return looksLikeCode || looksLikeBrandGroup
     }
 
     private fun targetLanguageFor(sourceLanguage: String, mode: TranslationMode): String? =

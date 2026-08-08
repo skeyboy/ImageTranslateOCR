@@ -250,6 +250,48 @@ class SemanticTextGrouperTest {
         assertEquals(SemanticTextRole.CONTROL, groups[2].role)
     }
 
+    @Test
+    fun treatsDatesInsideArticleSentencesAsBodyText() {
+        val samples = listOf(
+            "City,Vietnam,Aug.4,2026.Chinese film Dear You",
+            "The March ended in 1956 but,",
+            "Center in Florida on Jan.17,2026,ahead of the historic Artemis"
+        )
+
+        samples.forEachIndexed { index, text ->
+            val group = SemanticTextGrouper.group(
+                listOf(line(text, 20, 100, 820, 140, "article-$index", 0)),
+                1080,
+                1920
+            ).single()
+
+            assertEquals(text, SemanticTextRole.BODY, group.role)
+        }
+    }
+
+    @Test
+    fun keepsPureTimeAndAuthorDateAsStructuralMetadata() {
+        val groups = SemanticTextGrouper.group(
+            listOf(
+                line("22:43", 800, 100, 900, 130, null, null),
+                line(
+                    "Ngotho Gichuru and Byaruhanga Rukooko 06 August 2026",
+                    20,
+                    180,
+                    780,
+                    220,
+                    null,
+                    null
+                )
+            ),
+            1080,
+            1920
+        )
+
+        assertEquals(SemanticTextRole.TIMESTAMP, groups[0].role)
+        assertEquals(SemanticTextRole.METADATA, groups[1].role)
+    }
+
     private fun line(
         text: String,
         left: Int,

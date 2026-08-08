@@ -361,19 +361,41 @@ internal class SelfHostedSemanticTranslationProvider(
         sources: List<SemanticTranslationSource>
     ): Boolean {
         if (sources.any { it.role !in AUTHORITATIVE_MERGE_ROLES }) return false
-        if (sources.map(SemanticTranslationSource::role).distinct().size == 1) return true
-
-        val dominantRole = sources.groupingBy(SemanticTranslationSource::role)
-            .eachCount()
-            .maxByOrNull(Map.Entry<String, Int>::value)
-            ?.key
-            ?: return false
-        return sources.indices.filter { sources[it].role != dominantRole }.all { index ->
-            (index > 0 && hasContinuousOcrBoundary(sources[index - 1], sources[index])) ||
-                (index < sources.lastIndex &&
-                    hasContinuousOcrBoundary(sources[index], sources[index + 1]))
+        return sources.zipWithNext().all { (first, second) ->
+            first.role == second.role ||
+                hasContinuousOcrBoundary(first, second) ||
+                hasVisualContinuationBoundary(first, second)
         }
     }
+
+    private fun hasVisualContinuationBoundary(
+        first: SemanticTranslationSource,
+        second: SemanticTranslationSource
+    ): Boolean {
+        val firstLineHeight = first.regions.maxOfOrNull { it.bounds.bottom - it.bounds.top }
+            ?: (first.bounds.bottom - first.bounds.top) / first.sourceLineCount.coerceAtLeast(1)
+        val secondLineHeight = second.regions.maxOfOrNull { it.bounds.bottom - it.bounds.top }
+            ?: (second.bounds.bottom - second.bounds.top) / second.sourceLineCount.coerceAtLeast(1)
+        val lineHeight = maxOf(firstLineHeight, secondLineHeight, 1)
+        val verticalGap = second.bounds.top - first.bounds.bottom
+        if (verticalGap !in -(lineHeight / 3)..lineHeight) return false
+
+        val overlap = (
+            minOf(first.bounds.right, second.bounds.right) -
+                maxOf(first.bounds.left, second.bounds.left)
+            ).coerceAtLeast(0)
+        val minimumWidth = minOf(
+            first.bounds.right - first.bounds.left,
+            second.bounds.right - second.bounds.left
+        ).coerceAtLeast(1)
+        if (overlap.toFloat() / minimumWidth < 0.72f) return false
+        if (kotlin.math.abs(first.bounds.right - second.bounds.right) > lineHeight * 2) return false
+        return !first.sourceText.trimEnd().endsWithAnySentenceTerminator()
+    }
+
+    private fun String.endsWithAnySentenceTerminator(): Boolean =
+        endsWith('.') || endsWith('!') || endsWith('?') ||
+            endsWith('。') || endsWith('！') || endsWith('？')
 
     private fun hasContinuousOcrBoundary(
         first: SemanticTranslationSource,

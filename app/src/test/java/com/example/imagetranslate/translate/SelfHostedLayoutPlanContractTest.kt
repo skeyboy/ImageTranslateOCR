@@ -67,8 +67,8 @@ class SelfHostedLayoutPlanContractTest {
     }
 
     @Test
-    fun rejectsRoleDriftWithoutContinuousOcrBlockEvidence() {
-        val driftedRequest = request(
+    fun rejectsRoleDriftWithoutOcrOrVisualContinuationEvidence() {
+        val baseRequest = request(
             firstRole = "BODY",
             secondRole = "TITLE",
             firstBlockId = "first-block",
@@ -76,6 +76,14 @@ class SelfHostedLayoutPlanContractTest {
             firstLineIndex = 4,
             secondLineIndex = 5
         )
+        val displacedSecond = baseRequest.sources[1].copy(
+            bounds = TranslationBounds(260, 55, 460, 85),
+            regions = baseRequest.sources[1].regions.map { region ->
+                region.copy(bounds = TranslationBounds(260, 55, 460, 85))
+            },
+            renderSlots = listOf(TranslationBounds(260, 55, 460, 85))
+        )
+        val driftedRequest = baseRequest.copy(sources = listOf(baseRequest.sources[0], displacedSecond))
         try {
             provider().parseResponseForTest(response(0.94f), driftedRequest)
             fail("Expected cross-role merge without OCR continuity to be rejected")
@@ -122,6 +130,38 @@ class SelfHostedLayoutPlanContractTest {
         val result = provider().parseResponseForTest(responseJson.toString(), request)
 
         assertEquals(listOf("a", "b", "c"), result.results.single().sourceGroupIds)
+    }
+
+    @Test
+    fun acceptsRoleDriftAcrossVisuallyContinuousWrappedArticleLines() {
+        val first = source(
+            "a", "African Institute for Mathematical", TranslationBounds(484, 1064, 1387, 1176), 0,
+            "TITLE", "title-block", 1
+        ).copy(sourceLineCount = 2)
+        val second = source(
+            "b", "Sciences. The centres are spread", TranslationBounds(487, 1200, 1291, 1254), 1,
+            "BODY", "body-block", 0
+        )
+        val request = request().copy(
+            viewportWidth = 1440,
+            viewportHeight = 3200,
+            documentText = "${first.sourceText}\n${second.sourceText}",
+            sources = listOf(first, second)
+        )
+        val responseJson = JSONObject(response(0.94f))
+        val item = responseJson.getJSONArray("results").getJSONObject(0)
+        item.put("memberRegionIds", JSONArray(listOf("a-line", "b-line")))
+        item.put("anchorBounds", boundsJson(484, 1064, 1387, 1254))
+        item.getJSONObject("layoutHint").put(
+            "renderSlots",
+            JSONArray(listOf(first.bounds, second.bounds).map {
+                boundsJson(it.left, it.top, it.right, it.bottom)
+            })
+        )
+
+        val result = provider().parseResponseForTest(responseJson.toString(), request)
+
+        assertEquals(listOf("a", "b"), result.results.single().sourceGroupIds)
     }
 
     private fun provider() = SelfHostedSemanticTranslationProvider("http://127.0.0.1:8090", null)

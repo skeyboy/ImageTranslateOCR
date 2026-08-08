@@ -394,10 +394,11 @@ internal object SemanticTextGrouper {
     ): SemanticTextRole {
         val text = item.text.trim()
         return when {
-            TIMESTAMP.matches(text) -> SemanticTextRole.TIMESTAMP
+            SemanticContentClassifier.isStandaloneTemporalValue(text) ->
+                SemanticTextRole.TIMESTAMP
             URL_OR_EMAIL.containsMatchIn(text) || PHONE_NUMBER.matches(text) ||
                 APP_BRAND.matches(text) -> SemanticTextRole.IDENTIFIER
-            SENDER_METADATA.containsMatchIn(text) || AUTHOR_DATE.containsMatchIn(text) ->
+            SemanticContentClassifier.isStandaloneMetadata(text) ->
                 SemanticTextRole.METADATA
             CONTROL_LABEL.containsMatchIn(text) || STATUS_LABEL.matches(text) ||
                 endsWithEllipsis(text) -> SemanticTextRole.CONTROL
@@ -456,7 +457,6 @@ internal object SemanticTextGrouper {
         val evidence: Set<GroupingEvidence>
     )
 
-    private val TIMESTAMP = Regex("^(?:[01]?\\d|2[0-3]):[0-5]\\d(?:\\s*[APap][Mm])?$")
     private val URL_OR_EMAIL = Regex(
         "(?i)(?:https?://|www\\.|[\\w.+-]+@[\\w.-]+\\.|" +
             "(?:[\\p{L}\\p{N}-]+\\.)+(?:com|org|net|io|ai|cn)\\b)"
@@ -464,12 +464,6 @@ internal object SemanticTextGrouper {
     private val PHONE_NUMBER = Regex("^\\+?\\d(?:[\\d ()-]{5,}\\d)$")
     private val APP_BRAND = Regex("(?i)^(?:instagram|whatsapp|facebook|telegram)$")
     private val LIST_PREFIX = Regex("^(?:[•·‣◦*-]|\\d+[.)]|[A-Za-z][.)])\\s+")
-    private val SENDER_METADATA = Regex("^\\s*[~-]\\s*[\\p{L}][\\p{L} ._-]{0,30}$")
-    private val AUTHOR_DATE = Regex(
-        "(?i)\\b(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|" +
-            "jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|" +
-            "dec(?:ember)?)\\b.*\\b\\d{4}\\b"
-    )
     private val CONTROL_LABEL = Regex(
         "(?i)^(?:(?:tweet|iweet)\\s+)?whats?app$|^privacy(?: policy)?$"
     )

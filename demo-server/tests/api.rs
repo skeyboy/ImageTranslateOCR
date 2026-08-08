@@ -392,7 +392,7 @@ async fn v3_returns_authoritative_layout_plan_and_declarative_rendering_fields()
     assert_eq!(body["documentPlan"]["mode"], "AUTHORITATIVE");
     assert_eq!(
         body["documentPlan"]["planVersion"],
-        "server-semantic-plan-v2"
+        "server-semantic-plan-v3"
     );
     assert_eq!(body["results"][0]["sourceGroupIds"][0], "group-title");
     assert!(body["results"][0]["layoutHint"]["maximumTextScale"].is_number());
@@ -550,6 +550,9 @@ async fn accepts_null_languages_for_preserved_ocr_regions() {
     let mut request = valid_request();
     request["groups"][0]["role"] = json!("TIMESTAMP");
     request["groups"][0]["translationUnit"] = json!("PRESERVED");
+    request["groups"][0]["sourceText"] = json!("22:43\n22:43");
+    request["regions"][0]["text"] = json!("22:43");
+    request["regions"][1]["text"] = json!("22:43");
     request["regions"][0]["sourceLanguage"] = Value::Null;
     request["regions"][0]["targetLanguage"] = Value::Null;
     request["regions"][1]["sourceLanguage"] = Value::Null;
@@ -568,6 +571,48 @@ async fn accepts_null_languages_for_preserved_ocr_regions() {
         serde_json::from_slice(&to_bytes(response.into_body(), 1024 * 1024).await.unwrap())
             .unwrap();
     assert_eq!(body["results"][0]["status"], "PRESERVED");
+}
+
+#[tokio::test]
+async fn translates_legacy_preserved_metadata_when_it_contains_a_sentence_and_date() {
+    let temporary = TempDir::new().unwrap();
+    let database_url = temporary
+        .path()
+        .join("mixed-time.sqlite3")
+        .to_string_lossy()
+        .into_owned();
+    let database = Database::new(database_url.clone());
+    database.migrate().await.unwrap();
+    let router = app(Config::for_test(database_url), database, Arc::new(FakeQwen));
+    let mut request = valid_request();
+    request["schemaVersion"] = json!(3);
+    request["groups"][0]["role"] = json!("METADATA");
+    request["groups"][0]["translationUnit"] = json!("PRESERVED");
+    request["groups"][0]["sourceText"] =
+        json!("The March ended in 1956 but,\nthe consequences remained.");
+    request["regions"][0]["text"] = json!("The March ended in 1956 but,");
+    request["regions"][1]["text"] = json!("the consequences remained.");
+    let response = router
+        .oneshot(
+            Request::post("/api/v3/translate/layout-plan")
+                .header("content-type", "application/json")
+                .body(Body::from(request.to_string()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let body: Value =
+        serde_json::from_slice(&to_bytes(response.into_body(), 1024 * 1024).await.unwrap())
+            .unwrap();
+    assert_eq!(body["results"][0]["status"], "TRANSLATED");
+    assert_eq!(body["results"][0]["role"], "BODY");
+    assert_eq!(
+        body["documentPlan"]["groups"][0]["translationUnit"],
+        "GROUP"
+    );
+    assert_eq!(body["documentPlan"]["groups"][0]["role"], "BODY");
 }
 
 fn valid_request() -> Value {

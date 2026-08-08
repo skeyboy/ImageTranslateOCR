@@ -75,6 +75,45 @@ class SemanticTranslationMapperTest {
         assertEquals(2, mapped.regions.single().componentBounds.size)
     }
 
+    @Test
+    fun makesMixedTemporalAndNumericTextTranslatable() {
+        val mixedDate = group(
+            text = "The March ended in 1956 but the consequences remained",
+            role = SemanticTextRole.METADATA
+        ).toSemanticTranslationSource()
+        val numericSentence = group(
+            text = "At 17:27 the meeting started",
+            role = SemanticTextRole.TIMESTAMP
+        ).toSemanticTranslationSource()
+        val pureTime = group(
+            text = "17:27",
+            role = SemanticTextRole.TIMESTAMP
+        ).toSemanticTranslationSource()
+
+        assertEquals("GROUP", mixedDate.translationUnit)
+        assertEquals("GROUP", numericSentence.translationUnit)
+        assertEquals("PRESERVED", pureTime.translationUnit)
+    }
+
+    private fun group(text: String, role: SemanticTextRole): SemanticTextGroup {
+        val source = RecognizedText(
+            text = text,
+            bounds = rect(10, 20, 500, 80),
+            recognizerScript = RecognizerScript.LATIN
+        )
+        return SemanticTextGroup(
+            groupId = "test-${text.hashCode()}",
+            members = listOf(source),
+            sourceText = text,
+            unionBounds = copyRect(source.bounds),
+            readingOrder = 0,
+            role = role,
+            groupingConfidence = 1f,
+            evidence = emptySet(),
+            renderSlots = listOf(copyRect(source.bounds))
+        )
+    }
+
     private fun rect(left: Int, top: Int, right: Int, bottom: Int) = Rect().apply {
         this.left = left
         this.top = top

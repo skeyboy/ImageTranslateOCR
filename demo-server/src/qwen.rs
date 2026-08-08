@@ -12,7 +12,7 @@ use crate::{
     error::AppError,
 };
 
-pub const PROMPT_VERSION: &str = "semantic-translation-qwen-v5-strict-group-binding";
+pub const PROMPT_VERSION: &str = "semantic-translation-qwen-v8-literal-role-preservation";
 
 #[derive(Clone, Debug)]
 pub struct ModelTranslation {
@@ -103,6 +103,15 @@ impl QwenClient {
         request: &SemanticTranslationRequest,
         groups: &[TranslationGroup],
     ) -> Result<ChatRequest<'_>, AppError> {
+        self.chat_request_with_system_prompt(request, groups, SYSTEM_PROMPT.to_owned())
+    }
+
+    fn chat_request_with_system_prompt(
+        &self,
+        request: &SemanticTranslationRequest,
+        groups: &[TranslationGroup],
+        system_prompt: String,
+    ) -> Result<ChatRequest<'_>, AppError> {
         let payload = ModelPayload::from_request(request, groups);
         let user_content = serde_json::to_string(&payload)
             .map_err(|error| AppError::Upstream(error.to_string()))?;
@@ -111,7 +120,7 @@ impl QwenClient {
             messages: vec![
                 ChatMessage {
                     role: "system",
-                    content: SYSTEM_PROMPT.to_owned(),
+                    content: system_prompt,
                 },
                 ChatMessage {
                     role: "user",
@@ -124,6 +133,32 @@ impl QwenClient {
             response_format: model_response_format(groups),
             reasoning_effort: self.reasoning_effort.as_deref(),
         })
+    }
+
+    async fn completion(&self, body: &ChatRequest<'_>) -> Result<String, AppError> {
+        let mut builder = self.client.post(&self.endpoint).json(body);
+        if let Some(api_key) = &self.api_key {
+            builder = builder.bearer_auth(api_key);
+        }
+        let response = builder
+            .send()
+            .await
+            .map_err(|error| AppError::Upstream(format!("Qwen request failed: {error}")))?;
+        let status = response.status();
+        let response_text = response
+            .text()
+            .await
+            .map_err(|error| AppError::Upstream(format!("Qwen response failed: {error}")))?;
+        if !status.is_success() {
+            return Err(AppError::Upstream(format!(
+                "Qwen returned HTTP {}{}",
+                status.as_u16(),
+                safe_upstream_suffix(status, &response_text)
+            )));
+        }
+        let envelope: ChatResponse = serde_json::from_str(&response_text)
+            .map_err(|error| AppError::Upstream(format!("invalid Qwen envelope: {error}")))?;
+        Ok(completion_content(&envelope)?.to_owned())
     }
 }
 
@@ -158,30 +193,40 @@ impl TranslationModel for QwenClient {
             ));
         }
         let body = self.chat_request(request, groups)?;
-        let mut builder = self.client.post(&self.endpoint).json(&body);
-        if let Some(api_key) = &self.api_key {
-            builder = builder.bearer_auth(api_key);
+        let content = self.completion(&body).await?;
+        let mut translations = parse_model_response_without_critical_validation(&content, groups)?;
+        let repair_groups = groups
+            .iter()
+            .filter(|group| {
+                translations
+                    .iter()
+                    .find(|translation| translation.group_id == group.group_id)
+                    .and_then(|translation| {
+                        critical_invariant_violation(group, &translation.translated_text)
+                    })
+                    .is_some()
+            })
+            .cloned()
+            .collect::<Vec<_>>();
+
+        if !repair_groups.is_empty() {
+            let repair_prompt = critical_repair_prompt(&repair_groups);
+            let repair_body =
+                self.chat_request_with_system_prompt(request, &repair_groups, repair_prompt)?;
+            let repaired_content = self.completion(&repair_body).await?;
+            let repaired = parse_model_response(&repaired_content, &repair_groups)?;
+            for repaired_translation in repaired {
+                if let Some(translation) = translations
+                    .iter_mut()
+                    .find(|translation| translation.group_id == repaired_translation.group_id)
+                {
+                    *translation = repaired_translation;
+                }
+            }
         }
-        let response = builder
-            .send()
-            .await
-            .map_err(|error| AppError::Upstream(format!("Qwen request failed: {error}")))?;
-        let status = response.status();
-        let response_text = response
-            .text()
-            .await
-            .map_err(|error| AppError::Upstream(format!("Qwen response failed: {error}")))?;
-        if !status.is_success() {
-            return Err(AppError::Upstream(format!(
-                "Qwen returned HTTP {}{}",
-                status.as_u16(),
-                safe_upstream_suffix(status, &response_text)
-            )));
-        }
-        let envelope: ChatResponse = serde_json::from_str(&response_text)
-            .map_err(|error| AppError::Upstream(format!("invalid Qwen envelope: {error}")))?;
-        let content = completion_content(&envelope)?;
-        parse_model_response(content, groups)
+
+        validate_model_translations(groups, &translations)?;
+        Ok(translations)
     }
 
     async fn health(&self) -> ModelHealth {
@@ -339,6 +384,7 @@ struct ModelGroup<'a> {
     source_text: &'a str,
     source_language: &'a str,
     target_language: &'a str,
+    required_literal_identifiers: Vec<&'static str>,
     reading_order: i32,
     normalized_bounds: [f32; 4],
     layout_shape: &'a str,
@@ -367,7 +413,7 @@ impl<'a> ModelPayload<'a> {
         let width = request.viewport.width as f32;
         let height = request.viewport.height as f32;
         Self {
-            task: "Translate every translateGroups.sourceText faithfully and completely into its targetLanguage. Each result may translate only the sourceText with the same groupId. Document context and neighboring groups are disambiguation context only: never copy, move, duplicate, or continue their content into this result. Use regionLines and renderSlots only to reconstruct reading order and semantic structure; never split the output back into OCR lines. Preserve currency values, units, numbers, AIMS/AIMS-Next, URLs, brands, names, and organization identities. Do not summarize, invent, merge, delete, abbreviate, explain OCR errors, or add translator notes. Output only the required results schema.",
+            task: "Translate each translateGroups item independently and completely. Write its non-empty translation only under the translations property whose key exactly equals that item groupId. The value for a key may translate only that group's sourceText. Document context and neighboring groups are disambiguation context only: never copy, move, duplicate, continue, or pre-translate their content into another key. Use regionLines and renderSlots only to reconstruct reading order and semantic structure; never split the output back into OCR lines. Every requiredLiteralIdentifiers item must occur verbatim in that group's translatedText and keep the same grammatical and semantic role as in sourceText. Never expand, define, parenthesize, rename, or replace an identifier. For example, 'funding for AIMS' is '对 AIMS 的资助', and 'AIMS-Next Einstein Initiative' is 'AIMS-Next 爱因斯坦计划'. Preserve currency values, units, numbers, URLs, brands, names, and organization identities. Do not summarize, invent, merge, delete, abbreviate, explain OCR errors, or add translator notes. Output only the required translations schema.",
             scene: &request.scene,
             translation_mode: &request.translation.mode,
             document_context: request
@@ -398,6 +444,9 @@ impl<'a> ModelPayload<'a> {
                         target_language: region
                             .and_then(|item| item.target_language.as_deref())
                             .unwrap_or("auto"),
+                        required_literal_identifiers: required_literal_identifiers(
+                            &group.source_text,
+                        ),
                         reading_order: group.reading_order,
                         normalized_bounds: [
                             group.bounds.left as f32 / width,
@@ -442,7 +491,28 @@ fn model_response_format(groups: &[TranslationGroup]) -> Value {
         .iter()
         .map(|group| group.group_id.as_str())
         .collect::<Vec<_>>();
-    let result_count = group_ids.len();
+    let translation_properties = groups
+        .iter()
+        .map(|group| {
+            (
+                group.group_id.clone(),
+                json!({
+                    "type": "object",
+                    "properties": {
+                        "translatedText": { "type": "string", "minLength": 1 },
+                        "detectedSourceLanguage": { "type": "string", "minLength": 1 },
+                        "targetLanguage": { "type": "string", "minLength": 1 }
+                    },
+                    "required": [
+                        "translatedText",
+                        "detectedSourceLanguage",
+                        "targetLanguage"
+                    ],
+                    "additionalProperties": false
+                }),
+            )
+        })
+        .collect::<serde_json::Map<_, _>>();
     json!({
         "type": "json_schema",
         "json_schema": {
@@ -451,29 +521,14 @@ fn model_response_format(groups: &[TranslationGroup]) -> Value {
             "schema": {
                 "type": "object",
                 "properties": {
-                    "results": {
-                        "type": "array",
-                        "minItems": result_count,
-                        "maxItems": result_count,
-                        "items": {
-                            "type": "object",
-                            "properties": {
-                                "groupId": { "type": "string", "enum": group_ids },
-                                "translatedText": { "type": "string" },
-                                "detectedSourceLanguage": { "type": "string" },
-                                "targetLanguage": { "type": "string" }
-                            },
-                            "required": [
-                                "groupId",
-                                "translatedText",
-                                "detectedSourceLanguage",
-                                "targetLanguage"
-                            ],
-                            "additionalProperties": false
-                        }
+                    "translations": {
+                        "type": "object",
+                        "properties": translation_properties,
+                        "required": group_ids,
+                        "additionalProperties": false
                     }
                 },
-                "required": ["results"],
+                "required": ["translations"],
                 "additionalProperties": false
             }
         }
@@ -482,7 +537,18 @@ fn model_response_format(groups: &[TranslationGroup]) -> Value {
 
 #[derive(Deserialize)]
 struct ModelResponse {
+    #[serde(default)]
+    translations: HashMap<String, KeyedModelResult>,
+    #[serde(default)]
     results: Vec<ModelResult>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct KeyedModelResult {
+    translated_text: String,
+    detected_source_language: String,
+    target_language: String,
 }
 
 #[derive(Deserialize)]
@@ -498,16 +564,39 @@ fn parse_model_response(
     raw: &str,
     groups: &[TranslationGroup],
 ) -> Result<Vec<ModelTranslation>, AppError> {
+    let translations = parse_model_response_without_critical_validation(raw, groups)?;
+    validate_model_translations(groups, &translations)?;
+    Ok(translations)
+}
+
+fn parse_model_response_without_critical_validation(
+    raw: &str,
+    groups: &[TranslationGroup],
+) -> Result<Vec<ModelTranslation>, AppError> {
     let json = strip_json_fence(raw);
     let response: ModelResponse = serde_json::from_str(json)
         .map_err(|error| AppError::Upstream(format!("invalid Qwen result JSON: {error}")))?;
+    let results = if response.translations.is_empty() {
+        response.results
+    } else {
+        response
+            .translations
+            .into_iter()
+            .map(|(group_id, result)| ModelResult {
+                group_id,
+                translated_text: result.translated_text,
+                detected_source_language: result.detected_source_language,
+                target_language: result.target_language,
+            })
+            .collect()
+    };
     let expected = groups
         .iter()
         .map(|group| group.group_id.as_str())
         .collect::<HashSet<_>>();
-    let mut seen = HashSet::with_capacity(response.results.len());
-    let mut by_id = HashMap::with_capacity(response.results.len());
-    for result in response.results {
+    let mut seen = HashSet::with_capacity(results.len());
+    let mut by_id = HashMap::with_capacity(results.len());
+    for result in results {
         if !expected.contains(result.group_id.as_str()) {
             return Err(AppError::Upstream(
                 "Qwen returned an unknown groupId".to_owned(),
@@ -532,7 +621,6 @@ fn parse_model_response(
             group,
             normalize_preserved_identifiers(group, translated_text),
         );
-        validate_critical_invariants(group, &translated_text)?;
         by_id.insert(
             result.group_id.clone(),
             ModelTranslation {
@@ -640,23 +728,91 @@ fn validate_critical_invariants(
     group: &TranslationGroup,
     translated: &str,
 ) -> Result<(), AppError> {
+    if let Some(violation) = critical_invariant_violation(group, translated) {
+        return Err(AppError::Upstream(violation));
+    }
+    Ok(())
+}
+
+fn validate_model_translations(
+    groups: &[TranslationGroup],
+    translations: &[ModelTranslation],
+) -> Result<(), AppError> {
+    for group in groups {
+        let translation = translations
+            .iter()
+            .find(|translation| translation.group_id == group.group_id)
+            .ok_or_else(|| AppError::Upstream("Qwen omitted one or more groupIds".to_owned()))?;
+        validate_critical_invariants(group, &translation.translated_text)?;
+    }
+    Ok(())
+}
+
+fn critical_invariant_violation(group: &TranslationGroup, translated: &str) -> Option<String> {
     let source = group.source_text.as_str();
     let missing_currency = (source.contains("C$")
         && !(translated.contains("C$") || translated.contains("加元")))
         || (source.contains("US$") && !(translated.contains("US$") || translated.contains("美元")));
     if missing_currency {
-        return Err(AppError::Upstream(format!(
+        return Some(format!(
             "Qwen translation lost a currency unit for group {}",
             group.group_id
-        )));
+        ));
     }
-    if source.contains("AIMS") && !translated.contains("AIMS") {
-        return Err(AppError::Upstream(format!(
-            "Qwen translation lost the AIMS identifier for group {}",
+    if source.contains("AIMS-Next") && !translated.contains("AIMS-Next") {
+        return Some(format!(
+            "Qwen translation lost the AIMS-Next identifier for group {}",
             group.group_id
-        )));
+        ));
     }
-    Ok(())
+    let standalone_aims_required = source
+        .replace("AIMS-Next", "")
+        .split(|character: char| !character.is_ascii_alphanumeric())
+        .any(|token| token == "AIMS");
+    if standalone_aims_required && !translated.contains("AIMS") {
+        return Some(format!(
+            "Qwen translation lost the standalone AIMS identifier for group {}",
+            group.group_id
+        ));
+    }
+    None
+}
+
+fn required_literal_identifiers(source: &str) -> Vec<&'static str> {
+    let mut identifiers = Vec::with_capacity(2);
+    if source.contains("AIMS-Next") {
+        identifiers.push("AIMS-Next");
+    }
+    if source
+        .replace("AIMS-Next", "")
+        .split(|character: char| !character.is_ascii_alphanumeric())
+        .any(|token| token == "AIMS")
+    {
+        identifiers.push("AIMS");
+    }
+    identifiers
+}
+
+fn critical_repair_prompt(groups: &[TranslationGroup]) -> String {
+    let requirements = groups
+        .iter()
+        .filter_map(|group| {
+            let identifiers = required_literal_identifiers(&group.source_text);
+            if identifiers.is_empty() {
+                None
+            } else {
+                Some(format!(
+                    "- groupId {} must contain these exact literal identifiers: {}",
+                    group.group_id,
+                    identifiers.join(", ")
+                ))
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+    format!(
+        "{SYSTEM_PROMPT}\n\nCORRECTION RETRY: The previous translation violated critical source invariants. Translate only the supplied retry groups. Preserve every required literal identifier exactly, visibly, and with the same spelling. Keep each identifier in the same grammatical and semantic role as the source. Do not expand, define, parenthesize, rename, or replace an identifier with another organization or a target-language paraphrase. Examples: 'funding for AIMS' means '对 AIMS 的资助'; 'founder of AIMS' means 'AIMS 的创始人'; 'AIMS-Next Einstein Initiative' means 'AIMS-Next 爱因斯坦计划'.\n{requirements}"
+    )
 }
 
 fn strip_json_fence(raw: &str) -> &str {
@@ -696,7 +852,7 @@ fn is_loopback_endpoint(endpoint: &str) -> bool {
 const SYSTEM_PROMPT: &str = r#"You are a professional screen OCR translation engine.
 The user supplies a JSON document containing the complete visible context and translateGroups.
 Use documentContext, reading order, roles, and normalized bounds only to disambiguate meaning.
-Bind every output strictly to the sourceText with the identical groupId. Neighboring groups and documentContext are context only.
+The output is a translations object keyed by groupId. Treat every key as an isolated translation cell and bind it strictly to the sourceText with the identical groupId. Neighboring groups and documentContext are context only.
 Never borrow, copy, move, duplicate, or continue text from another group into the current group.
 Use each group's regionLines and renderSlots to understand wrapped text and reading order, not to produce visual line breaks.
 Translate every translateGroups item as one complete semantic unit.
@@ -712,10 +868,12 @@ Never add translator notes, parenthetical annotations, OCR corrections, guesses,
 Never echo or reproduce the input JSON document.
 Preserve numeric values and currency meaning. C$ means Canadian dollars and US$ means US dollars.
 Keep AIMS and AIMS-Next visible and unchanged when they appear in the source.
+Every requiredLiteralIdentifiers entry is a machine-checked constraint and must appear verbatim in translatedText.
+Keep each identifier in the same grammatical and semantic role as the source. Never expand, define, parenthesize, rename, or associate it with another organization. For example, translate "funding for AIMS" as "对 AIMS 的资助" and "AIMS-Next Einstein Initiative" as "AIMS-Next 爱因斯坦计划".
 Preserve dates, URLs, brands, identifiers, and placeholders exactly unless translation is required by grammar.
 For AUTO_BIDIRECTIONAL, translate Chinese groups to English and non-Chinese natural-language groups to Chinese.
-Return only JSON: {"results":[{"groupId":"...","translatedText":"...","detectedSourceLanguage":"en","targetLanguage":"zh"}]}.
-Every input groupId must appear exactly once."#;
+Return only JSON: {"translations":{"<groupId>":{"translatedText":"...","detectedSourceLanguage":"en","targetLanguage":"zh"}}}.
+Every input groupId must appear exactly once as a property key. Every translatedText must be non-empty."#;
 
 #[cfg(test)]
 mod tests {
@@ -729,9 +887,14 @@ mod tests {
     };
     use axum::{
         Json, Router,
+        extract::State,
         routing::{get, post},
     };
     use serde_json::{Value, json};
+    use std::sync::{
+        Arc,
+        atomic::{AtomicUsize, Ordering},
+    };
     use tokio::net::TcpListener;
 
     fn groups() -> Vec<TranslationGroup> {
@@ -778,18 +941,19 @@ mod tests {
                     assert_eq!(body["response_format"]["type"], "json_schema");
                     assert_eq!(
                         body["response_format"]["json_schema"]["schema"]["properties"]
-                            ["results"]["minItems"],
-                        1
+                            ["translations"]["required"],
+                        json!(["group-1"])
                     );
                     assert_eq!(
                         body["response_format"]["json_schema"]["schema"]["properties"]
-                            ["results"]["items"]["properties"]["groupId"]["enum"],
-                        json!(["group-1"])
+                            ["translations"]["properties"]["group-1"]["properties"]
+                            ["translatedText"]["minLength"],
+                        1
                     );
                     Json(json!({
                         "choices": [{
                             "message": {
-                                "content": "{\"results\":[{\"groupId\":\"group-1\",\"translatedText\":\"你好\",\"detectedSourceLanguage\":\"en\",\"targetLanguage\":\"zh\"}]}"
+                                "content": "{\"translations\":{\"group-1\":{\"translatedText\":\"你好\",\"detectedSourceLanguage\":\"en\",\"targetLanguage\":\"zh\"}}}"
                             }
                         }]
                     }))
@@ -825,6 +989,75 @@ mod tests {
         let translated = client.translate(&request, &request.groups).await.unwrap();
         assert_eq!(translated[0].translated_text, "你好");
         assert_eq!(translated[0].target_language, "zh");
+        server.abort();
+    }
+
+    #[tokio::test]
+    async fn retries_only_groups_that_lose_required_literal_identifiers() {
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let attempts = Arc::new(AtomicUsize::new(0));
+        let router = Router::new()
+            .route(
+                "/v1/chat/completions",
+                post(
+                    |State(attempts): State<Arc<AtomicUsize>>, Json(body): Json<Value>| async move {
+                        let attempt = attempts.fetch_add(1, Ordering::SeqCst);
+                        let user_payload: Value =
+                            serde_json::from_str(body["messages"][1]["content"].as_str().unwrap())
+                                .unwrap();
+                        assert_eq!(
+                            user_payload["translateGroups"][0]["requiredLiteralIdentifiers"],
+                            json!(["AIMS-Next"])
+                        );
+                        if attempt == 1 {
+                            assert!(
+                                body["messages"][0]["content"]
+                                    .as_str()
+                                    .unwrap()
+                                    .contains("CORRECTION RETRY")
+                            );
+                        }
+                        let translated = if attempt == 0 {
+                            "下一代爱因斯坦中心计划"
+                        } else {
+                            "AIMS-Next 下一代爱因斯坦中心计划"
+                        };
+                        Json(json!({
+                            "choices": [{
+                                "message": {
+                                    "content": json!({
+                                        "translations": {
+                                            "group-1": {
+                                                "translatedText": translated,
+                                                "detectedSourceLanguage": "en",
+                                                "targetLanguage": "zh"
+                                            }
+                                        }
+                                    }).to_string()
+                                }
+                            }]
+                        }))
+                    },
+                ),
+            )
+            .with_state(attempts.clone());
+        let server = tokio::spawn(async move {
+            axum::serve(listener, router).await.unwrap();
+        });
+        let mut config = Config::for_test(":memory:".to_owned());
+        config.qwen_base_url = format!("http://{address}/v1");
+        let client = QwenClient::new(&config).unwrap();
+        let mut request = semantic_request();
+        request.groups[0].source_text = "AIMS-Next Einstein Initiative".to_owned();
+
+        let translated = client.translate(&request, &request.groups).await.unwrap();
+
+        assert_eq!(attempts.load(Ordering::SeqCst), 2);
+        assert_eq!(
+            translated[0].translated_text,
+            "AIMS-Next 下一代爱因斯坦中心计划"
+        );
         server.abort();
     }
 
@@ -890,6 +1123,31 @@ mod tests {
     }
 
     #[test]
+    fn accepts_group_id_keyed_json() {
+        let parsed = parse_model_response(
+            "{\"translations\":{\"group-1\":{\"translatedText\":\"你好\",\"detectedSourceLanguage\":\"en\",\"targetLanguage\":\"zh\"}}}",
+            &groups(),
+        )
+        .unwrap();
+        assert_eq!(parsed[0].group_id, "group-1");
+        assert_eq!(parsed[0].translated_text, "你好");
+    }
+
+    #[test]
+    fn keyed_schema_requires_non_empty_translation_for_every_group_id() {
+        let schema = model_response_format(&groups());
+        assert_eq!(
+            schema["json_schema"]["schema"]["properties"]["translations"]["required"],
+            json!(["group-1"])
+        );
+        assert_eq!(
+            schema["json_schema"]["schema"]["properties"]["translations"]["properties"]["group-1"]
+                ["properties"]["translatedText"]["minLength"],
+            1
+        );
+    }
+
+    #[test]
     fn reports_context_truncation_before_attempting_to_parse_json() {
         let envelope: ChatResponse = serde_json::from_value(json!({
             "choices": [{
@@ -951,6 +1209,26 @@ mod tests {
             normalize_preserved_identifiers(&group, "AIM S 与 AIMS - Next 计划".to_owned()),
             "AIMS 与 AIMS-Next 计划"
         );
+    }
+
+    #[test]
+    fn distinguishes_aims_next_from_standalone_aims_requirements() {
+        assert_eq!(
+            required_literal_identifiers("run through the AIMS-Next initiative"),
+            vec!["AIMS-Next"]
+        );
+        assert_eq!(
+            required_literal_identifiers("AIMS founded the AIMS-Next initiative"),
+            vec!["AIMS-Next", "AIMS"]
+        );
+
+        let mut group = groups().remove(0);
+        group.source_text = "run through the AIMS-Next initiative".to_owned();
+        let error = validate_critical_invariants(&group, "下一代爱因斯坦中心计划")
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("lost the AIMS-Next identifier"));
+        assert!(!error.contains("standalone AIMS"));
     }
 
     #[test]
