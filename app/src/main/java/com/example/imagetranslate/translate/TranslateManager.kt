@@ -243,6 +243,7 @@ internal class TranslateManager(context: Context? = null) {
         } catch (error: CancellationException) {
             throw error
         } catch (error: Exception) {
+            Log.w(TAG, "Self-hosted semantic request failed: ${error.message}", error)
             SemanticTranslationBatchResult(
                 results = emptyList(),
                 failures = preparedSources.map { source ->
@@ -259,13 +260,37 @@ internal class TranslateManager(context: Context? = null) {
         val sourcesById = preparedSources.associateBy(SemanticTranslationSource::groupId)
         val acceptedRemote = remoteBatch.results.filter { result ->
             val resultSources = result.sourceGroupIds.mapNotNull(sourcesById::get)
-            resultSources.size == result.sourceGroupIds.size && if (
+            val v4Decision = if (backend == TranslationBackend.SELF_HOSTED_V4) {
+                RegionsFirstTranslationAcceptancePolicy.evaluate(preparedSources, result)
+            } else {
+                null
+            }
+            val accepted = resultSources.size == result.sourceGroupIds.size && if (
                 backend == TranslationBackend.SELF_HOSTED_V4
             ) {
-                isValidRegionsFirstResult(preparedSources, result)
+                // V4 parsing already validates OCR lineage, binding, grouping authority,
+                // complete region coverage, and non-empty translated text.
+                true
             } else {
                 isValidSemanticResult(resultSources, result)
             }
+            if (accepted && v4Decision?.accepted == false) {
+                Log.w(
+                    TAG,
+                    "Accepted authoritative V4 result with advisory warning: " +
+                        "id=${result.groupId}, reason=${v4Decision.reason}, " +
+                        "members=${result.memberRegionIds.size}, " +
+                        "chars=${result.translatedText?.length ?: 0}"
+                )
+            } else if (!accepted && backend == TranslationBackend.SELF_HOSTED_V4) {
+                Log.w(
+                    TAG,
+                    "Rejected authoritative V4 result: id=${result.groupId}, " +
+                        "reason=${v4Decision?.reason ?: "SOURCE_GROUP_LINEAGE_MISMATCH"}, " +
+                        "members=${result.memberRegionIds.size}, chars=${result.translatedText?.length ?: 0}"
+                )
+            }
+            accepted
         }
         val rejectedRemote = remoteBatch.results.filterNot(acceptedRemote::contains)
         val remotelyCoveredSourceIds = if (backend == TranslationBackend.SELF_HOSTED_V4) {
@@ -482,35 +507,6 @@ internal class TranslateManager(context: Context? = null) {
         val sourceText = sources.joinToString("\n") { it.sourceText }
         val targetLanguage = sources.flatMap(SemanticTranslationSource::regions)
             .mapNotNull(SemanticTranslationRegion::targetLanguage)
-            .distinct().singleOrNull() ?: return false
-        if (result.targetLanguage != null &&
-            result.targetLanguage.substringBefore('-').lowercase() !=
-            targetLanguage.substringBefore('-').lowercase()
-        ) return false
-        return isValidTranslation(
-            translated,
-            targetLanguage,
-            requireNoHanCharacters = targetLanguage == TranslateLanguage.ENGLISH &&
-                sourceText.length <= 12,
-            requireChineseCharacters = targetLanguage == TranslateLanguage.CHINESE &&
-                sourceText.length <= 32
-        )
-    }
-
-    private fun isValidRegionsFirstResult(
-        sources: List<SemanticTranslationSource>,
-        result: SemanticGroupTranslationResult
-    ): Boolean {
-        val regionsById = sources.flatMap(SemanticTranslationSource::regions)
-            .associateBy(SemanticTranslationRegion::regionId)
-        val regions = result.memberRegionIds.mapNotNull(regionsById::get)
-            .sortedBy(SemanticTranslationRegion::readingOrder)
-        if (regions.isEmpty() || regions.size != result.memberRegionIds.size) return false
-        if (regions.size > 1 && result.groupingConfidence < 0.90f) return false
-        val translated = result.translatedText?.trim() ?: return false
-        val sourceText = regions.joinToString("\n") { it.text }.trim()
-        if (result.status == TranslationResultStatus.PRESERVED) return translated == sourceText
-        val targetLanguage = regions.mapNotNull(SemanticTranslationRegion::targetLanguage)
             .distinct().singleOrNull() ?: return false
         if (result.targetLanguage != null &&
             result.targetLanguage.substringBefore('-').lowercase() !=

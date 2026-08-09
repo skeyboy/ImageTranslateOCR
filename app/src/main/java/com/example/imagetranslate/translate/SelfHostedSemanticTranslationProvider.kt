@@ -412,7 +412,10 @@ internal class SelfHostedSemanticTranslationProvider(
                                 .takeIf(String::isNotBlank),
                             targetLanguage = item.optString("targetLanguage")
                                 .takeIf(String::isNotBlank),
-                            layoutHint = item.optJSONObject("layoutHint")?.toLayoutHint(source)
+                            layoutHint = item.optJSONObject("layoutHint")?.toLayoutHint(
+                                source,
+                                allowAuthoritativeRenderSlots = true
+                            )
                         )
                     }
                 }
@@ -429,7 +432,10 @@ internal class SelfHostedSemanticTranslationProvider(
                     detectedSourceLanguage = item.optString("detectedSourceLanguage")
                         .takeIf(String::isNotBlank),
                     targetLanguage = item.optString("targetLanguage").takeIf(String::isNotBlank),
-                    layoutHint = item.optJSONObject("layoutHint")?.toLayoutHint(source)
+                    layoutHint = item.optJSONObject("layoutHint")?.toLayoutHint(
+                        source,
+                        allowAuthoritativeRenderSlots = true
+                    )
                 )
                 "FAILED" -> failures += item.toFailure(groupId)
                 else -> failures += invalidFailure(
@@ -573,14 +579,25 @@ internal class SelfHostedSemanticTranslationProvider(
             secondRegion.lineIndex == firstRegion.lineIndex + 1
     }
 
-    private fun JSONObject.toLayoutHint(source: SemanticTranslationSource): SemanticLayoutHint {
+    private fun JSONObject.toLayoutHint(
+        source: SemanticTranslationSource,
+        allowAuthoritativeRenderSlots: Boolean = false
+    ): SemanticLayoutHint {
         val preferredMaxLines = optInt("preferredMaxLines", 1).coerceIn(1, 24)
         val minimumTextScale = optDouble("minimumTextScale", 0.6).toFloat().coerceIn(0.5f, 1f)
         val returnedSlots = optJSONArray("renderSlots")?.let { items ->
             (0 until items.length()).map { index -> items.getJSONObject(index).toBounds() }
         } ?: source.renderSlots
-        require(returnedSlots == source.renderSlots) {
-            "Self-hosted result renderSlots do not match the requested geometry"
+        require(
+            if (allowAuthoritativeRenderSlots) {
+                returnedSlots.isNotEmpty() &&
+                    returnedSlots.all(TranslationBounds::hasPositiveArea) &&
+                    returnedSlots.reduce(::unionBounds) == source.bounds
+            } else {
+                returnedSlots == source.renderSlots
+            }
+        ) {
+            "Self-hosted result renderSlots do not match the permitted geometry"
         }
         val expectedCoverSlots = source.regions.flatMap { region ->
             region.componentBounds.ifEmpty { listOf(region.bounds) }
@@ -661,6 +678,8 @@ internal class SelfHostedSemanticTranslationProvider(
         val AUTHORITATIVE_MERGE_ROLES = setOf("BODY", "LIST_ITEM", "TITLE")
     }
 }
+
+private fun TranslationBounds.hasPositiveArea(): Boolean = right > left && bottom > top
 
 private fun SemanticTranslationSource.toJson() = JSONObject()
     .put("groupId", groupId)

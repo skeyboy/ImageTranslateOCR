@@ -36,6 +36,9 @@ import com.example.imagetranslate.translate.TranslationBackendSettings
 import com.example.imagetranslate.translate.TranslationMode
 import com.example.imagetranslate.translate.toSemanticTranslationSource
 import com.example.imagetranslate.ui.ShapeAwareTextLayout
+import com.example.imagetranslate.ui.ShapeAwareTextOutcome
+import com.example.imagetranslate.ui.ShapeAwareTextResult
+import com.example.imagetranslate.ui.ShapeAwareTextSegment
 import com.example.imagetranslate.ui.StaticImageTextLayoutPolicy
 import com.example.experimentaltranslation.ExperimentalTranslationEngine
 import com.example.smartassist.api.AssistScript
@@ -56,6 +59,15 @@ internal data class BackgroundTranslatedImageResult(
     val failedCount: Int,
     val renderedRegions: List<Rect> = emptyList()
 )
+
+internal object PostTranslationSmartAssistPolicy {
+    fun shouldApply(
+        enabled: Boolean,
+        usesIntegratedNetworkEngine: Boolean,
+        backend: TranslationBackend
+    ): Boolean = enabled && !usesIntegratedNetworkEngine &&
+        backend != TranslationBackend.SELF_HOSTED_V4
+}
 
 internal data class BackgroundTranslatedOverlayResult(
     val patches: List<ScreenTranslationPatch>,
@@ -501,12 +513,18 @@ internal class BackgroundTranslatedImageProcessor(
             }
             val recognitionAndTranslationMs = SystemClock.elapsedRealtime() - recognitionStartedAt
             val smartAssistStartedAt = SystemClock.elapsedRealtime()
-            val smartAssistOutcome = if (smartAssistEnabled && !usesIntegratedNetworkEngine) {
+            val shouldApplyPostTranslationSmartAssist =
+                PostTranslationSmartAssistPolicy.shouldApply(
+                    enabled = smartAssistEnabled,
+                    usesIntegratedNetworkEngine = usesIntegratedNetworkEngine,
+                    backend = TranslationBackendSettings.get(appContext)
+                )
+            val smartAssistOutcome = if (shouldApplyPostTranslationSmartAssist) {
                 applySmartAssist(bitmap.width, bitmap.height, batch.regions)
             } else {
                 SmartAssistApplication(batch.regions)
             }
-            val smartAssistMs = if (smartAssistEnabled && !usesIntegratedNetworkEngine) {
+            val smartAssistMs = if (shouldApplyPostTranslationSmartAssist) {
                 SystemClock.elapsedRealtime() - smartAssistStartedAt
             } else {
                 0L
@@ -2117,6 +2135,11 @@ private object BackgroundTranslatedImageRenderer {
             val preserveFlowShape = region.smartAssistDisplayHints?.layoutShape == "FLOW_SLOTS" &&
                 renderSlots.size > 1 &&
                 translatedCharacterCount >= renderSlots.size * MINIMUM_CHARACTERS_PER_FLOW_SLOT
+            val isMultiLineRect = renderSlots.size == 1 &&
+                (region.smartAssistDisplayHints?.layoutShape == null ||
+                    region.smartAssistDisplayHints.layoutShape == "RECT") &&
+                (sourceLineCount >= RECT_FALLBACK_MINIMUM_SOURCE_LINES ||
+                    translatedCharacterCount >= RECT_FALLBACK_MINIMUM_CHARACTERS)
             val initialLayout = ShapeAwareTextLayout.layout(
                 text = region.translation,
                 paint = paint,
@@ -2126,7 +2149,8 @@ private object BackgroundTranslatedImageRenderer {
                 maximumLines = maximumLines,
                 alignment = alignment,
                 horizontalPadding = horizontalPadding,
-                allowOverflowMore = region.smartAssistDisplayHints?.allowMore == true,
+                allowOverflowMore = region.smartAssistDisplayHints?.allowMore == true &&
+                    !isMultiLineRect,
                 lineSpacingMultipliers = region.smartAssistDisplayHints?.lineSpacingMultiplier
                     ?.let { preferred -> listOf(preferred, 1f, 0.92f, 0.86f).distinct() },
                 requireAllSlots = preserveFlowShape
@@ -2153,7 +2177,11 @@ private object BackgroundTranslatedImageRenderer {
                     requireAllSlots = preserveFlowShape
                 )?.takeIf { layout -> layout.segments.firstOrNull()?.bounds == renderSlots.first() }
             }
-            val shapedLayout = leadingSlotRetry ?: initialLayout ?: region.smartAssistDisplayHints
+            val standardRetry = initialLayout
+                ?.takeUnless { layout ->
+                    isMultiLineRect && layout.outcome == ShapeAwareTextOutcome.OVERFLOW_MORE
+                }
+                ?: region.smartAssistDisplayHints
                 ?.let { hints ->
                     ShapeAwareTextLayout.layout(
                         text = region.translation,
@@ -2171,16 +2199,126 @@ private object BackgroundTranslatedImageRenderer {
                         },
                         alignment = alignment,
                         horizontalPadding = horizontalPadding,
-                        allowOverflowMore = hints.allowMore,
+                        allowOverflowMore = hints.allowMore && !isMultiLineRect,
                         lineSpacingMultipliers = listOf(0.92f, 0.86f, 0.82f),
                         requireAllSlots = preserveFlowShape
                     )
+                }
+            val rectRetry = if (standardRetry == null && isMultiLineRect) {
+                val hints = checkNotNull(region.smartAssistDisplayHints)
+                ShapeAwareTextLayout.layout(
+                    text = region.translation,
+                    paint = paint,
+                    renderSlots = renderSlots,
+                    preferredTextSizePx = preferredSize,
+                    minimumTextSizePx = maxOf(
+                        MINIMUM_TEXT_SIZE_PX,
+                        sourceLineHeight * RECT_FALLBACK_MINIMUM_TEXT_SCALE
+                    ),
+                    maximumLines = maximumLines + RECT_FALLBACK_ADDITIONAL_LINES,
+                    alignment = alignment,
+                    horizontalPadding = horizontalPadding,
+                    // The regions-first server has already returned the whole translation.
+                    // Prefer a smaller complete block over silently replacing it with "more".
+                    allowOverflowMore = false,
+                    lineSpacingMultipliers = listOf(0.86f, 0.80f, 0.74f),
+                    requireAllSlots = false
+                )
+            } else {
+                null
+            }
+            val forcedRectRetry = if (
+                rectRetry == null && standardRetry == null && isMultiLineRect
+            ) {
+                ShapeAwareTextLayout.layout(
+                    text = region.translation,
+                    paint = paint,
+                    renderSlots = renderSlots,
+                    preferredTextSizePx = preferredSize,
+                    minimumTextSizePx = MINIMUM_TEXT_SIZE_PX,
+                    maximumLines = FORCED_RECT_MAXIMUM_LINES,
+                    alignment = alignment,
+                    horizontalPadding = horizontalPadding,
+                    allowOverflowMore = false,
+                    lineSpacingMultipliers = listOf(0.74f, 0.68f),
+                    requireAllSlots = false
+                )
+            } else {
+                null
+            }
+            val emergencyRectRetry = if (
+                forcedRectRetry == null && rectRetry == null && standardRetry == null &&
+                isMultiLineRect
+            ) {
+                ShapeAwareTextLayout.layout(
+                    text = region.translation,
+                    paint = paint,
+                    renderSlots = renderSlots,
+                    preferredTextSizePx = preferredSize,
+                    minimumTextSizePx = EMERGENCY_RECT_MINIMUM_TEXT_SIZE_PX,
+                    maximumLines = EMERGENCY_RECT_MAXIMUM_LINES,
+                    alignment = alignment,
+                    horizontalPadding = 0,
+                    allowOverflowMore = false,
+                    lineSpacingMultipliers = listOf(0.68f, 0.60f, 0.54f),
+                    requireAllSlots = false
+                )
+            } else {
+                null
+            }
+            val emergencyMergedSlot = if (
+                renderSlots.size > 1 && sourceLineCount >= RECT_FALLBACK_MINIMUM_SOURCE_LINES &&
+                translatedCharacterCount >= RECT_FALLBACK_MINIMUM_CHARACTERS
+            ) {
+                renderSlots.drop(1).fold(Rect(renderSlots.first())) { union, slot ->
+                    union.apply { union(slot) }
+                }
+            } else {
+                null
+            }
+            val shapedLayout = leadingSlotRetry ?: standardRetry ?: rectRetry ?:
+                forcedRectRetry ?: emergencyRectRetry ?: if (isMultiLineRect) {
+                    emergencyStaticRectLayout(
+                        text = region.translation,
+                        paint = paint,
+                        slot = renderSlots.single(),
+                        preferredTextSizePx = preferredSize,
+                        alignment = alignment
+                    )
+                } else if (emergencyMergedSlot != null) {
+                    emergencyStaticRectLayout(
+                        text = region.translation,
+                        paint = paint,
+                        slot = emergencyMergedSlot,
+                        preferredTextSizePx = preferredSize,
+                        alignment = alignment
+                    )
+                } else {
+                    null
                 }
             if (leadingSlotRetry != null) {
                 Log.d(
                     TAG,
                     "Reflowed translated group into leading render slot " +
                         "id=${region.groupId ?: "unknown"}, slots=${renderSlots.size}"
+                )
+            }
+            val relaxedRectLayout = rectRetry ?: forcedRectRetry ?: emergencyRectRetry
+            if (relaxedRectLayout != null) {
+                Log.i(
+                    TAG,
+                    "Applied relaxed RECT fallback id=${region.groupId ?: "unknown"}, " +
+                        "outcome=${relaxedRectLayout.outcome}, scale=" +
+                        "${relaxedRectLayout.textSizePx / sourceLineHeight.coerceAtLeast(1f)}"
+                )
+            }
+            if (shapedLayout != null && emergencyMergedSlot != null &&
+                shapedLayout.segments.singleOrNull()?.bounds == emergencyMergedSlot
+            ) {
+                Log.w(
+                    TAG,
+                    "Merged ${renderSlots.size} render slots for complete fallback " +
+                        "id=${region.groupId ?: "unknown"}, chars=${region.translation.length}"
                 )
             }
             if (shapedLayout == null) {
@@ -2200,7 +2338,15 @@ private object BackgroundTranslatedImageRenderer {
             }
             if (overlayBackgroundColor != null && drawOverlayBackground) {
                 val usedRenderSlots = shapedLayout.segments.map { segment -> segment.bounds }
-                (sourceCoverSlots + usedRenderSlots).distinct().forEach { slot ->
+                val backgroundSlots = if (
+                    region.smartAssistDisplayHints?.layoutShape == "RECT" &&
+                    renderSlots.size == 1
+                ) {
+                    renderSlots
+                } else {
+                    (sourceCoverSlots + usedRenderSlots).distinct()
+                }
+                backgroundSlots.forEach { slot ->
                     drawCompensatedBackground(
                         canvas,
                         bitmap,
@@ -2245,8 +2391,52 @@ private object BackgroundTranslatedImageRenderer {
             }
             renderedRegions.add(Rect(bounds))
         }
-        return renderedRegions
-    }
+            return renderedRegions
+        }
+
+        private fun emergencyStaticRectLayout(
+            text: String,
+            paint: TextPaint,
+            slot: Rect,
+            preferredTextSizePx: Float,
+            alignment: Layout.Alignment
+        ): ShapeAwareTextResult? {
+            if (text.isBlank() || slot.width() <= 0 || slot.height() <= 0) return null
+            val upper = preferredTextSizePx.coerceAtLeast(
+                EMERGENCY_RECT_ABSOLUTE_MINIMUM_TEXT_SIZE_PX
+            )
+            for (step in EMERGENCY_RECT_LAYOUT_STEPS downTo 0) {
+                val ratio = step.toFloat() / EMERGENCY_RECT_LAYOUT_STEPS
+                val textSize = EMERGENCY_RECT_ABSOLUTE_MINIMUM_TEXT_SIZE_PX +
+                    (upper - EMERGENCY_RECT_ABSOLUTE_MINIMUM_TEXT_SIZE_PX) * ratio
+                paint.textSize = textSize
+                val layout = StaticLayout.Builder.obtain(text, 0, text.length, paint, slot.width())
+                    .setAlignment(alignment)
+                    .setIncludePad(false)
+                    .setLineSpacing(0f, EMERGENCY_RECT_LINE_SPACING)
+                    .build()
+                if (layout.height <= slot.height()) {
+                    Log.w(
+                        TAG,
+                        "Forced complete RECT layout at ${textSize}px for ${text.length} chars"
+                    )
+                    return ShapeAwareTextResult(
+                        segments = listOf(
+                            ShapeAwareTextSegment(
+                                bounds = Rect(slot),
+                                layout = layout,
+                                horizontalPadding = 0
+                            )
+                        ),
+                        outcome = ShapeAwareTextOutcome.COMPACT,
+                        displayedText = text,
+                        textSizePx = textSize,
+                        lineSpacingMultiplier = EMERGENCY_RECT_LINE_SPACING
+                    )
+                }
+            }
+            return null
+        }
 
     private fun drawCompensatedBackground(
         canvas: Canvas,
@@ -2563,6 +2753,16 @@ private object BackgroundTranslatedImageRenderer {
     private const val MINIMUM_CHARACTERS_PER_FLOW_SLOT = 2
     private const val MINIMUM_FONT_HEIGHT_RATIO = 0.62f
     private const val DECLARATIVE_LAYOUT_RETRY_SCALE = 0.82f
+    private const val RECT_FALLBACK_MINIMUM_SOURCE_LINES = 2
+    private const val RECT_FALLBACK_MINIMUM_CHARACTERS = 24
+    private const val RECT_FALLBACK_MINIMUM_TEXT_SCALE = 0.52f
+    private const val RECT_FALLBACK_ADDITIONAL_LINES = 6
+    private const val FORCED_RECT_MAXIMUM_LINES = 100
+    private const val EMERGENCY_RECT_MINIMUM_TEXT_SIZE_PX = 4f
+    private const val EMERGENCY_RECT_MAXIMUM_LINES = 256
+    private const val EMERGENCY_RECT_ABSOLUTE_MINIMUM_TEXT_SIZE_PX = 2f
+    private const val EMERGENCY_RECT_LAYOUT_STEPS = 32
+    private const val EMERGENCY_RECT_LINE_SPACING = 0.52f
     private const val MINIMUM_LEADING_SLOT_RATIO = 0.72f
     private const val LAYOUT_SEARCH_STEPS = 16
     private const val DARK_BACKGROUND_LUMINANCE = 145

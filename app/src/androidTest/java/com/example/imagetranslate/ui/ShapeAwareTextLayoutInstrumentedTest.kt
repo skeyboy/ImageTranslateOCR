@@ -73,6 +73,53 @@ class ShapeAwareTextLayoutInstrumentedTest {
     }
 
     @Test
+    fun fitsLongRegionsFirstRustParagraphInsideItsAuthoritativeRect() {
+        val translation = "Rust 面向学生以及对系统概念感兴趣的人。通过使用 Rust，许多人已经了解了诸如操作系统开发等主题。" +
+            "社区非常友好，乐于回答学生的问题。通过本书这样的努力，Rust 团队希望让系统概念对更多人来说更容易理解，" +
+            "特别是那些编程新手。"
+        val result = ShapeAwareTextLayout.layout(
+            text = translation,
+            paint = TextPaint(Paint.ANTI_ALIAS_FLAG),
+            renderSlots = listOf(Rect(71, 314, 1358, 1021)),
+            preferredTextSizePx = 62f,
+            minimumTextSizePx = 48.16f,
+            maximumLines = 9,
+            alignment = Layout.Alignment.ALIGN_NORMAL,
+            horizontalPadding = 7,
+            allowOverflowMore = true,
+            lineSpacingMultipliers = listOf(0.92f, 1f, 0.86f)
+        )
+
+        assertNotNull(result)
+        assertEquals(1, result!!.segments.size)
+        assertEquals(ShapeAwareTextOutcome.FULL, result.outcome)
+        assertEquals(translation, result.displayedText)
+    }
+
+    @Test
+    fun fullyFitsMergedBodyWhenServerLineLimitWouldOtherwiseRequireMore() {
+        val translation = "数百家公司，无论大小，都在生产环境中使用 Rust 来完成各种任务，包括命令行工具、" +
+            "网络服务、DevOps 工具链、嵌入式设备、音视频分析与转码、加密货币、生物信息学、" +
+            "搜索引擎、物联网应用、机器学习，甚至 Firefox 网页浏览器的主要部分。"
+        val result = ShapeAwareTextLayout.layout(
+            text = translation,
+            paint = TextPaint(Paint.ANTI_ALIAS_FLAG),
+            renderSlots = listOf(Rect(71, 1523, 1360, 2144)),
+            preferredTextSizePx = 62f,
+            minimumTextSizePx = 8f,
+            maximumLines = 100,
+            alignment = Layout.Alignment.ALIGN_NORMAL,
+            horizontalPadding = 7,
+            allowOverflowMore = false,
+            lineSpacingMultipliers = listOf(0.74f, 0.68f)
+        )
+
+        assertNotNull(result)
+        assertEquals(ShapeAwareTextOutcome.COMPACT, result!!.outcome)
+        assertEquals(translation, result.displayedText)
+    }
+
+    @Test
     fun usesMoreOnlyForAnExplicitlyEligibleOverflowBody() {
         val text = "这是一个需要完整上下文才能正确理解的长段落。".repeat(20)
         val arguments = LayoutArguments(text)

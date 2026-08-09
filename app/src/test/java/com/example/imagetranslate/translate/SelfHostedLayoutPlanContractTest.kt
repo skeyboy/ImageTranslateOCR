@@ -30,6 +30,44 @@ class SelfHostedLayoutPlanContractTest {
     }
 
     @Test
+    fun v4AcceptsAuthoritativeUnionRenderSlotWhilePreservingOcrCoverSlots() {
+        val request = request()
+        val response = JSONObject(response(0.94f))
+            .put("schemaVersion", 4)
+            .put("provider", "self-hosted-qwen-regions-first-v4")
+            .put(
+                "documentPlan",
+                JSONObject()
+                    .put("mode", "AUTHORITATIVE")
+                    .put("planVersion", "server-regions-first-plan-v4")
+            )
+        val layoutHint = response.getJSONArray("results").getJSONObject(0)
+            .getJSONObject("layoutHint")
+        layoutHint.put(
+            "renderSlots",
+            JSONArray().put(boundsJson(10, 20, 210, 85))
+        )
+        layoutHint.put(
+            "sourceCoverSlots",
+            JSONArray()
+                .put(boundsJson(10, 20, 210, 50))
+                .put(boundsJson(10, 55, 210, 85))
+        )
+        val provider = SelfHostedSemanticTranslationProvider("http://127.0.0.1:8090", null, 4)
+
+        val result = provider.parseResponseForTest(response.toString(), request).results.single()
+
+        assertEquals(listOf(TranslationBounds(10, 20, 210, 85)), result.layoutHint?.renderSlots)
+        assertEquals(
+            listOf(
+                TranslationBounds(10, 20, 210, 50),
+                TranslationBounds(10, 55, 210, 85)
+            ),
+            result.layoutHint?.sourceCoverSlots
+        )
+    }
+
+    @Test
     fun v4AcceptsServerSplitOfOneAdvisoryClientGroup() {
         val first = source(
             "a", "First paragraph ends here.", TranslationBounds(10, 20, 210, 50), 0,
