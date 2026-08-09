@@ -49,7 +49,7 @@ class LiveCaptureTimingPolicyTest {
             )
         )
         assertEquals(
-            105_000L,
+            225_000L,
             LiveCaptureTimingPolicy.translationTimeoutMs(
                 TranslationBackend.SELF_HOSTED,
                 LiveOcrTranslationEngineType.LOCAL_PIPELINE

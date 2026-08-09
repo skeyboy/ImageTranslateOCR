@@ -654,7 +654,7 @@ internal class SelfHostedSemanticTranslationProvider(
         const val SELF_HOSTED_V4_SCHEMA_VERSION = 4
         const val CANCEL_REQUEST_PREFIX = "/api/v2/translate/requests/"
         const val CONNECT_TIMEOUT_MS = 10_000
-        const val READ_TIMEOUT_MS = 100_000
+        const val READ_TIMEOUT_MS = 220_000
         const val CANCEL_TIMEOUT_MS = 3_000
         const val AUTHORITATIVE_GROUPING_CONFIDENCE = 0.90f
         const val MAXIMUM_CONCURRENT_REQUESTS = 2

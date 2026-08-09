@@ -65,13 +65,13 @@ pub struct QwenClient {
     model: String,
     reasoning_effort: Option<String>,
     max_tokens: u32,
+    request_timeout: Duration,
     execution_mode: &'static str,
 }
 
 impl QwenClient {
     pub fn new(config: &Config) -> Result<Self, AppError> {
         let client = Client::builder()
-            .timeout(config.qwen_timeout)
             .build()
             .map_err(|error| AppError::configuration(error.to_string()))?;
         let base = config.qwen_base_url.trim_end_matches('/');
@@ -90,6 +90,7 @@ impl QwenClient {
             model: config.qwen_model.clone(),
             reasoning_effort: config.qwen_reasoning_effort.clone(),
             max_tokens: config.qwen_max_tokens,
+            request_timeout: config.qwen_timeout,
             execution_mode: if is_loopback_endpoint(base) {
                 "local"
             } else {
@@ -135,15 +136,20 @@ impl QwenClient {
         })
     }
 
-    async fn completion(&self, body: &ChatRequest<'_>) -> Result<String, AppError> {
-        let mut builder = self.client.post(&self.endpoint).json(body);
+    async fn completion(
+        &self,
+        body: &ChatRequest<'_>,
+        group_count: usize,
+    ) -> Result<String, AppError> {
+        let timeout = self.completion_timeout(group_count);
+        let mut builder = self.client.post(&self.endpoint).timeout(timeout).json(body);
         if let Some(api_key) = &self.api_key {
             builder = builder.bearer_auth(api_key);
         }
         let response = builder
             .send()
             .await
-            .map_err(|error| AppError::Upstream(format!("Qwen request failed: {error}")))?;
+            .map_err(|error| qwen_request_error(error, timeout))?;
         let status = response.status();
         let response_text = response
             .text()
@@ -159,6 +165,17 @@ impl QwenClient {
         let envelope: ChatResponse = serde_json::from_str(&response_text)
             .map_err(|error| AppError::Upstream(format!("invalid Qwen envelope: {error}")))?;
         Ok(completion_content(&envelope)?.to_owned())
+    }
+
+    fn completion_timeout(&self, group_count: usize) -> Duration {
+        if self.execution_mode != "local" {
+            return self.request_timeout;
+        }
+        let adaptive_seconds = 90_u64
+            .saturating_add((group_count as u64).saturating_mul(5))
+            .min(210);
+        self.request_timeout
+            .min(Duration::from_secs(adaptive_seconds))
     }
 }
 
@@ -193,7 +210,7 @@ impl TranslationModel for QwenClient {
             ));
         }
         let body = self.chat_request(request, groups)?;
-        let content = self.completion(&body).await?;
+        let content = self.completion(&body, groups.len()).await?;
         let mut translations = parse_model_response_without_critical_validation(&content, groups)?;
         let repair_groups = groups
             .iter()
@@ -213,7 +230,7 @@ impl TranslationModel for QwenClient {
             let repair_prompt = critical_repair_prompt(&repair_groups);
             let repair_body =
                 self.chat_request_with_system_prompt(request, &repair_groups, repair_prompt)?;
-            let repaired_content = self.completion(&repair_body).await?;
+            let repaired_content = self.completion(&repair_body, repair_groups.len()).await?;
             let repaired = parse_model_response(&repaired_content, &repair_groups)?;
             for repaired_translation in repaired {
                 if let Some(translation) = translations
@@ -849,6 +866,21 @@ fn is_loopback_endpoint(endpoint: &str) -> bool {
         || endpoint.starts_with("http://[::1]:")
 }
 
+fn qwen_request_error(error: reqwest::Error, timeout: Duration) -> AppError {
+    if error.is_timeout() {
+        return AppError::Upstream(format!(
+            "Qwen request timed out after {} seconds",
+            timeout.as_secs()
+        ));
+    }
+    if error.is_connect() {
+        return AppError::ModelUnavailable(format!(
+            "Cannot connect to the configured Qwen endpoint: {error}"
+        ));
+    }
+    AppError::Upstream(format!("Qwen request failed: {error}"))
+}
+
 const SYSTEM_PROMPT: &str = r#"You are a professional screen OCR translation engine.
 The user supplies a JSON document containing the complete visible context and translateGroups.
 Use documentContext, reading order, roles, and normalized bounds only to disambiguate meaning.
@@ -917,6 +949,18 @@ mod tests {
             render_slots: vec![],
             layout_shape: "RECT".to_owned(),
         }]
+    }
+
+    #[test]
+    fn local_timeout_scales_with_group_count_up_to_configured_limit() {
+        let mut config = Config::for_test(":memory:".to_owned());
+        config.qwen_base_url = "http://127.0.0.1:11434/v1".to_owned();
+        config.qwen_timeout = Duration::from_secs(210);
+        let client = QwenClient::new(&config).unwrap();
+
+        assert_eq!(client.completion_timeout(1), Duration::from_secs(95));
+        assert_eq!(client.completion_timeout(22), Duration::from_secs(200));
+        assert_eq!(client.completion_timeout(30), Duration::from_secs(210));
     }
 
     #[tokio::test]

@@ -5,7 +5,7 @@ import com.example.imagetranslate.translate.TranslationBackend
 internal object LiveCaptureTimingPolicy {
     const val LOCAL_TRANSLATION_TIMEOUT_MS = 35_000L
     const val PADDLE_NETWORK_TRANSLATION_TIMEOUT_MS = 40_000L
-    const val SELF_HOSTED_TRANSLATION_TIMEOUT_MS = 105_000L
+    const val SELF_HOSTED_TRANSLATION_TIMEOUT_MS = 225_000L
     const val NETWORK_TRANSLATION_TIMEOUT_MS = 90_000L
     const val PRESENTATION_GATE_TIMEOUT_MS = 400L
 

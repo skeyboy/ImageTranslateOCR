@@ -20,12 +20,12 @@ pub struct Config {
 impl Config {
     pub fn from_env() -> Result<Self, AppError> {
         let timeout_seconds = env::var("QWEN_TIMEOUT_SECONDS")
-            .unwrap_or_else(|_| "90".to_owned())
+            .unwrap_or_else(|_| "210".to_owned())
             .parse::<u64>()
             .map_err(|_| AppError::configuration("QWEN_TIMEOUT_SECONDS must be an integer"))?;
-        if timeout_seconds == 0 || timeout_seconds > 180 {
+        if timeout_seconds == 0 || timeout_seconds > 300 {
             return Err(AppError::configuration(
-                "QWEN_TIMEOUT_SECONDS must be between 1 and 180",
+                "QWEN_TIMEOUT_SECONDS must be between 1 and 300",
             ));
         }
         let qwen_max_tokens = env::var("QWEN_MAX_TOKENS")
