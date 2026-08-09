@@ -1417,7 +1417,7 @@ class OneShotScreenCaptureService : Service() {
                 }
                 shouldPresent
             },
-            onPresented = {
+            onPresented = { presentation ->
                 captureHandler?.removeCallbacks(accessibilityScrollSettle)
                 accessibilityScrollPending.set(false)
                 accessibilityScrollActive.set(false)
@@ -1431,7 +1431,19 @@ class OneShotScreenCaptureService : Service() {
                             ).coerceAtLeast(0L)
                     )
                 )
-                scheduleRenderedCaptureUpload(result, generation)
+                scheduleRenderedCaptureUpload(result, generation, presentation)
+                resumeFrameObservation(generation)
+            },
+            onPresentationFailed = { presentation ->
+                captureHandler?.removeCallbacks(accessibilityScrollSettle)
+                accessibilityScrollPending.set(false)
+                accessibilityScrollActive.set(false)
+                presentationInProgress.set(false)
+                Log.e(
+                    TAG,
+                    "Translation overlay was not presented: $presentation"
+                )
+                scheduleRenderedCaptureUpload(result, generation, presentation)
                 resumeFrameObservation(generation)
             }
         )
@@ -1439,7 +1451,8 @@ class OneShotScreenCaptureService : Service() {
 
     private fun scheduleRenderedCaptureUpload(
         result: BackgroundTranslatedOverlayResult,
-        generation: Int
+        generation: Int,
+        presentation: OverlayPresentationResult
     ) {
         if (!SemanticRenderedCaptureUploadPolicy.shouldUpload(
                 isDebugBuild = BuildConfig.DEBUG,
@@ -1466,7 +1479,21 @@ class OneShotScreenCaptureService : Service() {
             .put("patchCoverageRatio", result.patchCoverage.coverageRatio.toDouble())
             .put("renderingMode", result.renderingMode.name)
             .put("backgroundMode", result.backgroundMode.name)
-        val audit = if (result.failedCount > 0) {
+            .put("controlAttached", presentation.controlAttached)
+            .put("translationLayerAttached", presentation.translationLayerAttached)
+            .put("translationVisible", presentation.translationVisible)
+            .put("acceptedPatchCount", presentation.acceptedPatchCount)
+            .put("visiblePatchCount", presentation.visiblePatchCount)
+            .put("presentationAttemptCount", presentation.attemptCount)
+            .put("presentationOutcome", presentation.failure?.name ?: "PRESENTED")
+        val audit = if (!presentation.presented) {
+            SemanticRenderedCaptureAudit.renderFailed(
+                stage = "OVERLAY_ATTACH",
+                failureCode = presentation.failure?.name ?: "OVERLAY_PRESENTATION_FAILED",
+                failureMessage = "Translation overlay did not accept and display the generated patches",
+                layoutDiagnostics = diagnostics
+            )
+        } else if (result.failedCount > 0) {
             SemanticRenderedCaptureAudit.renderFailed(
                 stage = if (result.patches.isEmpty()) "OVERLAY_LAYOUT" else "OVERLAY_PARTIAL_DRAW",
                 failureCode = if (result.patches.isEmpty()) {

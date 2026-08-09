@@ -72,6 +72,7 @@ struct RegionGroup {
     evidence: Vec<String>,
     bounds: Bounds,
     render_slots: Vec<Bounds>,
+    force_flow_shape: bool,
     first_region: OcrRegion,
     last_region: OcrRegion,
 }
@@ -97,6 +98,9 @@ impl RegionGroup {
         if advisory.is_some() {
             evidence.push("CLIENT_GROUP_ADVISORY".to_owned());
         }
+        if region.confidence < AUTHORITATIVE_CONFIDENCE {
+            evidence.push("LOW_OCR_TEXT_CONFIDENCE".to_owned());
+        }
         Self {
             source_group_ids: region
                 .group_id
@@ -109,10 +113,13 @@ impl RegionGroup {
             translation_unit,
             source_text: region.text.trim().to_owned(),
             reading_order: region.reading_order,
-            confidence: region.confidence.clamp(0.0, 1.0),
+            // A single OCR region has no grouping ambiguity. OCR recognition
+            // confidence describes text quality, not layout membership.
+            confidence: 1.0,
             evidence,
             bounds: region.bounds.clone(),
             render_slots: vec![region.bounds.clone()],
+            force_flow_shape: advisory.is_some_and(|group| group.layout_shape == "FLOW_SLOTS"),
             first_region: region.clone(),
             last_region: region.clone(),
         }
@@ -125,6 +132,7 @@ impl RegionGroup {
         self.source_text = format!("{}\n{}", self.source_text.trim(), next.source_text.trim());
         self.bounds = self.bounds.union(&next.bounds);
         self.render_slots.extend(next.render_slots);
+        self.force_flow_shape |= next.force_flow_shape;
         self.confidence = self
             .confidence
             .min(next.confidence)
@@ -149,6 +157,8 @@ impl RegionGroup {
 
     fn into_planned(self, index: usize) -> PlannedGroup {
         let group_id = stable_group_id(index, &self.member_region_ids);
+        let source_line_count = self.render_slots.len().max(1) as i32;
+        let render_slots = layout_slots(&self.render_slots, &self.bounds, self.force_flow_shape);
         PlannedGroup {
             group_id,
             source_group_ids: self.source_group_ids,
@@ -159,15 +169,15 @@ impl RegionGroup {
             reading_order: self.reading_order,
             grouping_confidence: self.confidence,
             grouping_evidence: self.evidence,
-            source_line_count: self.render_slots.len().max(1) as i32,
+            source_line_count,
             bounds: self.bounds,
-            layout_shape: if self.render_slots.len() > 1 {
+            layout_shape: if render_slots.len() > 1 {
                 "FLOW_SLOTS"
             } else {
                 "RECT"
             }
             .to_owned(),
-            render_slots: self.render_slots,
+            render_slots,
             authoritative_eligible: self.confidence >= AUTHORITATIVE_CONFIDENCE,
         }
     }
@@ -205,6 +215,10 @@ fn merge_decision(
         return None;
     }
     let same_block = same_block_continuation(first, second);
+    let same_advisory_group = previous
+        .source_group_ids
+        .iter()
+        .any(|group_id| next.source_group_ids.contains(group_id));
     let overlap = first.bounds.horizontal_overlap(&second.bounds).max(0) as f32
         / first.bounds.width().min(second.bounds.width()).max(1) as f32;
     let left_delta = (first.bounds.left - second.bounds.left).abs();
@@ -230,24 +244,81 @@ fn merge_decision(
     if !continuation {
         return None;
     }
-    let source_confidence = previous.confidence.min(next.confidence);
     let confidence = if same_block {
-        source_confidence.min(0.97)
+        0.98
+    } else if same_advisory_group {
+        0.96
     } else if same_column {
-        source_confidence.min(0.94)
+        0.94
     } else {
-        source_confidence.min(0.92)
+        0.92
     };
     (confidence >= AUTHORITATIVE_CONFIDENCE).then_some(MergeDecision {
         confidence,
         evidence: if same_block {
             "OCR_BLOCK_CONTINUATION"
+        } else if same_advisory_group {
+            "CLIENT_GROUP_GEOMETRY_CONFIRMED"
         } else if wrapped_step {
             "WRAPPED_MEDIA_FLOW"
         } else {
             "VISUAL_LINE_CONTINUATION"
         },
     })
+}
+
+fn layout_slots(
+    source_slots: &[Bounds],
+    group_bounds: &Bounds,
+    force_flow_shape: bool,
+) -> Vec<Bounds> {
+    if force_flow_shape
+        || source_slots.len() <= 1
+        || !is_dense_rectangular_text_flow(source_slots, group_bounds)
+    {
+        return source_slots.to_vec();
+    }
+    vec![group_bounds.clone()]
+}
+
+fn is_dense_rectangular_text_flow(source_slots: &[Bounds], group_bounds: &Bounds) -> bool {
+    if source_slots.len() < 2 || group_bounds.width() <= 0 {
+        return false;
+    }
+    let mut heights = source_slots
+        .iter()
+        .map(|slot| slot.height().max(1))
+        .collect::<Vec<_>>();
+    heights.sort_unstable();
+    let typical_height = heights[heights.len() / 2].max(1);
+    let maximum_gap = source_slots
+        .windows(2)
+        .map(|pair| pair[1].top - pair[0].bottom)
+        .max()
+        .unwrap_or_default();
+    if maximum_gap > typical_height {
+        return false;
+    }
+
+    // Ignore the final line's right edge because a normal paragraph often ends
+    // with a short line. Earlier edge steps are retained as FLOW_SLOTS so text
+    // cannot flow across an image or another non-text island.
+    let non_final = &source_slots[..source_slots.len().saturating_sub(1).max(1)];
+    let left_range = range(source_slots.iter().map(|slot| slot.left));
+    let right_range = range(non_final.iter().map(|slot| slot.right));
+    let left_tolerance = (typical_height * 2).max(group_bounds.width() * 12 / 100);
+    let right_tolerance = (typical_height * 3).max(group_bounds.width() * 25 / 100);
+    left_range <= left_tolerance && right_range <= right_tolerance
+}
+
+fn range(values: impl Iterator<Item = i32>) -> i32 {
+    let mut minimum = i32::MAX;
+    let mut maximum = i32::MIN;
+    for value in values {
+        minimum = minimum.min(value);
+        maximum = maximum.max(value);
+    }
+    maximum.saturating_sub(minimum)
 }
 
 fn inferred_role(
@@ -286,9 +357,39 @@ fn same_block_continuation(first: &OcrRegion, second: &OcrRegion) -> bool {
 
 fn is_strong_text_boundary(previous: &str, next: &str) -> bool {
     looks_like_short_label(previous)
+        || looks_like_title_label(previous)
         || (looks_like_short_label(next) && ends_sentence(previous))
+        || (looks_like_title_label(next) && ends_sentence(previous))
         || is_standalone_timestamp(previous)
         || is_standalone_timestamp(next)
+}
+
+fn looks_like_title_label(text: &str) -> bool {
+    let trimmed = text.trim();
+    if trimmed.is_empty()
+        || trimmed.ends_with(['.', '!', '?', '。', '！', '？', ',', ';'])
+        || trimmed.contains(',')
+        || trimmed.contains(';')
+    {
+        return false;
+    }
+    let words = trimmed.split_whitespace().collect::<Vec<_>>();
+    if words.is_empty() || words.len() > 6 || trimmed.chars().count() > 48 {
+        return false;
+    }
+    let connectors = ["a", "an", "and", "for", "in", "of", "the", "to"];
+    let mut meaningful_words = 0;
+    words.iter().all(|word| {
+        let normalized = word.trim_matches(|character: char| !character.is_alphabetic());
+        if normalized.is_empty() {
+            return false;
+        }
+        if connectors.contains(&normalized.to_ascii_lowercase().as_str()) {
+            return true;
+        }
+        meaningful_words += 1;
+        normalized.chars().next().is_some_and(char::is_uppercase)
+    }) && meaningful_words > 0
 }
 
 fn looks_like_short_label(text: &str) -> bool {
@@ -443,6 +544,7 @@ mod tests {
         first.group_id.clear();
         first.block_id = Some("article-flow".to_owned());
         first.line_index = Some(0);
+        first.confidence = 0.72;
         first.bounds = Bounds {
             left: 420,
             top: 500,
@@ -479,10 +581,58 @@ mod tests {
         assert_eq!(plan.groups.len(), 1);
         assert_eq!(plan.groups[0].member_region_ids.len(), 3);
         assert_eq!(plan.groups[0].layout_shape, "FLOW_SLOTS");
+        assert_eq!(plan.groups[0].grouping_confidence, 0.98);
         assert!(
             plan.groups[0]
                 .grouping_evidence
                 .contains(&"OCR_BLOCK_CONTINUATION".to_owned())
+        );
+    }
+
+    #[test]
+    fn collapses_dense_low_confidence_paragraph_lines_into_one_rect() {
+        let mut request = request();
+        let mut regions = Vec::new();
+        let texts = [
+            "Welcome to The Rust Programming Language, an",
+            "introductory book about Rust. The language helps",
+            "you write faster and more reliable software.",
+            "control.",
+        ];
+        for (index, text) in texts.into_iter().enumerate() {
+            let mut region = request.regions[0].clone();
+            region.region_id = format!("paragraph-{index}");
+            region.group_id.clear();
+            region.block_id = Some("paragraph-block".to_owned());
+            region.line_index = Some(index as i32);
+            region.reading_order = index as i32;
+            region.confidence = 0.71;
+            region.text = text.to_owned();
+            region.bounds = Bounds {
+                left: 70 + index as i32,
+                top: 500 + index as i32 * 70,
+                right: if index + 1 == texts.len() { 280 } else { 1_280 },
+                bottom: 555 + index as i32 * 70,
+            };
+            regions.push(region);
+        }
+        request.groups.clear();
+        request.regions = regions;
+
+        let plan = build_regions_first_plan(&request);
+
+        assert_eq!(plan.groups.len(), 1);
+        assert_eq!(plan.groups[0].member_region_ids.len(), 4);
+        assert_eq!(plan.groups[0].source_line_count, 4);
+        assert_eq!(plan.groups[0].layout_shape, "RECT");
+        assert_eq!(
+            plan.groups[0].render_slots,
+            vec![plan.groups[0].bounds.clone()]
+        );
+        assert!(
+            plan.groups[0]
+                .grouping_evidence
+                .contains(&"LOW_OCR_TEXT_CONFIDENCE".to_owned())
         );
     }
 
@@ -509,6 +659,46 @@ mod tests {
         assert_eq!(plan.groups.len(), 2);
         assert_eq!(plan.groups[0].source_text, "API REFERENCE");
         assert_eq!(plan.groups[1].role, "BODY");
+    }
+
+    #[test]
+    fn keeps_title_case_section_heading_separate_from_body() {
+        let mut request = request();
+        let mut heading = request.regions[0].clone();
+        heading.text = "Teams of Developers".to_owned();
+        heading.group_id.clear();
+        heading.block_id = Some("heading".to_owned());
+        heading.bounds = Bounds {
+            left: 70,
+            top: 500,
+            right: 700,
+            bottom: 570,
+        };
+        let mut body = heading.clone();
+        body.region_id = "title-case-body".to_owned();
+        body.text = "Rust is proving to be a productive tool for teams.".to_owned();
+        body.reading_order += 1;
+        body.block_id = Some("body".to_owned());
+        body.bounds = Bounds {
+            left: 70,
+            top: 630,
+            right: 1_250,
+            bottom: 700,
+        };
+        request.groups.clear();
+        request.regions = vec![heading, body];
+
+        let plan = build_regions_first_plan(&request);
+
+        assert_eq!(plan.groups.len(), 2);
+        assert_eq!(plan.groups[0].source_text, "Teams of Developers");
+    }
+
+    #[test]
+    fn sentence_with_title_case_terms_is_not_a_section_heading() {
+        assert!(!looks_like_title_label(
+            "Welcome to The Rust Programming Language,an"
+        ));
     }
 
     #[test]

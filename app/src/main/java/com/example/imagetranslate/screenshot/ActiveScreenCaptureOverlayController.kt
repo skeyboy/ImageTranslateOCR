@@ -8,6 +8,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
+import android.util.Log
 import android.view.ContextThemeWrapper
 import android.view.Gravity
 import android.view.HapticFeedbackConstants
@@ -59,6 +60,27 @@ internal data class LiveOcrTranslationEngineMenuOption(
     val selected: Boolean,
     val enabled: Boolean
 )
+
+internal enum class OverlayPresentationFailure {
+    CONTROL_LAYER_ATTACH_FAILED,
+    TRANSLATION_LAYER_ATTACH_FAILED,
+    INVALID_SOURCE_GEOMETRY,
+    PATCHES_NOT_ACCEPTED
+}
+
+internal data class OverlayPresentationResult(
+    val attemptCount: Int,
+    val controlAttached: Boolean,
+    val translationLayerAttached: Boolean,
+    val translationVisible: Boolean,
+    val acceptedPatchCount: Int,
+    val visiblePatchCount: Int,
+    val failure: OverlayPresentationFailure? = null
+) {
+    val presented: Boolean
+        get() = failure == null && controlAttached && translationLayerAttached &&
+            (translationVisible.not() || visiblePatchCount == acceptedPatchCount)
+}
 
 internal fun liveOcrTranslationEngineMenuOptions(
     selectedEngine: LiveOcrTranslationEngineType,
@@ -315,21 +337,42 @@ internal class ActiveScreenCaptureOverlayController(
         translationMs: Long,
         renderingMs: Long,
         shouldPresent: () -> Boolean = { true },
-        onPresented: () -> Unit
+        onPresented: (OverlayPresentationResult) -> Unit,
+        onPresentationFailed: (OverlayPresentationResult) -> Unit = {}
     ) = onMainThread {
         if (!shouldPresent()) {
             patches.recyclePatchBitmaps()
             return@onMainThread
         }
-        if (!ensureControlAttachedNow()) {
-            patches.forEach { if (!it.bitmap.isRecycled) it.bitmap.recycle() }
-            mainHandler.post(onPresented)
-            return@onMainThread
-        }
+        presentResultWithRetry(
+            patches = patches,
+            sourceWidth = sourceWidth,
+            sourceHeight = sourceHeight,
+            shouldPresent = shouldPresent,
+            onPresented = { presentation ->
+                finishShowingResult(
+                    patches = patches,
+                    recognizedCount = recognizedCount,
+                    ocrMs = ocrMs,
+                    translationMs = translationMs,
+                    renderingMs = renderingMs
+                )
+                binding.root.postOnAnimation { onPresented(presentation) }
+            },
+            onPresentationFailed = onPresentationFailed
+        )
+    }
+
+    private fun finishShowingResult(
+        patches: List<ScreenTranslationPatch>,
+        recognizedCount: Int,
+        ocrMs: Long,
+        translationMs: Long,
+        renderingMs: Long
+    ) {
         processing = false
         sessionActive = true
         hasTranslationResult = patches.isNotEmpty()
-        showTranslationPatchesNow(patches, sourceWidth, sourceHeight)
         binding.root.visibility = View.VISIBLE
         binding.btnActiveOverlayCapture.visibility = View.GONE
         binding.activeOverlayStatusGroup.visibility = View.VISIBLE
@@ -360,7 +403,55 @@ internal class ActiveScreenCaptureOverlayController(
         binding.btnToggleActiveTranslation.isEnabled = hasTranslationResult
         binding.btnToggleActiveTranslation.isChecked = translationVisible
         updateCompactPerformance()
-        binding.root.postOnAnimation(onPresented)
+    }
+
+    private fun presentResultWithRetry(
+        patches: List<ScreenTranslationPatch>,
+        sourceWidth: Int,
+        sourceHeight: Int,
+        shouldPresent: () -> Boolean,
+        onPresented: (OverlayPresentationResult) -> Unit,
+        onPresentationFailed: (OverlayPresentationResult) -> Unit,
+        attempt: Int = 1
+    ) {
+        if (!shouldPresent()) {
+            patches.recyclePatchBitmaps()
+            return
+        }
+        val presentation = showTranslationPatchesNow(
+            patches = patches,
+            sourceWidth = sourceWidth,
+            sourceHeight = sourceHeight,
+            attemptCount = attempt
+        )
+        if (presentation.presented) {
+            onPresented(presentation)
+            return
+        }
+        val retryable = presentation.failure ==
+            OverlayPresentationFailure.CONTROL_LAYER_ATTACH_FAILED ||
+            presentation.failure == OverlayPresentationFailure.TRANSLATION_LAYER_ATTACH_FAILED
+        if (retryable && attempt < OVERLAY_PRESENTATION_MAX_ATTEMPTS) {
+            Log.w(TAG, "Translation overlay presentation failed; retrying: $presentation")
+            mainHandler.postDelayed(
+                {
+                    presentResultWithRetry(
+                        patches = patches,
+                        sourceWidth = sourceWidth,
+                        sourceHeight = sourceHeight,
+                        shouldPresent = shouldPresent,
+                        onPresented = onPresented,
+                        onPresentationFailed = onPresentationFailed,
+                        attempt = attempt + 1
+                    )
+                },
+                OVERLAY_PRESENTATION_RETRY_DELAY_MS
+            )
+            return
+        }
+        Log.e(TAG, "Translation overlay presentation failed: $presentation")
+        patches.recyclePatchBitmaps()
+        mainHandler.post { onPresentationFailed(presentation) }
     }
 
     fun showCaptureFailed() = onMainThread(::showReadyNow)
@@ -521,7 +612,7 @@ internal class ActiveScreenCaptureOverlayController(
 
     private fun ensureControlAttachedNow(): Boolean {
         if (!canAttachOverlay()) return false
-        if (binding.root.parent != null) return true
+        if (binding.root.parent != null) return ensureTranslationAttachedNow()
         if (!ensureTranslationAttachedNow()) return false
         val bounds = windowBounds()
         val initialX = ((bounds.first - expandedWidth) / 2).coerceAtLeast(edgeMargin)
@@ -551,15 +642,56 @@ internal class ActiveScreenCaptureOverlayController(
     private fun showTranslationPatchesNow(
         patches: List<ScreenTranslationPatch>,
         sourceWidth: Int,
-        sourceHeight: Int
-    ) {
-        removeTranslationLayersNow()
-        if (!ensureTranslationAttachedNow() || sourceWidth <= 0 || sourceHeight <= 0) {
-            patches.recyclePatchBitmaps()
-            return
+        sourceHeight: Int,
+        attemptCount: Int
+    ): OverlayPresentationResult {
+        if (sourceWidth <= 0 || sourceHeight <= 0) {
+            return failedPresentation(
+                attemptCount,
+                OverlayPresentationFailure.INVALID_SOURCE_GEOMETRY
+            )
         }
+        if (!ensureControlAttachedNow()) {
+            val failure = if (binding.root.parent == null) {
+                OverlayPresentationFailure.CONTROL_LAYER_ATTACH_FAILED
+            } else {
+                OverlayPresentationFailure.TRANSLATION_LAYER_ATTACH_FAILED
+            }
+            return failedPresentation(attemptCount, failure)
+        }
+        removeTranslationLayersNow()
         translationView.replacePatches(patches, sourceWidth, sourceHeight)
         translationView.setPatchesVisible(translationVisible, animateChange = false)
+        val state = translationView.overlayState()
+        return OverlayPresentationResult(
+            attemptCount = attemptCount,
+            controlAttached = binding.root.parent != null,
+            translationLayerAttached = state.attached,
+            translationVisible = state.translationVisible,
+            acceptedPatchCount = state.acceptedPatchCount,
+            visiblePatchCount = state.visiblePatchCount,
+            failure = if (patches.isNotEmpty() && state.acceptedPatchCount != patches.size) {
+                OverlayPresentationFailure.PATCHES_NOT_ACCEPTED
+            } else {
+                null
+            }
+        )
+    }
+
+    private fun failedPresentation(
+        attemptCount: Int,
+        failure: OverlayPresentationFailure
+    ): OverlayPresentationResult {
+        val state = translationView.overlayState()
+        return OverlayPresentationResult(
+            attemptCount = attemptCount,
+            controlAttached = binding.root.parent != null,
+            translationLayerAttached = state.attached,
+            translationVisible = state.translationVisible,
+            acceptedPatchCount = state.acceptedPatchCount,
+            visiblePatchCount = state.visiblePatchCount,
+            failure = failure
+        )
     }
 
     private fun ensureTranslationAttachedNow(): Boolean {
@@ -1457,6 +1589,9 @@ internal class ActiveScreenCaptureOverlayController(
         (value * appContext.resources.displayMetrics.density).toInt()
 
     private companion object {
+        const val TAG = "ActiveCaptureOverlay"
+        const val OVERLAY_PRESENTATION_MAX_ATTEMPTS = 3
+        const val OVERLAY_PRESENTATION_RETRY_DELAY_MS = 120L
         const val EXPANDED_BOTTOM_MARGIN_DP = 44
         const val DEFAULT_MAXIMUM_OBSCURING_ALPHA = 0.8f
         const val CONTROL_PRESS_DURATION_MS = 90L

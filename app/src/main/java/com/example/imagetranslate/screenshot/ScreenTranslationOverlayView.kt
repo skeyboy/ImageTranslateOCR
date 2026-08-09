@@ -21,6 +21,13 @@ internal fun Iterable<ScreenTranslationPatch>.recyclePatchBitmaps() {
     }
 }
 
+internal data class TranslationOverlayState(
+    val attached: Boolean,
+    val acceptedPatchCount: Int,
+    val visiblePatchCount: Int,
+    val translationVisible: Boolean
+)
+
 internal class ScreenTranslationOverlayView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null
@@ -85,6 +92,17 @@ internal class ScreenTranslationOverlayView @JvmOverloads constructor(
             alpha = 1f
         }
     }
+
+    fun overlayState(): TranslationOverlayState = TranslationOverlayState(
+        attached = parent != null,
+        acceptedPatchCount = patches.count { !it.bitmap.isRecycled },
+        visiblePatchCount = if (patchesVisible && visibility == VISIBLE && alpha > 0f) {
+            patches.count { !it.bitmap.isRecycled }
+        } else {
+            0
+        },
+        translationVisible = patchesVisible
+    )
 
     fun clearForViewportMovement(): Boolean {
         clearPatches()
