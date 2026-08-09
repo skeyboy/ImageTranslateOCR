@@ -6,6 +6,7 @@ use crate::error::AppError;
 
 pub const SCHEMA_VERSION: u32 = 2;
 pub const LAYOUT_PLAN_SCHEMA_VERSION: u32 = 3;
+pub const REGIONS_FIRST_SCHEMA_VERSION: u32 = 4;
 const MAX_GROUPS: usize = 100;
 const MAX_REGIONS: usize = 300;
 const MAX_TOTAL_CHARS: usize = 30_000;
@@ -25,6 +26,7 @@ pub struct SemanticTranslationRequest {
     pub viewport: Viewport,
     pub translation: TranslationOptions,
     pub document_context: DocumentContext,
+    #[serde(default)]
     pub groups: Vec<TranslationGroup>,
     pub regions: Vec<OcrRegion>,
     #[serde(default)]
@@ -98,6 +100,7 @@ pub struct TranslationGroup {
 #[serde(rename_all = "camelCase")]
 pub struct OcrRegion {
     pub region_id: String,
+    #[serde(default)]
     pub group_id: String,
     pub source_revision: i64,
     pub text: String,
@@ -253,9 +256,15 @@ impl SemanticTranslationRequest {
                 ));
             }
         }
-        if self.groups.is_empty() || self.groups.len() > MAX_GROUPS {
+        if (expected_schema != REGIONS_FIRST_SCHEMA_VERSION && self.groups.is_empty())
+            || self.groups.len() > MAX_GROUPS
+        {
             return Err(AppError::invalid(
-                "groups must contain between 1 and 100 items",
+                if expected_schema == REGIONS_FIRST_SCHEMA_VERSION {
+                    "groups must contain at most 100 advisory items"
+                } else {
+                    "groups must contain between 1 and 100 items"
+                },
             ));
         }
         if self.regions.is_empty() || self.regions.len() > MAX_REGIONS {
@@ -273,7 +282,9 @@ impl SemanticTranslationRequest {
         let mut regions = HashMap::with_capacity(self.regions.len());
         for region in &self.regions {
             require_non_empty("regions[].regionId", &region.region_id)?;
-            require_non_empty("regions[].groupId", &region.group_id)?;
+            if expected_schema != REGIONS_FIRST_SCHEMA_VERSION {
+                require_non_empty("regions[].groupId", &region.group_id)?;
+            }
             require_non_empty("regions[].text", &region.text)?;
             if region.source_revision < 0 || region.reading_order < 0 {
                 return Err(AppError::invalid(
@@ -353,7 +364,7 @@ impl SemanticTranslationRequest {
                 let region = regions
                     .get(member_id.as_str())
                     .ok_or_else(|| AppError::invalid("group references an unknown regionId"))?;
-                if region.group_id != group.group_id {
+                if !region.group_id.is_empty() && region.group_id != group.group_id {
                     return Err(AppError::invalid("region groupId does not match its group"));
                 }
                 if !assigned_regions.insert(member_id.as_str()) {
@@ -369,7 +380,9 @@ impl SemanticTranslationRequest {
                 ));
             }
         }
-        if assigned_regions.len() != self.regions.len() {
+        if expected_schema != REGIONS_FIRST_SCHEMA_VERSION
+            && assigned_regions.len() != self.regions.len()
+        {
             return Err(AppError::invalid(
                 "every region must belong to exactly one group",
             ));

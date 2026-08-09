@@ -27,6 +27,10 @@ class TranslationProviderTest {
             TranslationBackend.SELF_HOSTED,
             resolveTranslationBackend(TranslationBackend.SELF_HOSTED.name, false, true)
         )
+        assertEquals(
+            TranslationBackend.SELF_HOSTED_V4,
+            resolveTranslationBackend(TranslationBackend.SELF_HOSTED_V4.name, false, true)
+        )
     }
 
     @Test
@@ -57,6 +61,12 @@ class TranslationProviderTest {
             "http://192.168.0.4:8090",
             normalizeNetworkBaseUrl(
                 "http://192.168.0.4:8090/api/v3/translate/layout-plan/"
+            )
+        )
+        assertEquals(
+            "http://192.168.0.4:8090",
+            normalizeNetworkBaseUrl(
+                "http://192.168.0.4:8090/api/v4/translate/layout-plan/"
             )
         )
     }

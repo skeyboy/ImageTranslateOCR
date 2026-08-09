@@ -6,11 +6,13 @@ import java.net.URI
 
 private const val NETWORK_REGIONS_PATH = "/api/v1/translate/regions"
 internal const val SELF_HOSTED_LAYOUT_PLAN_PATH = "/api/v3/translate/layout-plan"
+internal const val SELF_HOSTED_REGIONS_FIRST_PATH = "/api/v4/translate/layout-plan"
 private const val LEGACY_SELF_HOSTED_GROUPS_PATH = "/api/v2/translate/groups"
 private val SUPPORTED_NETWORK_ENDPOINT_PATHS = listOf(
     NETWORK_REGIONS_PATH,
     "/api/v1/translation-batches",
     SELF_HOSTED_LAYOUT_PLAN_PATH,
+    SELF_HOSTED_REGIONS_FIRST_PATH,
     LEGACY_SELF_HOSTED_GROUPS_PATH
 )
 
@@ -47,6 +49,15 @@ object TranslationBackendSettings {
         ?.plus(SELF_HOSTED_LAYOUT_PLAN_PATH)
         .orEmpty()
 
+    fun selfHostedTranslationEndpoint(context: Context, backend: TranslationBackend): String =
+        selfHostedBaseUrl(context).takeIf(String::isNotBlank)?.plus(
+            if (backend == TranslationBackend.SELF_HOSTED_V4) {
+                SELF_HOSTED_REGIONS_FIRST_PATH
+            } else {
+                SELF_HOSTED_LAYOUT_PLAN_PATH
+            }
+        ).orEmpty()
+
     fun selfHostedBearerToken(context: Context): String? = context
         .getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
         .getString(SELF_HOSTED_BEARER_TOKEN, null)
@@ -81,6 +92,7 @@ object TranslationBackendSettings {
         TranslationBackend.LOCAL -> true
         TranslationBackend.NETWORK -> isNetworkConfigured(context)
         TranslationBackend.SELF_HOSTED -> isSelfHostedConfigured(context)
+        TranslationBackend.SELF_HOSTED_V4 -> isSelfHostedConfigured(context)
     }
 
     fun setNetworkBaseUrl(context: Context, value: String) {
@@ -151,6 +163,7 @@ internal fun resolveTranslationBackend(
             TranslationBackend.LOCAL -> true
             TranslationBackend.NETWORK -> networkConfigured
             TranslationBackend.SELF_HOSTED -> selfHostedConfigured
+            TranslationBackend.SELF_HOSTED_V4 -> selfHostedConfigured
         }
     } ?: TranslationBackend.LOCAL
 }

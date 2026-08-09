@@ -999,21 +999,24 @@ internal class BackgroundTranslatedImageProcessor(
         data class PreparedRegion(
             val group: SemanticTextGroup,
             val source: RecognizedText,
+            val semanticSource: com.example.imagetranslate.translate.SemanticTranslationSource,
             val translationSource: String,
             val cacheKey: String,
             val cachedTranslation: String?
         )
         val prepared = groups.map { group ->
             val source = group.toRecognizedText()
+            val semanticSource = group.toSemanticTranslationSource()
             val translationSource = normalizeCacheText(source.text)
             val cacheKey = "${activeBackend.name}:${activeExperimentalEngine.name}:" +
                 "${mode.name}:$contextHash:$translationSource"
             PreparedRegion(
                 group = group,
                 source = source,
+                semanticSource = semanticSource,
                 translationSource = translationSource,
                 cacheKey = cacheKey,
-                cachedTranslation = if (activeBackend == TranslationBackend.SELF_HOSTED) {
+                cachedTranslation = if (activeBackend.isSelfHosted) {
                     null
                 } else {
                     synchronized(translationCache) { translationCache[cacheKey] }
@@ -1035,7 +1038,7 @@ internal class BackgroundTranslatedImageProcessor(
         }
         val translatedMissing = try {
             translateManager.translateSemanticGroups(
-                sources = missing.map { it.group.toSemanticTranslationSource() },
+                sources = missing.map(PreparedRegion::semanticSource),
                 viewportWidth = viewportWidth,
                 viewportHeight = viewportHeight,
                 mode = mode,
@@ -1049,6 +1052,9 @@ internal class BackgroundTranslatedImageProcessor(
             emptyList()
         }
         val preparedByGroup = prepared.associateBy { it.group.groupId }
+        val preparedByRegion = prepared.flatMap { item ->
+            item.semanticSource.regions.map { region -> region.regionId to (item to region) }
+        }.toMap()
         val cachedOutcomes = prepared.filter { it.cachedTranslation != null }.map { item ->
             val translation = checkNotNull(item.cachedTranslation).trim()
             TranslationOutcome(
@@ -1064,11 +1070,24 @@ internal class BackgroundTranslatedImageProcessor(
                     semanticTrace = execution.semanticTrace
                 )
             }
-            val members = execution.sourceGroupIds.mapNotNull(preparedByGroup::get)
-            if (members.size != execution.sourceGroupIds.size || members.isEmpty()) {
+            val exactMembers = execution.memberRegionIds.mapNotNull(preparedByRegion::get)
+            val usesAtomicMembers = exactMembers.size == execution.memberRegionIds.size &&
+                exactMembers.isNotEmpty()
+            val members = if (usesAtomicMembers) {
+                exactMembers.map { it.first }.distinctBy { it.group.groupId }
+            } else {
+                execution.sourceGroupIds.mapNotNull(preparedByGroup::get)
+            }
+            if (members.isEmpty() || !usesAtomicMembers && members.size != execution.sourceGroupIds.size) {
                 return@map TranslationOutcome(failed = true)
             }
-            val sourceText = members.joinToString("\n") { it.source.text }
+            val atomicRegions = exactMembers.map { it.second }
+                .sortedBy { it.readingOrder }
+            val sourceText = if (usesAtomicMembers) {
+                atomicRegions.joinToString("\n") { it.text }
+            } else {
+                members.joinToString("\n") { it.source.text }
+            }
             val translation = execution.translatedText.trim()
             if (translation.isEmpty() || translation == sourceText.trim()) {
                 return@map TranslationOutcome()
@@ -1081,7 +1100,13 @@ internal class BackgroundTranslatedImageProcessor(
             } else {
                 members.flatMap { it.source.textEraseBounds() }.map(::Rect)
             }
-            val sourceLineBounds = members.flatMap { it.source.textEraseBounds() }.map(::Rect)
+            val sourceLineBounds = if (usesAtomicMembers) {
+                atomicRegions.flatMap { region ->
+                    region.componentBounds.ifEmpty { listOf(region.bounds) }
+                }.map { bounds -> Rect(bounds.left, bounds.top, bounds.right, bounds.bottom) }
+            } else {
+                members.flatMap { it.source.textEraseBounds() }.map(::Rect)
+            }
             val anchor = execution.anchorBounds
             val union = anchor?.let { bounds ->
                 Rect(bounds.left, bounds.top, bounds.right, bounds.bottom)
@@ -1091,9 +1116,16 @@ internal class BackgroundTranslatedImageProcessor(
             val source = members.first().source.copy(
                 text = sourceText,
                 bounds = union,
-                sourceBlockId = members.mapNotNull { it.source.sourceBlockId }.distinct()
-                    .singleOrNull(),
-                sourceLineIndex = members.mapNotNull { it.source.sourceLineIndex }.minOrNull(),
+                sourceBlockId = if (usesAtomicMembers) {
+                    atomicRegions.mapNotNull { it.blockId }.distinct().singleOrNull()
+                } else {
+                    members.mapNotNull { it.source.sourceBlockId }.distinct().singleOrNull()
+                },
+                sourceLineIndex = if (usesAtomicMembers) {
+                    atomicRegions.mapNotNull { it.lineIndex }.minOrNull()
+                } else {
+                    members.mapNotNull { it.source.sourceLineIndex }.minOrNull()
+                },
                 componentBounds = sourceLineBounds
             )
             BackgroundImageRegion(

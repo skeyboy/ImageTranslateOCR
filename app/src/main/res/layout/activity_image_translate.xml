@@ -426,6 +426,14 @@
                     android:layout_height="44dp"
                     android:layout_weight="1"
                     android:text="@string/translation_backend_self_hosted" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnBackendSelfHostedV4"
+                    style="@style/Widget.ImageTranslate.SegmentedButton"
+                    android:layout_width="0dp"
+                    android:layout_height="44dp"
+                    android:layout_weight="1"
+                    android:text="@string/translation_backend_self_hosted_v4" />
             </com.google.android.material.button.MaterialButtonToggleGroup>
 
             <com.google.android.material.textfield.TextInputLayout

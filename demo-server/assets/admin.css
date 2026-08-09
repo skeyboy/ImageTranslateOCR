@@ -105,6 +105,7 @@ tbody tr:hover { background: #f4f8f6; }
 .api-version { display: inline-flex; align-items: center; min-height: 24px; padding: 3px 7px; border: 1px solid currentColor; border-radius: 4px; font-size: 11px; font-weight: 800; }
 .version-v2 { color: #475569; background: #f1f5f9; }
 .version-v3 { color: #7c2d12; background: #fff7ed; }
+.version-v4 { color: #166534; background: #f0fdf4; }
 .version-other, .version-unknown { color: #5f6360; background: #f3f4f1; }
 .record-badges { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
 

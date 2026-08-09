@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 4,
+  "requestId": "v4-article-flow",
+  "sessionId": "manual-v4-validation",
+  "generation": 2,
+  "translationRevision": 0,
+  "scene": "LIVE_SCREEN",
+  "viewport": { "width": 1080, "height": 2400, "rotationDegrees": 0 },
+  "translation": { "mode": "ENGLISH_TO_CHINESE", "sourceLanguage": "auto", "targetLanguage": "zh", "preserveIdentifiers": true, "useDocumentContext": true },
+  "documentContext": {
+    "text": "AFRICA-CANADA: Boost for Next-Einstein centres. The Canadian government has awarded C$20 million over the next four years to five centres of the African Institute for Mathematical Sciences.",
+    "sourceLanguage": "en",
+    "readingOrderRegionIds": ["article-title", "article-1", "article-2", "article-3"]
+  },
+  "groups": [
+    {
+      "groupId": "client-article-title", "role": "TITLE", "translationUnit": "GROUP",
+      "sourceText": "AFRICA-CANADA: Boost for Next-Einstein centres", "memberRegionIds": ["article-title"],
+      "readingOrder": 0, "groupingConfidence": 0.96, "groupingEvidence": ["CLIENT_TITLE"],
+      "bounds": { "left": 30, "top": 500, "right": 940, "bottom": 590 }, "renderSlots": [], "layoutShape": "RECT"
+    },
+    {
+      "groupId": "client-article-body", "role": "BODY", "translationUnit": "GROUP",
+      "sourceText": "The Canadian government has awarded C$20 million over the\nnext four years to five centres of the African Institute for\nMathematical Sciences.",
+      "memberRegionIds": ["article-1", "article-2", "article-3"], "readingOrder": 1,
+      "groupingConfidence": 0.96, "groupingEvidence": ["CLIENT_WRAPPED_FLOW"],
+      "bounds": { "left": 30, "top": 720, "right": 1020, "bottom": 980 }, "renderSlots": [], "layoutShape": "FLOW_SLOTS"
+    }
+  ],
+  "regions": [
+    {
+      "regionId": "article-title", "groupId": "client-article-title", "sourceRevision": 1,
+      "text": "AFRICA-CANADA: Boost for Next-Einstein centres", "rawText": "AFRICA-CANADA: Boost for Next-Einstein centres",
+      "sourceLanguage": "en", "targetLanguage": "zh", "readingOrder": 0, "blockId": "title", "lineIndex": 0, "confidence": 0.98,
+      "bounds": { "left": 30, "top": 500, "right": 940, "bottom": 590 }, "componentBounds": []
+    },
+    {
+      "regionId": "article-1", "groupId": "client-article-body", "sourceRevision": 1,
+      "text": "The Canadian government has awarded C$20 million over the", "rawText": "The Canadian government has awarded C$20 million over the",
+      "sourceLanguage": "en", "targetLanguage": "zh", "readingOrder": 1, "blockId": "article-flow", "lineIndex": 0, "confidence": 0.96,
+      "bounds": { "left": 420, "top": 720, "right": 1000, "bottom": 790 }, "componentBounds": []
+    },
+    {
+      "regionId": "article-2", "groupId": "client-article-body", "sourceRevision": 1,
+      "text": "next four years to five centres of the African Institute for", "rawText": "next four years to five centres of the African Institute for",
+      "sourceLanguage": "en", "targetLanguage": "zh", "readingOrder": 2, "blockId": "article-flow", "lineIndex": 1, "confidence": 0.96,
+      "bounds": { "left": 360, "top": 800, "right": 1020, "bottom": 870 }, "componentBounds": []
+    },
+    {
+      "regionId": "article-3", "groupId": "client-article-body", "sourceRevision": 1,
+      "text": "Mathematical Sciences.", "rawText": "Mathematical Sciences.",
+      "sourceLanguage": "en", "targetLanguage": "zh", "readingOrder": 3, "blockId": "article-flow", "lineIndex": 2, "confidence": 0.96,
+      "bounds": { "left": 30, "top": 880, "right": 480, "bottom": 950 }, "componentBounds": []
+    }
+  ]
+}

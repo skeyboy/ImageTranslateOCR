@@ -38,11 +38,10 @@ pub async fn request_history(
         .status
         .as_deref()
         .filter(|status| matches!(*status, "SUCCEEDED" | "FAILED" | "CANCELLED"));
-    let selected_version = filter.version.as_deref().and_then(|version| match version {
-        "2" => Some(2),
-        "3" => Some(3),
-        _ => None,
-    });
+    let selected_version = filter
+        .version
+        .as_deref()
+        .and_then(parse_schema_version_filter);
     let page = filter.page.unwrap_or(1).max(1);
     let page_size = match filter.page_size {
         Some(50) => 50,
@@ -68,6 +67,15 @@ pub async fn request_history(
         ))
         .into_response(),
         Err(error) => server_error(error.to_string()),
+    }
+}
+
+fn parse_schema_version_filter(version: &str) -> Option<u32> {
+    match version {
+        "2" => Some(2),
+        "3" => Some(3),
+        "4" => Some(4),
+        _ => None,
     }
 }
 
@@ -347,23 +355,29 @@ fn pagination_url(
 }
 
 fn version_options(selected: Option<u32>) -> String {
-    [(None, "全部"), (Some(2), "v2"), (Some(3), "v3")]
-        .into_iter()
-        .map(|(value, label)| {
-            let selected_attribute = (selected == value)
-                .then_some(" selected")
-                .unwrap_or_default();
-            let value = value.map(|version| version.to_string()).unwrap_or_default();
-            format!("<option value=\"{value}\"{selected_attribute}>{label}</option>")
-        })
-        .collect::<Vec<_>>()
-        .join("")
+    [
+        (None, "全部"),
+        (Some(2), "v2"),
+        (Some(3), "v3"),
+        (Some(4), "v4"),
+    ]
+    .into_iter()
+    .map(|(value, label)| {
+        let selected_attribute = (selected == value)
+            .then_some(" selected")
+            .unwrap_or_default();
+        let value = value.map(|version| version.to_string()).unwrap_or_default();
+        format!("<option value=\"{value}\"{selected_attribute}>{label}</option>")
+    })
+    .collect::<Vec<_>>()
+    .join("")
 }
 
 fn version_badge(schema_version: Option<u32>) -> (&'static str, String) {
     match schema_version {
         Some(2) => ("version-v2", "v2".to_owned()),
         Some(3) => ("version-v3", "v3".to_owned()),
+        Some(4) => ("version-v4", "v4".to_owned()),
         Some(version) => ("version-other", format!("v{version}")),
         None => ("version-unknown", "未知".to_owned()),
     }
@@ -718,12 +732,18 @@ mod tests {
     }
 
     #[test]
-    fn version_filter_and_badges_distinguish_v2_and_v3() {
-        let options = version_options(Some(3));
+    fn version_filter_and_badges_distinguish_v2_v3_and_v4() {
+        assert_eq!(parse_schema_version_filter("2"), Some(2));
+        assert_eq!(parse_schema_version_filter("3"), Some(3));
+        assert_eq!(parse_schema_version_filter("4"), Some(4));
+        assert_eq!(parse_schema_version_filter("5"), None);
+        let options = version_options(Some(4));
         assert!(options.contains("value=\"2\">v2"));
-        assert!(options.contains("value=\"3\" selected>v3"));
+        assert!(options.contains("value=\"3\">v3"));
+        assert!(options.contains("value=\"4\" selected>v4"));
         assert_eq!(version_badge(Some(2)).1, "v2");
         assert_eq!(version_badge(Some(3)).1, "v3");
+        assert_eq!(version_badge(Some(4)).1, "v4");
         assert_eq!(version_badge(None).1, "未知");
     }
 

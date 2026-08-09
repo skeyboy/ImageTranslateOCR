@@ -55,7 +55,8 @@ internal data class SemanticTranslationTrace(
     val requestId: String,
     val sessionId: String,
     val generation: Long,
-    val translationRevision: Long
+    val translationRevision: Long,
+    val schemaVersion: Int = 3
 )
 
 internal data class SemanticTranslationRequest(

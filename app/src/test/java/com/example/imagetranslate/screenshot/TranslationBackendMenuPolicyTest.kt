@@ -18,7 +18,8 @@ class TranslationBackendMenuPolicyTest {
             listOf(
                 TranslationBackend.LOCAL,
                 TranslationBackend.NETWORK,
-                TranslationBackend.SELF_HOSTED
+                TranslationBackend.SELF_HOSTED,
+                TranslationBackend.SELF_HOSTED_V4
             ),
             options.map { it.backend }
         )
@@ -27,6 +28,7 @@ class TranslationBackendMenuPolicyTest {
         assertFalse(options.single { it.backend == TranslationBackend.NETWORK }.selected)
         assertFalse(options.single { it.backend == TranslationBackend.NETWORK }.enabled)
         assertFalse(options.single { it.backend == TranslationBackend.SELF_HOSTED }.enabled)
+        assertFalse(options.single { it.backend == TranslationBackend.SELF_HOSTED_V4 }.enabled)
     }
 
     @Test
@@ -51,6 +53,7 @@ class TranslationBackendMenuPolicyTest {
 
         assertTrue(options.single { it.backend == TranslationBackend.SELF_HOSTED }.selected)
         assertTrue(options.single { it.backend == TranslationBackend.SELF_HOSTED }.enabled)
+        assertTrue(options.single { it.backend == TranslationBackend.SELF_HOSTED_V4 }.enabled)
         assertFalse(options.single { it.backend == TranslationBackend.NETWORK }.enabled)
     }
 

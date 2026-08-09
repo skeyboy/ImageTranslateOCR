@@ -18,7 +18,8 @@ internal class SelfHostedRenderedCaptureUploader(
     ) {
         val requestId = URLEncoder.encode(trace.requestId, Charsets.UTF_8.name())
         val endpoint = URL(
-            "$normalizedBaseUrl/api/v3/translate/requests/$requestId/rendered-capture"
+            "$normalizedBaseUrl/api/v${trace.schemaVersion}/translate/requests/" +
+                "$requestId/rendered-capture"
         )
         val body = JSONObject()
             .put("sessionId", trace.sessionId)
@@ -110,7 +111,7 @@ internal object SemanticRenderedCaptureUploadPolicy {
         failedCount: Int,
         traceCount: Int
     ): Boolean = isDebugBuild &&
-        backend == TranslationBackend.SELF_HOSTED &&
+        backend.isSelfHosted &&
         uploadEnabled &&
         (patchCount > 0 || failedCount > 0) &&
         traceCount > 0

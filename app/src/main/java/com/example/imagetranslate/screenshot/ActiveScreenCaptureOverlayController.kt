@@ -49,6 +49,7 @@ internal fun translationBackendMenuOptions(
             TranslationBackend.LOCAL -> true
             TranslationBackend.NETWORK -> networkConfigured
             TranslationBackend.SELF_HOSTED -> selfHostedConfigured
+            TranslationBackend.SELF_HOSTED_V4 -> selfHostedConfigured
         }
     )
 }
@@ -804,8 +805,13 @@ internal class ActiveScreenCaptureOverlayController(
                         backend == TranslationBackend.SELF_HOSTED &&
                             !selfHostedTranslationConfigured ->
                             R.string.active_screenshot_translation_provider_self_hosted_unavailable
+                        backend == TranslationBackend.SELF_HOSTED_V4 &&
+                            !selfHostedTranslationConfigured ->
+                            R.string.active_screenshot_translation_provider_self_hosted_v4_unavailable
                         backend == TranslationBackend.SELF_HOSTED ->
                             R.string.active_screenshot_translation_provider_self_hosted
+                        backend == TranslationBackend.SELF_HOSTED_V4 ->
+                            R.string.active_screenshot_translation_provider_self_hosted_v4
                         else -> R.string.active_screenshot_translation_provider_local
                     }
                 ).isEnabled = option.enabled
@@ -1214,6 +1220,8 @@ internal class ActiveScreenCaptureOverlayController(
                     R.string.active_screenshot_translation_provider_network_short
                 TranslationBackend.SELF_HOSTED ->
                     R.string.active_screenshot_translation_provider_self_hosted_short
+                TranslationBackend.SELF_HOSTED_V4 ->
+                    R.string.active_screenshot_translation_provider_self_hosted_v4_short
             }
         )
 

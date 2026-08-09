@@ -16,10 +16,20 @@ import kotlin.coroutines.resumeWithException
 
 internal class SelfHostedSemanticTranslationProvider(
     baseUrl: String,
-    private val bearerToken: String?
+    private val bearerToken: String?,
+    private val schemaVersion: Int = SELF_HOSTED_V3_SCHEMA_VERSION
 ) : SemanticTranslationProvider {
     private val normalizedBaseUrl = baseUrl.trimEnd('/')
-    private val endpoint = URL(normalizedBaseUrl + SELF_HOSTED_LAYOUT_PLAN_PATH).also {
+    private val endpoint = URL(
+        normalizedBaseUrl + if (schemaVersion == SELF_HOSTED_V4_SCHEMA_VERSION) {
+            SELF_HOSTED_REGIONS_FIRST_PATH
+        } else {
+            SELF_HOSTED_LAYOUT_PLAN_PATH
+        }
+    ).also {
+        require(schemaVersion in setOf(SELF_HOSTED_V3_SCHEMA_VERSION, SELF_HOSTED_V4_SCHEMA_VERSION)) {
+            "Unsupported self-hosted semantic schema version"
+        }
         require(it.protocol == "https" || BuildConfig.DEBUG && isDebugHttpHost(it.host)) {
             "Self-hosted translation requires HTTPS outside local development"
         }
@@ -46,7 +56,7 @@ internal class SelfHostedSemanticTranslationProvider(
     ): SemanticTranslationBatchResult = parseResponse(JSONObject(response), request)
 
     private fun buildRequestBody(request: SemanticTranslationRequest): String = JSONObject()
-        .put("schemaVersion", 3)
+        .put("schemaVersion", schemaVersion)
         .put("requestId", request.requestId)
         .put("sessionId", request.sessionId)
         .put("generation", request.generation)
@@ -203,7 +213,7 @@ internal class SelfHostedSemanticTranslationProvider(
         response: JSONObject,
         request: SemanticTranslationRequest
     ): SemanticTranslationBatchResult {
-        require(response.optInt("schemaVersion") == 3) {
+        require(response.optInt("schemaVersion") == schemaVersion) {
             "Self-hosted response schemaVersion does not match"
         }
         require(response.optString("requestId") == request.requestId) {
@@ -218,6 +228,17 @@ internal class SelfHostedSemanticTranslationProvider(
         require(
             response.optLong("translationRevision", -1) == request.translationRevision
         ) { "Self-hosted response translationRevision does not match" }
+        if (schemaVersion == SELF_HOSTED_V4_SCHEMA_VERSION) {
+            val documentPlan = response.optJSONObject("documentPlan")
+                ?: error("Self-hosted V4 response has no documentPlan")
+            require(documentPlan.optString("mode") == "AUTHORITATIVE") {
+                "Self-hosted V4 documentPlan must be authoritative"
+            }
+            require(documentPlan.optString("planVersion") == "server-regions-first-plan-v4") {
+                "Self-hosted V4 documentPlan version does not match"
+            }
+            return parseRegionsFirstResponse(response, request)
+        }
         val provider = response.optString("provider", "self-hosted-qwen-layout-plan-v3")
         val expected = request.sources.associateBy(SemanticTranslationSource::groupId)
         val results = response.optJSONArray("results")
@@ -314,6 +335,146 @@ internal class SelfHostedSemanticTranslationProvider(
             )
         }
         return SemanticTranslationBatchResult(parsed, failures)
+    }
+
+    private fun parseRegionsFirstResponse(
+        response: JSONObject,
+        request: SemanticTranslationRequest
+    ): SemanticTranslationBatchResult {
+        val provider = response.optString("provider", "self-hosted-qwen-regions-first-v4")
+        val sourceById = request.sources.associateBy(SemanticTranslationSource::groupId)
+        val regionById = request.sources
+            .flatMap(SemanticTranslationSource::regions)
+            .associateBy(SemanticTranslationRegion::regionId)
+        val results = response.optJSONArray("results")
+            ?: error("Self-hosted response has no results")
+        val parsed = mutableListOf<SemanticGroupTranslationResult>()
+        val failures = mutableListOf<SemanticGroupTranslationFailure>()
+        val seenGroups = mutableSetOf<String>()
+        val coveredRegions = mutableSetOf<String>()
+        for (index in 0 until results.length()) {
+            val item = results.getJSONObject(index)
+            val groupId = item.getString("groupId")
+            require(seenGroups.add(groupId)) {
+                "Self-hosted response returned a duplicate groupId"
+            }
+            val memberRegionIds = item.getJSONArray("memberRegionIds").toStringList()
+            require(memberRegionIds.isNotEmpty() && memberRegionIds.distinct().size == memberRegionIds.size) {
+                "Self-hosted V4 memberRegionIds are invalid"
+            }
+            require(memberRegionIds.all(coveredRegions::add)) {
+                "Self-hosted V4 response assigned an OCR region more than once"
+            }
+            val memberRegions = memberRegionIds.map { regionId ->
+                regionById[regionId]
+                    ?: error("Self-hosted V4 response returned an unknown memberRegionId")
+            }.sortedBy(SemanticTranslationRegion::readingOrder)
+            val expectedSourceGroupIds = memberRegions.map(SemanticTranslationRegion::groupId)
+                .filter(String::isNotBlank)
+                .distinct()
+            val sourceGroupIds = item.getJSONArray("sourceGroupIds").toStringList()
+            require(sourceGroupIds == expectedSourceGroupIds) {
+                "Self-hosted V4 sourceGroupIds do not match OCR region lineage"
+            }
+            require(sourceGroupIds.all(sourceById::containsKey)) {
+                "Self-hosted V4 response returned an unknown sourceGroupId"
+            }
+            val source = regionsFirstSource(
+                groupId = groupId,
+                role = item.optString("role", "BODY"),
+                regions = memberRegions,
+                sources = sourceById
+            )
+            validateBinding(item, source)
+            val confidence = item.optDouble("groupingConfidence", 0.0).toFloat()
+            if (memberRegions.size > 1) {
+                require(confidence >= AUTHORITATIVE_GROUPING_CONFIDENCE) {
+                    "Self-hosted V4 merged group confidence is below the authority threshold"
+                }
+            }
+            when (val status = item.optString("status")) {
+                "TRANSLATED" -> {
+                    val translated = item.optString("translatedText").trim()
+                    if (translated.isEmpty()) {
+                        failures += invalidFailure(groupId, "Self-hosted translation was empty")
+                    } else {
+                        parsed += SemanticGroupTranslationResult(
+                            groupId = groupId,
+                            sourceGroupIds = sourceGroupIds,
+                            memberRegionIds = memberRegionIds,
+                            anchorBounds = source.bounds,
+                            role = source.role,
+                            groupingConfidence = confidence,
+                            translatedText = translated,
+                            provider = provider,
+                            status = TranslationResultStatus.TRANSLATED,
+                            detectedSourceLanguage = item.optString("detectedSourceLanguage")
+                                .takeIf(String::isNotBlank),
+                            targetLanguage = item.optString("targetLanguage")
+                                .takeIf(String::isNotBlank),
+                            layoutHint = item.optJSONObject("layoutHint")?.toLayoutHint(source)
+                        )
+                    }
+                }
+                "PRESERVED" -> parsed += SemanticGroupTranslationResult(
+                    groupId = groupId,
+                    sourceGroupIds = sourceGroupIds,
+                    memberRegionIds = memberRegionIds,
+                    anchorBounds = source.bounds,
+                    role = source.role,
+                    groupingConfidence = confidence,
+                    translatedText = source.sourceText,
+                    provider = provider,
+                    status = TranslationResultStatus.PRESERVED,
+                    detectedSourceLanguage = item.optString("detectedSourceLanguage")
+                        .takeIf(String::isNotBlank),
+                    targetLanguage = item.optString("targetLanguage").takeIf(String::isNotBlank),
+                    layoutHint = item.optJSONObject("layoutHint")?.toLayoutHint(source)
+                )
+                "FAILED" -> failures += item.toFailure(groupId)
+                else -> failures += invalidFailure(
+                    groupId,
+                    "Unsupported self-hosted V4 result status: $status"
+                )
+            }
+        }
+        require(coveredRegions == regionById.keys) {
+            "Self-hosted V4 response did not account for every OCR region"
+        }
+        return SemanticTranslationBatchResult(parsed, failures)
+    }
+
+    private fun regionsFirstSource(
+        groupId: String,
+        role: String,
+        regions: List<SemanticTranslationRegion>,
+        sources: Map<String, SemanticTranslationSource>
+    ): SemanticTranslationSource {
+        val ordered = regions.sortedBy(SemanticTranslationRegion::readingOrder)
+        val bounds = ordered.map(SemanticTranslationRegion::bounds).reduce(::unionBounds)
+        val sourceGroups = ordered.map(SemanticTranslationRegion::groupId).distinct()
+            .mapNotNull(sources::get)
+        return SemanticTranslationSource(
+            groupId = groupId,
+            role = role,
+            translationUnit = if (sourceGroups.isNotEmpty() &&
+                sourceGroups.all { it.translationUnit == "PRESERVED" }
+            ) {
+                "PRESERVED"
+            } else {
+                "GROUP"
+            },
+            sourceText = ordered.joinToString("\n") { it.text },
+            memberRegionIds = ordered.map(SemanticTranslationRegion::regionId),
+            readingOrder = ordered.minOf(SemanticTranslationRegion::readingOrder),
+            groupingConfidence = ordered.minOf(SemanticTranslationRegion::confidence),
+            groupingEvidence = listOf("SERVER_REGIONS_FIRST"),
+            bounds = bounds,
+            regions = ordered,
+            sourceLineCount = ordered.sumOf { maxOf(1, it.componentBounds.size) },
+            renderSlots = ordered.map(SemanticTranslationRegion::bounds),
+            layoutShape = if (ordered.size > 1) "FLOW_SLOTS" else "RECT"
+        )
     }
 
     private fun validateBinding(item: JSONObject, source: SemanticTranslationSource) {
@@ -489,6 +650,8 @@ internal class SelfHostedSemanticTranslationProvider(
         )
 
     private companion object {
+        const val SELF_HOSTED_V3_SCHEMA_VERSION = 3
+        const val SELF_HOSTED_V4_SCHEMA_VERSION = 4
         const val CANCEL_REQUEST_PREFIX = "/api/v2/translate/requests/"
         const val CONNECT_TIMEOUT_MS = 10_000
         const val READ_TIMEOUT_MS = 100_000

@@ -15,15 +15,17 @@ use uuid::Uuid;
 use crate::{
     config::Config,
     contract::{
-        DebugCapture, GroupTranslationResult, LAYOUT_PLAN_SCHEMA_VERSION, ResponseMetrics,
-        SCHEMA_VERSION, SemanticTranslationRequest, SemanticTranslationResponse, TranslationGroup,
-        layout_hint, resolved_render_slots, source_cover_slots,
+        DebugCapture, GroupTranslationResult, LAYOUT_PLAN_SCHEMA_VERSION,
+        REGIONS_FIRST_SCHEMA_VERSION, ResponseMetrics, SCHEMA_VERSION, SemanticTranslationRequest,
+        SemanticTranslationResponse, TranslationGroup, layout_hint, resolved_render_slots,
+        source_cover_slots,
     },
     database::{
         Database, NewRenderedRequestImage, NewRequestAudit, NewRequestImage, NewRequestPayload,
     },
     error::{AppError, RequestError},
     planning::DocumentPlan,
+    planning_v4::build_regions_first_plan,
     qwen::{ModelTranslation, PROMPT_VERSION, TranslationModel},
 };
 
@@ -156,7 +158,7 @@ pub async fn health(State(state): State<AppState>) -> Json<HealthResponse> {
     let model_health = state.model.health().await;
     Json(HealthResponse {
         status: "ok",
-        schema_version: LAYOUT_PLAN_SCHEMA_VERSION,
+        schema_version: REGIONS_FIRST_SCHEMA_VERSION,
         model: state.config.qwen_model.clone(),
         model_configured: model_health.configured,
         model_reachable: model_health.reachable,
@@ -293,7 +295,7 @@ pub async fn translate_groups(
     headers: HeaderMap,
     Json(request): Json<SemanticTranslationRequest>,
 ) -> Result<Json<SemanticTranslationResponse>, RequestError> {
-    translate_request(state, headers, request, false).await
+    translate_request(state, headers, request, TranslationApiVersion::V2).await
 }
 
 pub async fn translate_layout_plan(
@@ -301,29 +303,50 @@ pub async fn translate_layout_plan(
     headers: HeaderMap,
     Json(request): Json<SemanticTranslationRequest>,
 ) -> Result<Json<SemanticTranslationResponse>, RequestError> {
-    translate_request(state, headers, request, true).await
+    translate_request(state, headers, request, TranslationApiVersion::V3).await
+}
+
+pub async fn translate_regions_first_layout_plan(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(request): Json<SemanticTranslationRequest>,
+) -> Result<Json<SemanticTranslationResponse>, RequestError> {
+    translate_request(state, headers, request, TranslationApiVersion::V4).await
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum TranslationApiVersion {
+    V2,
+    V3,
+    V4,
 }
 
 async fn translate_request(
     state: AppState,
     headers: HeaderMap,
     request: SemanticTranslationRequest,
-    authoritative: bool,
+    api_version: TranslationApiVersion,
 ) -> Result<Json<SemanticTranslationResponse>, RequestError> {
     let request_id = request.request_id.clone();
     authorize(&headers, state.config.bearer_token.as_deref())
         .map_err(|error| error.with_request_id(&request_id))?;
-    let expected_schema = if authoritative {
-        LAYOUT_PLAN_SCHEMA_VERSION
-    } else {
-        SCHEMA_VERSION
+    let expected_schema = match api_version {
+        TranslationApiVersion::V2 => SCHEMA_VERSION,
+        TranslationApiVersion::V3 => LAYOUT_PLAN_SCHEMA_VERSION,
+        TranslationApiVersion::V4 => REGIONS_FIRST_SCHEMA_VERSION,
     };
     request
         .validate_schema(expected_schema)
         .map_err(|error| error.with_request_id(&request_id))?;
     let normalized_request = normalized_request_for_translation(&request);
-    let document_plan = DocumentPlan::build(&normalized_request, authoritative);
-    let execution_groups = if authoritative {
+    let document_plan = match api_version {
+        TranslationApiVersion::V4 => build_regions_first_plan(&normalized_request),
+        TranslationApiVersion::V2 | TranslationApiVersion::V3 => DocumentPlan::build(
+            &normalized_request,
+            api_version == TranslationApiVersion::V3,
+        ),
+    };
+    let execution_groups = if api_version != TranslationApiVersion::V2 {
         document_plan.translation_groups()
     } else {
         request.groups.clone()
@@ -467,10 +490,10 @@ async fn translate_request(
         session_id: request.session_id.clone(),
         generation: request.generation,
         translation_revision: request.translation_revision,
-        provider: if authoritative {
-            "self-hosted-qwen-layout-plan-v3"
-        } else {
-            "self-hosted-qwen-v2"
+        provider: match api_version {
+            TranslationApiVersion::V2 => "self-hosted-qwen-v2",
+            TranslationApiVersion::V3 => "self-hosted-qwen-layout-plan-v3",
+            TranslationApiVersion::V4 => "self-hosted-qwen-regions-first-v4",
         }
         .to_owned(),
         model_version: state.config.qwen_model.clone(),

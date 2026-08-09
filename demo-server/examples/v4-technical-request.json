@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 4,
+  "requestId": "v4-technical-flow",
+  "sessionId": "manual-v4-validation",
+  "generation": 3,
+  "translationRevision": 0,
+  "scene": "LIVE_SCREEN",
+  "viewport": { "width": 1080, "height": 2400, "rotationDegrees": 0 },
+  "translation": { "mode": "ENGLISH_TO_CHINESE", "sourceLanguage": "auto", "targetLanguage": "zh", "preserveIdentifiers": true, "useDocumentContext": true },
+  "documentContext": {
+    "text": "API REFERENCE. The request body contains an ordered list of OCR regions. POST /api/v4/translate/layout-plan",
+    "sourceLanguage": "en",
+    "readingOrderRegionIds": ["tech-heading", "tech-body-1", "tech-body-2", "tech-code"]
+  },
+  "groups": [],
+  "regions": [
+    {
+      "regionId": "tech-heading", "groupId": "", "sourceRevision": 1, "text": "API REFERENCE", "rawText": "API REFERENCE",
+      "sourceLanguage": "en", "targetLanguage": "zh", "readingOrder": 0, "blockId": "technical", "lineIndex": 0, "confidence": 0.98,
+      "bounds": { "left": 40, "top": 400, "right": 430, "bottom": 480 }, "componentBounds": []
+    },
+    {
+      "regionId": "tech-body-1", "groupId": "", "sourceRevision": 1, "text": "The request body contains an ordered list", "rawText": "The request body contains an ordered list",
+      "sourceLanguage": "en", "targetLanguage": "zh", "readingOrder": 1, "blockId": "technical", "lineIndex": 1, "confidence": 0.96,
+      "bounds": { "left": 40, "top": 500, "right": 940, "bottom": 570 }, "componentBounds": []
+    },
+    {
+      "regionId": "tech-body-2", "groupId": "", "sourceRevision": 1, "text": "of OCR regions and preserves their geometry.", "rawText": "of OCR regions and preserves their geometry.",
+      "sourceLanguage": "en", "targetLanguage": "zh", "readingOrder": 2, "blockId": "technical", "lineIndex": 2, "confidence": 0.96,
+      "bounds": { "left": 40, "top": 580, "right": 960, "bottom": 650 }, "componentBounds": []
+    },
+    {
+      "regionId": "tech-code", "groupId": "", "sourceRevision": 1, "text": "POST /api/v4/translate/layout-plan", "rawText": "POST /api/v4/translate/layout-plan",
+      "sourceLanguage": "en", "targetLanguage": "zh", "readingOrder": 3, "blockId": "code", "lineIndex": 0, "confidence": 0.99,
+      "bounds": { "left": 40, "top": 720, "right": 900, "bottom": 800 }, "componentBounds": []
+    }
+  ]
+}

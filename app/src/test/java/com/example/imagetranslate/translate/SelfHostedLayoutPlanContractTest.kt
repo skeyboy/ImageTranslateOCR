@@ -8,6 +8,87 @@ import org.junit.Test
 
 class SelfHostedLayoutPlanContractTest {
     @Test
+    fun v4AcceptsRegionFirstAuthoritativeGroupAndUsesSchemaFour() {
+        val request = request()
+        val response = JSONObject(response(0.94f))
+            .put("schemaVersion", 4)
+            .put("provider", "self-hosted-qwen-regions-first-v4")
+            .put(
+                "documentPlan",
+                JSONObject()
+                    .put("mode", "AUTHORITATIVE")
+                    .put("planVersion", "server-regions-first-plan-v4")
+            )
+            .toString()
+        val provider = SelfHostedSemanticTranslationProvider("http://127.0.0.1:8090", null, 4)
+
+        val result = provider.parseResponseForTest(response, request).results.single()
+
+        assertEquals(4, JSONObject(provider.requestBodyForTest(request)).getInt("schemaVersion"))
+        assertEquals(listOf("a-line", "b-line"), result.memberRegionIds)
+        assertEquals("self-hosted-qwen-regions-first-v4", result.provider)
+    }
+
+    @Test
+    fun v4AcceptsServerSplitOfOneAdvisoryClientGroup() {
+        val first = source(
+            "a", "First paragraph ends here.", TranslationBounds(10, 20, 210, 50), 0,
+            "BODY", "block-a", 0
+        ).regions.single()
+        val second = source(
+            "b", "Second card starts here.", TranslationBounds(10, 100, 210, 130), 1,
+            "BODY", "block-b", 0
+        ).regions.single().copy(groupId = "a")
+        val combined = SemanticTranslationSource(
+            groupId = "a",
+            role = "BODY",
+            translationUnit = "GROUP",
+            sourceText = "${first.text}\n${second.text}",
+            memberRegionIds = listOf(first.regionId, second.regionId),
+            readingOrder = 0,
+            groupingConfidence = 0.96f,
+            groupingEvidence = listOf("CLIENT_ADVISORY"),
+            bounds = TranslationBounds(10, 20, 210, 130),
+            regions = listOf(first, second),
+            sourceLineCount = 2,
+            renderSlots = listOf(first.bounds, second.bounds),
+            layoutShape = "FLOW_SLOTS"
+        )
+        val request = request().copy(
+            documentText = combined.sourceText,
+            sources = listOf(combined)
+        )
+        val response = JSONObject()
+            .put("schemaVersion", 4)
+            .put("requestId", "request")
+            .put("sessionId", "session")
+            .put("generation", 1)
+            .put("translationRevision", 0)
+            .put("provider", "self-hosted-qwen-regions-first-v4")
+            .put(
+                "documentPlan",
+                JSONObject()
+                    .put("mode", "AUTHORITATIVE")
+                    .put("planVersion", "server-regions-first-plan-v4")
+            )
+            .put(
+                "results",
+                JSONArray().put(
+                    v4Result("server-v4-0", "a-line", first.bounds, "第一段到此结束。")
+                ).put(
+                    v4Result("server-v4-1", "b-line", second.bounds, "第二张卡片从这里开始。")
+                )
+            )
+        val provider = SelfHostedSemanticTranslationProvider("http://127.0.0.1:8090", null, 4)
+
+        val results = provider.parseResponseForTest(response.toString(), request).results
+
+        assertEquals(2, results.size)
+        assertEquals(listOf(listOf("a"), listOf("a")), results.map { it.sourceGroupIds })
+        assertEquals(listOf("a-line", "b-line"), results.flatMap { it.memberRegionIds })
+    }
+
+    @Test
     fun acceptsHighConfidenceAuthoritativeGroupWithExactLineageAndGeometry() {
         val request = request()
         val result = provider().parseResponseForTest(response(0.94f), request).results.single()
@@ -171,6 +252,48 @@ class SelfHostedLayoutPlanContractTest {
         .put("top", top)
         .put("right", right)
         .put("bottom", bottom)
+
+    private fun v4Result(
+        groupId: String,
+        memberRegionId: String,
+        bounds: TranslationBounds,
+        translation: String
+    ) = JSONObject()
+        .put("groupId", groupId)
+        .put("sourceGroupIds", JSONArray(listOf("a")))
+        .put("role", "BODY")
+        .put("groupingConfidence", 0.96)
+        .put("status", "TRANSLATED")
+        .put("translatedText", translation)
+        .put("memberRegionIds", JSONArray(listOf(memberRegionId)))
+        .put("detectedSourceLanguage", "en")
+        .put("targetLanguage", "zh")
+        .put("anchorBounds", boundsJson(bounds.left, bounds.top, bounds.right, bounds.bottom))
+        .put(
+            "layoutHint",
+            JSONObject()
+                .put("preferredMaxLines", 1)
+                .put("minimumTextScale", 0.72)
+                .put("maximumTextScale", 1.0)
+                .put("lineSpacingMultiplier", 1.0)
+                .put("alignment", "START")
+                .put("overflowStrategy", "REFLOW_THEN_SCALE")
+                .put("allowMore", false)
+                .put("sourceLineCount", 1)
+                .put("layoutShape", "RECT")
+                .put(
+                    "renderSlots",
+                    JSONArray().put(
+                        boundsJson(bounds.left, bounds.top, bounds.right, bounds.bottom)
+                    )
+                )
+                .put(
+                    "sourceCoverSlots",
+                    JSONArray().put(
+                        boundsJson(bounds.left, bounds.top, bounds.right, bounds.bottom)
+                    )
+                )
+        )
 
     private fun request(
         firstRole: String = "BODY",

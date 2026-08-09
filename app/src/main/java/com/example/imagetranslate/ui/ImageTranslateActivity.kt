@@ -385,6 +385,7 @@ class ImageTranslateActivity : AppCompatActivity() {
             val backend = when (checkedId) {
                 binding.btnBackendPnuts.id -> TranslationBackend.NETWORK
                 binding.btnBackendSelfHosted.id -> TranslationBackend.SELF_HOSTED
+                binding.btnBackendSelfHostedV4.id -> TranslationBackend.SELF_HOSTED_V4
                 else -> TranslationBackend.LOCAL
             }
             if (!TranslationBackendSettings.isConfigured(this, backend)) {
@@ -498,12 +499,14 @@ class ImageTranslateActivity : AppCompatActivity() {
         val selfHostedConfigured = TranslationBackendSettings.isSelfHostedConfigured(this)
         binding.btnBackendPnuts.isEnabled = networkConfigured
         binding.btnBackendSelfHosted.isEnabled = selfHostedConfigured
+        binding.btnBackendSelfHostedV4.isEnabled = selfHostedConfigured
         updatingTranslationBackendControl = true
         binding.translationBackendGroup.check(
             when (TranslationBackendSettings.get(this)) {
                 TranslationBackend.LOCAL -> binding.btnBackendLocal.id
                 TranslationBackend.NETWORK -> binding.btnBackendPnuts.id
                 TranslationBackend.SELF_HOSTED -> binding.btnBackendSelfHosted.id
+                TranslationBackend.SELF_HOSTED_V4 -> binding.btnBackendSelfHostedV4.id
             }
         )
         updatingTranslationBackendControl = false
@@ -533,7 +536,11 @@ class ImageTranslateActivity : AppCompatActivity() {
         binding.inputSelfHostedTranslationBaseUrl.helperText = if (selfHostedConfigured) {
             getString(
                 R.string.network_translation_endpoint_format,
-                TranslationBackendSettings.selfHostedTranslationEndpoint(this)
+                TranslationBackendSettings.selfHostedTranslationEndpoint(
+                    this,
+                    TranslationBackendSettings.get(this).takeIf(TranslationBackend::isSelfHosted)
+                        ?: TranslationBackend.SELF_HOSTED_V4
+                )
             )
         } else {
             getString(R.string.network_translation_not_configured)
@@ -1143,15 +1150,46 @@ class ImageTranslateActivity : AppCompatActivity() {
 
                 binding.tvStatus.text = "翻译 ${texts.size} 段文字..."
                 val regions = withTimeout(TRANSLATION_WORKFLOW_TIMEOUT_MS) {
+                    val semanticSources = groups.map { it.toSemanticTranslationSource() }
                     val translations = translateManager.translateSemanticGroups(
-                        sources = groups.map { it.toSemanticTranslationSource() },
+                        sources = semanticSources,
                         viewportWidth = bitmap.width,
                         viewportHeight = bitmap.height,
                         mode = activeMode,
                         scene = "STATIC_IMAGE"
                     )
-                    groups.zip(translations).map { (group, translation) ->
-                        val item = group.toRecognizedText()
+                    val groupsById = groups.associateBy { it.groupId }
+                    val regionsById = semanticSources.flatMap { it.regions }
+                        .associateBy { it.regionId }
+                    translations.mapNotNull { translation ->
+                        val group = translation.sourceGroupIds.firstNotNullOfOrNull(groupsById::get)
+                            ?: return@mapNotNull null
+                        val atomicRegions = translation.memberRegionIds.mapNotNull(regionsById::get)
+                            .sortedBy { it.readingOrder }
+                        val base = group.toRecognizedText()
+                        val sourceBounds = translation.anchorBounds?.let { bounds ->
+                            Rect(bounds.left, bounds.top, bounds.right, bounds.bottom)
+                        } ?: base.bounds
+                        val sourceText = if (atomicRegions.isNotEmpty()) {
+                            atomicRegions.joinToString("\n") { it.text }
+                        } else {
+                            base.text
+                        }
+                        val eraseBounds = translation.layoutHint?.sourceCoverSlots.orEmpty()
+                            .map { bounds ->
+                                Rect(bounds.left, bounds.top, bounds.right, bounds.bottom)
+                            }.ifEmpty {
+                                atomicRegions.flatMap { region ->
+                                    region.componentBounds.ifEmpty { listOf(region.bounds) }
+                                }.map { bounds ->
+                                    Rect(bounds.left, bounds.top, bounds.right, bounds.bottom)
+                                }
+                            }
+                        val item = base.copy(
+                            text = sourceText,
+                            bounds = sourceBounds,
+                            componentBounds = eraseBounds
+                        )
                         val changed = translation.succeeded &&
                             translation.translatedText.trim() != item.text.trim()
                         TranslatedRegion(

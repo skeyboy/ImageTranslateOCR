@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 4,
+  "requestId": "v4-chat-flow",
+  "sessionId": "manual-v4-validation",
+  "generation": 1,
+  "translationRevision": 0,
+  "scene": "LIVE_SCREEN",
+  "viewport": { "width": 1080, "height": 2400, "rotationDegrees": 0 },
+  "translation": {
+    "mode": "ENGLISH_TO_CHINESE",
+    "sourceLanguage": "auto",
+    "targetLanguage": "zh",
+    "preserveIdentifiers": true,
+    "useDocumentContext": true
+  },
+  "documentContext": {
+    "text": "The Web3 industry tried and we did quite well. Until the country decided to invest in something that did not fit into the community. They will come back for sure. 22:43",
+    "sourceLanguage": "en",
+    "readingOrderRegionIds": ["chat-1", "chat-2", "chat-3", "chat-time"]
+  },
+  "groups": [{
+    "groupId": "client-chat-overmerged",
+    "role": "BODY",
+    "translationUnit": "GROUP",
+    "sourceText": "The Web3 industry tried and we did quite well.\nUntil the country decided to invest in something\nThey will come back for sure.\n22:43",
+    "memberRegionIds": ["chat-1", "chat-2", "chat-3", "chat-time"],
+    "readingOrder": 0,
+    "groupingConfidence": 0.91,
+    "groupingEvidence": ["CLIENT_GEOMETRY"],
+    "bounds": { "left": 150, "top": 700, "right": 960, "bottom": 1200 },
+    "renderSlots": [],
+    "layoutShape": "FLOW_SLOTS"
+  }],
+  "regions": [
+    {
+      "regionId": "chat-1", "groupId": "client-chat-overmerged", "sourceRevision": 1,
+      "text": "The Web3 industry tried and we did quite well.", "rawText": "The Web3 industry tried and we did quite well.",
+      "sourceLanguage": "en", "targetLanguage": "zh", "readingOrder": 0,
+      "blockId": "chat-bubble", "lineIndex": 0, "confidence": 0.97,
+      "bounds": { "left": 170, "top": 720, "right": 930, "bottom": 800 }, "componentBounds": []
+    },
+    {
+      "regionId": "chat-2", "groupId": "client-chat-overmerged", "sourceRevision": 1,
+      "text": "Until the country decided to invest in something", "rawText": "Until the country decided to invest in something",
+      "sourceLanguage": "en", "targetLanguage": "zh", "readingOrder": 1,
+      "blockId": "chat-bubble", "lineIndex": 1, "confidence": 0.97,
+      "bounds": { "left": 170, "top": 810, "right": 940, "bottom": 890 }, "componentBounds": []
+    },
+    {
+      "regionId": "chat-3", "groupId": "client-chat-overmerged", "sourceRevision": 1,
+      "text": "They will come back for sure.", "rawText": "They will come back for sure.",
+      "sourceLanguage": "en", "targetLanguage": "zh", "readingOrder": 2,
+      "blockId": "chat-bubble", "lineIndex": 2, "confidence": 0.97,
+      "bounds": { "left": 170, "top": 900, "right": 760, "bottom": 980 }, "componentBounds": []
+    },
+    {
+      "regionId": "chat-time", "groupId": "client-chat-overmerged", "sourceRevision": 1,
+      "text": "22:43", "rawText": "22:43", "sourceLanguage": null, "targetLanguage": null,
+      "readingOrder": 3, "blockId": "chat-time", "lineIndex": 0, "confidence": 0.99,
+      "bounds": { "left": 810, "top": 1110, "right": 930, "bottom": 1170 }, "componentBounds": []
+    }
+  ]
+}

@@ -4,6 +4,7 @@ pub mod contract;
 pub mod database;
 pub mod error;
 pub mod planning;
+pub mod planning_v4;
 pub mod qwen;
 pub mod routes;
 
@@ -26,7 +27,7 @@ use crate::{
     qwen::TranslationModel,
     routes::{
         AppState, RequestCancellationRegistry, cancel_translation, health, translate_groups,
-        translate_layout_plan, upload_rendered_capture,
+        translate_layout_plan, translate_regions_first_layout_plan, upload_rendered_capture,
     },
 };
 
@@ -42,11 +43,19 @@ pub fn app(config: Config, database: Database, model: Arc<dyn TranslationModel>)
         .route("/api/v2/translate/groups", post(translate_groups))
         .route("/api/v3/translate/layout-plan", post(translate_layout_plan))
         .route(
+            "/api/v4/translate/layout-plan",
+            post(translate_regions_first_layout_plan),
+        )
+        .route(
             "/api/v2/translate/requests/{request_id}/cancel",
             post(cancel_translation),
         )
         .route(
             "/api/v3/translate/requests/{request_id}/rendered-capture",
+            post(upload_rendered_capture),
+        )
+        .route(
+            "/api/v4/translate/requests/{request_id}/rendered-capture",
             post(upload_rendered_capture),
         )
         .route("/admin", get(admin_root))

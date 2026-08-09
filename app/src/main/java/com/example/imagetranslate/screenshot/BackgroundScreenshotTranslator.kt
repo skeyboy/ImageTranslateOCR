@@ -111,14 +111,20 @@ internal class BackgroundScreenshotTranslator(context: Context) {
             val recognizedTexts = groups.map { group -> group.sourceText }
             BackgroundTextTranslationEngine.translateBatch(recognizedTexts) { sources ->
                 val requestedGroups = groups.filter { it.sourceText in sources }
-                translateManager.translateSemanticGroups(
+                val executions = translateManager.translateSemanticGroups(
                     sources = requestedGroups.map { it.toSemanticTranslationSource() },
                     viewportWidth = bitmap.width,
                     viewportHeight = bitmap.height,
                     mode = TranslationMode.AUTO_BIDIRECTIONAL,
                     scene = "SCREENSHOT_NOTIFICATION"
-                ).map { result ->
-                    result.translatedText.takeIf { result.succeeded }
+                )
+                requestedGroups.map { group ->
+                    val matching = executions.filter { result ->
+                        group.groupId in result.sourceGroupIds
+                    }
+                    matching.takeIf { results ->
+                        results.isNotEmpty() && results.all { it.succeeded }
+                    }?.joinToString("\n") { it.translatedText }
                 }
             }
         } finally {

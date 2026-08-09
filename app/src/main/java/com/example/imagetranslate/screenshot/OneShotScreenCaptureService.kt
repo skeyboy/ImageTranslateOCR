@@ -1484,7 +1484,7 @@ class OneShotScreenCaptureService : Service() {
             {
                 if (generation != captureGeneration.get() ||
                     !continuousTranslationEnabled.get() ||
-                    translationBackend != TranslationBackend.SELF_HOSTED
+                    !translationBackend.isSelfHosted
                 ) {
                     return@postDelayed
                 }

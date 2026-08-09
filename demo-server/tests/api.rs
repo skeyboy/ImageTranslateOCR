@@ -407,6 +407,64 @@ async fn v3_returns_authoritative_layout_plan_and_declarative_rendering_fields()
     );
 }
 
+#[tokio::test]
+async fn v4_builds_an_authoritative_plan_from_regions_without_client_groups() {
+    let temporary = TempDir::new().unwrap();
+    let database_url = temporary
+        .path()
+        .join("regions-first.sqlite3")
+        .to_string_lossy()
+        .into_owned();
+    let database = Database::new(database_url.clone());
+    database.migrate().await.unwrap();
+    let router = app(Config::for_test(database_url), database, Arc::new(FakeQwen));
+    let mut request = valid_request();
+    request["schemaVersion"] = json!(4);
+    request["groups"] = json!([]);
+
+    let response = router
+        .oneshot(
+            Request::post("/api/v4/translate/layout-plan")
+                .header("content-type", "application/json")
+                .body(Body::from(request.to_string()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let body: Value =
+        serde_json::from_slice(&to_bytes(response.into_body(), 1024 * 1024).await.unwrap())
+            .unwrap();
+    assert_eq!(body["schemaVersion"], 4);
+    assert_eq!(body["provider"], "self-hosted-qwen-regions-first-v4");
+    assert_eq!(body["documentPlan"]["mode"], "AUTHORITATIVE");
+    assert_eq!(
+        body["documentPlan"]["planVersion"],
+        "server-regions-first-plan-v4"
+    );
+    assert!(
+        !body["documentPlan"]["groups"]
+            .as_array()
+            .unwrap()
+            .is_empty()
+    );
+    assert_eq!(
+        body["documentPlan"]["groups"][0]["memberRegionIds"]
+            .as_array()
+            .unwrap()
+            .len(),
+        2
+    );
+    assert!(body["results"].as_array().unwrap().iter().all(|result| {
+        !result["memberRegionIds"].as_array().unwrap().is_empty()
+            && !result["layoutHint"]["sourceCoverSlots"]
+                .as_array()
+                .unwrap()
+                .is_empty()
+    }));
+}
+
 struct SlowQwen {
     started: Arc<Notify>,
 }

@@ -6,7 +6,11 @@ import kotlinx.coroutines.CancellationException
 enum class TranslationBackend {
     LOCAL,
     NETWORK,
-    SELF_HOSTED
+    SELF_HOSTED,
+    SELF_HOSTED_V4;
+
+    val isSelfHosted: Boolean
+        get() = this == SELF_HOSTED || this == SELF_HOSTED_V4
 }
 
 enum class TranslationResultStatus {

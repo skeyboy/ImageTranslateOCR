@@ -17,6 +17,57 @@ import java.util.UUID
 @RunWith(AndroidJUnit4::class)
 class SelfHostedSemanticTranslationProviderInstrumentedTest {
     @Test
+    fun configuresInstalledAppForManualV4Validation() {
+        val baseUrl = InstrumentationRegistry.getArguments()
+            .getString("selfHostedBaseUrl")
+            ?.trim()
+            .orEmpty()
+        assumeTrue("selfHostedBaseUrl instrumentation argument is required", baseUrl.isNotEmpty())
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+
+        TranslationBackendSettings.setSelfHosted(context, baseUrl, "")
+        TranslationBackendSettings.set(context, TranslationBackend.SELF_HOSTED_V4)
+
+        assertEquals(TranslationBackend.SELF_HOSTED_V4, TranslationBackendSettings.get(context))
+        assertEquals(
+            baseUrl.trimEnd('/') + SELF_HOSTED_REGIONS_FIRST_PATH,
+            TranslationBackendSettings.selfHostedTranslationEndpoint(
+                context,
+                TranslationBackend.SELF_HOSTED_V4
+            )
+        )
+    }
+
+    @Test
+    fun configuredV4ServiceTranslatesAtomicRegionsOverRealNetwork() = runBlocking {
+        val baseUrl = InstrumentationRegistry.getArguments()
+            .getString("selfHostedBaseUrl")
+            ?.trim()
+            .orEmpty()
+        assumeTrue("selfHostedBaseUrl instrumentation argument is required", baseUrl.isNotEmpty())
+        val provider = SelfHostedSemanticTranslationProvider(baseUrl, null, 4)
+        try {
+            val result = provider.translate(
+                request(
+                    requestId = "android-v4-${UUID.randomUUID()}",
+                    sessionId = "android-v4-real-network"
+                )
+            )
+
+            assertTrue(result.failures.isEmpty())
+            assertEquals(1, result.results.size)
+            assertEquals(
+                listOf("region-title-1", "region-title-2"),
+                result.results.single().memberRegionIds
+            )
+            assertTrue(result.results.single().provider.endsWith("regions-first-v4"))
+            assertTrue(!result.results.single().translatedText.isNullOrBlank())
+        } finally {
+            provider.close()
+        }
+    }
+
+    @Test
     fun configuredServiceTranslatesSemanticGroupOverRealNetwork() = runBlocking {
         val baseUrl = InstrumentationRegistry.getArguments()
             .getString("selfHostedBaseUrl")

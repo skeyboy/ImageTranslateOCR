@@ -176,7 +176,7 @@ impl PlannedGroup {
         self
     }
 
-    fn to_translation_group(&self) -> TranslationGroup {
+    pub(crate) fn to_translation_group(&self) -> TranslationGroup {
         TranslationGroup {
             group_id: self.group_id.clone(),
             role: self.role.clone(),
