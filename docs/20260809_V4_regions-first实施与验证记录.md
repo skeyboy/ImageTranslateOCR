@@ -334,3 +334,31 @@ V4 权威结果，但 Android 只回贴 4 个短组，长正文仍保留英文�
    文本使用“更多”兜底，短词和小控件不启用该交互。
 
 V3 路由、设置项和响应校验均被保留；发现 V4 场景回归时可直接切回“自建 v3”，不需要回滚服务端数据库或 Android 安装包。
+
+## 8. Provider / Model 配置与 V4 回贴截图闭环
+
+### 8.1 可配置模型池
+
+服务端不再把运行时固定为单个 Qwen 模型。`QWEN_MODELS` 与 `OPENLUX_MODELS` 分别声明逗号
+分隔的模型白名单，`QWEN_MODEL` 与 `OPENLUX_MODEL` 是各 Provider 的启动默认模型。
+`TRANSLATION_PROVIDER` 决定启动默认 Provider。Admin 页眉按 `provider + model` 展示配置项，切换
+只作用于切换后的新请求；每个进行中的请求在入口处固定模型快照，避免运行中切换造成响应和审计错配。
+
+调用方可使用 `X-Translation-Provider` 和 `X-Translation-Model` 覆盖单次请求，但只能选择配置
+白名单中的组合。响应的 `provider`、`modelVersion` 以及请求历史的“模型”列均记录本次实际选择；
+审计模型格式为 `provider:model`。OpenLux API Key 只从环境变量读取，不写入模型请求 JSON、
+响应或 Admin 页面。
+
+### 8.2 V4 实际回贴截图
+
+此前 V4 即使回贴成功，Admin 中的“实际回贴截图”仍可能只看到英文原页。根因是 Android 的
+MediaProjection 帧不包含本应用悬浮层，延时再次采集并不能得到 overlay 像素，因此并非上传或
+服务端存图失败。
+
+Debug V4 现在默认启用回贴结果上传，不再依赖旧的手动上传开关。端侧在已完成真实字体排版并
+接纳 patch 后，将这些实际 patch bitmap 按源帧坐标合成到采集帧，再编码并上传；失败场景仍按
+既有审计路径上传失败截图和布局诊断。该图片表达的是“原始采集帧 + Android 实际接纳的回贴
+patch”，与端侧最终绘制所用的文字、字号、遮罩和边界一致，可用于 Admin 前后图对照。
+
+需要明确的边界：这不是包含系统状态栏和其他悬浮窗口的系统级物理截图。它用于校验本项目的
+OCR 原文覆盖、译文完整性和额外遮挡，不应作为第三方 overlay 叠加顺序的证据。

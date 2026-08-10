@@ -9,7 +9,7 @@
           -> Android 真实字体排版和回贴
 ```
 
-服务使用 Axum、Diesel Async、SQLite 和本地 Qwen。数据库保存请求审计以及最近一批请求/响应 JSON，用于本地布局核验；默认最多保留 200 条，可通过 `REQUEST_HISTORY_LIMIT` 调整。OCR 文本不会发送到线上模型服务。
+服务使用 Axum、Diesel Async、SQLite，并支持本地 Qwen 或 OpenLux。数据库保存请求审计以及最近一批请求/响应 JSON，用于本地布局核验；默认最多保留 200 条，可通过 `REQUEST_HISTORY_LIMIT` 调整。选择 OpenLux 时 OCR 文本会发送到对应的线上模型；API Key 不进入审计记录。
 
 Android Debug 版在“内录全屏采集”场景提供两个独立开关：可上传翻译前的 OCR 完整帧，也可在译文回贴成功并完成一帧绘制后上传实际屏幕。服务只保存图片用于人工前后对照，不对图片执行 OCR，也不把图片传给 Qwen。图片目录由 `REQUEST_IMAGE_DIR` 控制，审计 JSON 只保留图片元数据，不保存 Base64。图库、拍照、普通静态图片翻译、非 `LIVE_SCREEN` 请求和 Release 版都不会上传图片。
 
@@ -34,7 +34,7 @@ cargo run
 - 影子分组兼容：`POST /api/v2/translate/groups`
 - 权威组与布局计划：`POST /api/v3/translate/layout-plan`
 - 取消翻译：`POST /api/v2/translate/requests/{requestId}/cancel`
-- 回贴后调试图：`POST /api/v3/translate/requests/{requestId}/rendered-capture`
+- 回贴后调试图：`POST /api/v3/translate/requests/{requestId}/rendered-capture` 或 `POST /api/v4/translate/requests/{requestId}/rendered-capture`
 - 请求历史：`GET /admin/requests`
 - 请求详情：`GET /admin/requests/{auditId}`
 - 调试原图：`GET /admin/requests/{auditId}/image`
@@ -55,6 +55,44 @@ curl --fail-with-body \
 ```
 
 默认模型是基于本机 `qwen3.5:9b` 创建的 `qwen3.5-translation:9b`，地址为 `http://127.0.0.1:11434/v1`，不需要 API Key。该别名通过 Modelfile 把上下文窗口固定为 16384 tokens；直接使用基础模型时，Ollama 在可用显存不足 24 GiB 的设备上可能只分配 4096 tokens，整页请求会占满上下文并截断 JSON 输出。`QWEN_MAX_TOKENS` 控制单次翻译的最大输出，默认 4096。
+
+服务也支持 OpenLux 的 OpenAI 兼容接口。两套配置互不覆盖：
+
+```dotenv
+TRANSLATION_PROVIDER=openlux
+
+QWEN_BASE_URL=http://127.0.0.1:11434/v1
+QWEN_API_KEY=
+QWEN_MODEL=qwen3.5-translation:9b
+QWEN_MODELS=qwen3.5-translation:9b,qwen3:4b
+
+OPENLUX_BASE_URL=https://api.openlux.ai/v1
+OPENLUX_API_KEY=<API Key>
+OPENLUX_MODEL=gemini-3.5-flash-lite
+OPENLUX_MODELS=gemini-3.5-flash-lite,gpt-4.1,claude-sonnet-4-6
+```
+
+`TRANSLATION_PROVIDER` 决定启动时默认使用 `qwen` 或 `openlux`。启动后可在
+`/admin/requests` 页眉的“翻译 Provider / Model”控件中切换；切换只影响新请求，正在执行的请求继续使用
+其开始时固定的 Provider 和模型。API Key 仅从环境变量读取，不会进入管理页、健康检查或请求审计。
+
+OpenLux 还可独立设置 `OPENLUX_REASONING_EFFORT`、`OPENLUX_MAX_TOKENS` 和
+`OPENLUX_TIMEOUT_SECONDS`。当 `TRANSLATION_PROVIDER=openlux` 时，
+`OPENLUX_API_KEY` 和 `OPENLUX_MODEL` 必填。
+
+`QWEN_MODELS` 和 `OPENLUX_MODELS` 是逗号分隔的模型白名单，`QWEN_MODEL` / `OPENLUX_MODEL`
+是各 Provider 的启动默认模型且必须包含在对应白名单内。Admin 会为每个配置模型显示独立切换项。
+调用方也可以仅对单次翻译请求增加以下请求头，不修改全局选择：
+
+```http
+X-Translation-Provider: openlux
+X-Translation-Model: <OPENLUX_MODELS 中的模型 ID>
+```
+
+服务端拒绝未出现在配置白名单内的模型。请求历史“模型”列记录实际使用的
+`provider:model`，响应的 `provider` 和 `modelVersion` 同样反映本次请求的真实选择。
+当前 OpenLux 优先验证顺序为 `gemini-3.5-flash-lite`、`gpt-4.1`、
+`claude-sonnet-4-6`；其中 Gemini 是 OpenLux 的默认模型，其他模型可在 Admin 页眉直接切换。
 
 基础 Q4_K_M 模型包体约 6.6 GB，在 24 GB Apple Silicon 机器上用于质量优先的组级翻译。已安装的纯文本 `qwen3:4b` 可作为低资源回退，但应为它另建带足够 `num_ctx` 的 Modelfile；其包体约 2.5 GB，且真实新闻标题样本曾出现语义压缩错误。
 

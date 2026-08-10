@@ -1,4 +1,5 @@
 use axum::{
+    Form,
     extract::{Path, Query, State},
     http::{HeaderMap, StatusCode, header},
     response::{Html, IntoResponse, Redirect, Response},
@@ -7,7 +8,9 @@ use base64::{Engine as _, engine::general_purpose::STANDARD};
 use serde::Deserialize;
 
 use crate::{
+    config::TranslationProvider,
     database::{PaginatedRequestAudits, RequestRecord, schema_version_from_request_json},
+    qwen::TranslationProviderStatus,
     routes::AppState,
 };
 
@@ -48,6 +51,7 @@ pub async fn request_history(
         Some(100) => 100,
         _ => DEFAULT_HISTORY_PAGE_SIZE,
     };
+    let provider_statuses = state.models.statuses().await;
     match state
         .database
         .paginate_audits_with_version_filtered(
@@ -64,9 +68,37 @@ pub async fn request_history(
             state.config.request_history_limit,
             selected_status,
             selected_version,
+            &provider_statuses,
         ))
         .into_response(),
         Err(error) => server_error(error.to_string()),
+    }
+}
+
+#[derive(Deserialize)]
+pub struct ProviderSelection {
+    provider: String,
+    model: String,
+}
+
+pub async fn select_translation_provider(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Form(selection): Form<ProviderSelection>,
+) -> Response {
+    if !admin_authorized(&headers, state.config.bearer_token.as_deref()) {
+        return unauthorized();
+    }
+    let Some(provider) = TranslationProvider::parse(&selection.provider) else {
+        return (StatusCode::BAD_REQUEST, "provider must be qwen or openlux").into_response();
+    };
+    match state.models.select(provider, &selection.model).await {
+        Ok(()) => (
+            StatusCode::SEE_OTHER,
+            [(header::LOCATION, "/admin/requests")],
+        )
+            .into_response(),
+        Err(error) => (StatusCode::CONFLICT, error.to_string()).into_response(),
     }
 }
 
@@ -179,6 +211,7 @@ fn history_page(
     history_limit: i64,
     selected_status: Option<&str>,
     selected_version: Option<u32>,
+    provider_statuses: &[TranslationProviderStatus],
 ) -> String {
     let rows = if pagination.items.is_empty() {
         "<tr><td class=\"empty\" colspan=\"10\">暂无请求记录</td></tr>".to_owned()
@@ -227,12 +260,13 @@ fn history_page(
     };
     let range_end = (pagination.page * pagination.page_size).min(pagination.total as i64) as usize;
     let pagination_controls = pagination_controls(&pagination, selected_status, selected_version);
+    let provider_controls = provider_controls(provider_statuses);
     page_shell(
         "请求历史",
         &format!(
             "<header class=\"topbar\">\
                 <div><span class=\"product\">OCR Translation Trace</span><h1>请求历史</h1></div>\
-                <a class=\"health-link\" href=\"/healthz\">服务状态</a>\
+                <div class=\"topbar-actions\">{provider_controls}<a class=\"health-link\" href=\"/healthz\">服务状态</a></div>\
             </header>\
             <main>\
                 <section class=\"summary-band\">\
@@ -264,8 +298,37 @@ fn history_page(
             status_options = status_options(selected_status),
             version_options = version_options(selected_version),
             page_size_options = page_size_options(pagination.page_size),
+            provider_controls = provider_controls,
         ),
         "history-page",
+    )
+}
+
+fn provider_controls(statuses: &[TranslationProviderStatus]) -> String {
+    let options = statuses
+        .iter()
+        .map(|status| {
+            let active_class = status.active.then_some(" is-active").unwrap_or_default();
+            let disabled = (!status.configured).then_some(" disabled").unwrap_or_default();
+            let state = if !status.configured {
+                "未配置"
+            } else if status.reachable && status.model_available {
+                "可用"
+            } else if status.reachable {
+                "模型不可用"
+            } else {
+                "不可达"
+            };
+            format!(
+                "<form method=\"post\" action=\"/admin/translation-provider\" class=\"provider-choice\"><input type=\"hidden\" name=\"provider\" value=\"{provider}\"><button type=\"submit\" name=\"model\" value=\"{model}\" class=\"provider-option{active_class}\" title=\"{provider} · {model} · {state}\"{disabled}><strong>{provider}</strong><span>{model}</span><small>{state}</small></button></form>",
+                provider = escape_html(status.provider),
+                model = escape_html(&status.model),
+            )
+        })
+        .collect::<Vec<_>>()
+        .join("");
+    format!(
+        "<div class=\"provider-switch\"><span>翻译 Provider / Model</span><div>{options}</div></div>"
     )
 }
 
@@ -615,7 +678,7 @@ fn detail_page(record: RequestRecord) -> String {
                 </section>\
                 <section class=\"model-request-section\">\
                     <details class=\"model-request-details\">\
-                        <summary><span>发送给 Ollama / Qwen 的请求</span><small>默认折叠 · 不包含 API Key</small></summary>\
+                        <summary><span>发送给翻译 Provider 的请求</span><small>默认折叠 · 不包含 API Key</small></summary>\
                         <div class=\"model-request-content\"><pre>{model_request_json}</pre></div>\
                     </details>\
                 </section>\

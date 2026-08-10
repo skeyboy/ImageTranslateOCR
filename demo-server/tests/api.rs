@@ -6,12 +6,12 @@ use axum::{
     http::{Request, StatusCode},
 };
 use image_translate_demo_server::{
-    app,
-    config::Config,
+    app, app_with_models,
+    config::{Config, TranslationProvider},
     contract::SemanticTranslationRequest,
     database::Database,
     error::AppError,
-    qwen::{ModelTranslation, TranslationModel},
+    qwen::{ModelTranslation, TranslationModel, TranslationModelRegistry},
 };
 use serde_json::{Value, json};
 use tempfile::TempDir;
@@ -19,6 +19,8 @@ use tokio::sync::Notify;
 use tower::ServiceExt;
 
 struct FakeQwen;
+
+struct FakeOpenlux;
 
 #[async_trait]
 impl TranslationModel for FakeQwen {
@@ -54,6 +56,197 @@ impl TranslationModel for FakeQwen {
             })
             .collect())
     }
+}
+
+#[async_trait]
+impl TranslationModel for FakeOpenlux {
+    fn request_json(
+        &self,
+        _request: &SemanticTranslationRequest,
+        groups: &[image_translate_demo_server::contract::TranslationGroup],
+    ) -> Option<String> {
+        Some(
+            json!({
+                "model": "fake-openlux",
+                "groupIds": groups.iter().map(|group| &group.group_id).collect::<Vec<_>>()
+            })
+            .to_string(),
+        )
+    }
+
+    async fn translate(
+        &self,
+        _request: &SemanticTranslationRequest,
+        groups: &[image_translate_demo_server::contract::TranslationGroup],
+    ) -> Result<Vec<ModelTranslation>, AppError> {
+        Ok(groups
+            .iter()
+            .map(|group| ModelTranslation {
+                group_id: group.group_id.clone(),
+                translated_text: "OpenLux 译文".to_owned(),
+                detected_source_language: "en".to_owned(),
+                target_language: "zh".to_owned(),
+            })
+            .collect())
+    }
+}
+
+#[tokio::test]
+async fn admin_switches_new_requests_from_qwen_to_openlux() {
+    let temporary = TempDir::new().unwrap();
+    let database_url = temporary
+        .path()
+        .join("provider-switch.sqlite3")
+        .to_string_lossy()
+        .into_owned();
+    let database = Database::new(database_url.clone());
+    database.migrate().await.unwrap();
+    let config = Config::for_test(database_url);
+    let models = Arc::new(TranslationModelRegistry::new(
+        TranslationProvider::Qwen,
+        "fake-qwen".to_owned(),
+        vec![
+            (
+                TranslationProvider::Qwen,
+                "fake-qwen".to_owned(),
+                Arc::new(FakeQwen) as Arc<dyn TranslationModel>,
+            ),
+            (
+                TranslationProvider::Openlux,
+                "fake-openlux".to_owned(),
+                Arc::new(FakeOpenlux) as Arc<dyn TranslationModel>,
+            ),
+        ],
+    ));
+    let router = app_with_models(config, database.clone(), models);
+
+    let history = router
+        .clone()
+        .oneshot(Request::get("/admin/requests").body(Body::empty()).unwrap())
+        .await
+        .unwrap();
+    let history_body = String::from_utf8(
+        to_bytes(history.into_body(), 1024 * 1024)
+            .await
+            .unwrap()
+            .to_vec(),
+    )
+    .unwrap();
+    assert!(history_body.contains("翻译 Provider"));
+    assert!(history_body.contains("value=\"qwen\""));
+    assert!(history_body.contains("value=\"openlux\""));
+
+    let request_selected = router
+        .clone()
+        .oneshot(
+            Request::post("/api/v2/translate/groups")
+                .header("content-type", "application/json")
+                .header("x-translation-provider", "openlux")
+                .header("x-translation-model", "fake-openlux")
+                .body(Body::from(valid_request().to_string()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let request_selected_body: Value = serde_json::from_slice(
+        &to_bytes(request_selected.into_body(), 1024 * 1024)
+            .await
+            .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(request_selected_body["provider"], "self-hosted-openlux-v2");
+    assert_eq!(request_selected_body["modelVersion"], "fake-openlux");
+
+    let unchanged_health = router
+        .clone()
+        .oneshot(Request::get("/healthz").body(Body::empty()).unwrap())
+        .await
+        .unwrap();
+    let unchanged_health_body: Value = serde_json::from_slice(
+        &to_bytes(unchanged_health.into_body(), 1024 * 1024)
+            .await
+            .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(unchanged_health_body["modelProvider"], "qwen");
+    assert_eq!(unchanged_health_body["model"], "fake-qwen");
+
+    let switched = router
+        .clone()
+        .oneshot(
+            Request::post("/admin/translation-provider")
+                .header("content-type", "application/x-www-form-urlencoded")
+                .body(Body::from("provider=openlux&model=fake-openlux"))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(switched.status(), StatusCode::SEE_OTHER);
+
+    let health = router
+        .clone()
+        .oneshot(Request::get("/healthz").body(Body::empty()).unwrap())
+        .await
+        .unwrap();
+    let health_body: Value =
+        serde_json::from_slice(&to_bytes(health.into_body(), 1024 * 1024).await.unwrap()).unwrap();
+    assert_eq!(health_body["modelProvider"], "openlux");
+    assert_eq!(health_body["model"], "fake-openlux");
+
+    let translated = router
+        .oneshot(
+            Request::post("/api/v2/translate/groups")
+                .header("content-type", "application/json")
+                .body(Body::from(valid_request().to_string()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(translated.status(), StatusCode::OK);
+    let translated_body: Value =
+        serde_json::from_slice(&to_bytes(translated.into_body(), 1024 * 1024).await.unwrap())
+            .unwrap();
+    assert_eq!(translated_body["provider"], "self-hosted-openlux-v2");
+    assert_eq!(translated_body["modelVersion"], "fake-openlux");
+    assert_eq!(
+        translated_body["results"][0]["translatedText"],
+        "OpenLux 译文"
+    );
+
+    let audits = database.list_audits(10).await.unwrap();
+    assert!(
+        audits
+            .iter()
+            .any(|audit| audit.model == "openlux:fake-openlux")
+    );
+}
+
+#[tokio::test]
+async fn rejects_models_outside_the_configured_allowlist() {
+    let temporary = TempDir::new().unwrap();
+    let database_url = temporary
+        .path()
+        .join("provider-allowlist.sqlite3")
+        .to_string_lossy()
+        .into_owned();
+    let database = Database::new(database_url.clone());
+    database.migrate().await.unwrap();
+    let config = Config::for_test(database_url);
+    let router = app(config, database, Arc::new(FakeQwen));
+
+    let response = router
+        .oneshot(
+            Request::post("/api/v2/translate/groups")
+                .header("content-type", "application/json")
+                .header("x-translation-provider", "qwen")
+                .header("x-translation-model", "not-configured")
+                .body(Body::from(valid_request().to_string()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
 }
 
 #[test]
@@ -276,7 +469,7 @@ async fn translates_semantic_group_and_echoes_generation() {
     assert!(detail_body.contains("data-request-json="));
     assert!(detail_body.contains("renderSlots"));
     assert!(detail_body.contains("全屏采集原图"));
-    assert!(detail_body.contains("发送给 Ollama / Qwen 的请求"));
+    assert!(detail_body.contains("发送给翻译 Provider 的请求"));
     assert!(detail_body.contains("默认折叠 · 不包含 API Key"));
     assert!(detail_body.contains("fake-qwen"));
     assert!(!detail_body.contains("<details class=\"model-request-details\" open"));

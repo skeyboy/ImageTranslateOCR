@@ -72,4 +72,18 @@ class SemanticRenderedCaptureUploadPolicyTest {
             )
         )
     }
+
+    @Test
+    fun v4DebugCaptureDoesNotDependOnTheOptionalV3UploadToggle() {
+        assertTrue(
+            SemanticRenderedCaptureUploadPolicy.shouldUpload(
+                isDebugBuild = true,
+                backend = TranslationBackend.SELF_HOSTED_V4,
+                uploadEnabled = false,
+                patchCount = 3,
+                failedCount = 0,
+                traceCount = 1
+            )
+        )
+    }
 }

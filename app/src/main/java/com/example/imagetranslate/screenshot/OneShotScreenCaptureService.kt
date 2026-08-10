@@ -8,7 +8,10 @@ import android.app.Service
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Paint
 import android.graphics.PixelFormat
+import android.graphics.RectF
 import android.hardware.display.DisplayManager
 import android.hardware.display.VirtualDisplay
 import android.media.Image
@@ -1486,6 +1489,7 @@ class OneShotScreenCaptureService : Service() {
             .put("visiblePatchCount", presentation.visiblePatchCount)
             .put("presentationAttemptCount", presentation.attemptCount)
             .put("presentationOutcome", presentation.failure?.name ?: "PRESENTED")
+            .put("renderedCaptureMode", "SOURCE_FRAME_PLUS_PRESENTED_PATCHES")
         val audit = if (!presentation.presented) {
             SemanticRenderedCaptureAudit.renderFailed(
                 stage = "OVERLAY_ATTACH",
@@ -1515,7 +1519,16 @@ class OneShotScreenCaptureService : Service() {
                 ) {
                     return@postDelayed
                 }
-                pendingRenderedCapture.set(PendingRenderedCapture(generation, traces, audit))
+                pendingRenderedCapture.set(
+                    PendingRenderedCapture(
+                        generation = generation,
+                        traces = traces,
+                        audit = audit,
+                        patches = result.patches,
+                        sourceWidth = result.sourceWidth,
+                        sourceHeight = result.sourceHeight
+                    )
+                )
                 drainLatestImage()
             },
             RENDERED_CAPTURE_SETTLE_MS
@@ -1527,6 +1540,7 @@ class OneShotScreenCaptureService : Service() {
             var bitmap: Bitmap? = null
             try {
                 bitmap = imageToBitmap(image)
+                compositePresentedPatches(bitmap, pending)
                 val capture = SemanticDebugCaptureEncoder.encode(bitmap)
                 val uploader = SelfHostedRenderedCaptureUploader(
                     baseUrl = TranslationBackendSettings.selfHostedBaseUrl(
@@ -1555,6 +1569,30 @@ class OneShotScreenCaptureService : Service() {
                 runCatching(image::close)
                 bitmap?.takeIf { !it.isRecycled }?.recycle()
             }
+        }
+    }
+
+    private fun compositePresentedPatches(bitmap: Bitmap, pending: PendingRenderedCapture) {
+        if (pending.patches.isEmpty() || pending.sourceWidth <= 0 || pending.sourceHeight <= 0) {
+            return
+        }
+        val scaleX = bitmap.width.toFloat() / pending.sourceWidth
+        val scaleY = bitmap.height.toFloat() / pending.sourceHeight
+        val canvas = Canvas(bitmap)
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
+        pending.patches.forEach { patch ->
+            if (patch.bitmap.isRecycled || patch.bounds.isEmpty) return@forEach
+            canvas.drawBitmap(
+                patch.bitmap,
+                null,
+                RectF(
+                    patch.bounds.left * scaleX,
+                    patch.bounds.top * scaleY,
+                    patch.bounds.right * scaleX,
+                    patch.bounds.bottom * scaleY
+                ),
+                paint
+            )
         }
     }
 
@@ -2070,7 +2108,10 @@ class OneShotScreenCaptureService : Service() {
     private data class PendingRenderedCapture(
         val generation: Int,
         val traces: List<SemanticTranslationTrace>,
-        val audit: SemanticRenderedCaptureAudit
+        val audit: SemanticRenderedCaptureAudit,
+        val patches: List<ScreenTranslationPatch>,
+        val sourceWidth: Int,
+        val sourceHeight: Int
     )
 
     companion object {

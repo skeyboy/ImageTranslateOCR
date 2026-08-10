@@ -20,11 +20,11 @@ use tower_http::trace::TraceLayer;
 use crate::{
     admin::{
         admin_root, admin_script, admin_styles, rendered_request_image, request_detail,
-        request_history, request_image,
+        request_history, request_image, select_translation_provider,
     },
     config::Config,
     database::Database,
-    qwen::TranslationModel,
+    qwen::{TranslationModel, TranslationModelRegistry},
     routes::{
         AppState, RequestCancellationRegistry, cancel_translation, health, translate_groups,
         translate_layout_plan, translate_regions_first_layout_plan, upload_rendered_capture,
@@ -32,10 +32,22 @@ use crate::{
 };
 
 pub fn app(config: Config, database: Database, model: Arc<dyn TranslationModel>) -> Router {
+    let models = Arc::new(TranslationModelRegistry::qwen(
+        config.qwen_model.clone(),
+        model,
+    ));
+    app_with_models(config, database, models)
+}
+
+pub fn app_with_models(
+    config: Config,
+    database: Database,
+    models: Arc<TranslationModelRegistry>,
+) -> Router {
     let state = AppState {
         config: Arc::new(config),
         database,
-        model,
+        models,
         cancellations: RequestCancellationRegistry::default(),
     };
     Router::new()
@@ -61,6 +73,10 @@ pub fn app(config: Config, database: Database, model: Arc<dyn TranslationModel>)
         .route("/admin", get(admin_root))
         .route("/admin/requests", get(request_history))
         .route("/admin/requests/{id}", get(request_detail))
+        .route(
+            "/admin/translation-provider",
+            post(select_translation_provider),
+        )
         .route("/admin/requests/{id}/image", get(request_image))
         .route(
             "/admin/requests/{id}/rendered-image",

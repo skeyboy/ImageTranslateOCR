@@ -1,4 +1,7 @@
-use std::collections::{HashMap, HashSet};
+use std::{
+    collections::{HashMap, HashSet},
+    sync::{Arc, RwLock},
+};
 
 use async_trait::async_trait;
 use reqwest::{Client, StatusCode};
@@ -7,7 +10,7 @@ use serde_json::{Value, json};
 use std::time::Duration;
 
 use crate::{
-    config::Config,
+    config::{Config, TranslationProvider},
     contract::{SemanticTranslationRequest, TranslationGroup, resolved_render_slots},
     error::AppError,
 };
@@ -67,14 +70,59 @@ pub struct QwenClient {
     max_tokens: u32,
     request_timeout: Duration,
     execution_mode: &'static str,
+    provider_name: &'static str,
+    api_key_env: &'static str,
 }
 
 impl QwenClient {
     pub fn new(config: &Config) -> Result<Self, AppError> {
+        Self::new_qwen_model(config, &config.qwen_model)
+    }
+
+    pub fn new_qwen_model(config: &Config, model: &str) -> Result<Self, AppError> {
+        Self::from_settings(
+            &config.qwen_base_url,
+            config.qwen_api_key.clone(),
+            model,
+            config.qwen_reasoning_effort.clone(),
+            config.qwen_max_tokens,
+            config.qwen_timeout,
+            "Qwen",
+            "QWEN_API_KEY",
+        )
+    }
+
+    pub fn new_openlux(config: &Config) -> Result<Self, AppError> {
+        Self::new_openlux_model(config, config.openlux_model.as_deref().unwrap_or_default())
+    }
+
+    pub fn new_openlux_model(config: &Config, model: &str) -> Result<Self, AppError> {
+        Self::from_settings(
+            &config.openlux_base_url,
+            config.openlux_api_key.clone(),
+            model,
+            config.openlux_reasoning_effort.clone(),
+            config.openlux_max_tokens,
+            config.openlux_timeout,
+            "OpenLux",
+            "OPENLUX_API_KEY",
+        )
+    }
+
+    fn from_settings(
+        base_url: &str,
+        api_key: Option<String>,
+        model: &str,
+        reasoning_effort: Option<String>,
+        max_tokens: u32,
+        request_timeout: Duration,
+        provider_name: &'static str,
+        api_key_env: &'static str,
+    ) -> Result<Self, AppError> {
         let client = Client::builder()
             .build()
             .map_err(|error| AppError::configuration(error.to_string()))?;
-        let base = config.qwen_base_url.trim_end_matches('/');
+        let base = base_url.trim_end_matches('/');
         let endpoint = if base.ends_with("/chat/completions") {
             base.to_owned()
         } else {
@@ -86,16 +134,18 @@ impl QwenClient {
             client,
             endpoint,
             models_endpoint,
-            api_key: config.qwen_api_key.clone(),
-            model: config.qwen_model.clone(),
-            reasoning_effort: config.qwen_reasoning_effort.clone(),
-            max_tokens: config.qwen_max_tokens,
-            request_timeout: config.qwen_timeout,
+            api_key,
+            model: model.to_owned(),
+            reasoning_effort,
+            max_tokens,
+            request_timeout,
             execution_mode: if is_loopback_endpoint(base) {
                 "local"
             } else {
                 "remote"
             },
+            provider_name,
+            api_key_env,
         })
     }
 
@@ -149,21 +199,25 @@ impl QwenClient {
         let response = builder
             .send()
             .await
-            .map_err(|error| qwen_request_error(error, timeout))?;
+            .map_err(|error| provider_request_error(self.provider_name, error, timeout))?;
         let status = response.status();
-        let response_text = response
-            .text()
-            .await
-            .map_err(|error| AppError::Upstream(format!("Qwen response failed: {error}")))?;
+        let response_text = response.text().await.map_err(|error| {
+            AppError::Upstream(format!("{} response failed: {error}", self.provider_name))
+        })?;
         if !status.is_success() {
             return Err(AppError::Upstream(format!(
-                "Qwen returned HTTP {}{}",
+                "{} returned HTTP {}{}",
+                self.provider_name,
                 status.as_u16(),
                 safe_upstream_suffix(status, &response_text)
             )));
         }
-        let envelope: ChatResponse = serde_json::from_str(&response_text)
-            .map_err(|error| AppError::Upstream(format!("invalid Qwen envelope: {error}")))?;
+        let envelope: ChatResponse = serde_json::from_str(&response_text).map_err(|error| {
+            AppError::Upstream(format!(
+                "invalid {} response envelope: {error}",
+                self.provider_name
+            ))
+        })?;
         Ok(completion_content(&envelope)?.to_owned())
     }
 
@@ -205,9 +259,10 @@ impl TranslationModel for QwenClient {
             return Ok(Vec::new());
         }
         if self.api_key.is_none() && self.endpoint.starts_with("https://") {
-            return Err(AppError::ModelUnavailable(
-                "QWEN_API_KEY is required for the configured Qwen endpoint".to_owned(),
-            ));
+            return Err(AppError::ModelUnavailable(format!(
+                "{} is required for the configured {} endpoint",
+                self.api_key_env, self.provider_name
+            )));
         }
         let body = self.chat_request(request, groups)?;
         let content = self.completion(&body, groups.len()).await?;
@@ -247,7 +302,8 @@ impl TranslationModel for QwenClient {
     }
 
     async fn health(&self) -> ModelHealth {
-        let configured = self.api_key.is_some() || !self.endpoint.starts_with("https://");
+        let configured = !self.model.trim().is_empty()
+            && (self.api_key.is_some() || !self.endpoint.starts_with("https://"));
         if !configured {
             return ModelHealth {
                 configured: false,
@@ -256,10 +312,15 @@ impl TranslationModel for QwenClient {
                 execution_mode: self.execution_mode,
             };
         }
+        let health_timeout = if self.execution_mode == "remote" {
+            Duration::from_secs(10)
+        } else {
+            Duration::from_secs(2)
+        };
         let mut builder = self
             .client
             .get(&self.models_endpoint)
-            .timeout(Duration::from_secs(2));
+            .timeout(health_timeout);
         if let Some(api_key) = &self.api_key {
             builder = builder.bearer_auth(api_key);
         }
@@ -290,6 +351,196 @@ impl TranslationModel for QwenClient {
             model_available,
             execution_mode: self.execution_mode,
         }
+    }
+}
+
+#[derive(Clone)]
+pub struct ActiveTranslationModel {
+    pub provider: TranslationProvider,
+    pub model_name: String,
+    pub model: Arc<dyn TranslationModel>,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TranslationProviderStatus {
+    pub provider: &'static str,
+    pub model: String,
+    pub active: bool,
+    pub configured: bool,
+    pub reachable: bool,
+    pub model_available: bool,
+    pub execution_mode: &'static str,
+}
+
+pub struct TranslationModelRegistry {
+    models: HashMap<(TranslationProvider, String), ActiveTranslationModel>,
+    active: RwLock<(TranslationProvider, String)>,
+}
+
+impl TranslationModelRegistry {
+    pub fn qwen(model_name: String, model: Arc<dyn TranslationModel>) -> Self {
+        Self::new(
+            TranslationProvider::Qwen,
+            model_name.clone(),
+            vec![(TranslationProvider::Qwen, model_name, model)],
+        )
+    }
+
+    pub fn new(
+        active_provider: TranslationProvider,
+        active_model: String,
+        models: Vec<(TranslationProvider, String, Arc<dyn TranslationModel>)>,
+    ) -> Self {
+        let models = models
+            .into_iter()
+            .map(|(provider, model_name, model)| {
+                (
+                    (provider, model_name.clone()),
+                    ActiveTranslationModel {
+                        provider,
+                        model_name,
+                        model,
+                    },
+                )
+            })
+            .collect::<HashMap<_, _>>();
+        let active = (active_provider, active_model);
+        assert!(
+            models.contains_key(&active),
+            "active translation provider and model must exist"
+        );
+        Self {
+            models,
+            active: RwLock::new(active),
+        }
+    }
+
+    pub fn active(&self) -> ActiveTranslationModel {
+        let selection = self
+            .active
+            .read()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .clone();
+        self.models
+            .get(&selection)
+            .expect("active translation provider and model must remain registered")
+            .clone()
+    }
+
+    pub fn resolve(
+        &self,
+        provider: Option<&str>,
+        model: Option<&str>,
+    ) -> Result<ActiveTranslationModel, AppError> {
+        if provider.is_none() && model.is_none() {
+            return Ok(self.active());
+        }
+        let current = self.active();
+        let provider = provider
+            .map(|value| {
+                TranslationProvider::parse(value).ok_or_else(|| {
+                    AppError::invalid("X-Translation-Provider must be qwen or openlux")
+                })
+            })
+            .transpose()?
+            .unwrap_or(current.provider);
+        let model = model
+            .filter(|value| !value.trim().is_empty())
+            .map(str::to_owned)
+            .or_else(|| (provider == current.provider).then_some(current.model_name))
+            .or_else(|| {
+                self.models
+                    .keys()
+                    .filter(|(candidate, _)| *candidate == provider)
+                    .map(|(_, model)| model.clone())
+                    .min()
+            })
+            .ok_or_else(|| {
+                AppError::configuration(format!(
+                    "translation provider {} has no configured models",
+                    provider.as_str()
+                ))
+            })?;
+        self.models
+            .get(&(provider, model.clone()))
+            .cloned()
+            .ok_or_else(|| {
+                AppError::invalid(format!(
+                    "model {model} is not configured for provider {}",
+                    provider.as_str()
+                ))
+            })
+    }
+
+    pub async fn select(&self, provider: TranslationProvider, model: &str) -> Result<(), AppError> {
+        let key = (provider, model.to_owned());
+        let selected = self.models.get(&key).ok_or_else(|| {
+            AppError::configuration(format!(
+                "model {model} is not configured for provider {}",
+                provider.as_str(),
+            ))
+        })?;
+        if !selected.model.health().await.configured {
+            return Err(AppError::configuration(format!(
+                "model {model} for provider {} is not configured",
+                provider.as_str(),
+            )));
+        }
+        *self
+            .active
+            .write()
+            .unwrap_or_else(|poisoned| poisoned.into_inner()) = key;
+        Ok(())
+    }
+
+    pub async fn statuses(&self) -> Vec<TranslationProviderStatus> {
+        let active = self.active();
+        let mut statuses = Vec::new();
+        let mut health_checks = tokio::task::JoinSet::new();
+        for selected in self.models.values().cloned() {
+            health_checks.spawn(async move {
+                let health = selected.model.health().await;
+                (selected, health)
+            });
+        }
+        while let Some(result) = health_checks.join_next().await {
+            if let Ok((selected, health)) = result {
+                statuses.push(TranslationProviderStatus {
+                    provider: selected.provider.as_str(),
+                    model: selected.model_name.clone(),
+                    active: selected.provider == active.provider
+                        && selected.model_name == active.model_name,
+                    configured: health.configured,
+                    reachable: health.reachable,
+                    model_available: health.model_available,
+                    execution_mode: health.execution_mode,
+                });
+            }
+        }
+        for provider in TranslationProvider::ALL {
+            if !statuses
+                .iter()
+                .any(|status| status.provider == provider.as_str())
+            {
+                statuses.push(TranslationProviderStatus {
+                    provider: provider.as_str(),
+                    model: String::new(),
+                    active: false,
+                    configured: false,
+                    reachable: false,
+                    model_available: false,
+                    execution_mode: "unconfigured",
+                });
+            }
+        }
+        statuses.sort_by(|first, second| {
+            let provider_order = |provider: &str| usize::from(provider != "qwen");
+            provider_order(first.provider)
+                .cmp(&provider_order(second.provider))
+                .then_with(|| first.model.cmp(&second.model))
+        });
+        statuses
     }
 }
 
@@ -866,19 +1117,23 @@ fn is_loopback_endpoint(endpoint: &str) -> bool {
         || endpoint.starts_with("http://[::1]:")
 }
 
-fn qwen_request_error(error: reqwest::Error, timeout: Duration) -> AppError {
+fn provider_request_error(
+    provider_name: &str,
+    error: reqwest::Error,
+    timeout: Duration,
+) -> AppError {
     if error.is_timeout() {
         return AppError::Upstream(format!(
-            "Qwen request timed out after {} seconds",
+            "{provider_name} request timed out after {} seconds",
             timeout.as_secs()
         ));
     }
     if error.is_connect() {
         return AppError::ModelUnavailable(format!(
-            "Cannot connect to the configured Qwen endpoint: {error}"
+            "Cannot connect to the configured {provider_name} endpoint: {error}"
         ));
     }
-    AppError::Upstream(format!("Qwen request failed: {error}"))
+    AppError::Upstream(format!("{provider_name} request failed: {error}"))
 }
 
 const SYSTEM_PROMPT: &str = r#"You are a professional screen OCR translation engine.
@@ -1033,6 +1288,44 @@ mod tests {
         let translated = client.translate(&request, &request.groups).await.unwrap();
         assert_eq!(translated[0].translated_text, "你好");
         assert_eq!(translated[0].target_language, "zh");
+        server.abort();
+    }
+
+    #[tokio::test]
+    async fn openlux_uses_its_endpoint_model_and_bearer_token() {
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let router = Router::new().route(
+            "/v1/chat/completions",
+            post(
+                |headers: axum::http::HeaderMap, Json(body): Json<Value>| async move {
+                    assert_eq!(headers["authorization"], "Bearer openlux-secret");
+                    assert_eq!(body["model"], "openlux-model-id");
+                    Json(json!({
+                        "choices": [{
+                            "message": {
+                                "content": "{\"translations\":{\"group-1\":{\"translatedText\":\"你好\",\"detectedSourceLanguage\":\"en\",\"targetLanguage\":\"zh\"}}}"
+                            }
+                        }]
+                    }))
+                },
+            ),
+        );
+        let server = tokio::spawn(async move {
+            axum::serve(listener, router).await.unwrap();
+        });
+        let mut config = Config::for_test(":memory:".to_owned());
+        config.openlux_base_url = format!("http://{address}/v1");
+        config.openlux_api_key = Some("openlux-secret".to_owned());
+        config.openlux_model = Some("openlux-model-id".to_owned());
+        let client = QwenClient::new_openlux(&config).unwrap();
+        let request = semantic_request();
+
+        let saved_request: Value =
+            serde_json::from_str(&client.request_json(&request, &request.groups).unwrap()).unwrap();
+        assert_eq!(saved_request["model"], "openlux-model-id");
+        let translated = client.translate(&request, &request.groups).await.unwrap();
+        assert_eq!(translated[0].translated_text, "你好");
         server.abort();
     }
 

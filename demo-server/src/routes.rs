@@ -26,14 +26,14 @@ use crate::{
     error::{AppError, RequestError},
     planning::DocumentPlan,
     planning_v4::build_regions_first_plan,
-    qwen::{ModelTranslation, PROMPT_VERSION, TranslationModel},
+    qwen::{ModelTranslation, PROMPT_VERSION, TranslationModelRegistry},
 };
 
 #[derive(Clone)]
 pub struct AppState {
     pub config: Arc<Config>,
     pub database: Database,
-    pub model: Arc<dyn TranslationModel>,
+    pub models: Arc<TranslationModelRegistry>,
     pub cancellations: RequestCancellationRegistry,
 }
 
@@ -148,6 +148,7 @@ pub struct HealthResponse {
     status: &'static str,
     schema_version: u32,
     model: String,
+    model_provider: &'static str,
     model_configured: bool,
     model_reachable: bool,
     model_available: bool,
@@ -155,11 +156,13 @@ pub struct HealthResponse {
 }
 
 pub async fn health(State(state): State<AppState>) -> Json<HealthResponse> {
-    let model_health = state.model.health().await;
+    let active = state.models.active();
+    let model_health = active.model.health().await;
     Json(HealthResponse {
         status: "ok",
         schema_version: REGIONS_FIRST_SCHEMA_VERSION,
-        model: state.config.qwen_model.clone(),
+        model: active.model_name,
+        model_provider: active.provider.as_str(),
         model_configured: model_health.configured,
         model_reachable: model_health.reachable,
         model_available: model_health.model_available,
@@ -369,9 +372,22 @@ async fn translate_request(
         .filter(|group| !should_preserve(group))
         .cloned()
         .collect::<Vec<_>>();
-    let model_request_json = state.model.request_json(&request, &actionable);
+    let requested_provider = optional_header(&headers, "x-translation-provider")
+        .map_err(|error| error.with_request_id(&request_id))?;
+    let requested_model = optional_header(&headers, "x-translation-model")
+        .map_err(|error| error.with_request_id(&request_id))?;
+    let active_model = state
+        .models
+        .resolve(requested_provider, requested_model)
+        .map_err(|error| error.with_request_id(&request_id))?;
+    let audit_model = format!(
+        "{}:{}",
+        active_model.provider.as_str(),
+        active_model.model_name
+    );
+    let model_request_json = active_model.model.request_json(&request, &actionable);
     let model_outcome = tokio::select! {
-        result = state.model.translate(&request, &actionable) => result,
+        result = active_model.model.translate(&request, &actionable) => result,
         _ = cancellation.changed() => Err(AppError::Cancelled(
             "translation request cancelled by client".to_owned(),
         )),
@@ -403,6 +419,7 @@ async fn translate_request(
                 None,
                 Some(&error.to_string()),
                 saved_capture.as_ref(),
+                &audit_model,
             )
             .await;
             return Err(error.with_request_id(request_id));
@@ -490,13 +507,16 @@ async fn translate_request(
         session_id: request.session_id.clone(),
         generation: request.generation,
         translation_revision: request.translation_revision,
-        provider: match api_version {
-            TranslationApiVersion::V2 => "self-hosted-qwen-v2",
-            TranslationApiVersion::V3 => "self-hosted-qwen-layout-plan-v3",
-            TranslationApiVersion::V4 => "self-hosted-qwen-regions-first-v4",
-        }
-        .to_owned(),
-        model_version: state.config.qwen_model.clone(),
+        provider: format!(
+            "self-hosted-{}-{}",
+            active_model.provider.as_str(),
+            match api_version {
+                TranslationApiVersion::V2 => "v2",
+                TranslationApiVersion::V3 => "layout-plan-v3",
+                TranslationApiVersion::V4 => "regions-first-v4",
+            }
+        ),
+        model_version: active_model.model_name.clone(),
         prompt_version: PROMPT_VERSION.to_owned(),
         results,
         document_plan,
@@ -518,6 +538,7 @@ async fn translate_request(
         Some(&response),
         None,
         saved_capture.as_ref(),
+        &audit_model,
     )
     .await;
     info!(
@@ -801,6 +822,19 @@ fn authorize(headers: &HeaderMap, expected: Option<&str>) -> Result<(), AppError
     }
 }
 
+fn optional_header<'a>(headers: &'a HeaderMap, name: &str) -> Result<Option<&'a str>, AppError> {
+    headers
+        .get(name)
+        .map(|value| {
+            value
+                .to_str()
+                .map(str::trim)
+                .map_err(|_| AppError::invalid(format!("{name} must be valid UTF-8")))
+        })
+        .transpose()
+        .map(|value| value.filter(|item| !item.is_empty()))
+}
+
 async fn record_audit(
     state: &AppState,
     id: &str,
@@ -811,6 +845,7 @@ async fn record_audit(
     response: Option<&SemanticTranslationResponse>,
     error_message: Option<&str>,
     image: Option<&SavedCapture>,
+    model_name: &str,
 ) {
     let created_at = Utc::now().to_rfc3339();
     let input_chars = request
@@ -828,7 +863,7 @@ async fn record_audit(
         region_count: request.regions.len() as i32,
         input_chars,
         status,
-        model: &state.config.qwen_model,
+        model: model_name,
         duration_ms,
         created_at: &created_at,
     };
