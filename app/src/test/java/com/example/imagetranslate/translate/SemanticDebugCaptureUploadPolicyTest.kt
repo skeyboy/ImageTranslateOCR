@@ -19,6 +19,7 @@ class SemanticDebugCaptureUploadPolicyTest {
         assertFalse(eligible(scene = "STATIC_IMAGE"))
         assertFalse(eligible(isDebugBuild = false))
         assertFalse(eligible(backend = TranslationBackend.NETWORK))
+        assertFalse(eligible(backend = TranslationBackend.SELF_HOSTED_V4))
         assertFalse(eligible(uploadEnabled = false))
         assertFalse(eligible(missingGroupCount = 0))
     }

@@ -499,7 +499,7 @@ class ImageTranslateActivity : AppCompatActivity() {
         val selfHostedConfigured = TranslationBackendSettings.isSelfHostedConfigured(this)
         binding.btnBackendPnuts.isEnabled = networkConfigured
         binding.btnBackendSelfHosted.isEnabled = selfHostedConfigured
-        binding.btnBackendSelfHostedV4.isEnabled = selfHostedConfigured
+        binding.btnBackendSelfHostedV4.isEnabled = true
         updatingTranslationBackendControl = true
         binding.translationBackendGroup.check(
             when (TranslationBackendSettings.get(this)) {
@@ -538,8 +538,9 @@ class ImageTranslateActivity : AppCompatActivity() {
                 R.string.network_translation_endpoint_format,
                 TranslationBackendSettings.selfHostedTranslationEndpoint(
                     this,
-                    TranslationBackendSettings.get(this).takeIf(TranslationBackend::isSelfHosted)
-                        ?: TranslationBackend.SELF_HOSTED_V4
+                    TranslationBackendSettings.get(this)
+                        .takeIf(TranslationBackend::usesRemoteSemanticService)
+                        ?: TranslationBackend.SELF_HOSTED
                 )
             )
         } else {

@@ -1034,7 +1034,7 @@ internal class BackgroundTranslatedImageProcessor(
                 semanticSource = semanticSource,
                 translationSource = translationSource,
                 cacheKey = cacheKey,
-                cachedTranslation = if (activeBackend.isSelfHosted) {
+                cachedTranslation = if (activeBackend.usesSemanticLayoutPlan) {
                     null
                 } else {
                     synchronized(translationCache) { translationCache[cacheKey] }

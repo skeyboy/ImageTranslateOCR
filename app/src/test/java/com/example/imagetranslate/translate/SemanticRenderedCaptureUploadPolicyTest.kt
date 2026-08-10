@@ -40,6 +40,16 @@ class SemanticRenderedCaptureUploadPolicyTest {
         assertFalse(
             SemanticRenderedCaptureUploadPolicy.shouldUpload(
                 isDebugBuild = true,
+                backend = TranslationBackend.SELF_HOSTED_V4,
+                uploadEnabled = true,
+                patchCount = 2,
+                failedCount = 0,
+                traceCount = 1
+            )
+        )
+        assertFalse(
+            SemanticRenderedCaptureUploadPolicy.shouldUpload(
+                isDebugBuild = true,
                 backend = TranslationBackend.SELF_HOSTED,
                 uploadEnabled = true,
                 patchCount = 0,

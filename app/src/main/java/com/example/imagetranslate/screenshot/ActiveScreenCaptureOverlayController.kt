@@ -50,7 +50,7 @@ internal fun translationBackendMenuOptions(
             TranslationBackend.LOCAL -> true
             TranslationBackend.NETWORK -> networkConfigured
             TranslationBackend.SELF_HOSTED -> selfHostedConfigured
-            TranslationBackend.SELF_HOSTED_V4 -> selfHostedConfigured
+            TranslationBackend.SELF_HOSTED_V4 -> true
         }
     )
 }

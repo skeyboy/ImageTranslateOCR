@@ -25,6 +25,8 @@ Android 图片 OCR 文字识别 + 翻译 + 原图覆盖工具
 
 网络能力位于[translation-service](translation-service/README.md)，使用 Rust Axum、PaddleX、`diesel-async`、PostgreSQL 和 Hy-MT2。Android 默认仍使用端侧管线；配置后可让悬浮窗把压缩采集帧交给局域网 Gateway，一次返回 OCR 框和译文。改造边界和实测见 [PaddleOCR 局域网一体化引擎实施记录](docs/paddle-network-integrated-engine-implementation.md)。
 
+高级设置中的“端内 v4”会在 App 进程内执行 regions-first 语义规划，并调用现有 ML Kit 或已选实验端侧翻译模型；它不需要 `demo-server` 地址，也不会上传 OCR 或回贴截图。`demo-server` 的 v4 HTTP API 继续作为兼容与服务端模型对照入口。
+
 ## 构建
 
 当前项目使用 Android Gradle Plugin 8.7.3、Gradle 8.9 和 JDK 21。命令行构建：

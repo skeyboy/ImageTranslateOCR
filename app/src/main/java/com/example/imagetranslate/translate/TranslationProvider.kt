@@ -3,6 +3,12 @@ package com.example.imagetranslate.translate
 import com.example.experimentaltranslation.ExperimentalTranslationEngine
 import kotlinx.coroutines.CancellationException
 
+enum class TranslationMode {
+    CHINESE_TO_ENGLISH,
+    ENGLISH_TO_CHINESE,
+    AUTO_BIDIRECTIONAL
+}
+
 enum class TranslationBackend {
     LOCAL,
     NETWORK,
@@ -10,7 +16,13 @@ enum class TranslationBackend {
     SELF_HOSTED_V4;
 
     val isSelfHosted: Boolean
+        get() = this == SELF_HOSTED
+
+    val usesSemanticLayoutPlan: Boolean
         get() = this == SELF_HOSTED || this == SELF_HOSTED_V4
+
+    val usesRemoteSemanticService: Boolean
+        get() = isSelfHosted
 }
 
 enum class TranslationResultStatus {

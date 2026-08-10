@@ -92,7 +92,7 @@ object TranslationBackendSettings {
         TranslationBackend.LOCAL -> true
         TranslationBackend.NETWORK -> isNetworkConfigured(context)
         TranslationBackend.SELF_HOSTED -> isSelfHostedConfigured(context)
-        TranslationBackend.SELF_HOSTED_V4 -> isSelfHostedConfigured(context)
+        TranslationBackend.SELF_HOSTED_V4 -> true
     }
 
     fun setNetworkBaseUrl(context: Context, value: String) {
@@ -163,7 +163,7 @@ internal fun resolveTranslationBackend(
             TranslationBackend.LOCAL -> true
             TranslationBackend.NETWORK -> networkConfigured
             TranslationBackend.SELF_HOSTED -> selfHostedConfigured
-            TranslationBackend.SELF_HOSTED_V4 -> selfHostedConfigured
+            TranslationBackend.SELF_HOSTED_V4 -> true
         }
     } ?: TranslationBackend.LOCAL
 }

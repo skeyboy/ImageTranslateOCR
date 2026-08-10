@@ -22,12 +22,6 @@ import java.util.concurrent.atomic.AtomicLong
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
-enum class TranslationMode {
-    CHINESE_TO_ENGLISH,
-    ENGLISH_TO_CHINESE,
-    AUTO_BIDIRECTIONAL
-}
-
 internal data class TranslationExecutionResult(
     val regionId: String,
     val sourceGroupIds: List<String> = listOf(regionId),
@@ -65,10 +59,11 @@ internal class TranslateManager(context: Context? = null) {
     private val semanticSessionId = UUID.randomUUID().toString()
     private val semanticGeneration = AtomicLong(0L)
     private val localProvider = LocalTranslationProvider(translateOne = ::translateLocally)
+    private val embeddedV4Service = EmbeddedV4TranslationService(localProvider::translateBatch)
     private val switchingProvider = SwitchingTranslationProvider(
         selectedBackend = {
             appContext?.let(TranslationBackendSettings::get)
-                ?.takeUnless(TranslationBackend::isSelfHosted)
+                ?.takeUnless(TranslationBackend::usesSemanticLayoutPlan)
                 ?: TranslationBackend.LOCAL
         },
         localProvider = localProvider,
@@ -200,7 +195,7 @@ internal class TranslateManager(context: Context? = null) {
             "Semantic translation viewport must be non-empty"
         }
         val backend = appContext?.let(TranslationBackendSettings::get) ?: TranslationBackend.LOCAL
-        if (!backend.isSelfHosted) {
+        if (!backend.usesSemanticLayoutPlan) {
             val translated = translateBatch(
                 texts = sources.map(SemanticTranslationSource::sourceText),
                 mode = mode,
@@ -229,7 +224,8 @@ internal class TranslateManager(context: Context? = null) {
                 "[${source.role}] ${source.sourceText}"
             }.take(MAXIMUM_DOCUMENT_CONTEXT_CHARACTERS),
             sources = preparedSources,
-            debugCapture = debugCapture
+            debugCapture = debugCapture,
+            experimentalEngine = experimentalEngine
         )
         val semanticTrace = SemanticTranslationTrace(
             requestId = request.requestId,
@@ -238,27 +234,35 @@ internal class TranslateManager(context: Context? = null) {
             translationRevision = request.translationRevision,
             schemaVersion = if (backend == TranslationBackend.SELF_HOSTED_V4) 4 else 3
         )
-        val remoteBatch = try {
-            selfHostedProviderForCurrentSettings(backend).translate(request)
+        val semanticBatch = try {
+            if (backend == TranslationBackend.SELF_HOSTED_V4) {
+                embeddedV4Service.translate(request)
+            } else {
+                selfHostedProviderForCurrentSettings().translate(request)
+            }
         } catch (error: CancellationException) {
             throw error
         } catch (error: Exception) {
-            Log.w(TAG, "Self-hosted semantic request failed: ${error.message}", error)
+            Log.w(TAG, "Semantic v4/v3 request failed: ${error.message}", error)
             SemanticTranslationBatchResult(
                 results = emptyList(),
                 failures = preparedSources.map { source ->
                     SemanticGroupTranslationFailure(
                         groupId = source.groupId,
-                        code = "SELF_HOSTED_REQUEST_FAILED",
-                        message = error.message ?: "Self-hosted translation failed",
-                        retryable = true,
+                        code = if (backend == TranslationBackend.SELF_HOSTED_V4) {
+                            "EMBEDDED_V4_REQUEST_FAILED"
+                        } else {
+                            "SELF_HOSTED_REQUEST_FAILED"
+                        },
+                        message = error.message ?: "Semantic translation failed",
+                        retryable = backend.usesRemoteSemanticService,
                         cause = error
                     )
                 }
             )
         }
         val sourcesById = preparedSources.associateBy(SemanticTranslationSource::groupId)
-        val acceptedRemote = remoteBatch.results.filter { result ->
+        val acceptedSemantic = semanticBatch.results.filter { result ->
             val resultSources = result.sourceGroupIds.mapNotNull(sourcesById::get)
             val v4Decision = if (backend == TranslationBackend.SELF_HOSTED_V4) {
                 RegionsFirstTranslationAcceptancePolicy.evaluate(preparedSources, result)
@@ -268,8 +272,8 @@ internal class TranslateManager(context: Context? = null) {
             val accepted = resultSources.size == result.sourceGroupIds.size && if (
                 backend == TranslationBackend.SELF_HOSTED_V4
             ) {
-                // V4 parsing already validates OCR lineage, binding, grouping authority,
-                // complete region coverage, and non-empty translated text.
+                // The v4 provider validates OCR lineage, grouping authority, geometry,
+                // and non-empty translated text before returning a result.
                 true
             } else {
                 isValidSemanticResult(resultSources, result)
@@ -292,26 +296,26 @@ internal class TranslateManager(context: Context? = null) {
             }
             accepted
         }
-        val rejectedRemote = remoteBatch.results.filterNot(acceptedRemote::contains)
-        val remotelyCoveredSourceIds = if (backend == TranslationBackend.SELF_HOSTED_V4) {
-            remoteBatch.results
+        val rejectedSemantic = semanticBatch.results.filterNot(acceptedSemantic::contains)
+        val coveredSourceIds = if (backend == TranslationBackend.SELF_HOSTED_V4) {
+            semanticBatch.results
         } else {
-            acceptedRemote
+            acceptedSemantic
         }
             .flatMap(SemanticGroupTranslationResult::sourceGroupIds)
             .toSet()
-        val fallbackSources = preparedSources.filter { it.groupId !in remotelyCoveredSourceIds }
+        val fallbackSources = preparedSources.filter { it.groupId !in coveredSourceIds }
         val localFallbackSources = fallbackSources.filter { source ->
             SemanticFallbackPolicy.allowsLocalFallback(source, viewportWidth, viewportHeight)
         }
-        val remoteRequiredSources = fallbackSources.filter { it !in localFallbackSources }
+        val preservedFallbackSources = fallbackSources.filter { it !in localFallbackSources }
         if (fallbackSources.isNotEmpty()) {
             Log.w(
                 TAG,
-                "Self-hosted semantic fallback: count=${fallbackSources.size}, " +
+                "Semantic translation fallback: count=${fallbackSources.size}, " +
                     "local=${localFallbackSources.size}, " +
-                    "preservedLongBody=${remoteRequiredSources.size}, " +
-                    "codes=${remoteBatch.failures.map { it.code }.distinct()}"
+                    "preservedLongBody=${preservedFallbackSources.size}, " +
+                    "codes=${semanticBatch.failures.map { it.code }.distinct()}"
             )
         }
         val localFallback = translateSemanticLocally(
@@ -320,8 +324,9 @@ internal class TranslateManager(context: Context? = null) {
             experimentalEngine,
             requestId
         ).associateBy(TranslationExecutionResult::regionId)
-        val remoteFailures = remoteBatch.failures.associateBy(SemanticGroupTranslationFailure::groupId)
-        val remoteExecutions = acceptedRemote.map { result ->
+        val semanticFailures = semanticBatch.failures
+            .associateBy(SemanticGroupTranslationFailure::groupId)
+        val semanticExecutions = acceptedSemantic.map { result ->
             val resultSources = result.sourceGroupIds.mapNotNull(sourcesById::get)
             TranslationExecutionResult(
                 regionId = result.groupId,
@@ -336,7 +341,7 @@ internal class TranslateManager(context: Context? = null) {
                 semanticTrace = semanticTrace
             )
         }
-        val rejectedRemoteExecutions = rejectedRemote.map { result ->
+        val rejectedSemanticExecutions = rejectedSemantic.map { result ->
             TranslationExecutionResult(
                 regionId = result.groupId,
                 sourceGroupIds = result.sourceGroupIds,
@@ -368,7 +373,7 @@ internal class TranslateManager(context: Context? = null) {
                 provider = "none",
                 succeeded = false,
                 semanticTrace = semanticTrace,
-                failure = remoteFailures[source.groupId]?.let { failure ->
+                failure = semanticFailures[source.groupId]?.let { failure ->
                     TranslationFailure(
                         regionId = source.groupId,
                         code = failure.code,
@@ -376,17 +381,25 @@ internal class TranslateManager(context: Context? = null) {
                         retryable = failure.retryable,
                         cause = failure.cause
                     )
-                } ?: if (source in remoteRequiredSources) {
+                } ?: if (source in preservedFallbackSources) {
                     TranslationFailure(
                         regionId = source.groupId,
-                        code = "REMOTE_REQUIRED_FOR_LONG_BODY",
-                        message = "Long body translation was preserved because semantic translation failed",
-                        retryable = true
+                        code = if (backend == TranslationBackend.SELF_HOSTED_V4) {
+                            "EMBEDDED_V4_TRANSLATION_FAILED"
+                        } else {
+                            "REMOTE_REQUIRED_FOR_LONG_BODY"
+                        },
+                        message = if (backend == TranslationBackend.SELF_HOSTED_V4) {
+                            "Long body translation was preserved after the embedded v4 model failed"
+                        } else {
+                            "Long body translation was preserved because semantic translation failed"
+                        },
+                        retryable = backend.usesRemoteSemanticService
                     )
                 } else null
             )
         }
-        return (remoteExecutions + rejectedRemoteExecutions + fallbackExecutions).sortedBy { execution ->
+        return (semanticExecutions + rejectedSemanticExecutions + fallbackExecutions).sortedBy { execution ->
             execution.sourceGroupIds.mapNotNull(sourcesById::get)
                 .minOfOrNull(SemanticTranslationSource::readingOrder) ?: Int.MAX_VALUE
         }
@@ -536,16 +549,14 @@ internal class TranslateManager(context: Context? = null) {
         }
     }
 
-    private fun selfHostedProviderForCurrentSettings(
-        backend: TranslationBackend
-    ): SelfHostedSemanticTranslationProvider {
+    private fun selfHostedProviderForCurrentSettings(): SelfHostedSemanticTranslationProvider {
         val context = checkNotNull(appContext) {
             "Self-hosted translation requires an app context"
         }
         val baseUrl = TranslationBackendSettings.selfHostedBaseUrl(context)
         require(baseUrl.isNotBlank()) { "Self-hosted translation endpoint is not configured" }
         val token = TranslationBackendSettings.selfHostedBearerToken(context)
-        val schemaVersion = if (backend == TranslationBackend.SELF_HOSTED_V4) 4 else 3
+        val schemaVersion = 3
         val configuration = Triple(baseUrl, token, schemaVersion)
         return synchronized(selfHostedProviderLock) {
             if (selfHostedProvider == null || selfHostedProviderConfiguration != configuration) {

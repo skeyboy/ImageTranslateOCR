@@ -14,6 +14,23 @@ V4 不替换现有 v3，而是新增一条可切换、可审计、可回滚的 r
 4. 服务端返回确定性的 `memberRegionIds`、`sourceCoverSlots`、`renderSlots` 和 layoutHint。
 5. Android 按原子成员执行响应校验，使用真实字体测量完成回贴。
 
+## 1.1 2026-08-10 端内嵌入改造
+
+Android 的 v4 入口已从局域网自建服务改为 App 进程内服务：
+
+```text
+端侧 OCR regions
+  -> EmbeddedV4TranslationService
+  -> regions-first 确定性规划
+  -> ML Kit / 已选实验端侧模型
+  -> layoutHint + sourceCoverSlots + renderSlots
+  -> Android 字体测量和回贴
+```
+
+端内 v4 不启动 HTTP server，不依赖 Axum、SQLite、管理后台或 Ollama，也不要求配置服务地址。
+原 `/api/v4/translate/layout-plan` 保留为兼容、服务端 Qwen 对照和协议回归入口。远程调试原图与
+回贴截图上传只允许用于 v3 自建服务，端内 v4 不产生网络副作用。
+
 ## 2. 新增入口
 
 | 模块 | V3 | V4 |

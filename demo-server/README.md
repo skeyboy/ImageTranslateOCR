@@ -1,6 +1,6 @@
 # ImageTranslateOCR 自建翻译服务
 
-该服务实现 Android 端的组级翻译协议：
+该服务实现 Android 端的组级翻译协议，并保留 v4 HTTP 入口作为兼容和对照实现：
 
 ```text
 端侧 OCR -> 端侧初步语义组 -> POST /api/v3/translate/layout-plan
@@ -12,6 +12,16 @@
 服务使用 Axum、Diesel Async、SQLite 和本地 Qwen。数据库保存请求审计以及最近一批请求/响应 JSON，用于本地布局核验；默认最多保留 200 条，可通过 `REQUEST_HISTORY_LIMIT` 调整。OCR 文本不会发送到线上模型服务。
 
 Android Debug 版在“内录全屏采集”场景提供两个独立开关：可上传翻译前的 OCR 完整帧，也可在译文回贴成功并完成一帧绘制后上传实际屏幕。服务只保存图片用于人工前后对照，不对图片执行 OCR，也不把图片传给 Qwen。图片目录由 `REQUEST_IMAGE_DIR` 控制，审计 JSON 只保留图片元数据，不保存 Base64。图库、拍照、普通静态图片翻译、非 `LIVE_SCREEN` 请求和 Release 版都不会上传图片。
+
+## Android 端内 v4
+
+Android 主程序中的“端内 v4”不启动 Axum、不监听本机端口，也不携带 SQLite、管理后台或
+Ollama。它通过 `EmbeddedV4TranslationService` 在 App 进程内直接执行与
+`planning_v4.rs` 对齐的 regions-first 规划，再把规范组交给现有 ML Kit 或用户选择的实验端侧
+模型。该模式不要求配置服务地址，不上传 OCR/回贴截图，取消由协程直接传播。
+
+`POST /api/v4/translate/layout-plan` 继续保留，用于服务端 Qwen 质量对照、协议回归和旧版
+Android 客户端；新的 Android 端内模式不会访问该路由。v3 仍是远程自建服务入口。
 
 ## 启动
 
@@ -33,6 +43,7 @@ cargo run
 - 健康检查：`GET /healthz`
 - 影子分组兼容：`POST /api/v2/translate/groups`
 - 权威组与布局计划：`POST /api/v3/translate/layout-plan`
+- v4 兼容/对照入口：`POST /api/v4/translate/layout-plan`
 - 取消翻译：`POST /api/v2/translate/requests/{requestId}/cancel`
 - 回贴后调试图：`POST /api/v3/translate/requests/{requestId}/rendered-capture`
 - 请求历史：`GET /admin/requests`

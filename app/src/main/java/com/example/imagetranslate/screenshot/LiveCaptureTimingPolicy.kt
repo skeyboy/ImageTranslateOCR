@@ -15,7 +15,7 @@ internal object LiveCaptureTimingPolicy {
     ): Long = when {
         engine == LiveOcrTranslationEngineType.PADDLE_NETWORK ->
             PADDLE_NETWORK_TRANSLATION_TIMEOUT_MS
-        backend.isSelfHosted -> SELF_HOSTED_TRANSLATION_TIMEOUT_MS
+        backend.usesRemoteSemanticService -> SELF_HOSTED_TRANSLATION_TIMEOUT_MS
         backend == TranslationBackend.NETWORK -> NETWORK_TRANSLATION_TIMEOUT_MS
         else -> LOCAL_TRANSLATION_TIMEOUT_MS
     }

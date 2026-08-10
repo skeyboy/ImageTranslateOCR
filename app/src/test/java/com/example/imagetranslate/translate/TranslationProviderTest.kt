@@ -3,6 +3,7 @@ package com.example.imagetranslate.translate
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -29,8 +30,11 @@ class TranslationProviderTest {
         )
         assertEquals(
             TranslationBackend.SELF_HOSTED_V4,
-            resolveTranslationBackend(TranslationBackend.SELF_HOSTED_V4.name, false, true)
+            resolveTranslationBackend(TranslationBackend.SELF_HOSTED_V4.name, false, false)
         )
+        assertFalse(TranslationBackend.SELF_HOSTED_V4.isSelfHosted)
+        assertFalse(TranslationBackend.SELF_HOSTED_V4.usesRemoteSemanticService)
+        assertTrue(TranslationBackend.SELF_HOSTED_V4.usesSemanticLayoutPlan)
     }
 
     @Test

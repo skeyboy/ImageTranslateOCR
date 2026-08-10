@@ -70,7 +70,9 @@ internal data class SemanticTranslationRequest(
     val mode: TranslationMode,
     val documentText: String,
     val sources: List<SemanticTranslationSource>,
-    val debugCapture: SemanticDebugCapture? = null
+    val debugCapture: SemanticDebugCapture? = null,
+    val experimentalEngine: com.example.experimentaltranslation.ExperimentalTranslationEngine =
+        com.example.experimentaltranslation.ExperimentalTranslationEngine.DISABLED
 )
 
 internal data class SemanticLayoutHint(
