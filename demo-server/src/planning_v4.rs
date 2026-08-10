@@ -72,7 +72,6 @@ struct RegionGroup {
     evidence: Vec<String>,
     bounds: Bounds,
     render_slots: Vec<Bounds>,
-    force_flow_shape: bool,
     first_region: OcrRegion,
     last_region: OcrRegion,
 }
@@ -119,7 +118,6 @@ impl RegionGroup {
             evidence,
             bounds: region.bounds.clone(),
             render_slots: vec![region.bounds.clone()],
-            force_flow_shape: advisory.is_some_and(|group| group.layout_shape == "FLOW_SLOTS"),
             first_region: region.clone(),
             last_region: region.clone(),
         }
@@ -132,7 +130,6 @@ impl RegionGroup {
         self.source_text = format!("{}\n{}", self.source_text.trim(), next.source_text.trim());
         self.bounds = self.bounds.union(&next.bounds);
         self.render_slots.extend(next.render_slots);
-        self.force_flow_shape |= next.force_flow_shape;
         self.confidence = self
             .confidence
             .min(next.confidence)
@@ -158,7 +155,12 @@ impl RegionGroup {
     fn into_planned(self, index: usize) -> PlannedGroup {
         let group_id = stable_group_id(index, &self.member_region_ids);
         let source_line_count = self.render_slots.len().max(1) as i32;
-        let render_slots = layout_slots(&self.render_slots, &self.bounds, self.force_flow_shape);
+        let render_slots = layout_slots(&self.render_slots, &self.bounds);
+        let mut grouping_evidence = self.evidence;
+        if source_line_count > 1 && render_slots.len() == 1 {
+            grouping_evidence.push("DENSE_RECT_LAYOUT_COLLAPSED".to_owned());
+            deduplicate(&mut grouping_evidence);
+        }
         PlannedGroup {
             group_id,
             source_group_ids: self.source_group_ids,
@@ -168,7 +170,7 @@ impl RegionGroup {
             source_text: self.source_text,
             reading_order: self.reading_order,
             grouping_confidence: self.confidence,
-            grouping_evidence: self.evidence,
+            grouping_evidence,
             source_line_count,
             bounds: self.bounds,
             layout_shape: if render_slots.len() > 1 {
@@ -267,15 +269,8 @@ fn merge_decision(
     })
 }
 
-fn layout_slots(
-    source_slots: &[Bounds],
-    group_bounds: &Bounds,
-    force_flow_shape: bool,
-) -> Vec<Bounds> {
-    if force_flow_shape
-        || source_slots.len() <= 1
-        || !is_dense_rectangular_text_flow(source_slots, group_bounds)
-    {
+fn layout_slots(source_slots: &[Bounds], group_bounds: &Bounds) -> Vec<Bounds> {
+    if source_slots.len() <= 1 || !is_dense_rectangular_text_flow(source_slots, group_bounds) {
         return source_slots.to_vec();
     }
     vec![group_bounds.clone()]
@@ -633,6 +628,73 @@ mod tests {
             plan.groups[0]
                 .grouping_evidence
                 .contains(&"LOW_OCR_TEXT_CONFIDENCE".to_owned())
+        );
+    }
+
+    #[test]
+    fn overrides_client_flow_slots_for_dense_rectangular_paragraphs() {
+        let mut request = request();
+        let mut advisory = request.groups[0].clone();
+        advisory.group_id = "client-paragraph".to_owned();
+        advisory.layout_shape = "FLOW_SLOTS".to_owned();
+        let texts = [
+            "Finally, some appendixes contain useful information",
+            "about the language in a more reference-like format.",
+            "Appendix A covers Rust keywords and Appendix B",
+            "covers operators and symbols.",
+        ];
+        let regions = texts
+            .into_iter()
+            .enumerate()
+            .map(|(index, text)| {
+                let mut region = request.regions[0].clone();
+                region.region_id = format!("appendix-line-{index}");
+                region.group_id = advisory.group_id.clone();
+                region.block_id = Some("appendix-paragraph".to_owned());
+                region.line_index = Some(index as i32);
+                region.reading_order = index as i32;
+                region.text = text.to_owned();
+                region.bounds = Bounds {
+                    left: 70 + index as i32,
+                    top: 700 + index as i32 * 80,
+                    right: if index + 1 == texts.len() { 620 } else { 1_300 },
+                    bottom: 758 + index as i32 * 80,
+                };
+                region
+            })
+            .collect::<Vec<_>>();
+        advisory.member_region_ids = regions
+            .iter()
+            .map(|region| region.region_id.clone())
+            .collect();
+        advisory.source_text = regions
+            .iter()
+            .map(|region| region.text.as_str())
+            .collect::<Vec<_>>()
+            .join("\n");
+        advisory.bounds = regions
+            .iter()
+            .skip(1)
+            .fold(regions[0].bounds.clone(), |bounds, region| {
+                bounds.union(&region.bounds)
+            });
+        advisory.render_slots = regions.iter().map(|region| region.bounds.clone()).collect();
+        request.regions = regions;
+        request.groups = vec![advisory];
+
+        let plan = build_regions_first_plan(&request);
+
+        assert_eq!(plan.groups.len(), 1);
+        assert_eq!(plan.groups[0].member_region_ids.len(), 4);
+        assert_eq!(plan.groups[0].layout_shape, "RECT");
+        assert_eq!(
+            plan.groups[0].render_slots,
+            vec![plan.groups[0].bounds.clone()]
+        );
+        assert!(
+            plan.groups[0]
+                .grouping_evidence
+                .contains(&"DENSE_RECT_LAYOUT_COLLAPSED".to_owned())
         );
     }
 

@@ -362,3 +362,24 @@ patch”，与端侧最终绘制所用的文字、字号、遮罩和边界一致
 
 需要明确的边界：这不是包含系统状态栏和其他悬浮窗口的系统级物理截图。它用于校验本项目的
 OCR 原文覆盖、译文完整性和额外遮挡，不应作为第三方 overlay 叠加顺序的证据。
+
+### 8.3 连续正文被绘制为逐行灰带
+
+请求 `061e7404-8c41-4e0a-819b-926ed432c7fb` 包含 31 个 OCR region、5 个客户端组和 5 个
+服务端权威组。截图中附录段落看似“未合并”，但审计表明该段 11 行从端侧到服务端始终属于同一
+语义组，Gemini 也返回了一条完整的 200 字译文；Android 最终 `patchCount=5`、`failed=0`。
+
+根因是布局形状而非语义分组：Android advisory group 根据多行 OCR 自动声明
+`FLOW_SLOTS`，旧 V4 规划器又把该声明作为强制条件，因此服务端把 11 个行框同时作为
+`renderSlots` 和 `sourceCoverSlots` 返回。Android 正确执行 DSL 后只能逐行擦除和排版，形成
+截图中的多条灰色带。
+
+修复后，服务端把客户端布局形状降为参考信息，并根据 OCR 几何重新裁决：同栏、行距稳定、左右
+边缘变化处于正文容差内的连续文本收敛为一个 `RECT renderSlot`；行级 `sourceCoverSlots` 继续
+保留，用于原文覆盖血缘和调试。真实图片绕排、跨栏或明显阶梯边界仍返回 `FLOW_SLOTS`。发生
+收敛的组在 `groupingEvidence` 中增加 `DENSE_RECT_LAYOUT_COLLAPSED`，便于 Admin 直接识别。
+
+使用原请求移除已脱敏的调试图片字段后重放，OpenLux `gemini-3.5-flash-lite` 在 6.3 秒内返回
+5 个成功组。目标附录段验证结果：11 个 `memberRegionIds`、1 个 `renderSlot`、11 个
+`sourceCoverSlots`、`layoutShape=RECT`。这使 Android 按一个连续区域完成译文回流，同时保留
+原始 OCR 行级覆盖依据。
