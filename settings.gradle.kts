@@ -16,3 +16,4 @@ rootProject.name = "ImageTranslateOCR"
 include(":app")
 include(":smart-assist-core")
 include(":experimental-translation")
+include(":v4-translation-android")

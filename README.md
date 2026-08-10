@@ -27,6 +27,10 @@ Android 图片 OCR 文字识别 + 翻译 + 原图覆盖工具
 
 高级设置中的“端内 v4”会在 App 进程内执行 regions-first 语义规划，并调用现有 ML Kit 或已选实验端侧翻译模型；它不需要 `demo-server` 地址，也不会上传 OCR 或回贴截图。`demo-server` 的 v4 HTTP API 继续作为兼容与服务端模型对照入口。
 
+需要在其他 Android 应用内嵌入联网 v4 服务时，可使用 `:v4-translation-android`：它通过 JNI
+复用 `demo-server/v4-service` Rust crate，并在运行时接收 OpenAI 兼容地址、模型和 API Key。
+密钥不写入仓库或 AAR。
+
 ## 构建
 
 当前项目使用 Android Gradle Plugin 8.7.3、Gradle 8.9 和 JDK 21。命令行构建：

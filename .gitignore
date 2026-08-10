@@ -52,6 +52,7 @@ demo-server/*.sqlite3
 demo-server/*.sqlite3-*
 demo-server/request-images/
 app/libs/*.aar
+v4-translation-android/src/main/jniLibs/**/*.so
 /.tmp/
 /artifacts/
 /demo-server.sqlite3

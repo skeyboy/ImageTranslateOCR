@@ -1,0 +1,1 @@
+-keep class com.example.v4translation.EmbeddedV4TranslationService { *; }

@@ -9,7 +9,7 @@
           -> Android 真实字体排版和回贴
 ```
 
-服务使用 Axum、Diesel Async、SQLite 和本地 Qwen。数据库保存请求审计以及最近一批请求/响应 JSON，用于本地布局核验；默认最多保留 200 条，可通过 `REQUEST_HISTORY_LIMIT` 调整。OCR 文本不会发送到线上模型服务。
+HTTP 外壳使用 Axum、Diesel Async 和 SQLite；v4 协议、regions-first 规划、模型请求和响应组装已经抽到 `v4-service` Rust crate。数据库保存请求审计以及最近一批请求/响应 JSON，用于本地布局核验；默认最多保留 200 条，可通过 `REQUEST_HISTORY_LIMIT` 调整。模型既可使用本地 Ollama，也可显式配置 OpenAI 兼容上游。
 
 Android Debug 版在“内录全屏采集”场景提供两个独立开关：可上传翻译前的 OCR 完整帧，也可在译文回贴成功并完成一帧绘制后上传实际屏幕。服务只保存图片用于人工前后对照，不对图片执行 OCR，也不把图片传给 Qwen。图片目录由 `REQUEST_IMAGE_DIR` 控制，审计 JSON 只保留图片元数据，不保存 Base64。图库、拍照、普通静态图片翻译、非 `LIVE_SCREEN` 请求和 Release 版都不会上传图片。
 
@@ -22,6 +22,11 @@ Ollama。它通过 `EmbeddedV4TranslationService` 在 App 进程内直接执行�
 
 `POST /api/v4/translate/layout-plan` 继续保留，用于服务端 Qwen 质量对照、协议回归和旧版
 Android 客户端；新的 Android 端内模式不会访问该路由。v3 仍是远程自建服务入口。
+
+此外，仓库提供独立的 `:v4-translation-android` AAR 模块。它通过 JNI 直接复用
+`demo-server/v4-service` crate，可把同一套 v4 规划和 OpenAI 兼容请求逻辑嵌入其他 Android
+应用。该模块与主程序现有的离线“端内 v4”模式相互独立；API Key 必须由宿主应用在运行时
+提供，不能打包进源码或 AAR。构建方式见 `v4-translation-android/README.md`。
 
 ## 启动
 
@@ -70,6 +75,21 @@ curl --fail-with-body \
 基础 Q4_K_M 模型包体约 6.6 GB，在 24 GB Apple Silicon 机器上用于质量优先的组级翻译。已安装的纯文本 `qwen3:4b` 可作为低资源回退，但应为它另建带足够 `num_ctx` 的 Modelfile；其包体约 2.5 GB，且真实新闻标题样本曾出现语义压缩错误。
 
 `QWEN_BASE_URL` 接受任意本地 OpenAI 兼容 API 基址，也可以指向 llama.cpp、vLLM 或 MLX 网关。服务会追加 `/chat/completions`，并通过 `/models` 检查运行时和指定模型是否可用。`GET /healthz` 中三项状态含义如下：
+
+使用 OpenLux 时，可从不含密钥的模板开始：
+
+```bash
+cp .env.openlux.example .env
+# 在本地 .env 中填写 QWEN_API_KEY；该文件已被 git 忽略。
+cargo run
+```
+
+模板当前选择 `https://api.openlux.ai/v1` 和 `qwen3.5-plus`。也可不启动 Axum，直接验证抽取后的 crate：
+
+```bash
+cargo run --manifest-path v4-service/Cargo.toml \
+  --example translate_v4 -- examples/v4-technical-request.json
+```
 
 - `modelConfigured`：模型地址和认证配置可用于请求。
 - `modelReachable`：本地模型运行时正在响应。

@@ -15,7 +15,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config = Config::from_env()?;
     let database = Database::new(config.database_url.clone());
     database.migrate().await?;
-    let model = Arc::new(QwenClient::new(&config)?);
+    let model = Arc::new(QwenClient::new(&config.qwen_config())?);
     let listener = TcpListener::bind(&config.server_addr).await?;
     info!(address = %config.server_addr, model = %config.qwen_model, "translation server started");
     axum::serve(listener, app(config, database, model)).await?;

@@ -3,26 +3,8 @@ use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
 };
+pub use image_translate_v4_service::V4ServiceError as AppError;
 use serde::Serialize;
-use thiserror::Error;
-
-#[derive(Debug, Error)]
-pub enum AppError {
-    #[error("{0}")]
-    InvalidRequest(String),
-    #[error("{0}")]
-    Unauthorized(String),
-    #[error("{0}")]
-    ModelUnavailable(String),
-    #[error("{0}")]
-    Upstream(String),
-    #[error("{0}")]
-    Cancelled(String),
-    #[error("{0}")]
-    Database(String),
-    #[error("{0}")]
-    Configuration(String),
-}
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -39,44 +21,36 @@ struct ErrorBody {
     retryable: bool,
 }
 
-impl AppError {
-    pub fn invalid(message: impl Into<String>) -> Self {
-        Self::InvalidRequest(message.into())
-    }
+pub trait AppErrorRequestExt {
+    fn with_request_id(self, request_id: impl Into<String>) -> RequestError;
+}
 
-    pub fn configuration(message: impl Into<String>) -> Self {
-        Self::Configuration(message.into())
-    }
-
-    pub fn database(error: impl std::fmt::Display) -> Self {
-        Self::Database(error.to_string())
-    }
-
-    pub fn with_request_id(self, request_id: impl Into<String>) -> RequestError {
+impl AppErrorRequestExt for AppError {
+    fn with_request_id(self, request_id: impl Into<String>) -> RequestError {
         RequestError {
             request_id: request_id.into(),
             source: self,
         }
     }
+}
 
-    fn response_parts(&self) -> (StatusCode, &'static str, bool) {
-        match self {
-            Self::InvalidRequest(_) => (StatusCode::BAD_REQUEST, "INVALID_REQUEST", false),
-            Self::Unauthorized(_) => (StatusCode::UNAUTHORIZED, "UNAUTHORIZED", false),
-            Self::ModelUnavailable(_) => (
-                StatusCode::SERVICE_UNAVAILABLE,
-                "MODEL_NOT_CONFIGURED",
-                true,
-            ),
-            Self::Upstream(_) => (StatusCode::BAD_GATEWAY, "UPSTREAM_MODEL_FAILED", true),
-            Self::Cancelled(_) => (StatusCode::CONFLICT, "REQUEST_CANCELLED", true),
-            Self::Database(_) => (StatusCode::INTERNAL_SERVER_ERROR, "DATABASE_ERROR", true),
-            Self::Configuration(_) => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "CONFIGURATION_ERROR",
-                false,
-            ),
-        }
+fn response_parts(error: &AppError) -> (StatusCode, &'static str, bool) {
+    match error {
+        AppError::InvalidRequest(_) => (StatusCode::BAD_REQUEST, "INVALID_REQUEST", false),
+        AppError::Unauthorized(_) => (StatusCode::UNAUTHORIZED, "UNAUTHORIZED", false),
+        AppError::ModelUnavailable(_) => (
+            StatusCode::SERVICE_UNAVAILABLE,
+            "MODEL_NOT_CONFIGURED",
+            true,
+        ),
+        AppError::Upstream(_) => (StatusCode::BAD_GATEWAY, "UPSTREAM_MODEL_FAILED", true),
+        AppError::Cancelled(_) => (StatusCode::CONFLICT, "REQUEST_CANCELLED", true),
+        AppError::Database(_) => (StatusCode::INTERNAL_SERVER_ERROR, "DATABASE_ERROR", true),
+        AppError::Configuration(_) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "CONFIGURATION_ERROR",
+            false,
+        ),
     }
 }
 
@@ -88,7 +62,7 @@ pub struct RequestError {
 
 impl IntoResponse for RequestError {
     fn into_response(self) -> Response {
-        let (status, code, retryable) = self.source.response_parts();
+        let (status, code, retryable) = response_parts(&self.source);
         (
             status,
             Json(ErrorEnvelope {

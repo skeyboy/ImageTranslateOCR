@@ -23,11 +23,12 @@ use crate::{
     database::{
         Database, NewRenderedRequestImage, NewRequestAudit, NewRequestImage, NewRequestPayload,
     },
-    error::{AppError, RequestError},
+    error::{AppError, AppErrorRequestExt, RequestError},
     planning::DocumentPlan,
     planning_v4::build_regions_first_plan,
     qwen::{ModelTranslation, PROMPT_VERSION, TranslationModel},
 };
+use image_translate_v4_service::V4TranslationService;
 
 #[derive(Clone)]
 pub struct AppState {
@@ -338,6 +339,9 @@ async fn translate_request(
     request
         .validate_schema(expected_schema)
         .map_err(|error| error.with_request_id(&request_id))?;
+    if api_version == TranslationApiVersion::V4 {
+        return translate_v4_request(state, request).await;
+    }
     let normalized_request = normalized_request_for_translation(&request);
     let document_plan = match api_version {
         TranslationApiVersion::V4 => build_regions_first_plan(&normalized_request),
@@ -528,6 +532,87 @@ async fn translate_request(
         preserved_group_count = preserved,
         total_ms,
         "semantic translation completed"
+    );
+    Ok(Json(response))
+}
+
+async fn translate_v4_request(
+    state: AppState,
+    request: SemanticTranslationRequest,
+) -> Result<Json<SemanticTranslationResponse>, RequestError> {
+    let request_id = request.request_id.clone();
+    let started = Instant::now();
+    let audit_id = Uuid::new_v4().to_string();
+    let saved_capture = save_debug_capture(&state, &request, &audit_id)
+        .await
+        .map_err(|error| error.with_request_id(&request_id))?;
+    let mut cancellation = match state.cancellations.register(&request_id).await {
+        Ok(receiver) => receiver,
+        Err(error) => {
+            remove_capture(saved_capture.as_ref()).await;
+            return Err(error.with_request_id(request_id));
+        }
+    };
+    let _active_request = ActiveRequestGuard::new(state.cancellations.clone(), request_id.clone());
+    let service = V4TranslationService::new(state.model.clone(), state.config.qwen_model.clone());
+    let prepared = service
+        .prepare(request.clone())
+        .map_err(|error| error.with_request_id(&request_id))?;
+    let model_request_json = prepared.model_request_json.clone();
+    let outcome = tokio::select! {
+        result = service.translate_prepared(prepared) => result,
+        _ = cancellation.changed() => Err(AppError::Cancelled(
+            "translation request cancelled by client".to_owned(),
+        )),
+    };
+    state.cancellations.remove(&request_id).await;
+    let mut response = match outcome {
+        Ok(response) => response,
+        Err(error) => {
+            let elapsed = started.elapsed().as_millis() as i64;
+            let status = if matches!(error, AppError::Cancelled(_)) {
+                "CANCELLED"
+            } else {
+                "FAILED"
+            };
+            record_audit(
+                &state,
+                &audit_id,
+                &request,
+                status,
+                elapsed,
+                model_request_json.as_deref(),
+                None,
+                Some(&error.to_string()),
+                saved_capture.as_ref(),
+            )
+            .await;
+            return Err(error.with_request_id(request_id));
+        }
+    };
+    response.provider = "self-hosted-qwen-regions-first-v4".to_owned();
+    let total_ms = started.elapsed().as_millis() as i64;
+    response.metrics.total_ms = total_ms as u64;
+    record_audit(
+        &state,
+        &audit_id,
+        &request,
+        "SUCCEEDED",
+        total_ms,
+        model_request_json.as_deref(),
+        Some(&response),
+        None,
+        saved_capture.as_ref(),
+    )
+    .await;
+    info!(
+        request_id = %request_id,
+        group_count = response.metrics.group_count,
+        region_count = request.regions.len(),
+        translated_group_count = response.metrics.translated_group_count,
+        preserved_group_count = response.metrics.preserved_group_count,
+        total_ms,
+        "v4 translation completed"
     );
     Ok(Json(response))
 }

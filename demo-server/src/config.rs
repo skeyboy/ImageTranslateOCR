@@ -1,6 +1,7 @@
 use std::{env, path::PathBuf, time::Duration};
 
 use crate::error::AppError;
+use image_translate_v4_service::QwenConfig;
 
 #[derive(Clone, Debug)]
 pub struct Config {
@@ -18,6 +19,17 @@ pub struct Config {
 }
 
 impl Config {
+    pub fn qwen_config(&self) -> QwenConfig {
+        QwenConfig {
+            qwen_base_url: self.qwen_base_url.clone(),
+            qwen_api_key: self.qwen_api_key.clone(),
+            qwen_model: self.qwen_model.clone(),
+            qwen_reasoning_effort: self.qwen_reasoning_effort.clone(),
+            qwen_max_tokens: self.qwen_max_tokens,
+            qwen_timeout_seconds: self.qwen_timeout.as_secs(),
+        }
+    }
+
     pub fn from_env() -> Result<Self, AppError> {
         let timeout_seconds = env::var("QWEN_TIMEOUT_SECONDS")
             .unwrap_or_else(|_| "210".to_owned())
