@@ -330,6 +330,8 @@ pub struct EdgeAuditUpload {
     provider: String,
     model: String,
     duration_ms: i64,
+    #[serde(default)]
+    timings: serde_json::Value,
 }
 
 pub async fn upload_edge_audit(
@@ -356,7 +358,8 @@ pub async fn upload_edge_audit(
     let model_request_json = serde_json::to_string(&serde_json::json!({
         "request": upload.model_request,
         "response": upload.model_response,
-        "execution": "android-embedded"
+        "execution": "android-embedded",
+        "timings": upload.timings
     }))
     .map_err(|error| AppError::Upstream(error.to_string()).with_request_id(&request_id))?;
     record_audit(
@@ -445,7 +448,7 @@ async fn translate_request(
         active_model.provider.as_str(),
         active_model.model_name
     );
-    let model_request_json = active_model.model.request_json(&request, &actionable);
+    let raw_model_request_json = active_model.model.request_json(&request, &actionable);
     let model_outcome = tokio::select! {
         result = active_model.model.translate(&request, &actionable) => result,
         _ = cancellation.changed() => Err(AppError::Cancelled(
@@ -453,6 +456,7 @@ async fn translate_request(
         )),
     };
     state.cancellations.remove(&request_id).await;
+    let provider_timing = active_model.model.take_timing(&request_id);
     let model_results = match model_outcome {
         Ok(results) => results,
         Err(error) => {
@@ -475,7 +479,8 @@ async fn translate_request(
                 &request,
                 status,
                 elapsed,
-                model_request_json.as_deref(),
+                enriched_model_request(raw_model_request_json.as_deref(), provider_timing, None)
+                    .as_deref(),
                 None,
                 Some(&error.to_string()),
                 saved_capture.as_ref(),
@@ -485,6 +490,7 @@ async fn translate_request(
             return Err(error.with_request_id(request_id));
         }
     };
+    let rust_started = Instant::now();
     if api_version == TranslationApiVersion::V4 {
         let total_ms = started.elapsed().as_millis() as u64;
         let prepared = PreparedTranslation {
@@ -500,6 +506,11 @@ async fn translate_request(
         };
         let response = assemble_translation(&prepared, &model_results, total_ms)
             .map_err(|error| AppError::from(error).with_request_id(&request_id))?;
+        let model_request_json = enriched_model_request(
+            raw_model_request_json.as_deref(),
+            provider_timing,
+            Some(rust_started.elapsed().as_millis() as u64),
+        );
         record_audit(
             &state,
             &audit_id,
@@ -619,6 +630,11 @@ async fn translate_request(
             total_ms,
         },
     };
+    let model_request_json = enriched_model_request(
+        raw_model_request_json.as_deref(),
+        provider_timing,
+        Some(rust_started.elapsed().as_millis() as u64),
+    );
     record_audit(
         &state,
         &audit_id,
@@ -926,6 +942,30 @@ fn optional_header<'a>(headers: &'a HeaderMap, name: &str) -> Result<Option<&'a 
         .map(|value| value.filter(|item| !item.is_empty()))
 }
 
+fn enriched_model_request(
+    raw_request: Option<&str>,
+    mut provider_timing: Option<serde_json::Value>,
+    rust_complete_ms: Option<u64>,
+) -> Option<String> {
+    let actual_request = provider_timing
+        .as_mut()
+        .and_then(serde_json::Value::as_object_mut)
+        .and_then(|timing| timing.remove("actualModelRequest"))
+        .filter(|value| !value.is_null());
+    let mut request = actual_request.or_else(|| {
+        raw_request.and_then(|raw| serde_json::from_str::<serde_json::Value>(raw).ok())
+    })?;
+    request.as_object_mut()?.insert(
+        "_timings".to_owned(),
+        serde_json::json!({
+            "provider": provider_timing,
+            "rustCompleteMs": rust_complete_ms,
+            "auditUploadMs": serde_json::Value::Null
+        }),
+    );
+    serde_json::to_string(&request).ok()
+}
+
 async fn record_audit(
     state: &AppState,
     id: &str,
@@ -938,6 +978,7 @@ async fn record_audit(
     image: Option<&SavedCapture>,
     model_name: &str,
 ) {
+    let audit_started = Instant::now();
     let created_at = Utc::now().to_rfc3339();
     let input_chars = request
         .regions
@@ -1000,6 +1041,11 @@ async fn record_audit(
         .await
     {
         Ok(stale_paths) => {
+            info!(
+                request_id = %request.request_id,
+                audit_upload_ms = audit_started.elapsed().as_millis() as u64,
+                "translation audit persisted"
+            );
             for path in stale_paths {
                 if let Err(error) = tokio::fs::remove_file(&path).await
                     && error.kind() != std::io::ErrorKind::NotFound

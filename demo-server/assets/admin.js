@@ -61,7 +61,9 @@
   const providerRequestBody = (pre) => {
     const raw = pre?.textContent?.trim() || "";
     const parsed = JSON.parse(raw);
-    return parsed?.request && typeof parsed.request === "object" ? parsed.request : parsed;
+    const body = parsed?.request && typeof parsed.request === "object" ? parsed.request : parsed;
+    if (body && typeof body === "object") delete body._timings;
+    return body;
   };
 
   document.querySelectorAll("[data-copy-target]").forEach((button) => {

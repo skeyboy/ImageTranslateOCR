@@ -203,14 +203,28 @@ mod tests {
         .unwrap();
         assert_eq!(prepared.execution_groups.len(), 1);
         assert!(prepared.model_prompt.user.contains("regionLines"));
+        assert!(!prepared.model_prompt.user.contains("documentContext"));
+        assert_eq!(prepared.model_prompt.recommended_max_tokens, 1024);
+        let user: serde_json::Value = serde_json::from_str(&prepared.model_prompt.user).unwrap();
+        assert!(
+            user["translateGroups"][0]["regionLines"][0]
+                .get("text")
+                .is_none()
+        );
+        assert_eq!(
+            prepared.model_prompt.response_format["json_schema"]["schema"]["properties"]["translations"]
+                ["type"],
+            "array"
+        );
         let prepared_json = serde_json::to_string(&prepared).unwrap();
         let group_id = &prepared.actionable_groups[0].group_id;
         let completion = serde_json::json!({"choices":[{"message":{"content":serde_json::json!({
-            "translations": { group_id: {
+            "translations": [{
+                "groupId": group_id,
                 "translatedText":"Rust 是一种系统编程语言。",
                 "detectedSourceLanguage":"en",
                 "targetLanguage":"zh"
-            }}
+            }]
         }).to_string()}}]})
         .to_string();
         let completed = complete_translation(&prepared_json, &completion, 25).unwrap();

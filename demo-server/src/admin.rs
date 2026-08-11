@@ -512,6 +512,22 @@ fn detail_page(record: RequestRecord, config: &Config) -> String {
                 "data-request-json=\"\" data-response-json=\"\"".to_owned(),
             ),
         };
+    let model_timing_html = serde_json::from_str::<serde_json::Value>(&model_request_json)
+        .ok()
+        .and_then(|value| {
+            value
+                .get("_timings")
+                .or_else(|| value.get("timings"))
+                .cloned()
+        })
+        .and_then(|timing| serde_json::to_string_pretty(&timing).ok())
+        .map(|timing| {
+            format!(
+                "<details><summary>查看分段计时</summary><pre>{}</pre></details>",
+                escape_html(&timing)
+            )
+        })
+        .unwrap_or_default();
     let error_html = error_message
         .filter(|value| !value.is_empty())
         .map(|value| {
@@ -695,6 +711,7 @@ fn detail_page(record: RequestRecord, config: &Config) -> String {
                                     <button type=\"button\" class=\"copy-button copy-button-primary\" data-copy-curl=\"model-provider-request-json\" data-endpoint=\"{curl_endpoint}\" data-api-key-env=\"{curl_api_key_env}\" data-requires-auth=\"{curl_requires_auth}\">复制 curl</button>\
                                 </div>\
                             </div>\
+                            {model_timing_html}\
                             <pre id=\"model-provider-request-json\">{model_request_json}</pre>\
                         </div>\
                     </details>\
@@ -714,6 +731,7 @@ fn detail_page(record: RequestRecord, config: &Config) -> String {
             request_json = escape_html(&request_json),
             response_json = escape_html(&response_json),
             model_request_json = escape_html(&model_request_json),
+            model_timing_html = model_timing_html,
             curl_endpoint = escape_html(&curl_endpoint),
             curl_api_key_env = curl_api_key_env,
             curl_requires_auth = curl_requires_auth,

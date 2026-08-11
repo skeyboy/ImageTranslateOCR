@@ -1,17 +1,16 @@
 use std::{
     collections::{HashMap, HashSet},
+    hash::{DefaultHasher, Hash, Hasher},
     sync::{Arc, RwLock},
 };
 
 use async_trait::async_trait;
 pub use ocr_translation_core::model::ModelTranslation;
-use ocr_translation_core::model::build_model_prompt;
+use ocr_translation_core::model::{adaptive_max_tokens, build_model_prompt};
 use reqwest::{Client, StatusCode};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-#[cfg(test)]
-use serde_json::json;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use crate::{
     config::{Config, TranslationProvider},
@@ -54,6 +53,10 @@ pub trait TranslationModel: Send + Sync {
             execution_mode: "embedded",
         }
     }
+
+    fn take_timing(&self, _request_id: &str) -> Option<Value> {
+        None
+    }
 }
 
 pub struct QwenClient {
@@ -68,6 +71,8 @@ pub struct QwenClient {
     execution_mode: &'static str,
     provider_name: &'static str,
     api_key_env: &'static str,
+    translation_cache: RwLock<HashMap<u64, ModelTranslation>>,
+    request_timings: RwLock<HashMap<String, Value>>,
 }
 
 impl QwenClient {
@@ -142,6 +147,8 @@ impl QwenClient {
             },
             provider_name,
             api_key_env,
+            translation_cache: RwLock::new(HashMap::new()),
+            request_timings: RwLock::new(HashMap::new()),
         })
     }
 
@@ -180,9 +187,11 @@ impl QwenClient {
             ],
             temperature: 0.0,
             seed: 0,
-            max_tokens: self.max_tokens,
+            max_tokens: adaptive_max_tokens(groups).min(self.max_tokens),
             response_format: prompt.response_format,
-            reasoning_effort: self.reasoning_effort.as_deref(),
+            reasoning_effort: self.reasoning_effort.as_deref().filter(|value| {
+                self.provider_name == "Qwen" || !value.eq_ignore_ascii_case("none")
+            }),
         })
     }
 
@@ -190,8 +199,9 @@ impl QwenClient {
         &self,
         body: &ChatRequest<'_>,
         group_count: usize,
-    ) -> Result<String, AppError> {
+    ) -> Result<CompletionResult, AppError> {
         let timeout = self.completion_timeout(group_count);
+        let started = Instant::now();
         let mut builder = self.client.post(&self.endpoint).timeout(timeout).json(body);
         if let Some(api_key) = &self.api_key {
             builder = builder.bearer_auth(api_key);
@@ -200,6 +210,7 @@ impl QwenClient {
             .send()
             .await
             .map_err(|error| provider_request_error(self.provider_name, error, timeout))?;
+        let response_headers_ms = started.elapsed().as_millis() as u64;
         let status = response.status();
         let response_text = response.text().await.map_err(|error| {
             AppError::Upstream(format!("{} response failed: {error}", self.provider_name))
@@ -212,13 +223,28 @@ impl QwenClient {
                 safe_upstream_suffix(status, &response_text)
             )));
         }
+        let total_ms = started.elapsed().as_millis() as u64;
         let envelope: ChatResponse = serde_json::from_str(&response_text).map_err(|error| {
             AppError::Upstream(format!(
                 "invalid {} response envelope: {error}",
                 self.provider_name
             ))
         })?;
-        Ok(completion_content(&envelope)?.to_owned())
+        let checkpoint = provider_latency_checkpoint(&response_text);
+        let (ttft_ms, generation_ms) = checkpoint_durations(checkpoint.as_ref());
+        Ok(CompletionResult {
+            content: completion_content(&envelope)?.to_owned(),
+            timing: serde_json::json!({
+                "dnsMs": Value::Null,
+                "tlsMs": Value::Null,
+                "responseHeadersMs": response_headers_ms,
+                "responseDownloadMs": total_ms.saturating_sub(response_headers_ms),
+                "providerTotalMs": total_ms,
+                "ttftMs": ttft_ms,
+                "modelGenerationMs": generation_ms,
+                "providerLatencyCheckpoint": checkpoint
+            }),
+        })
     }
 
     fn completion_timeout(&self, group_count: usize) -> Duration {
@@ -264,13 +290,58 @@ impl TranslationModel for QwenClient {
                 self.api_key_env, self.provider_name
             )));
         }
-        let body = self.chat_request(request, groups)?;
-        let content = self.completion(&body, groups.len()).await?;
-        let mut translations = parse_model_response_without_critical_validation(&content, groups)?;
-        let repair_groups = groups
+        let mut translations = {
+            let cached = self
+                .translation_cache
+                .read()
+                .unwrap_or_else(|poisoned| poisoned.into_inner());
+            groups
+                .iter()
+                .filter_map(|group| {
+                    cached
+                        .get(&self.semantic_cache_key(request, group))
+                        .map(|item| {
+                            let mut item = item.clone();
+                            item.group_id = group.group_id.clone();
+                            item
+                        })
+                })
+                .collect::<Vec<_>>()
+        };
+        let missing_groups = groups
             .iter()
             .filter(|group| {
-                translations
+                !translations
+                    .iter()
+                    .any(|item| item.group_id == group.group_id)
+            })
+            .cloned()
+            .collect::<Vec<_>>();
+        if missing_groups.is_empty() {
+            self.store_timing(
+                &request.request_id,
+                serde_json::json!({
+                    "cacheHitGroups": groups.len(), "cacheMissGroups": 0,
+                    "actualModelRequest": Value::Null,
+                    "dnsMs": Value::Null, "tlsMs": Value::Null,
+                    "providerTotalMs": 0, "ttftMs": 0, "modelGenerationMs": 0
+                }),
+            );
+            return Ok(translations);
+        }
+        let body = self.chat_request(request, &missing_groups)?;
+        let actual_model_request = serde_json::to_value(&body).ok();
+        let completion = self.completion(&body, missing_groups.len()).await?;
+        let mut timing = completion.timing;
+        timing["actualModelRequest"] = actual_model_request.unwrap_or(Value::Null);
+        timing["cacheHitGroups"] = Value::from(groups.len() - missing_groups.len());
+        timing["cacheMissGroups"] = Value::from(missing_groups.len());
+        let mut fresh =
+            parse_model_response_without_critical_validation(&completion.content, &missing_groups)?;
+        let repair_groups = missing_groups
+            .iter()
+            .filter(|group| {
+                fresh
                     .iter()
                     .find(|translation| translation.group_id == group.group_id)
                     .and_then(|translation| {
@@ -285,10 +356,11 @@ impl TranslationModel for QwenClient {
             let repair_prompt = critical_repair_prompt(&repair_groups);
             let repair_body =
                 self.chat_request_with_system_prompt(request, &repair_groups, repair_prompt)?;
-            let repaired_content = self.completion(&repair_body, repair_groups.len()).await?;
-            let repaired = parse_model_response(&repaired_content, &repair_groups)?;
+            let repaired_completion = self.completion(&repair_body, repair_groups.len()).await?;
+            timing["repair"] = repaired_completion.timing;
+            let repaired = parse_model_response(&repaired_completion.content, &repair_groups)?;
             for repaired_translation in repaired {
-                if let Some(translation) = translations
+                if let Some(translation) = fresh
                     .iter_mut()
                     .find(|translation| translation.group_id == repaired_translation.group_id)
                 {
@@ -297,7 +369,33 @@ impl TranslationModel for QwenClient {
             }
         }
 
+        validate_model_translations(&missing_groups, &fresh)?;
+        {
+            let mut cache = self
+                .translation_cache
+                .write()
+                .unwrap_or_else(|poisoned| poisoned.into_inner());
+            if cache.len() > 1024 {
+                cache.clear();
+            }
+            for item in &fresh {
+                if let Some(group) = missing_groups
+                    .iter()
+                    .find(|group| group.group_id == item.group_id)
+                {
+                    cache.insert(self.semantic_cache_key(request, group), item.clone());
+                }
+            }
+        }
+        translations.extend(fresh);
+        translations.sort_by_key(|item| {
+            groups
+                .iter()
+                .position(|group| group.group_id == item.group_id)
+                .unwrap_or(usize::MAX)
+        });
         validate_model_translations(groups, &translations)?;
+        self.store_timing(&request.request_id, timing);
         Ok(translations)
     }
 
@@ -352,6 +450,73 @@ impl TranslationModel for QwenClient {
             execution_mode: self.execution_mode,
         }
     }
+
+    fn take_timing(&self, request_id: &str) -> Option<Value> {
+        self.request_timings
+            .write()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .remove(request_id)
+    }
+}
+
+impl QwenClient {
+    fn store_timing(&self, request_id: &str, timing: Value) {
+        self.request_timings
+            .write()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .insert(request_id.to_owned(), timing);
+    }
+
+    fn semantic_cache_key(
+        &self,
+        request: &SemanticTranslationRequest,
+        group: &TranslationGroup,
+    ) -> u64 {
+        let mut hasher = DefaultHasher::new();
+        self.provider_name.hash(&mut hasher);
+        self.model.hash(&mut hasher);
+        request.translation.mode.hash(&mut hasher);
+        request.translation.source_language.hash(&mut hasher);
+        request.translation.target_language.hash(&mut hasher);
+        group.role.hash(&mut hasher);
+        group.source_text.trim().hash(&mut hasher);
+        hasher.finish()
+    }
+}
+
+struct CompletionResult {
+    content: String,
+    timing: Value,
+}
+
+fn provider_latency_checkpoint(raw: &str) -> Option<Value> {
+    let value: Value = serde_json::from_str(raw).ok()?;
+    value
+        .pointer("/usage/service_tier_details/latency_checkpoint")
+        .or_else(|| value.pointer("/usage/latency_checkpoint"))
+        .cloned()
+}
+
+fn checkpoint_durations(checkpoint: Option<&Value>) -> (Option<u64>, Option<u64>) {
+    let Some(checkpoint) = checkpoint.and_then(Value::as_object) else {
+        return (None, None);
+    };
+    let lookup = |suffix: &str| {
+        checkpoint.iter().find_map(|(key, value)| {
+            key.to_ascii_lowercase()
+                .ends_with(suffix)
+                .then(|| value.as_f64())
+                .flatten()
+        })
+    };
+    let ttft = lookup("ttft");
+    let ttlt = lookup("ttlt");
+    let milliseconds = |seconds: f64| (seconds.max(0.0) * 1000.0).round() as u64;
+    (
+        ttft.map(milliseconds),
+        ttlt.zip(ttft)
+            .map(|(last, first)| milliseconds(last - first)),
+    )
 }
 
 #[derive(Clone)]
@@ -628,60 +793,36 @@ struct ModelDescriptor {
 
 #[cfg(test)]
 fn model_response_format(groups: &[TranslationGroup]) -> Value {
-    let group_ids = groups
-        .iter()
-        .map(|group| group.group_id.as_str())
-        .collect::<Vec<_>>();
-    let translation_properties = groups
-        .iter()
-        .map(|group| {
-            (
-                group.group_id.clone(),
-                json!({
-                    "type": "object",
-                    "properties": {
-                        "translatedText": { "type": "string", "minLength": 1 },
-                        "detectedSourceLanguage": { "type": "string", "minLength": 1 },
-                        "targetLanguage": { "type": "string", "minLength": 1 }
-                    },
-                    "required": [
-                        "translatedText",
-                        "detectedSourceLanguage",
-                        "targetLanguage"
-                    ],
-                    "additionalProperties": false
-                }),
-            )
-        })
-        .collect::<serde_json::Map<_, _>>();
-    json!({
-        "type": "json_schema",
-        "json_schema": {
-            "name": "semantic_translation",
-            "strict": true,
-            "schema": {
-                "type": "object",
-                "properties": {
-                    "translations": {
-                        "type": "object",
-                        "properties": translation_properties,
-                        "required": group_ids,
-                        "additionalProperties": false
-                    }
-                },
-                "required": ["translations"],
-                "additionalProperties": false
-            }
-        }
-    })
+    build_model_prompt(&semantic_request_for_schema(groups), groups)
+        .unwrap()
+        .response_format
+}
+
+#[cfg(test)]
+fn semantic_request_for_schema(groups: &[TranslationGroup]) -> SemanticTranslationRequest {
+    let mut request: SemanticTranslationRequest = serde_json::from_str(include_str!(
+        "../../ocr-translation-core/examples/v4-minimal-request.json"
+    ))
+    .unwrap();
+    request.groups = groups.to_vec();
+    request
 }
 
 #[derive(Deserialize)]
 struct ModelResponse {
     #[serde(default)]
-    translations: HashMap<String, KeyedModelResult>,
+    translations: TranslationCollection,
     #[serde(default)]
     results: Vec<ModelResult>,
+}
+
+#[derive(Deserialize, Default)]
+#[serde(untagged)]
+enum TranslationCollection {
+    Keyed(HashMap<String, KeyedModelResult>),
+    Array(Vec<ModelResult>),
+    #[default]
+    Empty,
 }
 
 #[derive(Deserialize)]
@@ -717,11 +858,8 @@ fn parse_model_response_without_critical_validation(
     let json = strip_json_fence(raw);
     let response: ModelResponse = serde_json::from_str(json)
         .map_err(|error| AppError::Upstream(format!("invalid Qwen result JSON: {error}")))?;
-    let results = if response.translations.is_empty() {
-        response.results
-    } else {
-        response
-            .translations
+    let results = match response.translations {
+        TranslationCollection::Keyed(items) => items
             .into_iter()
             .map(|(group_id, result)| ModelResult {
                 group_id,
@@ -729,7 +867,9 @@ fn parse_model_response_without_critical_validation(
                 detected_source_language: result.detected_source_language,
                 target_language: result.target_language,
             })
-            .collect()
+            .collect(),
+        TranslationCollection::Array(items) => items,
+        TranslationCollection::Empty => response.results,
     };
     let expected = groups
         .iter()
@@ -1032,8 +1172,8 @@ Every requiredLiteralIdentifiers entry is a machine-checked constraint and must 
 Keep each identifier in the same grammatical and semantic role as the source. Never expand, define, parenthesize, rename, or associate it with another organization. For example, translate "funding for AIMS" as "对 AIMS 的资助" and "AIMS-Next Einstein Initiative" as "AIMS-Next 爱因斯坦计划".
 Preserve dates, URLs, brands, identifiers, and placeholders exactly unless translation is required by grammar.
 For AUTO_BIDIRECTIONAL, translate Chinese groups to English and non-Chinese natural-language groups to Chinese.
-Return only JSON: {"translations":{"<groupId>":{"translatedText":"...","detectedSourceLanguage":"en","targetLanguage":"zh"}}}.
-Every input groupId must appear exactly once as a property key. Every translatedText must be non-empty."#;
+Return only JSON: {"translations":[{"groupId":"<groupId>","translatedText":"...","detectedSourceLanguage":"en","targetLanguage":"zh"}]}.
+Every input groupId must appear exactly once in the array. Every translatedText must be non-empty."#;
 
 #[cfg(test)]
 mod tests {
@@ -1109,16 +1249,11 @@ mod tests {
                     assert_eq!(body["reasoning_effort"], "none");
                     assert_eq!(body["temperature"], 0.0);
                     assert_eq!(body["seed"], 0);
-                    assert_eq!(body["max_tokens"], 4096);
+                    assert_eq!(body["max_tokens"], 1024);
                     assert_eq!(body["response_format"]["type"], "json_schema");
                     assert_eq!(
                         body["response_format"]["json_schema"]["schema"]["properties"]
-                            ["translations"]["required"],
-                        json!(["group-1"])
-                    );
-                    assert_eq!(
-                        body["response_format"]["json_schema"]["schema"]["properties"]
-                            ["translations"]["properties"]["group-1"]["properties"]
+                            ["translations"]["items"]["properties"]
                             ["translatedText"]["minLength"],
                         1
                     );
@@ -1149,7 +1284,7 @@ mod tests {
         assert_eq!(health.execution_mode, "local");
         assert_eq!(saved_request["model"], "qwen3.5:9b");
         assert_eq!(saved_request["reasoning_effort"], "none");
-        assert_eq!(saved_request["max_tokens"], 4096);
+        assert_eq!(saved_request["max_tokens"], 1024);
         assert_eq!(saved_request["response_format"]["type"], "json_schema");
         let saved_user_payload: Value =
             serde_json::from_str(saved_request["messages"][1]["content"].as_str().unwrap())
@@ -1344,15 +1479,15 @@ mod tests {
     }
 
     #[test]
-    fn keyed_schema_requires_non_empty_translation_for_every_group_id() {
+    fn fixed_array_schema_requires_group_id_and_non_empty_translation() {
         let schema = model_response_format(&groups());
         assert_eq!(
-            schema["json_schema"]["schema"]["properties"]["translations"]["required"],
-            json!(["group-1"])
+            schema["json_schema"]["schema"]["properties"]["translations"]["type"],
+            "array"
         );
         assert_eq!(
-            schema["json_schema"]["schema"]["properties"]["translations"]["properties"]["group-1"]
-                ["properties"]["translatedText"]["minLength"],
+            schema["json_schema"]["schema"]["properties"]["translations"]["items"]["properties"]["translatedText"]
+                ["minLength"],
             1
         );
     }
