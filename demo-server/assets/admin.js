@@ -24,6 +24,93 @@
   captureToggle?.addEventListener("change", updateCaptureView);
   updateCaptureView();
 
+  const fallbackCopy = (text) => {
+    const input = document.createElement("textarea");
+    input.value = text;
+    input.setAttribute("readonly", "");
+    input.style.position = "fixed";
+    input.style.opacity = "0";
+    document.body.append(input);
+    input.select();
+    const copied = document.execCommand("copy");
+    input.remove();
+    if (!copied) throw new Error("copy command was rejected");
+  };
+
+  const copyText = async (text) => {
+    if (navigator.clipboard?.writeText) {
+      try {
+        await navigator.clipboard.writeText(text);
+        return;
+      } catch (_) {
+        // LAN HTTP pages may not expose the secure Clipboard API.
+      }
+    }
+    fallbackCopy(text);
+  };
+
+  const reportCopy = (button, success, originalLabel) => {
+    button.textContent = success ? "已复制" : "复制失败";
+    button.classList.toggle("copy-button-error", !success);
+    window.setTimeout(() => {
+      button.textContent = originalLabel;
+      button.classList.remove("copy-button-error");
+    }, 1600);
+  };
+
+  const providerRequestBody = (pre) => {
+    const raw = pre?.textContent?.trim() || "";
+    const parsed = JSON.parse(raw);
+    return parsed?.request && typeof parsed.request === "object" ? parsed.request : parsed;
+  };
+
+  document.querySelectorAll("[data-copy-target]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const originalLabel = button.textContent;
+      const text = document.getElementById(button.dataset.copyTarget)?.textContent || "";
+      try {
+        await copyText(text);
+        reportCopy(button, true, originalLabel);
+      } catch (_) {
+        reportCopy(button, false, originalLabel);
+      }
+    });
+  });
+
+  document.querySelectorAll("[data-copy-provider-request]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const originalLabel = button.textContent;
+      try {
+        const pre = document.getElementById(button.dataset.copyProviderRequest);
+        await copyText(JSON.stringify(providerRequestBody(pre), null, 2));
+        reportCopy(button, true, originalLabel);
+      } catch (_) {
+        reportCopy(button, false, originalLabel);
+      }
+    });
+  });
+
+  document.querySelectorAll("[data-copy-curl]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const originalLabel = button.textContent;
+      try {
+        const pre = document.getElementById(button.dataset.copyCurl);
+        const body = JSON.stringify(providerRequestBody(pre), null, 2);
+        const endpoint = String(button.dataset.endpoint || "").replaceAll("'", "'\"'\"'");
+        const apiKeyEnv = button.dataset.apiKeyEnv;
+        const authValue = `\${${apiKeyEnv}}`;
+        const authHeader = button.dataset.requiresAuth === "true"
+          ? `  -H "Authorization: Bearer ${authValue}" \\\n`
+          : "";
+        const command = `curl -X POST '${endpoint}' \\\n${authHeader}  -H 'Content-Type: application/json' \\\n  --data-binary @- <<'JSON'\n${body}\nJSON`;
+        await copyText(command);
+        reportCopy(button, true, originalLabel);
+      } catch (_) {
+        reportCopy(button, false, originalLabel);
+      }
+    });
+  });
+
   const decode = (value) => {
     if (!value) return null;
     const bytes = Uint8Array.from(atob(value), (char) => char.charCodeAt(0));

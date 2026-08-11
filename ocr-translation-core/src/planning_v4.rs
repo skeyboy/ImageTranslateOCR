@@ -49,7 +49,7 @@ pub fn build_regions_first_plan(request: &SemanticTranslationRequest) -> Documen
         .count();
     DocumentPlan {
         mode: "AUTHORITATIVE".to_owned(),
-        plan_version: DOCUMENT_PLAN_VERSION_V4,
+        plan_version: DOCUMENT_PLAN_VERSION_V4.to_owned(),
         metrics: PlanMetrics {
             client_group_count: request.groups.len(),
             planned_group_count: planned.len(),

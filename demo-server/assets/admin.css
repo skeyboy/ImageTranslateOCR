@@ -181,13 +181,21 @@ tbody tr:hover { background: #f4f8f6; }
 
 .payload-section { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; background: #f3f4f1; }
 .payload-pane { min-width: 0; }
-.payload-pane h2 { margin-bottom: 8px; }
+.payload-heading { min-height: 32px; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.copy-button { min-height: 30px; padding: 4px 10px; border: 1px solid #aeb5ac; border-radius: 4px; background: #fff; color: #3e453e; font-family: inherit; font-size: 11px; font-weight: 650; line-height: 1.2; letter-spacing: 0; cursor: pointer; white-space: nowrap; }
+.copy-button:hover { border-color: #0f6a61; color: #0f6a61; }
+.copy-button-primary { border-color: #0f6a61; background: #0f6a61; color: #fff; }
+.copy-button-primary:hover { background: #0b584f; color: #fff; }
+.copy-button-error { border-color: #a33a32; color: #a33a32; }
 pre { min-height: 280px; max-height: 680px; margin: 0; padding: 14px; overflow: auto; border: 1px solid #ccd0c8; background: #fff; color: #262a25; font: 11px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
 .model-request-section { padding: 0 clamp(16px, 4vw, 52px) 24px; background: #f3f4f1; }
 .model-request-details { border: 1px solid #ccd0c8; background: #fff; }
 .model-request-details summary { min-height: 48px; padding: 12px 14px; display: flex; align-items: center; gap: 12px; cursor: pointer; font-size: 13px; font-weight: 750; }
 .model-request-details summary small { margin-left: auto; color: #666c64; font-size: 11px; font-weight: 500; }
 .model-request-content { padding: 0 14px 14px; }
+.model-request-toolbar { min-height: 38px; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.model-request-toolbar > span { color: #666c64; font-size: 10px; }
+.model-request-toolbar > div { display: inline-flex; gap: 7px; }
 .model-request-content pre { min-height: 0; max-height: 680px; }
 
 @media (max-width: 820px) {
@@ -208,6 +216,7 @@ pre { min-height: 280px; max-height: 680px; margin: 0; padding: 14px; overflow: 
   .model-request-section { padding-left: 12px; padding-right: 12px; }
   .model-request-details summary { align-items: flex-start; flex-direction: column; gap: 3px; }
   .model-request-details summary small { margin-left: 0; }
+  .model-request-toolbar { align-items: flex-start; flex-direction: column; }
   pre { max-height: 460px; }
 }
 

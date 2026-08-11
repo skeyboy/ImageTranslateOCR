@@ -7,10 +7,14 @@ enum class TranslationBackend {
     LOCAL,
     NETWORK,
     SELF_HOSTED,
-    SELF_HOSTED_V4;
+    SELF_HOSTED_V4,
+    EMBEDDED_V4;
 
     val isSelfHosted: Boolean
         get() = this == SELF_HOSTED || this == SELF_HOSTED_V4
+
+    val isSemanticV4: Boolean
+        get() = this == SELF_HOSTED_V4 || this == EMBEDDED_V4
 }
 
 enum class TranslationResultStatus {

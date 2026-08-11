@@ -8,7 +8,7 @@ use base64::{Engine as _, engine::general_purpose::STANDARD};
 use serde::Deserialize;
 
 use crate::{
-    config::TranslationProvider,
+    config::{Config, TranslationProvider},
     database::{PaginatedRequestAudits, RequestRecord, schema_version_from_request_json},
     qwen::TranslationProviderStatus,
     routes::AppState,
@@ -120,7 +120,7 @@ pub async fn request_detail(
         return unauthorized();
     }
     match state.database.request_record(&id).await {
-        Ok(Some(record)) => Html(detail_page(record)).into_response(),
+        Ok(Some(record)) => Html(detail_page(record, &state.config)).into_response(),
         Ok(None) => (StatusCode::NOT_FOUND, "request record not found").into_response(),
         Err(error) => server_error(error.to_string()),
     }
@@ -464,7 +464,7 @@ fn status_options(selected: Option<&str>) -> String {
     .join("")
 }
 
-fn detail_page(record: RequestRecord) -> String {
+fn detail_page(record: RequestRecord, config: &Config) -> String {
     let audit = &record.audit;
     let schema_version = record
         .payload
@@ -624,6 +624,8 @@ fn detail_page(record: RequestRecord) -> String {
             },
         );
     let status_class = audit.status.to_ascii_lowercase();
+    let (curl_endpoint, curl_api_key_env, curl_requires_auth) =
+        provider_curl_settings(&audit.model, config);
     page_shell(
         &format!("请求 {}", audit.request_id),
         &format!(
@@ -673,13 +675,28 @@ fn detail_page(record: RequestRecord) -> String {
                     </div>\
                 </section>\
                 <section class=\"payload-section\">\
-                    <div class=\"payload-pane\"><h2>请求数据</h2><pre>{request_json}</pre></div>\
-                    <div class=\"payload-pane\"><h2>翻译响应</h2><pre>{response_json}</pre></div>\
+                    <div class=\"payload-pane\">\
+                        <div class=\"payload-heading\"><h2>请求数据</h2><button type=\"button\" class=\"copy-button\" data-copy-target=\"request-payload-json\">复制</button></div>\
+                        <pre id=\"request-payload-json\">{request_json}</pre>\
+                    </div>\
+                    <div class=\"payload-pane\">\
+                        <div class=\"payload-heading\"><h2>翻译响应</h2><button type=\"button\" class=\"copy-button\" data-copy-target=\"response-payload-json\">复制</button></div>\
+                        <pre id=\"response-payload-json\">{response_json}</pre>\
+                    </div>\
                 </section>\
                 <section class=\"model-request-section\">\
                     <details class=\"model-request-details\">\
                         <summary><span>发送给翻译 Provider 的请求</span><small>默认折叠 · 不包含 API Key</small></summary>\
-                        <div class=\"model-request-content\"><pre>{model_request_json}</pre></div>\
+                        <div class=\"model-request-content\">\
+                            <div class=\"model-request-toolbar\">\
+                                <span>curl 使用当前 Provider 地址，API Key 仅引用环境变量</span>\
+                                <div>\
+                                    <button type=\"button\" class=\"copy-button\" data-copy-provider-request=\"model-provider-request-json\">复制请求 JSON</button>\
+                                    <button type=\"button\" class=\"copy-button copy-button-primary\" data-copy-curl=\"model-provider-request-json\" data-endpoint=\"{curl_endpoint}\" data-api-key-env=\"{curl_api_key_env}\" data-requires-auth=\"{curl_requires_auth}\">复制 curl</button>\
+                                </div>\
+                            </div>\
+                            <pre id=\"model-provider-request-json\">{model_request_json}</pre>\
+                        </div>\
                     </details>\
                 </section>\
             </main>",
@@ -697,11 +714,34 @@ fn detail_page(record: RequestRecord) -> String {
             request_json = escape_html(&request_json),
             response_json = escape_html(&response_json),
             model_request_json = escape_html(&model_request_json),
+            curl_endpoint = escape_html(&curl_endpoint),
+            curl_api_key_env = curl_api_key_env,
+            curl_requires_auth = curl_requires_auth,
             rendered_toggle_attributes = rendered_toggle_attributes,
             rendered_toggle_label = rendered_toggle_label,
         ),
         "detail-page",
     )
+}
+
+fn provider_curl_settings(model: &str, config: &Config) -> (String, &'static str, bool) {
+    let is_openlux = model.to_ascii_lowercase().starts_with("openlux:");
+    let (base_url, api_key_env, requires_auth) = if is_openlux {
+        (&config.openlux_base_url, "OPENLUX_API_KEY", true)
+    } else {
+        (
+            &config.qwen_base_url,
+            "QWEN_API_KEY",
+            config.qwen_api_key.is_some(),
+        )
+    };
+    let base_url = base_url.trim_end_matches('/');
+    let endpoint = if base_url.ends_with("/chat/completions") {
+        base_url.to_owned()
+    } else {
+        format!("{base_url}/chat/completions")
+    };
+    (endpoint, api_key_env, requires_auth)
 }
 
 fn page_shell(title: &str, content: &str, body_class: &str) -> String {

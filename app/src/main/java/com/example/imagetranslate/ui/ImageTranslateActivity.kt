@@ -24,6 +24,7 @@ import android.view.animation.AccelerateDecelerateInterpolator
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import android.widget.PopupWindow
+import android.widget.ArrayAdapter
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -386,6 +387,7 @@ class ImageTranslateActivity : AppCompatActivity() {
                 binding.btnBackendPnuts.id -> TranslationBackend.NETWORK
                 binding.btnBackendSelfHosted.id -> TranslationBackend.SELF_HOSTED
                 binding.btnBackendSelfHostedV4.id -> TranslationBackend.SELF_HOSTED_V4
+                binding.btnBackendEmbeddedV4.id -> TranslationBackend.EMBEDDED_V4
                 else -> TranslationBackend.LOCAL
             }
             if (!TranslationBackendSettings.isConfigured(this, backend)) {
@@ -398,6 +400,37 @@ class ImageTranslateActivity : AppCompatActivity() {
                 return@addOnButtonCheckedListener
             }
             TranslationBackendSettings.set(this, backend)
+        }
+        val edgeModels = TranslationBackendSettings.edgeModels(this)
+        binding.editEmbeddedTranslationModel.setAdapter(
+            ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, edgeModels)
+        )
+        binding.editEmbeddedTranslationModel.setOnItemClickListener { parent, _, position, _ ->
+            parent.getItemAtPosition(position)?.toString()?.let {
+                TranslationBackendSettings.setEdgeModel(this, it)
+            }
+        }
+        listOf(
+            binding.editEmbeddedProvider,
+            binding.editEmbeddedBaseUrl,
+            binding.editEmbeddedApiKey,
+            binding.editEmbeddedModels
+        ).forEach { field ->
+            field.onFocusChangeListener = View.OnFocusChangeListener { _, hasFocus ->
+                if (!hasFocus && binding.editEmbeddedBaseUrl.text?.isNotBlank() == true) {
+                    saveEmbeddedTranslationConfiguration(showConfirmation = false)
+                }
+            }
+        }
+        binding.editEmbeddedModels.setOnEditorActionListener { view, actionId, _ ->
+            if (actionId != EditorInfo.IME_ACTION_DONE) return@setOnEditorActionListener false
+            val saved = saveEmbeddedTranslationConfiguration(showConfirmation = true)
+            if (saved) {
+                getSystemService(InputMethodManager::class.java)
+                    ?.hideSoftInputFromWindow(view.windowToken, 0)
+                view.clearFocus()
+            }
+            saved
         }
         binding.editNetworkTranslationBaseUrl.setOnEditorActionListener { view, actionId, _ ->
             if (actionId != EditorInfo.IME_ACTION_DONE) return@setOnEditorActionListener false
@@ -500,6 +533,7 @@ class ImageTranslateActivity : AppCompatActivity() {
         binding.btnBackendPnuts.isEnabled = networkConfigured
         binding.btnBackendSelfHosted.isEnabled = selfHostedConfigured
         binding.btnBackendSelfHostedV4.isEnabled = selfHostedConfigured
+        binding.btnBackendEmbeddedV4.isEnabled = TranslationBackendSettings.isEdgeConfigured(this)
         updatingTranslationBackendControl = true
         binding.translationBackendGroup.check(
             when (TranslationBackendSettings.get(this)) {
@@ -507,9 +541,31 @@ class ImageTranslateActivity : AppCompatActivity() {
                 TranslationBackend.NETWORK -> binding.btnBackendPnuts.id
                 TranslationBackend.SELF_HOSTED -> binding.btnBackendSelfHosted.id
                 TranslationBackend.SELF_HOSTED_V4 -> binding.btnBackendSelfHostedV4.id
+                TranslationBackend.EMBEDDED_V4 -> binding.btnBackendEmbeddedV4.id
             }
         )
         updatingTranslationBackendControl = false
+        binding.editEmbeddedTranslationModel.setText(
+            TranslationBackendSettings.edgeModel(this),
+            false
+        )
+        binding.inputEmbeddedTranslationModel.helperText = if (TranslationBackendSettings.isEdgeConfigured(this)) {
+            "${TranslationBackendSettings.edgeProvider(this)} · ${TranslationBackendSettings.edgeBaseUrl(this)}"
+        } else {
+            getString(R.string.network_translation_not_configured)
+        }
+        if (!binding.editEmbeddedProvider.hasFocus()) {
+            binding.editEmbeddedProvider.setText(TranslationBackendSettings.edgeProvider(this))
+        }
+        if (!binding.editEmbeddedBaseUrl.hasFocus()) {
+            binding.editEmbeddedBaseUrl.setText(TranslationBackendSettings.edgeBaseUrl(this))
+        }
+        if (!binding.editEmbeddedApiKey.hasFocus()) {
+            binding.editEmbeddedApiKey.setText(TranslationBackendSettings.edgeApiKey(this))
+        }
+        if (!binding.editEmbeddedModels.hasFocus()) {
+            binding.editEmbeddedModels.setText(TranslationBackendSettings.edgeModels(this).joinToString(","))
+        }
         if (!binding.editNetworkTranslationBaseUrl.hasFocus()) {
             binding.editNetworkTranslationBaseUrl.setText(
                 TranslationBackendSettings.networkBaseUrl(this)
@@ -567,6 +623,39 @@ class ImageTranslateActivity : AppCompatActivity() {
             onFailure = {
                 binding.inputNetworkTranslationBaseUrl.error =
                     getString(R.string.network_translation_endpoint_invalid)
+                false
+            }
+        )
+    }
+
+    private fun saveEmbeddedTranslationConfiguration(showConfirmation: Boolean): Boolean {
+        return runCatching {
+            TranslationBackendSettings.setEdgeConfiguration(
+                context = this,
+                provider = binding.editEmbeddedProvider.text?.toString().orEmpty(),
+                baseUrl = binding.editEmbeddedBaseUrl.text?.toString().orEmpty(),
+                apiKey = binding.editEmbeddedApiKey.text?.toString().orEmpty(),
+                models = binding.editEmbeddedModels.text?.toString().orEmpty()
+            )
+        }.fold(
+            onSuccess = {
+                binding.inputEmbeddedBaseUrl.error = null
+                binding.inputEmbeddedApiKey.error = null
+                binding.inputEmbeddedModels.error = null
+                val models = TranslationBackendSettings.edgeModels(this)
+                binding.editEmbeddedTranslationModel.setAdapter(
+                    ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, models)
+                )
+                restoreTranslationBackendControl()
+                if (showConfirmation) Toast.makeText(
+                    this,
+                    R.string.embedded_translation_configuration_saved,
+                    Toast.LENGTH_SHORT
+                ).show()
+                true
+            },
+            onFailure = { error ->
+                binding.inputEmbeddedBaseUrl.error = error.message
                 false
             }
         )

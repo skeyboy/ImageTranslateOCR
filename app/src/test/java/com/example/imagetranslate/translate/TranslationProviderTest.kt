@@ -31,6 +31,10 @@ class TranslationProviderTest {
             TranslationBackend.SELF_HOSTED_V4,
             resolveTranslationBackend(TranslationBackend.SELF_HOSTED_V4.name, false, true)
         )
+        assertEquals(
+            TranslationBackend.EMBEDDED_V4,
+            resolveTranslationBackend(TranslationBackend.EMBEDDED_V4.name, false, false, true)
+        )
     }
 
     @Test

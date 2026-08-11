@@ -26,6 +26,7 @@ import com.example.imagetranslate.ocr.OcrModel
 import com.example.imagetranslate.ocr.OcrModelState
 import com.example.imagetranslate.ocr.OcrRecognitionMode
 import com.example.imagetranslate.translate.TranslationBackend
+import com.example.imagetranslate.translate.TranslationBackendSettings
 import com.example.imagetranslate.translate.TranslationMode
 import com.example.experimentaltranslation.ExperimentalTranslationEngine
 import kotlin.math.abs
@@ -41,7 +42,8 @@ internal data class TranslationBackendMenuOption(
 internal fun translationBackendMenuOptions(
     selectedBackend: TranslationBackend,
     networkConfigured: Boolean,
-    selfHostedConfigured: Boolean = false
+    selfHostedConfigured: Boolean = false,
+    embeddedConfigured: Boolean = false
 ): List<TranslationBackendMenuOption> = TranslationBackend.entries.map { backend ->
     TranslationBackendMenuOption(
         backend = backend,
@@ -51,6 +53,7 @@ internal fun translationBackendMenuOptions(
             TranslationBackend.NETWORK -> networkConfigured
             TranslationBackend.SELF_HOSTED -> selfHostedConfigured
             TranslationBackend.SELF_HOSTED_V4 -> selfHostedConfigured
+            TranslationBackend.EMBEDDED_V4 -> embeddedConfigured
         }
     )
 }
@@ -920,7 +923,8 @@ internal class ActiveScreenCaptureOverlayController(
             val translationBackendOptions = translationBackendMenuOptions(
                 selectedBackend = translationBackend,
                 networkConfigured = networkTranslationConfigured,
-                selfHostedConfigured = selfHostedTranslationConfigured
+                selfHostedConfigured = selfHostedTranslationConfigured,
+                embeddedConfigured = TranslationBackendSettings.isEdgeConfigured(appContext)
             )
             translationBackendOptions.forEachIndexed { index, option ->
                 val backend = option.backend
@@ -944,6 +948,8 @@ internal class ActiveScreenCaptureOverlayController(
                             R.string.active_screenshot_translation_provider_self_hosted
                         backend == TranslationBackend.SELF_HOSTED_V4 ->
                             R.string.active_screenshot_translation_provider_self_hosted_v4
+                        backend == TranslationBackend.EMBEDDED_V4 ->
+                            R.string.active_screenshot_translation_provider_embedded_v4
                         else -> R.string.active_screenshot_translation_provider_local
                     }
                 ).isEnabled = option.enabled
@@ -1354,6 +1360,8 @@ internal class ActiveScreenCaptureOverlayController(
                     R.string.active_screenshot_translation_provider_self_hosted_short
                 TranslationBackend.SELF_HOSTED_V4 ->
                     R.string.active_screenshot_translation_provider_self_hosted_v4_short
+                TranslationBackend.EMBEDDED_V4 ->
+                    R.string.active_screenshot_translation_provider_embedded_v4_short
             }
         )
 

@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 4,
+  "requestId": "edge-example-1",
+  "sessionId": "edge-session-1",
+  "generation": 1,
+  "translationRevision": 1,
+  "scene": "LIVE_SCREEN",
+  "viewport": { "width": 1080, "height": 2400, "rotationDegrees": 0 },
+  "translation": {
+    "mode": "AUTO_BIDIRECTIONAL",
+    "sourceLanguage": "auto",
+    "targetLanguage": "zh",
+    "preserveIdentifiers": true,
+    "useDocumentContext": true
+  },
+  "documentContext": {
+    "text": "Rust is a systems programming language.",
+    "sourceLanguage": "auto",
+    "readingOrderRegionIds": ["region-1"]
+  },
+  "groups": [],
+  "regions": [{
+    "regionId": "region-1",
+    "groupId": "client-1",
+    "sourceRevision": 1,
+    "text": "Rust is a systems programming language.",
+    "sourceLanguage": "en",
+    "targetLanguage": "zh",
+    "readingOrder": 0,
+    "blockId": "block-1",
+    "lineIndex": 0,
+    "confidence": 0.98,
+    "bounds": { "left": 60, "top": 300, "right": 1020, "bottom": 390 },
+    "componentBounds": [{ "left": 60, "top": 300, "right": 1020, "bottom": 390 }]
+  }]
+}

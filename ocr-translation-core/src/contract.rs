@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 
 use serde::{Deserialize, Serialize};
 
-use crate::error::AppError;
+use crate::error::CoreError as AppError;
 
 pub const SCHEMA_VERSION: u32 = 2;
 pub const LAYOUT_PLAN_SCHEMA_VERSION: u32 = 3;
@@ -138,7 +138,7 @@ pub struct Bounds {
     pub bottom: i32,
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SemanticTranslationResponse {
     pub schema_version: u32,
@@ -154,7 +154,7 @@ pub struct SemanticTranslationResponse {
     pub metrics: ResponseMetrics,
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GroupTranslationResult {
     pub group_id: String,
@@ -174,7 +174,7 @@ pub struct GroupTranslationResult {
     pub error: Option<ResultError>,
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LayoutHint {
     pub preferred_max_lines: i32,
@@ -190,7 +190,7 @@ pub struct LayoutHint {
     pub source_cover_slots: Vec<Bounds>,
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ResultError {
     pub code: String,
@@ -198,7 +198,7 @@ pub struct ResultError {
     pub retryable: bool,
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ResponseMetrics {
     pub group_count: usize,

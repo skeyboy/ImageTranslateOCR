@@ -80,6 +80,20 @@ impl AppError {
     }
 }
 
+impl From<ocr_translation_core::CoreError> for AppError {
+    fn from(error: ocr_translation_core::CoreError) -> Self {
+        match error {
+            ocr_translation_core::CoreError::InvalidRequest(message) => {
+                Self::InvalidRequest(message)
+            }
+            ocr_translation_core::CoreError::InvalidModelResponse(message) => {
+                Self::Upstream(message)
+            }
+            ocr_translation_core::CoreError::Serialization(message) => Self::Upstream(message),
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct RequestError {
     pub request_id: String,

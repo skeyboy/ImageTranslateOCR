@@ -111,8 +111,8 @@ internal object SemanticRenderedCaptureUploadPolicy {
         failedCount: Int,
         traceCount: Int
     ): Boolean = isDebugBuild &&
-        backend.isSelfHosted &&
-        (uploadEnabled || backend == TranslationBackend.SELF_HOSTED_V4) &&
+        (backend.isSelfHosted || backend == TranslationBackend.EMBEDDED_V4) &&
+        (uploadEnabled || backend.isSemanticV4) &&
         (patchCount > 0 || failedCount > 0) &&
         traceCount > 0
 }

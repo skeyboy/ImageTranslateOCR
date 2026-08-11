@@ -66,7 +66,7 @@ internal object PostTranslationSmartAssistPolicy {
         usesIntegratedNetworkEngine: Boolean,
         backend: TranslationBackend
     ): Boolean = enabled && !usesIntegratedNetworkEngine &&
-        backend != TranslationBackend.SELF_HOSTED_V4
+        !backend.isSemanticV4
 }
 
 internal data class BackgroundTranslatedOverlayResult(

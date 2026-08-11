@@ -1,22 +1,22 @@
 use std::collections::HashMap;
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::contract::{Bounds, OcrRegion, SemanticTranslationRequest, TranslationGroup};
 
 pub const DOCUMENT_PLAN_VERSION: &str = "server-semantic-plan-v3";
 const AUTHORITATIVE_CONFIDENCE: f32 = 0.90;
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DocumentPlan {
     pub mode: String,
-    pub plan_version: &'static str,
+    pub plan_version: String,
     pub groups: Vec<PlannedGroup>,
     pub metrics: PlanMetrics,
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PlanMetrics {
     pub client_group_count: usize,
@@ -25,7 +25,7 @@ pub struct PlanMetrics {
     pub authoritative_eligible_count: usize,
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PlannedGroup {
     pub group_id: String,
@@ -86,7 +86,7 @@ impl DocumentPlan {
                 "SHADOW"
             }
             .to_owned(),
-            plan_version: DOCUMENT_PLAN_VERSION,
+            plan_version: DOCUMENT_PLAN_VERSION.to_owned(),
             metrics: PlanMetrics {
                 client_group_count: request.groups.len(),
                 planned_group_count: groups.len(),

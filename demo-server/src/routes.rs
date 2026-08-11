@@ -7,6 +7,8 @@ use axum::{
 };
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 use chrono::Utc;
+use ocr_translation_core::model::build_model_prompt;
+use ocr_translation_core::{PreparedTranslation, assemble_translation};
 use serde::{Deserialize, Serialize};
 use tokio::sync::{Mutex, watch};
 use tracing::{info, warn};
@@ -317,6 +319,64 @@ pub async fn translate_regions_first_layout_plan(
     translate_request(state, headers, request, TranslationApiVersion::V4).await
 }
 
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EdgeAuditUpload {
+    request: SemanticTranslationRequest,
+    response: SemanticTranslationResponse,
+    model_request: serde_json::Value,
+    #[serde(default)]
+    model_response: serde_json::Value,
+    provider: String,
+    model: String,
+    duration_ms: i64,
+}
+
+pub async fn upload_edge_audit(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(upload): Json<EdgeAuditUpload>,
+) -> Result<Json<serde_json::Value>, RequestError> {
+    let request_id = upload.request.request_id.clone();
+    authorize(&headers, state.config.bearer_token.as_deref())
+        .map_err(|error| error.with_request_id(&request_id))?;
+    upload
+        .request
+        .validate_schema(REGIONS_FIRST_SCHEMA_VERSION)
+        .map_err(|error| AppError::from(error).with_request_id(&request_id))?;
+    if upload.response.request_id != request_id
+        || upload.response.schema_version != REGIONS_FIRST_SCHEMA_VERSION
+    {
+        return Err(
+            AppError::invalid("edge audit response does not match its V4 request")
+                .with_request_id(request_id),
+        );
+    }
+    let audit_id = Uuid::new_v4().to_string();
+    let model_request_json = serde_json::to_string(&serde_json::json!({
+        "request": upload.model_request,
+        "response": upload.model_response,
+        "execution": "android-embedded"
+    }))
+    .map_err(|error| AppError::Upstream(error.to_string()).with_request_id(&request_id))?;
+    record_audit(
+        &state,
+        &audit_id,
+        &upload.request,
+        "SUCCEEDED",
+        upload.duration_ms,
+        Some(&model_request_json),
+        Some(&upload.response),
+        None,
+        None,
+        &format!("{}:{} (edge)", upload.provider, upload.model),
+    )
+    .await;
+    Ok(Json(
+        serde_json::json!({"requestId": request_id, "auditId": audit_id}),
+    ))
+}
+
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum TranslationApiVersion {
     V2,
@@ -340,7 +400,7 @@ async fn translate_request(
     };
     request
         .validate_schema(expected_schema)
-        .map_err(|error| error.with_request_id(&request_id))?;
+        .map_err(|error| AppError::from(error).with_request_id(&request_id))?;
     let normalized_request = normalized_request_for_translation(&request);
     let document_plan = match api_version {
         TranslationApiVersion::V4 => build_regions_first_plan(&normalized_request),
@@ -425,6 +485,37 @@ async fn translate_request(
             return Err(error.with_request_id(request_id));
         }
     };
+    if api_version == TranslationApiVersion::V4 {
+        let total_ms = started.elapsed().as_millis() as u64;
+        let prepared = PreparedTranslation {
+            request: request.clone(),
+            document_plan: document_plan.clone(),
+            execution_groups: execution_groups.clone(),
+            actionable_groups: actionable.clone(),
+            model_prompt: build_model_prompt(&request, &actionable)
+                .map_err(|error| AppError::from(error).with_request_id(&request_id))?,
+            provider: active_model.provider.as_str().to_owned(),
+            model: active_model.model_name.clone(),
+            execution: "self-hosted".to_owned(),
+        };
+        let response = assemble_translation(&prepared, &model_results, total_ms)
+            .map_err(|error| AppError::from(error).with_request_id(&request_id))?;
+        record_audit(
+            &state,
+            &audit_id,
+            &request,
+            "SUCCEEDED",
+            total_ms as i64,
+            model_request_json.as_deref(),
+            Some(&response),
+            None,
+            saved_capture.as_ref(),
+            &audit_model,
+        )
+        .await;
+        info!(request_id = %request_id, group_count = execution_groups.len(), total_ms, "shared-core V4 translation completed");
+        return Ok(Json(response));
+    }
     let model_results = model_results
         .into_iter()
         .map(|result| (result.group_id.clone(), result))

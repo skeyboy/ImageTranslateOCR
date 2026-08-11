@@ -1,0 +1,7 @@
+[workspace]
+members = [
+    "demo-server",
+    "ocr-translation-core",
+    "ocr-translation-edge",
+]
+resolver = "2"

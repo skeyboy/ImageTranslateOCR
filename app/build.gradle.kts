@@ -26,6 +26,19 @@ android {
         .orNull
         ?.trim()
         .orEmpty()
+    val demoServerEnv = rootProject.file("demo-server/.env")
+        .takeIf { it.isFile }
+        ?.readLines()
+        ?.mapNotNull { line ->
+            val trimmed = line.trim()
+            if (trimmed.isEmpty() || trimmed.startsWith("#") || !trimmed.contains('=')) null
+            else trimmed.substringBefore('=').trim() to trimmed.substringAfter('=').trim().trim('"', '\'')
+        }
+        ?.toMap()
+        .orEmpty()
+    fun debugEdgeValue(property: String, envName: String, fallback: String = ""): String =
+        providers.gradleProperty(property).orNull?.trim()?.takeIf { it.isNotEmpty() }
+            ?: demoServerEnv[envName].orEmpty().ifBlank { fallback }
     fun buildConfigString(value: String): String = value
         .replace("\\", "\\\\")
         .replace("\"", "\\\"")
@@ -41,6 +54,10 @@ android {
                 "REMOTE_TRANSLATION_BASE_URL",
                 buildConfigString(endpoint)
             )
+            buildConfigField("String", "EDGE_AI_PROVIDER", buildConfigString(debugEdgeValue("EDGE_AI_PROVIDER", "TRANSLATION_PROVIDER", "openlux")))
+            buildConfigField("String", "EDGE_AI_BASE_URL", buildConfigString(debugEdgeValue("EDGE_AI_BASE_URL", "OPENLUX_BASE_URL", "https://api.openlux.ai/v1")))
+            buildConfigField("String", "EDGE_AI_API_KEY", buildConfigString(debugEdgeValue("EDGE_AI_API_KEY", "OPENLUX_API_KEY")))
+            buildConfigField("String", "EDGE_AI_MODELS", buildConfigString(debugEdgeValue("EDGE_AI_MODELS", "OPENLUX_MODELS", "gemini-3.5-flash-lite,gpt-4.1,claude-sonnet-3.6")))
         }
         getByName("release") {
             buildConfigField(
@@ -48,6 +65,10 @@ android {
                 "REMOTE_TRANSLATION_BASE_URL",
                 buildConfigString(configuredRemoteTranslationBaseUrl)
             )
+            buildConfigField("String", "EDGE_AI_PROVIDER", buildConfigString(""))
+            buildConfigField("String", "EDGE_AI_BASE_URL", buildConfigString(""))
+            buildConfigField("String", "EDGE_AI_API_KEY", buildConfigString(""))
+            buildConfigField("String", "EDGE_AI_MODELS", buildConfigString(""))
         }
     }
 
@@ -76,11 +97,43 @@ android {
             )
         }
     }
+
+    sourceSets.getByName("main").jniLibs.srcDir(layout.buildDirectory.dir("generated/rustJniLibs"))
+}
+
+val buildEmbeddedTranslationEdge by tasks.registering(Exec::class) {
+    val ndkRoot = android.ndkDirectory.resolve("toolchains/llvm/prebuilt/darwin-x86_64")
+    val linker = ndkRoot.resolve("bin/aarch64-linux-android24-clang")
+    workingDir(rootProject.projectDir)
+    environment("CC_aarch64_linux_android", linker.absolutePath)
+    environment("AR_aarch64_linux_android", ndkRoot.resolve("bin/llvm-ar").absolutePath)
+    environment("CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER", linker.absolutePath)
+    commandLine("cargo", "build", "-p", "ocr-translation-edge", "--target", "aarch64-linux-android")
+    inputs.files(
+        fileTree(rootProject.file("ocr-translation-core/src")),
+        fileTree(rootProject.file("ocr-translation-edge/src")),
+        rootProject.file("ocr-translation-core/Cargo.toml"),
+        rootProject.file("ocr-translation-edge/Cargo.toml")
+    )
+    outputs.files(
+        rootProject.file("target/aarch64-linux-android/debug/libocr_translation_edge.so"),
+        layout.buildDirectory.file("generated/rustJniLibs/arm64-v8a/libocr_translation_edge.so")
+    )
+    doLast {
+        copy {
+            from(rootProject.file("target/aarch64-linux-android/debug/libocr_translation_edge.so"))
+            into(layout.buildDirectory.dir("generated/rustJniLibs/arm64-v8a"))
+        }
+    }
+}
+
+tasks.matching { it.name == "preDebugBuild" }.configureEach {
+    dependsOn(buildEmbeddedTranslationEdge)
 }
 
 dependencies {
     implementation(files("libs/ppocr-sdk-release.aar"))
-    implementation("com.microsoft.onnxruntime:onnxruntime-android:1.22.0")
+    implementation("com.microsoft.onnxruntime:onnxruntime-android:1.28.0")
     implementation(project(":smart-assist-core"))
     implementation(project(":experimental-translation"))
     implementation("androidx.core:core-ktx") {

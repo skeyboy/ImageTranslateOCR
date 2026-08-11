@@ -4,26 +4,22 @@ use std::{
 };
 
 use async_trait::async_trait;
+pub use ocr_translation_core::model::ModelTranslation;
+use ocr_translation_core::model::build_model_prompt;
 use reqwest::{Client, StatusCode};
 use serde::{Deserialize, Serialize};
-use serde_json::{Value, json};
+use serde_json::Value;
+#[cfg(test)]
+use serde_json::json;
 use std::time::Duration;
 
 use crate::{
     config::{Config, TranslationProvider},
-    contract::{SemanticTranslationRequest, TranslationGroup, resolved_render_slots},
+    contract::{SemanticTranslationRequest, TranslationGroup},
     error::AppError,
 };
 
-pub const PROMPT_VERSION: &str = "semantic-translation-qwen-v9-semantic-block-flow";
-
-#[derive(Clone, Debug)]
-pub struct ModelTranslation {
-    pub group_id: String,
-    pub translated_text: String,
-    pub detected_source_language: String,
-    pub target_language: String,
-}
+pub const PROMPT_VERSION: &str = ocr_translation_core::model::PROMPT_VERSION;
 
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -163,9 +159,13 @@ impl QwenClient {
         groups: &[TranslationGroup],
         system_prompt: String,
     ) -> Result<ChatRequest<'_>, AppError> {
-        let payload = ModelPayload::from_request(request, groups);
-        let user_content = serde_json::to_string(&payload)
-            .map_err(|error| AppError::Upstream(error.to_string()))?;
+        let prompt = build_model_prompt(request, groups).map_err(AppError::from)?;
+        let user_content = prompt.user;
+        let system_prompt = if system_prompt == SYSTEM_PROMPT {
+            prompt.system
+        } else {
+            system_prompt
+        };
         Ok(ChatRequest {
             model: self.model.clone(),
             messages: vec![
@@ -181,7 +181,7 @@ impl QwenClient {
             temperature: 0.0,
             seed: 0,
             max_tokens: self.max_tokens,
-            response_format: model_response_format(groups),
+            response_format: prompt.response_format,
             reasoning_effort: self.reasoning_effort.as_deref(),
         })
     }
@@ -626,134 +626,7 @@ struct ModelDescriptor {
     id: String,
 }
 
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct ModelPayload<'a> {
-    task: &'static str,
-    scene: &'a str,
-    translation_mode: &'a str,
-    document_context: Option<&'a str>,
-    viewport: ModelViewport,
-    translate_groups: Vec<ModelGroup<'a>>,
-}
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct ModelViewport {
-    width: i32,
-    height: i32,
-}
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct ModelGroup<'a> {
-    group_id: &'a str,
-    role: &'a str,
-    source_text: &'a str,
-    source_language: &'a str,
-    target_language: &'a str,
-    required_literal_identifiers: Vec<&'static str>,
-    reading_order: i32,
-    normalized_bounds: [f32; 4],
-    layout_shape: &'a str,
-    render_slots: Vec<[f32; 4]>,
-    region_lines: Vec<ModelRegionLine<'a>>,
-}
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct ModelRegionLine<'a> {
-    text: &'a str,
-    reading_order: i32,
-    normalized_bounds: [f32; 4],
-}
-
-impl<'a> ModelPayload<'a> {
-    fn from_request(
-        request: &'a SemanticTranslationRequest,
-        groups: &'a [TranslationGroup],
-    ) -> Self {
-        let regions = request
-            .regions
-            .iter()
-            .map(|region| (region.region_id.as_str(), region))
-            .collect::<HashMap<_, _>>();
-        let width = request.viewport.width as f32;
-        let height = request.viewport.height as f32;
-        Self {
-            task: "Translate each translateGroups item independently and completely. Write its non-empty translation only under the translations property whose key exactly equals that item groupId. The value for a key may translate only that group's sourceText. A group's sourceText is an already reconstructed semantic block: treat newline-separated OCR lines as one continuous passage and never translate line by line or imitate the source line breaks. Document context and neighboring groups are disambiguation context only: never copy, move, duplicate, continue, or pre-translate their content into another key. Use regionLines and renderSlots only to understand reading order and protected page geometry; layout is produced deterministically by the server, so do not add visual line breaks. Every requiredLiteralIdentifiers item must occur verbatim in that group's translatedText and keep the same grammatical and semantic role as in sourceText. Never expand, define, parenthesize, rename, or replace an identifier. Do not add parenthetical glosses or retain source-language terms in parentheses unless those parentheses already exist in sourceText. For example, 'funding for AIMS' is '对 AIMS 的资助', and 'AIMS-Next Einstein Initiative' is 'AIMS-Next 爱因斯坦计划'. Preserve currency values, units, numbers, URLs, brands, names, and organization identities. Do not summarize, invent, merge, delete, abbreviate, explain OCR errors, or add translator notes. Output only the required translations schema.",
-            scene: &request.scene,
-            translation_mode: &request.translation.mode,
-            document_context: request
-                .translation
-                .use_document_context
-                .then_some(request.document_context.text.as_str()),
-            viewport: ModelViewport {
-                width: request.viewport.width,
-                height: request.viewport.height,
-            },
-            translate_groups: groups
-                .iter()
-                .map(|group| {
-                    let group_regions = group
-                        .member_region_ids
-                        .iter()
-                        .filter_map(|id| regions.get(id.as_str()).copied())
-                        .collect::<Vec<_>>();
-                    let region = group_regions.first().copied();
-                    let render_slots = resolved_render_slots(group, &group_regions);
-                    ModelGroup {
-                        group_id: &group.group_id,
-                        role: &group.role,
-                        source_text: &group.source_text,
-                        source_language: region
-                            .and_then(|item| item.source_language.as_deref())
-                            .unwrap_or("auto"),
-                        target_language: region
-                            .and_then(|item| item.target_language.as_deref())
-                            .unwrap_or("auto"),
-                        required_literal_identifiers: required_literal_identifiers(
-                            &group.source_text,
-                        ),
-                        reading_order: group.reading_order,
-                        normalized_bounds: [
-                            group.bounds.left as f32 / width,
-                            group.bounds.top as f32 / height,
-                            group.bounds.right as f32 / width,
-                            group.bounds.bottom as f32 / height,
-                        ],
-                        layout_shape: &group.layout_shape,
-                        render_slots: render_slots
-                            .iter()
-                            .map(|slot| {
-                                [
-                                    slot.left as f32 / width,
-                                    slot.top as f32 / height,
-                                    slot.right as f32 / width,
-                                    slot.bottom as f32 / height,
-                                ]
-                            })
-                            .collect(),
-                        region_lines: group_regions
-                            .iter()
-                            .map(|item| ModelRegionLine {
-                                text: &item.text,
-                                reading_order: item.reading_order,
-                                normalized_bounds: [
-                                    item.bounds.left as f32 / width,
-                                    item.bounds.top as f32 / height,
-                                    item.bounds.right as f32 / width,
-                                    item.bounds.bottom as f32 / height,
-                                ],
-                            })
-                            .collect(),
-                    }
-                })
-                .collect(),
-        }
-    }
-}
-
+#[cfg(test)]
 fn model_response_format(groups: &[TranslationGroup]) -> Value {
     let group_ids = groups
         .iter()

@@ -251,8 +251,10 @@ async fn rejects_models_outside_the_configured_allowlist() {
 
 #[test]
 fn xi_news_fixture_satisfies_the_v2_contract() {
-    let request: SemanticTranslationRequest =
-        serde_json::from_str(include_str!("../examples/xi-news-request.json")).unwrap();
+    let request: SemanticTranslationRequest = serde_json::from_str(include_str!(
+        "../../ocr-translation-core/examples/xi-news-request.json"
+    ))
+    .unwrap();
     request.validate().unwrap();
     assert_eq!(request.viewport.width, 381);
     assert_eq!(request.groups.len(), 6);
@@ -471,6 +473,12 @@ async fn translates_semantic_group_and_echoes_generation() {
     assert!(detail_body.contains("全屏采集原图"));
     assert!(detail_body.contains("发送给翻译 Provider 的请求"));
     assert!(detail_body.contains("默认折叠 · 不包含 API Key"));
+    assert!(detail_body.contains("data-copy-target=\"request-payload-json\""));
+    assert!(detail_body.contains("data-copy-target=\"response-payload-json\""));
+    assert!(detail_body.contains("data-copy-provider-request=\"model-provider-request-json\""));
+    assert!(detail_body.contains("data-copy-curl=\"model-provider-request-json\""));
+    assert!(detail_body.contains("data-api-key-env=\"QWEN_API_KEY\""));
+    assert!(detail_body.contains("/chat/completions"));
     assert!(detail_body.contains("fake-qwen"));
     assert!(!detail_body.contains("<details class=\"model-request-details\" open"));
 
@@ -495,6 +503,10 @@ async fn translates_semantic_group_and_echoes_generation() {
     assert!(admin_script_body.contains("lines.join(\"\\n\")"));
     assert!(admin_script_body.contains("rendered-capture-toggle"));
     assert!(admin_script_body.contains("captureToggle?.addEventListener(\"change\""));
+    assert!(admin_script_body.contains("data-copy-provider-request"));
+    assert!(admin_script_body.contains("providerRequestBody"));
+    assert!(admin_script_body.contains("--data-binary @- <<'JSON'"));
+    assert!(admin_script_body.contains("navigator.clipboard?.writeText"));
     assert!(admin_script_body.contains("lines.slice(cursor).join(\"\\n\")"));
     assert!(!admin_script_body.contains("Math.min(11, slotHeight"));
 

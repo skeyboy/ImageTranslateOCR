@@ -1,10 +1,8 @@
 pub mod admin;
 pub mod config;
-pub mod contract;
+pub use ocr_translation_core::{contract, planning, planning_v4};
 pub mod database;
 pub mod error;
-pub mod planning;
-pub mod planning_v4;
 pub mod qwen;
 pub mod routes;
 
@@ -27,7 +25,8 @@ use crate::{
     qwen::{TranslationModel, TranslationModelRegistry},
     routes::{
         AppState, RequestCancellationRegistry, cancel_translation, health, translate_groups,
-        translate_layout_plan, translate_regions_first_layout_plan, upload_rendered_capture,
+        translate_layout_plan, translate_regions_first_layout_plan, upload_edge_audit,
+        upload_rendered_capture,
     },
 };
 
@@ -58,6 +57,7 @@ pub fn app_with_models(
             "/api/v4/translate/layout-plan",
             post(translate_regions_first_layout_plan),
         )
+        .route("/api/v4/edge-audits", post(upload_edge_audit))
         .route(
             "/api/v2/translate/requests/{request_id}/cancel",
             post(cancel_translation),

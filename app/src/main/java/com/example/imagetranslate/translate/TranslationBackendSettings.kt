@@ -24,6 +24,12 @@ object TranslationBackendSettings {
     private const val SELF_HOSTED_BEARER_TOKEN = "self_hosted_bearer_token"
     private const val DEBUG_CAPTURE_UPLOAD = "debug_capture_upload"
     private const val DEBUG_RENDERED_CAPTURE_UPLOAD = "debug_rendered_capture_upload"
+    private const val EDGE_MODEL = "edge_model"
+    private const val EDGE_AUDIT_BASE_URL = "edge_audit_base_url"
+    private const val EDGE_PROVIDER = "edge_provider"
+    private const val EDGE_BASE_URL = "edge_base_url"
+    private const val EDGE_API_KEY = "edge_api_key"
+    private const val EDGE_MODELS = "edge_models"
 
     fun networkBaseUrl(context: Context): String = context
         .getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
@@ -66,6 +72,72 @@ object TranslationBackendSettings {
 
     fun isSelfHostedConfigured(context: Context): Boolean = selfHostedBaseUrl(context).isNotBlank()
 
+    fun edgeProvider(context: Context): String = context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
+        .getString(EDGE_PROVIDER, null)?.trim()?.takeIf(String::isNotEmpty)
+        ?: BuildConfig.EDGE_AI_PROVIDER.trim().ifBlank { "openlux" }
+
+    fun edgeBaseUrl(context: Context): String = context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
+        .getString(EDGE_BASE_URL, null)?.trim()?.trimEnd('/')?.takeIf(String::isNotEmpty)
+        ?: BuildConfig.EDGE_AI_BASE_URL.trim().trimEnd('/')
+
+    fun edgeApiKey(context: Context): String = context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
+        .getString(EDGE_API_KEY, null)?.trim()?.takeIf(String::isNotEmpty)
+        ?: BuildConfig.EDGE_AI_API_KEY.trim()
+
+    fun edgeModels(context: Context): List<String> = context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
+        .getString(EDGE_MODELS, null)?.takeIf(String::isNotBlank)
+        .orEmpty().ifBlank { BuildConfig.EDGE_AI_MODELS }.split(',')
+        .map(String::trim).filter(String::isNotEmpty).distinct()
+
+    fun edgeModel(context: Context): String {
+        val available = edgeModels(context)
+        val selected = context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
+            .getString(EDGE_MODEL, null)?.trim()
+        return selected?.takeIf(available::contains) ?: available.firstOrNull().orEmpty()
+    }
+
+    fun setEdgeModel(context: Context, model: String) {
+        require(model in edgeModels(context)) { "Selected edge model is not configured" }
+        context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE).edit()
+            .putString(EDGE_MODEL, model).apply()
+    }
+
+    fun isEdgeConfigured(context: Context): Boolean = edgeBaseUrl(context).isNotBlank() &&
+        edgeApiKey(context).isNotBlank() && edgeModels(context).isNotEmpty()
+
+    fun setEdgeConfiguration(
+        context: Context,
+        provider: String,
+        baseUrl: String,
+        apiKey: String,
+        models: String
+    ) {
+        val normalizedProvider = provider.trim().ifBlank { "openlux" }
+        val normalizedBaseUrl = normalizeNetworkBaseUrl(baseUrl)
+        val normalizedModels = models.split(',').map(String::trim)
+            .filter(String::isNotEmpty).distinct()
+        require(apiKey.trim().isNotEmpty()) { "AI provider API key cannot be empty" }
+        require(normalizedModels.isNotEmpty()) { "At least one AI model is required" }
+        context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE).edit()
+            .putString(EDGE_PROVIDER, normalizedProvider)
+            .putString(EDGE_BASE_URL, normalizedBaseUrl)
+            .putString(EDGE_API_KEY, apiKey.trim())
+            .putString(EDGE_MODELS, normalizedModels.joinToString(","))
+            .apply()
+        if (edgeModel(context) !in normalizedModels) setEdgeModel(context, normalizedModels.first())
+    }
+
+    fun edgeAuditBaseUrl(context: Context): String = context
+        .getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
+        .getString(EDGE_AUDIT_BASE_URL, null)?.trim()?.trimEnd('/')
+        ?.takeIf(String::isNotBlank) ?: selfHostedBaseUrl(context)
+
+    fun setEdgeAuditBaseUrl(context: Context, value: String) {
+        val normalized = value.trim().takeIf(String::isNotEmpty)?.let(::normalizeNetworkBaseUrl).orEmpty()
+        context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE).edit()
+            .putString(EDGE_AUDIT_BASE_URL, normalized).apply()
+    }
+
     fun isDebugCaptureUploadEnabled(context: Context): Boolean = BuildConfig.DEBUG && context
         .getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
         .getBoolean(DEBUG_CAPTURE_UPLOAD, false)
@@ -93,6 +165,7 @@ object TranslationBackendSettings {
         TranslationBackend.NETWORK -> isNetworkConfigured(context)
         TranslationBackend.SELF_HOSTED -> isSelfHostedConfigured(context)
         TranslationBackend.SELF_HOSTED_V4 -> isSelfHostedConfigured(context)
+        TranslationBackend.EMBEDDED_V4 -> isEdgeConfigured(context)
     }
 
     fun setNetworkBaseUrl(context: Context, value: String) {
@@ -118,7 +191,8 @@ object TranslationBackendSettings {
         return resolveTranslationBackend(
             stored,
             isNetworkConfigured(context),
-            isSelfHostedConfigured(context)
+            isSelfHostedConfigured(context),
+            isEdgeConfigured(context)
         )
     }
 
@@ -153,7 +227,8 @@ internal fun normalizeNetworkBaseUrl(value: String): String {
 internal fun resolveTranslationBackend(
     storedValue: String?,
     networkConfigured: Boolean,
-    selfHostedConfigured: Boolean = false
+    selfHostedConfigured: Boolean = false,
+    embeddedConfigured: Boolean = false
 ): TranslationBackend {
     val selected = storedValue
         ?.let { runCatching { TranslationBackend.valueOf(it) }.getOrNull() }
@@ -164,6 +239,7 @@ internal fun resolveTranslationBackend(
             TranslationBackend.NETWORK -> networkConfigured
             TranslationBackend.SELF_HOSTED -> selfHostedConfigured
             TranslationBackend.SELF_HOSTED_V4 -> selfHostedConfigured
+            TranslationBackend.EMBEDDED_V4 -> embeddedConfigured
         }
     } ?: TranslationBackend.LOCAL
 }
