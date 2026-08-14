@@ -1,0 +1,283 @@
+{
+  "case_id": "case-3-m",
+  "bucket": "M 600-899",
+  "audit_id": "98c4b39d-6db0-4961-8d31-9456de3d6c56",
+  "input_chars": 888,
+  "group_count": 6,
+  "source_model": "openlux:gemini-3.5-flash-lite (edge)",
+  "source_created_at": "2026-08-11T08:42:22.636816+00:00",
+  "system": "You are a professional screen OCR translation engine.\nThe input is one visible screen reconstructed from OCR geometry. Translate each translateGroups item independently and completely, while using documentOutline and neighboring geometry only to disambiguate meaning.\nTreat newline-separated OCR lines inside sourceText as one semantic block. Never imitate OCR line breaks, split a block back into lines, merge keys, borrow text from another key, summarize, or add notes.\nPreserve URLs, identifiers, names, brands, numbers, dates, units, and currencies. Every requiredLiteralIdentifiers item must remain visible verbatim and in the same semantic role.\nFor AUTO_BIDIRECTIONAL translate Chinese natural language to English and non-Chinese natural language to Chinese.\nReturn only the strict JSON object requested by response_format. Return translations as an array. Every input groupId must occur exactly once and every translatedText must be non-empty.",
+  "user_payload": {
+    "documentOutline": [
+      {
+        "groupId": "server-v4-0-07a1d6cdc1d2ef85",
+        "readingOrder": 0,
+        "role": "TITLE",
+        "sourcePreview": "Note:This edition of the book is the same as The Rust Programming Langua..."
+      },
+      {
+        "groupId": "server-v4-1-a14bcc11462f8d0f",
+        "readingOrder": 1000,
+        "role": "BODY",
+        "sourcePreview": "Welcome toThe Rust Programming Language,an introductory book about Rust...."
+      },
+      {
+        "groupId": "server-v4-2-707d5d223c6c36da",
+        "readingOrder": 3000,
+        "role": "BODY",
+        "sourcePreview": "Who Rust Is For"
+      },
+      {
+        "groupId": "server-v4-3-5c883483ba6eba4d",
+        "readingOrder": 4000,
+        "role": "BODY",
+        "sourcePreview": "Rust is idealfor many people for varietyof reasons.Let's look at a few o..."
+      },
+      {
+        "groupId": "server-v4-4-d25638fabca4c1a8",
+        "readingOrder": 6000,
+        "role": "BODY",
+        "sourcePreview": "Teams of Developers"
+      },
+      {
+        "groupId": "server-v4-5-fd13fe95735970c0",
+        "readingOrder": 7000,
+        "role": "BODY",
+        "sourcePreview": "Rust is proving to be productive tool for collaborating among large team..."
+      }
+    ],
+    "promptProfile": "COMPACT",
+    "scene": "LIVE_SCREEN",
+    "task": "Translate every translateGroups entry as one complete semantic unit. Geometry is context; the caller creates layout.",
+    "translateGroups": [
+      {
+        "groupId": "server-v4-0-07a1d6cdc1d2ef85",
+        "normalizedBounds": [
+          0.097,
+          0.134,
+          0.899,
+          0.224
+        ],
+        "readingOrder": 0,
+        "requiredLiteralIdentifiers": [],
+        "role": "TITLE",
+        "sourceLanguage": "en",
+        "sourceText": "Note:This edition of the book is the same as\nThe Rust Programming Language available\nin print and ebook format from No Starch\nPress.",
+        "targetLanguage": "zh"
+      },
+      {
+        "groupId": "server-v4-1-a14bcc11462f8d0f",
+        "normalizedBounds": [
+          0.049,
+          0.274,
+          0.933,
+          0.569
+        ],
+        "readingOrder": 1000,
+        "requiredLiteralIdentifiers": [
+          "low-level",
+          "High-level"
+        ],
+        "role": "BODY",
+        "sourceLanguage": "en",
+        "sourceText": "Welcome toThe Rust Programming Language,an\nintroductory book about Rust.The Rust\nprogramming language helps you write faster,\nmore reliable software.High-level ergonomics\nand low-level control are often at odds in\nprogramming language design;Rust challenges\nthat conflict.Through balancing powerful\ntechnical capacity and a great developer\nexperience,Rust gives youthe option to control\nlow-level details(such as memory usage)without\nall the hassle traditionally associated with such\ncontrol.",
+        "targetLanguage": "zh"
+      },
+      {
+        "groupId": "server-v4-2-707d5d223c6c36da",
+        "normalizedBounds": [
+          0.049,
+          0.649,
+          0.498,
+          0.669
+        ],
+        "readingOrder": 3000,
+        "requiredLiteralIdentifiers": [],
+        "role": "BODY",
+        "sourceLanguage": "en",
+        "sourceText": "Who Rust Is For",
+        "targetLanguage": "zh"
+      },
+      {
+        "groupId": "server-v4-3-5c883483ba6eba4d",
+        "normalizedBounds": [
+          0.049,
+          0.703,
+          0.943,
+          0.773
+        ],
+        "readingOrder": 4000,
+        "requiredLiteralIdentifiers": [],
+        "role": "BODY",
+        "sourceLanguage": "en",
+        "sourceText": "Rust is idealfor many people for varietyof\nreasons.Let's look at a few of the most important\ngroups.",
+        "targetLanguage": "zh"
+      },
+      {
+        "groupId": "server-v4-4-d25638fabca4c1a8",
+        "normalizedBounds": [
+          0.049,
+          0.829,
+          0.518,
+          0.852
+        ],
+        "readingOrder": 6000,
+        "requiredLiteralIdentifiers": [],
+        "role": "BODY",
+        "sourceLanguage": "en",
+        "sourceText": "Teams of Developers",
+        "targetLanguage": "zh"
+      },
+      {
+        "groupId": "server-v4-5-fd13fe95735970c0",
+        "normalizedBounds": [
+          0.049,
+          0.879,
+          0.901,
+          0.947
+        ],
+        "readingOrder": 7000,
+        "requiredLiteralIdentifiers": [],
+        "role": "BODY",
+        "sourceLanguage": "en",
+        "sourceText": "Rust is proving to be productive tool for\ncollaborating among large teams of developers\nwith varying levels of systems programming",
+        "targetLanguage": "zh"
+      }
+    ],
+    "translationMode": "AUTO_BIDIRECTIONAL"
+  },
+  "groups": [
+    {
+      "groupId": "server-v4-0-07a1d6cdc1d2ef85",
+      "normalizedBounds": [
+        0.097,
+        0.134,
+        0.899,
+        0.224
+      ],
+      "readingOrder": 0,
+      "requiredLiteralIdentifiers": [],
+      "role": "TITLE",
+      "sourceLanguage": "en",
+      "sourceText": "Note:This edition of the book is the same as\nThe Rust Programming Language available\nin print and ebook format from No Starch\nPress.",
+      "targetLanguage": "zh"
+    },
+    {
+      "groupId": "server-v4-1-a14bcc11462f8d0f",
+      "normalizedBounds": [
+        0.049,
+        0.274,
+        0.933,
+        0.569
+      ],
+      "readingOrder": 1000,
+      "requiredLiteralIdentifiers": [
+        "low-level",
+        "High-level"
+      ],
+      "role": "BODY",
+      "sourceLanguage": "en",
+      "sourceText": "Welcome toThe Rust Programming Language,an\nintroductory book about Rust.The Rust\nprogramming language helps you write faster,\nmore reliable software.High-level ergonomics\nand low-level control are often at odds in\nprogramming language design;Rust challenges\nthat conflict.Through balancing powerful\ntechnical capacity and a great developer\nexperience,Rust gives youthe option to control\nlow-level details(such as memory usage)without\nall the hassle traditionally associated with such\ncontrol.",
+      "targetLanguage": "zh"
+    },
+    {
+      "groupId": "server-v4-2-707d5d223c6c36da",
+      "normalizedBounds": [
+        0.049,
+        0.649,
+        0.498,
+        0.669
+      ],
+      "readingOrder": 3000,
+      "requiredLiteralIdentifiers": [],
+      "role": "BODY",
+      "sourceLanguage": "en",
+      "sourceText": "Who Rust Is For",
+      "targetLanguage": "zh"
+    },
+    {
+      "groupId": "server-v4-3-5c883483ba6eba4d",
+      "normalizedBounds": [
+        0.049,
+        0.703,
+        0.943,
+        0.773
+      ],
+      "readingOrder": 4000,
+      "requiredLiteralIdentifiers": [],
+      "role": "BODY",
+      "sourceLanguage": "en",
+      "sourceText": "Rust is idealfor many people for varietyof\nreasons.Let's look at a few of the most important\ngroups.",
+      "targetLanguage": "zh"
+    },
+    {
+      "groupId": "server-v4-4-d25638fabca4c1a8",
+      "normalizedBounds": [
+        0.049,
+        0.829,
+        0.518,
+        0.852
+      ],
+      "readingOrder": 6000,
+      "requiredLiteralIdentifiers": [],
+      "role": "BODY",
+      "sourceLanguage": "en",
+      "sourceText": "Teams of Developers",
+      "targetLanguage": "zh"
+    },
+    {
+      "groupId": "server-v4-5-fd13fe95735970c0",
+      "normalizedBounds": [
+        0.049,
+        0.879,
+        0.901,
+        0.947
+      ],
+      "readingOrder": 7000,
+      "requiredLiteralIdentifiers": [],
+      "role": "BODY",
+      "sourceLanguage": "en",
+      "sourceText": "Rust is proving to be productive tool for\ncollaborating among large teams of developers\nwith varying levels of systems programming",
+      "targetLanguage": "zh"
+    }
+  ],
+  "references": [
+    {
+      "groupId": "server-v4-0-07a1d6cdc1d2ef85",
+      "translatedText": "注：本书的该版本与 No Starch Press 出版的纸质版和电子书版的《The Rust Programming Language》相同。",
+      "detectedSourceLanguage": "en",
+      "targetLanguage": "zh"
+    },
+    {
+      "groupId": "server-v4-1-a14bcc11462f8d0f",
+      "translatedText": "欢迎阅读《The Rust Programming Language》，这是一本关于 Rust 的入门书。Rust 编程语言能帮助你编写出更快、更可靠的软件。在编程语言设计中，High-level 的易用性与 low-level 的控制力往往是相互冲突的；Rust 挑战了这一冲突。通过平衡强大的技术能力和极佳的开发者体验，Rust 让你能够选择控制 low-level 的细节（例如内存使用），而无需承担传统上与此类控制相关的各种繁琐工作。",
+      "detectedSourceLanguage": "en",
+      "targetLanguage": "zh"
+    },
+    {
+      "groupId": "server-v4-2-707d5d223c6c36da",
+      "translatedText": "Rust 的受众",
+      "detectedSourceLanguage": "en",
+      "targetLanguage": "zh"
+    },
+    {
+      "groupId": "server-v4-3-5c883483ba6eba4d",
+      "translatedText": "出于各种原因，Rust 是许多人的理想选择。让我们来看看其中最主要的几个群体。",
+      "detectedSourceLanguage": "en",
+      "targetLanguage": "zh"
+    },
+    {
+      "groupId": "server-v4-4-d25638fabca4c1a8",
+      "translatedText": "开发团队",
+      "detectedSourceLanguage": "en",
+      "targetLanguage": "zh"
+    },
+    {
+      "groupId": "server-v4-5-fd13fe95735970c0",
+      "translatedText": "事实证明，Rust 是大型开发团队之间协作的高效工具，这些团队中的成员拥有不同水平的系统编程经验",
+      "detectedSourceLanguage": "en",
+      "targetLanguage": "zh"
+    }
+  ],
+  "max_tokens": 1848
+}

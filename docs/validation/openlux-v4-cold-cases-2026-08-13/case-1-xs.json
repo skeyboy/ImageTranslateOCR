@@ -1,0 +1,293 @@
+{
+  "case_id": "case-1-xs",
+  "bucket": "XS 80-299",
+  "audit_id": "05d040bd-baa5-4e9e-a794-8ac950edb19b",
+  "input_chars": 133,
+  "group_count": 3,
+  "source_model": "qwen3.5-translation:9b",
+  "source_created_at": "2026-08-09T04:06:01.349512+00:00",
+  "system": "You are a professional screen OCR translation engine.\nThe user supplies a JSON document containing the complete visible context and translateGroups.\nUse documentContext, reading order, roles, and normalized bounds only to disambiguate meaning.\nThe output is a translations object keyed by groupId. Treat every key as an isolated translation cell and bind it strictly to the sourceText with the identical groupId. Neighboring groups and documentContext are context only.\nNever borrow, copy, move, duplicate, or continue text from another group into the current group.\nUse each group's regionLines and renderSlots to understand wrapped text and reading order, not to produce visual line breaks.\nTranslate every translateGroups item as one complete semantic unit.\nTranslate faithfully and completely. Every source phrase, modifier, and relationship must be represented in the translation.\nDo not shorten or compress headlines, even when a shorter paraphrase sounds natural.\nTranslate named entities consistently across groups and never abbreviate person, place, organization, brand, or section names.\nTranslate Perimeter Institute for Theoretical Physics as 圆周理论物理研究所.\nTranslate Next Einstein centres as 下一代爱因斯坦中心; never omit Next.\nWhen document context identifies a person named only by family name in one group, use that person's conventional full target-language name.\nDo not split a translated group back into visual OCR lines.\nDo not summarize, explain, add facts, merge groups, delete groups, or invent IDs.\nNever add translator notes, parenthetical annotations, OCR corrections, guesses, or phrases such as \"note\" or \"the source may mean\".\nNever echo or reproduce the input JSON document.\nPreserve numeric values and currency meaning. C$ means Canadian dollars and US$ means US dollars.\nKeep AIMS and AIMS-Next visible and unchanged when they appear in the source.\nEvery requiredLiteralIdentifiers entry is a machine-checked constraint and must appear verbatim in translatedText.\nKeep each identifier in the same grammatical and semantic role as the source. Never expand, define, parenthesize, rename, or associate it with another organization. For example, translate \"funding for AIMS\" as \"对 AIMS 的资助\" and \"AIMS-Next Einstein Initiative\" as \"AIMS-Next 爱因斯坦计划\".\nPreserve dates, URLs, brands, identifiers, and placeholders exactly unless translation is required by grammar.\nFor AUTO_BIDIRECTIONAL, translate Chinese groups to English and non-Chinese natural-language groups to Chinese.\nReturn only JSON: {\"translations\":{\"<groupId>\":{\"translatedText\":\"...\",\"detectedSourceLanguage\":\"en\",\"targetLanguage\":\"zh\"}}}.\nEvery input groupId must appear exactly once as a property key. Every translatedText must be non-empty.",
+  "user_payload": {
+    "task": "Translate each translateGroups item independently and completely. Write its non-empty translation only under the translations property whose key exactly equals that item groupId. The value for a key may translate only that group's sourceText. Document context and neighboring groups are disambiguation context only: never copy, move, duplicate, continue, or pre-translate their content into another key. Use regionLines and renderSlots only to reconstruct reading order and semantic structure; never split the output back into OCR lines. Every requiredLiteralIdentifiers item must occur verbatim in that group's translatedText and keep the same grammatical and semantic role as in sourceText. Never expand, define, parenthesize, rename, or replace an identifier. For example, 'funding for AIMS' is '对 AIMS 的资助', and 'AIMS-Next Einstein Initiative' is 'AIMS-Next 爱因斯坦计划'. Preserve currency values, units, numbers, URLs, brands, names, and organization identities. Do not summarize, invent, merge, delete, abbreviate, explain OCR errors, or add translator notes. Output only the required translations schema.",
+    "scene": "LIVE_SCREEN",
+    "translationMode": "ENGLISH_TO_CHINESE",
+    "documentContext": "API REFERENCE. The request body contains an ordered list of OCR regions. POST /api/v4/translate/layout-plan",
+    "viewport": {
+      "width": 1080,
+      "height": 2400
+    },
+    "translateGroups": [
+      {
+        "groupId": "server-v4-0-da4eddfc333d77a6",
+        "role": "BODY",
+        "sourceText": "API REFERENCE",
+        "sourceLanguage": "en",
+        "targetLanguage": "zh",
+        "requiredLiteralIdentifiers": [],
+        "readingOrder": 0,
+        "normalizedBounds": [
+          0.037037037,
+          0.16666667,
+          0.39814815,
+          0.2
+        ],
+        "layoutShape": "RECT",
+        "renderSlots": [
+          [
+            0.037037037,
+            0.16666667,
+            0.39814815,
+            0.2
+          ]
+        ],
+        "regionLines": [
+          {
+            "text": "API REFERENCE",
+            "readingOrder": 0,
+            "normalizedBounds": [
+              0.037037037,
+              0.16666667,
+              0.39814815,
+              0.2
+            ]
+          }
+        ]
+      },
+      {
+        "groupId": "server-v4-1-6eac37596d150b14",
+        "role": "BODY",
+        "sourceText": "The request body contains an ordered list\nof OCR regions and preserves their geometry.",
+        "sourceLanguage": "en",
+        "targetLanguage": "zh",
+        "requiredLiteralIdentifiers": [],
+        "readingOrder": 1,
+        "normalizedBounds": [
+          0.037037037,
+          0.20833333,
+          0.8888889,
+          0.27083334
+        ],
+        "layoutShape": "FLOW_SLOTS",
+        "renderSlots": [
+          [
+            0.037037037,
+            0.20833333,
+            0.8703704,
+            0.2375
+          ],
+          [
+            0.037037037,
+            0.24166666,
+            0.8888889,
+            0.27083334
+          ]
+        ],
+        "regionLines": [
+          {
+            "text": "The request body contains an ordered list",
+            "readingOrder": 1,
+            "normalizedBounds": [
+              0.037037037,
+              0.20833333,
+              0.8703704,
+              0.2375
+            ]
+          },
+          {
+            "text": "of OCR regions and preserves their geometry.",
+            "readingOrder": 2,
+            "normalizedBounds": [
+              0.037037037,
+              0.24166666,
+              0.8888889,
+              0.27083334
+            ]
+          }
+        ]
+      },
+      {
+        "groupId": "server-v4-2-b7cb98812b92ed28",
+        "role": "BODY",
+        "sourceText": "POST /api/v4/translate/layout-plan",
+        "sourceLanguage": "en",
+        "targetLanguage": "zh",
+        "requiredLiteralIdentifiers": [],
+        "readingOrder": 3,
+        "normalizedBounds": [
+          0.037037037,
+          0.3,
+          0.8333333,
+          0.33333334
+        ],
+        "layoutShape": "RECT",
+        "renderSlots": [
+          [
+            0.037037037,
+            0.3,
+            0.8333333,
+            0.33333334
+          ]
+        ],
+        "regionLines": [
+          {
+            "text": "POST /api/v4/translate/layout-plan",
+            "readingOrder": 3,
+            "normalizedBounds": [
+              0.037037037,
+              0.3,
+              0.8333333,
+              0.33333334
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "groups": [
+    {
+      "groupId": "server-v4-0-da4eddfc333d77a6",
+      "role": "BODY",
+      "sourceText": "API REFERENCE",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh",
+      "requiredLiteralIdentifiers": [],
+      "readingOrder": 0,
+      "normalizedBounds": [
+        0.037037037,
+        0.16666667,
+        0.39814815,
+        0.2
+      ],
+      "layoutShape": "RECT",
+      "renderSlots": [
+        [
+          0.037037037,
+          0.16666667,
+          0.39814815,
+          0.2
+        ]
+      ],
+      "regionLines": [
+        {
+          "text": "API REFERENCE",
+          "readingOrder": 0,
+          "normalizedBounds": [
+            0.037037037,
+            0.16666667,
+            0.39814815,
+            0.2
+          ]
+        }
+      ]
+    },
+    {
+      "groupId": "server-v4-1-6eac37596d150b14",
+      "role": "BODY",
+      "sourceText": "The request body contains an ordered list\nof OCR regions and preserves their geometry.",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh",
+      "requiredLiteralIdentifiers": [],
+      "readingOrder": 1,
+      "normalizedBounds": [
+        0.037037037,
+        0.20833333,
+        0.8888889,
+        0.27083334
+      ],
+      "layoutShape": "FLOW_SLOTS",
+      "renderSlots": [
+        [
+          0.037037037,
+          0.20833333,
+          0.8703704,
+          0.2375
+        ],
+        [
+          0.037037037,
+          0.24166666,
+          0.8888889,
+          0.27083334
+        ]
+      ],
+      "regionLines": [
+        {
+          "text": "The request body contains an ordered list",
+          "readingOrder": 1,
+          "normalizedBounds": [
+            0.037037037,
+            0.20833333,
+            0.8703704,
+            0.2375
+          ]
+        },
+        {
+          "text": "of OCR regions and preserves their geometry.",
+          "readingOrder": 2,
+          "normalizedBounds": [
+            0.037037037,
+            0.24166666,
+            0.8888889,
+            0.27083334
+          ]
+        }
+      ]
+    },
+    {
+      "groupId": "server-v4-2-b7cb98812b92ed28",
+      "role": "BODY",
+      "sourceText": "POST /api/v4/translate/layout-plan",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh",
+      "requiredLiteralIdentifiers": [],
+      "readingOrder": 3,
+      "normalizedBounds": [
+        0.037037037,
+        0.3,
+        0.8333333,
+        0.33333334
+      ],
+      "layoutShape": "RECT",
+      "renderSlots": [
+        [
+          0.037037037,
+          0.3,
+          0.8333333,
+          0.33333334
+        ]
+      ],
+      "regionLines": [
+        {
+          "text": "POST /api/v4/translate/layout-plan",
+          "readingOrder": 3,
+          "normalizedBounds": [
+            0.037037037,
+            0.3,
+            0.8333333,
+            0.33333334
+          ]
+        }
+      ]
+    }
+  ],
+  "references": [
+    {
+      "groupId": "server-v4-0-da4eddfc333d77a6",
+      "translatedText": "API 引用",
+      "detectedSourceLanguage": "en",
+      "targetLanguage": "zh"
+    },
+    {
+      "groupId": "server-v4-1-6eac37596d150b14",
+      "translatedText": "请求体包含有序的 OCR 区域列表，并保留其几何形状。",
+      "detectedSourceLanguage": "en",
+      "targetLanguage": "zh"
+    },
+    {
+      "groupId": "server-v4-2-b7cb98812b92ed28",
+      "translatedText": "POST /api/v4/translate/layout-plan",
+      "detectedSourceLanguage": "en",
+      "targetLanguage": "zh"
+    }
+  ],
+  "max_tokens": 4096
+}

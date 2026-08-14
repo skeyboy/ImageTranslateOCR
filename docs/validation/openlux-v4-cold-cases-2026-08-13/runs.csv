@@ -1,0 +1,1051 @@
+case_id,bucket,input_chars,group_count,model,control,level,nonce,success,http_code,dns_ms,connect_ms,tls_ms,headers_ms,ttft_ms,total_ms,prompt_tokens,completion_tokens,reasoning_tokens,total_tokens,num_connects,response_sha256,response_text,error,json_valid,schema_valid,coverage_valid,literals_valid,json_quality,reference_similarity,translation_count
+case-1-xs,XS 80-299,133,3,gemini-3.1-flash-lite,thinkingLevel,minimal,cold-66ca5a72-88a8-49f0-ae41-9f7e6f7d5de8,True,200,0.1,0.2,674.3,1783.1,1800.0,1901.4,1808,123,0,1931,1,cd31647b96ed1c44f7770682f62e2ad8a42065a5a9eb598b888847638daa6bce,"{""translations"": [{""detectedSourceLanguage"": ""en"", ""groupId"": ""server-v4-0-da4eddfc333d77a6"", ""targetLanguage"": ""zh"", ""translatedText"": ""API 参考""}, {""detectedSourceLanguage"": ""en"", ""groupId"": ""server-v4-1-6eac37596d150b14"", ""targetLanguage"": ""zh"", ""translatedText"": ""请求体包含一个有序的 OCR 区域列表，并保留其几何形状。""}, {""detectedSourceLanguage"": ""en"", ""groupId"": ""server-v4-2-b7cb98812b92ed28"", ""targetLanguage"": ""zh"", ""translatedText"": ""POST /api/v4/translate/layout-plan""}]}",,True,True,True,True,100,85.4,3
+case-1-xs,XS 80-299,133,3,gemini-3.1-flash-lite,thinkingLevel,low,cold-363b77d6-c920-4183-9dd4-02a0cc56e826,True,200,0.1,0.2,795.1,1960.7,1970.8,2082.4,1809,124,0,1933,1,cf293197c48f9b436cfcf4005b5dd7dd375752d4c9cc45406b93ed698ee0ad72,"{""translations"": [{""detectedSourceLanguage"": ""en"", ""groupId"": ""server-v4-0-da4eddfc333d77a6"", ""targetLanguage"": ""zh"", ""translatedText"": ""API 参考""}, {""detectedSourceLanguage"": ""en"", ""groupId"": ""server-v4-1-6eac37596d150b14"", ""targetLanguage"": ""zh"", ""translatedText"": ""请求主体包含一个 OCR 区域的有序列表，并保留了它们的几何结构。""}, {""detectedSourceLanguage"": ""en"", ""groupId"": ""server-v4-2-b7cb98812b92ed28"", ""targetLanguage"": ""zh"", ""translatedText"": ""POST /api/v4/translate/layout-plan""}]}",,True,True,True,True,100,76.0,3
+case-1-xs,XS 80-299,133,3,gemini-3.1-flash-lite,thinkingLevel,medium,cold-1c730942-ec2e-4e93-ab2c-2c577500f5f8,True,200,0.1,0.2,761.0,1940.2,1950.0,2130.6,1809,167,0,1976,1,a7338c6bdf63cac3914e753f75a43c73f5e938b4e5e8396b8bfef261f8883b81,"{
+  ""translations"": [
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-0-da4eddfc333d77a6"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""API 参考文档""
+    },
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-1-6eac37596d150b14"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""请求正文包含 OCR 区域的有序列表并保留其几何形状。""
+    },
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-2-b7cb98812b92ed28"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""POST /api/v4/translate/layout-plan""
+    }
+  ]
+}",,True,True,True,True,100,76.7,3
+case-1-xs,XS 80-299,133,3,gemini-3.1-flash-lite,thinkingLevel,high,cold-b79bcdfa-7a56-4ef4-b1d2-359ab78b62f8,True,200,0.1,0.3,685.6,1645.2,1656.2,1984.2,1806,176,0,1982,1,62c65a8f336eaef06d317bff01c5b6147ded19b70f678ee0d1b909e6b5de779d,"{
+  ""translations"": [
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-0-da4eddfc333d77a6"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""API 参考""
+    },
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-1-6eac37596d150b14"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""请求主体包含 OCR 区域的有序列表，并保留其几何结构。""
+    },
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-2-b7cb98812b92ed28"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""POST /api/v4/translate/layout-plan""
+    }
+  ]
+}",,True,True,True,True,100,79.5,3
+case-1-xs,XS 80-299,133,3,gpt-5.4-nano,reasoning_effort,minimal,cold-2629bc4e-b759-462e-993f-e7e71cf82d8d,True,200,0.1,0.2,705.1,5045.1,5054.6,6048.3,1638,152,0,1790,1,4e191ea8c1022c08cd212f78d5674fd810577e46a11285c3e318d24cd5cd1c24,"{""translations"":[{""translatedText"":""API 参考"",""groupId"":""server-v4-0-da4eddfc333d77a6"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""请求正文包含一个按顺序排列的 OCR 区域列表，并保留它们的几何信息。"",""groupId"":""server-v4-1-6eac37596d150b14"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""POST /api/v4/translate/layout-plan"",""groupId"":""server-v4-2-b7cb98812b92ed28"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""}]}",,True,True,True,True,100,76.3,3
+case-1-xs,XS 80-299,133,3,gpt-5.4-nano,reasoning_effort,high,cold-e9fac052-8e29-40ec-ae21-f4ef04fbf3ac,True,200,0.1,0.2,684.4,1934.8,1943.9,2437.7,1637,150,0,1787,1,d151a67e77aad054207a0ec49cbfdaec93ba9b8878bc0e50b60244981e9898b9,"{""translations"":[{""translatedText"":""API 参考"",""groupId"":""server-v4-0-da4eddfc333d77a6"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""请求正文包含一个有序的 OCR 区域列表，并保留它们的几何布局。"",""groupId"":""server-v4-1-6eac37596d150b14"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""POST /api/v4/translate/layout-plan"",""groupId"":""server-v4-2-b7cb98812b92ed28"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""}]}",,True,True,True,True,100,78.8,3
+case-1-xs,XS 80-299,133,3,gpt-5.6-terra,model_suffix,low,cold-149cae15-8ac4-4aff-a48b-638ff430f52f,True,200,0.1,0.2,651.0,6847.3,7319.4,8261.5,1637,151,0,1788,1,20ce7f8db6e82040454d32a8c18e52882424e68dacf98ef2130b12d21f93712c,"{""translations"":[{""translatedText"":""API 参考"",""groupId"":""server-v4-0-da4eddfc333d77a6"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""请求正文包含一个按顺序排列的 OCR 区域列表，并保留其几何信息。"",""groupId"":""server-v4-1-6eac37596d150b14"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""POST /api/v4/translate/layout-plan"",""groupId"":""server-v4-2-b7cb98812b92ed28"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""}]}",,True,True,True,True,100,78.3,3
+case-1-xs,XS 80-299,133,3,gpt-5.6-terra,model_suffix,medium,cold-df225476-1a68-4f4d-8312-d56dae2c3efa,True,200,0.1,0.2,682.6,1950.5,1960.8,2897.6,1638,150,0,1788,1,72b219c16f4bf1b452abfe870ab110e4b01b349d63e0fb385ead11c58d41c9c4,"{""translations"":[{""translatedText"":""API 参考"",""groupId"":""server-v4-0-da4eddfc333d77a6"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""请求正文包含按顺序排列的 OCR 区域列表，并保留其几何信息。"",""groupId"":""server-v4-1-6eac37596d150b14"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""POST /api/v4/translate/layout-plan"",""groupId"":""server-v4-2-b7cb98812b92ed28"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""}]}",,True,True,True,True,100,79.3,3
+case-1-xs,XS 80-299,133,3,gpt-5.6-terra,model_suffix,high,cold-0bcc8fb1-3112-4dd0-8a64-e820f7e2ffc0,True,200,0.1,0.2,767.9,7637.5,7645.6,9156.7,1640,247,90,1887,1,20ce7f8db6e82040454d32a8c18e52882424e68dacf98ef2130b12d21f93712c,"{""translations"":[{""translatedText"":""API 参考"",""groupId"":""server-v4-0-da4eddfc333d77a6"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""请求正文包含一个按顺序排列的 OCR 区域列表，并保留其几何信息。"",""groupId"":""server-v4-1-6eac37596d150b14"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""POST /api/v4/translate/layout-plan"",""groupId"":""server-v4-2-b7cb98812b92ed28"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""}]}",,True,True,True,True,100,78.3,3
+case-1-xs,XS 80-299,133,3,gpt-5.6-luna,model_suffix,low,cold-2f0feeef-f841-4f72-9ef1-1aface74765c,True,200,0.1,0.2,668.5,2668.4,2677.7,2943.1,1639,207,53,1846,1,15c4fd11fce7075ac4b7eafc39c0ceaa1900074e5c3d6773d56d5b06cc5f8b4c,"{""translations"":[{""detectedSourceLanguage"":""en"",""groupId"":""server-v4-0-da4eddfc333d77a6"",""targetLanguage"":""zh"",""translatedText"":""API 参考""},{""detectedSourceLanguage"":""en"",""groupId"":""server-v4-1-6eac37596d150b14"",""targetLanguage"":""zh"",""translatedText"":""请求正文包含一个有序的 OCR 区域列表，并保留其几何信息。""},{""detectedSourceLanguage"":""en"",""groupId"":""server-v4-2-b7cb98812b92ed28"",""targetLanguage"":""zh"",""translatedText"":""POST /api/v4/translate/layout-plan""}]}",,True,True,True,True,100,81.0,3
+case-1-xs,XS 80-299,133,3,gpt-5.6-luna,model_suffix,medium,cold-b1a3e994-4baa-4359-8a93-827aee73aebc,True,200,0.1,0.2,748.1,3436.1,3446.1,4198.0,1639,243,87,1882,1,72b219c16f4bf1b452abfe870ab110e4b01b349d63e0fb385ead11c58d41c9c4,"{""translations"":[{""translatedText"":""API 参考"",""groupId"":""server-v4-0-da4eddfc333d77a6"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""请求正文包含按顺序排列的 OCR 区域列表，并保留其几何信息。"",""groupId"":""server-v4-1-6eac37596d150b14"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""POST /api/v4/translate/layout-plan"",""groupId"":""server-v4-2-b7cb98812b92ed28"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""}]}",,True,True,True,True,100,79.3,3
+case-1-xs,XS 80-299,133,3,gpt-5.6-luna,model_suffix,high,cold-cbd42951-e993-43ca-993e-0cf9260bc563,True,200,0.1,0.2,732.6,6375.7,6384.7,7542.2,1635,253,99,1888,1,15c4fd11fce7075ac4b7eafc39c0ceaa1900074e5c3d6773d56d5b06cc5f8b4c,"{""translations"":[{""detectedSourceLanguage"":""en"",""groupId"":""server-v4-0-da4eddfc333d77a6"",""targetLanguage"":""zh"",""translatedText"":""API 参考""},{""detectedSourceLanguage"":""en"",""groupId"":""server-v4-1-6eac37596d150b14"",""targetLanguage"":""zh"",""translatedText"":""请求正文包含一个有序的 OCR 区域列表，并保留其几何信息。""},{""detectedSourceLanguage"":""en"",""groupId"":""server-v4-2-b7cb98812b92ed28"",""targetLanguage"":""zh"",""translatedText"":""POST /api/v4/translate/layout-plan""}]}",,True,True,True,True,100,81.0,3
+case-1-xs,XS 80-299,133,3,gpt-5.6-sol,model_suffix,low,cold-497aa9bc-f7cb-4dac-9259-df366065e2fb,True,200,0.1,0.2,759.9,3233.6,3243.2,3392.4,1637,152,0,1789,1,e5c3bf7b9e82167f5db80e807c11edce9478be1a4a2fe9326758840f62bec25b,"{""translations"":[{""detectedSourceLanguage"":""en"",""groupId"":""server-v4-0-da4eddfc333d77a6"",""targetLanguage"":""zh"",""translatedText"":""API 参考文档""},{""detectedSourceLanguage"":""en"",""groupId"":""server-v4-1-6eac37596d150b14"",""targetLanguage"":""zh"",""translatedText"":""请求正文包含按顺序排列的 OCR 区域列表，并保留其几何信息。""},{""detectedSourceLanguage"":""en"",""groupId"":""server-v4-2-b7cb98812b92ed28"",""targetLanguage"":""zh"",""translatedText"":""POST /api/v4/translate/layout-plan""}]}",,True,True,True,True,100,75.9,3
+case-1-xs,XS 80-299,133,3,gpt-5.6-sol,model_suffix,medium,cold-e571713c-0bab-449e-a6ea-e4650dabe583,True,200,0.1,0.3,672.3,4140.3,4150.3,4768.6,1635,153,0,1788,1,cc8ce8f527a86beae3aa2e33957b3cad4afe3c1cd2bde4d8b51dfbf18efd9a11,"{""translations"":[{""detectedSourceLanguage"":""en"",""groupId"":""server-v4-0-da4eddfc333d77a6"",""targetLanguage"":""zh"",""translatedText"":""API 参考文档""},{""detectedSourceLanguage"":""en"",""groupId"":""server-v4-1-6eac37596d150b14"",""targetLanguage"":""zh"",""translatedText"":""请求正文包含一个按顺序排列的 OCR 区域列表，并保留其几何信息。""},{""detectedSourceLanguage"":""en"",""groupId"":""server-v4-2-b7cb98812b92ed28"",""targetLanguage"":""zh"",""translatedText"":""POST /api/v4/translate/layout-plan""}]}",,True,True,True,True,100,75.0,3
+case-1-xs,XS 80-299,133,3,gpt-5.6-sol,model_suffix,high,cold-37dc9af4-a995-4c26-a8fa-2f4c876d8f06,True,200,0.1,0.2,657.5,8383.1,8392.4,9653.8,1641,152,0,1793,1,e5c3bf7b9e82167f5db80e807c11edce9478be1a4a2fe9326758840f62bec25b,"{""translations"":[{""detectedSourceLanguage"":""en"",""groupId"":""server-v4-0-da4eddfc333d77a6"",""targetLanguage"":""zh"",""translatedText"":""API 参考文档""},{""detectedSourceLanguage"":""en"",""groupId"":""server-v4-1-6eac37596d150b14"",""targetLanguage"":""zh"",""translatedText"":""请求正文包含按顺序排列的 OCR 区域列表，并保留其几何信息。""},{""detectedSourceLanguage"":""en"",""groupId"":""server-v4-2-b7cb98812b92ed28"",""targetLanguage"":""zh"",""translatedText"":""POST /api/v4/translate/layout-plan""}]}",,True,True,True,True,100,75.9,3
+case-1-xs,XS 80-299,133,3,qwen3.5-35b-a3b,reasoning_effort,minimal,cold-651da3e3-744d-481d-adfd-5919c810f210,False,200,0.1,0.2,666.7,6204.9,6213.5,7964.5,1815,206,,2021,1,ab0d4f653a91049a5d97bfe896551d8d48fe36eb71ce28af3051293059ac0726,"{
+  ""translations"": {
+    ""server-v4-0-da4eddfc333d77a6"": {
+      ""translatedText"": ""API 参考"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    ""server-v4-1-6eac37596d150b14"": {
+      ""translatedText"": ""请求体包含一个有序的 OCR 区域列表，并保留其几何信息。"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    ""server-v4-2-b7cb98812b92ed28"": {
+      ""translatedText"": ""POST /api/v4/translate/layout-plan"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    }
+  }
+}",,True,False,False,True,40,0.0,0
+case-1-xs,XS 80-299,133,3,qwen3.5-35b-a3b,reasoning_effort,low,cold-0ec8fe5f-e1d5-48c6-bd17-38838b757be3,False,200,0.1,0.2,728.4,3072.8,23742.4,25147.8,1812,3215,3005,5027,1,ab0d4f653a91049a5d97bfe896551d8d48fe36eb71ce28af3051293059ac0726,"{
+  ""translations"": {
+    ""server-v4-0-da4eddfc333d77a6"": {
+      ""translatedText"": ""API 参考"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    ""server-v4-1-6eac37596d150b14"": {
+      ""translatedText"": ""请求体包含一个有序的 OCR 区域列表，并保留其几何信息。"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    ""server-v4-2-b7cb98812b92ed28"": {
+      ""translatedText"": ""POST /api/v4/translate/layout-plan"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    }
+  }
+}",,True,False,False,True,40,0.0,0
+case-1-xs,XS 80-299,133,3,qwen3.5-35b-a3b,reasoning_effort,medium,cold-4b4694ad-1641-4464-8caf-bf7ad83eb69f,False,200,0.1,0.2,659.5,2682.6,48900.4,50683.2,1811,6755,6545,8566,1,09628e902c8e6a09e62877610d4af14970fbc359e6852d10a607a53e25fadab8,"{
+  ""translations"": {
+    ""server-v4-0-da4eddfc333d77a6"": {
+      ""translatedText"": ""API 参考"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    ""server-v4-1-6eac37596d150b14"": {
+      ""translatedText"": ""请求体包含一个有序的 OCR 区域列表，并保留其几何结构。"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    ""server-v4-2-b7cb98812b92ed28"": {
+      ""translatedText"": ""POST /api/v4/translate/layout-plan"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    }
+  }
+}",,True,False,False,True,40,0.0,0
+case-1-xs,XS 80-299,133,3,qwen3.5-35b-a3b,reasoning_effort,high,cold-3f3df0e6-bfd2-496e-8d3f-ea86b4dc35e2,False,200,0.1,0.2,684.3,2270.8,32455.5,33638.1,1812,4299,4089,6111,1,ab0d4f653a91049a5d97bfe896551d8d48fe36eb71ce28af3051293059ac0726,"{
+  ""translations"": {
+    ""server-v4-0-da4eddfc333d77a6"": {
+      ""translatedText"": ""API 参考"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    ""server-v4-1-6eac37596d150b14"": {
+      ""translatedText"": ""请求体包含一个有序的 OCR 区域列表，并保留其几何信息。"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    ""server-v4-2-b7cb98812b92ed28"": {
+      ""translatedText"": ""POST /api/v4/translate/layout-plan"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    }
+  }
+}",,True,False,False,True,40,0.0,0
+case-2-s,S 300-599,436,4,gemini-3.1-flash-lite,thinkingLevel,minimal,cold-f7bb0871-8d55-4805-b9c0-09e5ecf47bd9,True,200,0.1,0.2,834.8,2105.6,2115.7,2497.6,1064,217,0,1281,1,242f25641ef63daf23df716e91c68cdbbf2c177945af12c7fb252231cee633dd,"{""translations"": [{""detectedSourceLanguage"": ""en"", ""groupId"": ""server-v4-0-330dcb078c62caf4"", ""targetLanguage"": ""zh"", ""translatedText"": ""Jdte""}, {""detectedSourceLanguage"": ""en"", ""groupId"": ""server-v4-1-3872c03d5ec1afb3"", ""targetLanguage"": ""zh"", ""translatedText"": ""打开本地安装的文档。使用 rustc 直接编写并运行一个“Hello, world!”程序。""}, {""detectedSourceLanguage"": ""en"", ""groupId"": ""server-v4-2-b4cf995a922648b0"", ""targetLanguage"": ""zh"", ""translatedText"": ""使用 Cargo 的约定创建并运行一个新项目。""}, {""detectedSourceLanguage"": ""en"", ""groupId"": ""server-v4-3-2d9ed645f5a3008c"", ""targetLanguage"": ""zh"", ""translatedText"": ""现在是构建更大型程序以习惯阅读和编写 Rust 代码的大好时机。因此，在第 2 章中，我们将构建一个猜数字游戏程序。如果您更愿意先了解 Rust 中常见编程概念的工作原理，请参阅第 3 章，然后再回到第 2 章。""}]}",,True,True,True,True,100,96.5,4
+case-2-s,S 300-599,436,4,gemini-3.1-flash-lite,thinkingLevel,low,cold-c78a89e9-4e46-4655-b476-4af51efeab66,True,200,0.1,0.2,706.8,1756.6,1765.9,2145.8,1063,241,0,1304,1,0c02d9392228f8f026d7070d81509eef9a608fbc07c37ddc412ad3d3e9167605,"{""translations"": [{""detectedSourceLanguage"": ""en"", ""groupId"": ""server-v4-0-330dcb078c62caf4"", ""targetLanguage"": ""zh"", ""translatedText"": ""Jdte""}, {""detectedSourceLanguage"": ""en"", ""groupId"": ""server-v4-1-3872c03d5ec1afb3"", ""targetLanguage"": ""zh"", ""translatedText"": ""打开本地安装的文档。使用 rustc 直接编写并运行一个“Hello, world!”程序。""}, {""detectedSourceLanguage"": ""en"", ""groupId"": ""server-v4-2-b4cf995a922648b0"", ""targetLanguage"": ""zh"", ""translatedText"": ""使用 Cargo 的约定创建并运行一个新项目。""}, {""detectedSourceLanguage"": ""en"", ""groupId"": ""server-v4-3-2d9ed645f5a3008c"", ""targetLanguage"": ""zh"", ""translatedText"": ""现在是构建更实质性程序以习惯阅读和编写 Rust 代码的大好时机。因此，在第 2 章中，我们将构建一个猜数字游戏程序。如果你宁愿先学习 Rust 中常见的编程概念是如何运作的，请查看第 3 章，然后再回到第 2 章。""}]}",,True,True,True,True,100,96.0,4
+case-2-s,S 300-599,436,4,gemini-3.1-flash-lite,thinkingLevel,medium,cold-fc7e7a1c-73ef-4d68-a8f3-058908be744c,True,200,0.1,0.2,689.1,2075.4,2090.9,2423.0,1064,219,0,1283,1,93f16dd4d816f65f49dc2d635b64898a9650017f2e8915e545586efe6564ef60,"{""translations"": [{""detectedSourceLanguage"": ""en"", ""groupId"": ""server-v4-0-330dcb078c62caf4"", ""targetLanguage"": ""zh"", ""translatedText"": ""Jdte""}, {""detectedSourceLanguage"": ""en"", ""groupId"": ""server-v4-1-3872c03d5ec1afb3"", ""targetLanguage"": ""zh"", ""translatedText"": ""打开本地安装的文档。直接使用 rustc 编写并运行一个“Hello, world!”程序。""}, {""detectedSourceLanguage"": ""en"", ""groupId"": ""server-v4-2-b4cf995a922648b0"", ""targetLanguage"": ""zh"", ""translatedText"": ""使用 Cargo 的约定创建并运行一个新项目。""}, {""detectedSourceLanguage"": ""en"", ""groupId"": ""server-v4-3-2d9ed645f5a3008c"", ""targetLanguage"": ""zh"", ""translatedText"": ""现在是构建更大型程序以习惯阅读和编写 Rust 代码的大好时机。因此，在第 2 章中，我们将构建一个猜数字游戏程序。如果您更愿意先了解 Rust 中的常用编程概念是如何运作的，请参阅第 3 章，然后再回到第 2 章。""}]}",,True,True,True,True,100,96.1,4
+case-2-s,S 300-599,436,4,gemini-3.1-flash-lite,thinkingLevel,high,cold-a1ad14c5-5605-46f4-bb98-318bc3046ed3,True,200,0.1,0.3,754.9,2121.3,2138.0,2532.9,1063,217,0,1280,1,24c3999269a3e8e75b1491a27d7a4de75046fefdbed1d06fb16916365bb7a4b6,"{""translations"": [{""detectedSourceLanguage"": ""en"", ""groupId"": ""server-v4-0-330dcb078c62caf4"", ""targetLanguage"": ""zh"", ""translatedText"": ""Jdte""}, {""detectedSourceLanguage"": ""en"", ""groupId"": ""server-v4-1-3872c03d5ec1afb3"", ""targetLanguage"": ""zh"", ""translatedText"": ""打开本地安装的文档。直接使用 rustc 编写并运行一个“Hello, world!”程序。""}, {""detectedSourceLanguage"": ""en"", ""groupId"": ""server-v4-2-b4cf995a922648b0"", ""targetLanguage"": ""zh"", ""translatedText"": ""使用 Cargo 的约定创建并运行一个新项目。""}, {""detectedSourceLanguage"": ""en"", ""groupId"": ""server-v4-3-2d9ed645f5a3008c"", ""targetLanguage"": ""zh"", ""translatedText"": ""现在是构建更大型程序以适应阅读和编写 Rust 代码的好时机。因此，在第 2 章中，我们将构建一个猜数字游戏程序。如果您更愿意先学习 Rust 中常用编程概念的工作方式，请参阅第 3 章，然后再回到第 2 章。""}]}",,True,True,True,True,100,96.7,4
+case-2-s,S 300-599,436,4,gpt-5.4-nano,reasoning_effort,minimal,cold-b74652fc-08d4-49a4-b64c-d57ebb23a556,True,200,0.1,0.3,763.2,2580.9,2598.7,3486.3,1024,276,0,1300,1,f597321fbb125799a2bbd4f142255cf073f2b12f03d708a758715543e5a3d689,"{""translations"":[{""translatedText"":""Jdte"",""groupId"":""server-v4-0-330dcb078c62caf4"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""打开本地已安装的文档。\n使用 rustc 直接编写并运行一个“Hello, world!”程序。"",""groupId"":""server-v4-1-3872c03d5ec1afb3"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""按照 Cargo 的约定创建并运行一个新项目。"",""groupId"":""server-v4-2-b4cf995a922648b0"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""现在正是打造更具规模的程序、以便熟悉阅读和编写 Rust 代码的好时机。在第 2 章，我们将构建一个猜数游戏程序。如果你更愿意先学习一些在 Rust 中常见的编程概念是如何运作的，请参见第 3 章，然后再回到第 2 章。"",""groupId"":""server-v4-3-2d9ed645f5a3008c"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""}]}",,True,True,True,True,100,90.3,4
+case-2-s,S 300-599,436,4,gpt-5.4-nano,reasoning_effort,high,cold-5bbbad90-aaf3-4625-bfdd-e9a1b756ecad,True,200,0.1,0.3,661.9,7908.9,7925.6,9466.1,1025,766,485,1791,1,350bf937684403587637bddd5f1763b6da3d7c855d4b8e8e9c42016debf7edf1,"{""translations"":[{""translatedText"":""Jdte"",""groupId"":""server-v4-0-330dcb078c62caf4"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""打开本地已安装的文档。使用 rustc 直接编写并运行“Hello,world!”程序。"",""groupId"":""server-v4-1-3872c03d5ec1afb3"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""使用 Cargo 的约定创建并运行一个新项目。"",""groupId"":""server-v4-2-b4cf995a922648b0"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""现在是构建更为扎实的程序、以便熟悉阅读和编写 Rust 代码的好时机。这样，在第 2 章中，我们将构建一个猜谜游戏程序。如果你更愿意先学习常见的编程概念在 Rust 中是如何工作的，请参见第 3 章，然后再回到第 2 章。"",""groupId"":""server-v4-3-2d9ed645f5a3008c"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""}]}",,True,True,True,True,100,92.0,4
+case-2-s,S 300-599,436,4,gpt-5.6-terra,model_suffix,low,cold-610f233f-1fac-49df-a5df-b54b3a64adcc,True,200,0.1,0.3,763.5,4110.1,4127.5,4442.9,1026,274,0,1300,1,a489ce56c36c6e4812ba00b8cacf4ca4cc0f450d6f1c77ec891e1610723e75f5,"{""translations"":[{""detectedSourceLanguage"":""en"",""groupId"":""server-v4-0-330dcb078c62caf4"",""targetLanguage"":""zh"",""translatedText"":""Jdte""},{""detectedSourceLanguage"":""en"",""groupId"":""server-v4-1-3872c03d5ec1afb3"",""targetLanguage"":""zh"",""translatedText"":""打开本地安装的文档。直接使用 rustc 编写并运行一个“Hello,world!”程序。""},{""detectedSourceLanguage"":""en"",""groupId"":""server-v4-2-b4cf995a922648b0"",""targetLanguage"":""zh"",""translatedText"":""按照 Cargo 的约定创建并运行一个新项目。""},{""detectedSourceLanguage"":""en"",""groupId"":""server-v4-3-2d9ed645f5a3008c"",""targetLanguage"":""zh"",""translatedText"":""现在正是构建一个更实质性的程序、以习惯阅读和编写 Rust 代码的好时机。因此，在第 2 章中，我们将构建一个猜谜游戏程序。如果你想先学习常见的编程概念在 Rust 中是如何运作的，请参阅第 3 章，然后再回到第 2 章。""}]}",,True,True,True,True,100,92.9,4
+case-2-s,S 300-599,436,4,gpt-5.6-terra,model_suffix,medium,cold-5dc8a07c-3d24-4c43-82bf-8a1ae06443d9,True,200,0.1,0.2,662.9,2200.6,2218.0,3942.9,1031,273,0,1304,1,db723e5ee80c6786c3d977593fc11d90d11a2a72e8ad3e50278b5cee5f87bf67,"{""translations"":[{""detectedSourceLanguage"":""en"",""groupId"":""server-v4-0-330dcb078c62caf4"",""targetLanguage"":""zh"",""translatedText"":""Jdte""},{""detectedSourceLanguage"":""en"",""groupId"":""server-v4-1-3872c03d5ec1afb3"",""targetLanguage"":""zh"",""translatedText"":""打开本地安装的文档。直接使用 rustc 编写并运行一个“Hello,world!”程序。""},{""detectedSourceLanguage"":""en"",""groupId"":""server-v4-2-b4cf995a922648b0"",""targetLanguage"":""zh"",""translatedText"":""按照 Cargo 的惯例创建并运行一个新项目。""},{""detectedSourceLanguage"":""en"",""groupId"":""server-v4-3-2d9ed645f5a3008c"",""targetLanguage"":""zh"",""translatedText"":""现在正是构建更实质性程序的好时机，以便习惯阅读和编写 Rust 代码。因此，在第 2 章中，我们将构建一个猜数字游戏程序。如果你更愿意先了解常见的编程概念如何在 Rust 中运作，请参阅第 3 章，然后再回到第 2 章。""}]}",,True,True,True,True,100,89.1,4
+case-2-s,S 300-599,436,4,gpt-5.6-terra,model_suffix,high,cold-aa37e8cf-5de9-4a43-a138-febce085ebd0,True,200,0.1,0.3,660.5,2649.1,2658.6,4112.5,1026,271,0,1297,1,eab74c3652e2e20c47653b4888f5d22c0d3bdcf5d74421a3ad67608a3ba16527,"{""translations"":[{""detectedSourceLanguage"":""en"",""groupId"":""server-v4-0-330dcb078c62caf4"",""targetLanguage"":""zh"",""translatedText"":""Jdte""},{""detectedSourceLanguage"":""en"",""groupId"":""server-v4-1-3872c03d5ec1afb3"",""targetLanguage"":""zh"",""translatedText"":""打开本地安装的文档。直接使用 rustc 编写并运行一个“Hello, world!”程序。""},{""detectedSourceLanguage"":""en"",""groupId"":""server-v4-2-b4cf995a922648b0"",""targetLanguage"":""zh"",""translatedText"":""按照 Cargo 的约定创建并运行一个新项目。""},{""detectedSourceLanguage"":""en"",""groupId"":""server-v4-3-2d9ed645f5a3008c"",""targetLanguage"":""zh"",""translatedText"":""现在正是构建一个更实质性的程序、以熟悉阅读和编写 Rust 代码的好时机。因此，在第 2 章中，我们将构建一个猜数字游戏程序。如果你想先学习常见编程概念在 Rust 中的工作方式，请参阅第 3 章，然后再回到第 2 章。""}]}",,True,True,True,True,100,93.0,4
+case-2-s,S 300-599,436,4,gpt-5.6-luna,model_suffix,low,cold-80f66c19-d581-488c-bace-d3c293ac1661,True,200,0.1,0.2,675.8,3819.9,3829.4,5205.0,1024,357,87,1381,1,aaa274ca14e05c53fe50a96456e17e8bd610025566e8c80fccb7ea8757cceefe,"{""translations"":[{""detectedSourceLanguage"":""en"",""groupId"":""server-v4-0-330dcb078c62caf4"",""targetLanguage"":""zh"",""translatedText"":""Jdte""},{""detectedSourceLanguage"":""en"",""groupId"":""server-v4-1-3872c03d5ec1afb3"",""targetLanguage"":""zh"",""translatedText"":""打开本地安装的文档。直接使用 rustc 编写并运行一个“Hello,world!”程序。""},{""detectedSourceLanguage"":""en"",""groupId"":""server-v4-2-b4cf995a922648b0"",""targetLanguage"":""zh"",""translatedText"":""使用 Cargo 的约定创建并运行一个新项目。""},{""detectedSourceLanguage"":""en"",""groupId"":""server-v4-3-2d9ed645f5a3008c"",""targetLanguage"":""zh"",""translatedText"":""现在正是构建更实用的程序、熟悉 Rust 代码读写的好时机。因此，在第 2 章中，我们将构建一个猜谜游戏程序。如果你更愿意先学习 Rust 中常见的编程概念，请参阅第 3 章，然后再返回第 2 章。""}]}",,True,True,True,True,100,95.8,4
+case-2-s,S 300-599,436,4,gpt-5.6-luna,model_suffix,medium,cold-87dc0d37-bf8e-488d-907a-430ccd16c5a5,True,200,0.1,0.2,695.2,9084.8,9099.0,10529.0,1028,385,109,1413,1,7c489e569d43344389ef138f70fe80675193f7a7245c1650c0c26d26290c99d9,"{""translations"":[{""detectedSourceLanguage"":""en"",""groupId"":""server-v4-0-330dcb078c62caf4"",""targetLanguage"":""zh"",""translatedText"":""Jdte""},{""detectedSourceLanguage"":""en"",""groupId"":""server-v4-1-3872c03d5ec1afb3"",""targetLanguage"":""zh"",""translatedText"":""打开本地安装的文档。直接使用 rustc 编写并运行一个“Hello,world!”程序。""},{""detectedSourceLanguage"":""en"",""groupId"":""server-v4-2-b4cf995a922648b0"",""targetLanguage"":""zh"",""translatedText"":""使用 Cargo 的约定创建并运行一个新项目。""},{""detectedSourceLanguage"":""en"",""groupId"":""server-v4-3-2d9ed645f5a3008c"",""targetLanguage"":""zh"",""translatedText"":""现在正是构建更实用程序的好时机，这可以帮助你熟悉 Rust 代码的读写。因此，在第 2 章中，我们将构建一个猜谜游戏程序。如果你更愿意先学习 Rust 中常见的编程概念是如何工作的，请参阅第 3 章，然后再返回第 2 章。""}]}",,True,True,True,True,100,94.5,4
+case-2-s,S 300-599,436,4,gpt-5.6-luna,model_suffix,high,cold-8892f94a-4a76-4318-a25f-ae655d3bb49e,True,200,0.1,0.3,700.2,4155.5,4172.8,5474.7,1028,383,108,1411,1,c4f9772a37b437deae7bb2272b94ccf4dbee1295988adf5d06e36b0d3f01a247,"{""translations"":[{""detectedSourceLanguage"":""en"",""groupId"":""server-v4-0-330dcb078c62caf4"",""targetLanguage"":""zh"",""translatedText"":""Jdte""},{""detectedSourceLanguage"":""en"",""groupId"":""server-v4-1-3872c03d5ec1afb3"",""targetLanguage"":""zh"",""translatedText"":""打开本地安装的文档。直接使用 rustc 编写并运行一个“Hello,world!”程序。""},{""detectedSourceLanguage"":""en"",""groupId"":""server-v4-2-b4cf995a922648b0"",""targetLanguage"":""zh"",""translatedText"":""使用 Cargo 的约定创建并运行一个新项目。""},{""detectedSourceLanguage"":""en"",""groupId"":""server-v4-3-2d9ed645f5a3008c"",""targetLanguage"":""zh"",""translatedText"":""现在是构建更大型程序的好时机，可以借此熟悉 Rust 代码的读写。因此，在第 2 章中，我们将构建一个猜数字游戏程序。如果你更愿意先学习 Rust 中常见的编程概念是如何运作的，请参阅第 3 章，然后再返回第 2 章。""}]}",,True,True,True,True,100,94.0,4
+case-2-s,S 300-599,436,4,gpt-5.6-sol,model_suffix,low,cold-9bccdb39-04c8-4db8-ba13-cc436bc1d8f4,True,200,0.1,0.3,727.7,5366.0,5375.7,5529.1,1028,332,52,1360,1,230e3c118813bc04534cf325cd322f074a1dfd4d0a9db46cfc115d19b64bc686,"{""translations"":[{""detectedSourceLanguage"":""en"",""groupId"":""server-v4-0-330dcb078c62caf4"",""targetLanguage"":""zh"",""translatedText"":""Jdte""},{""detectedSourceLanguage"":""en"",""groupId"":""server-v4-1-3872c03d5ec1afb3"",""targetLanguage"":""zh"",""translatedText"":""打开本地安装的文档。直接使用 rustc 编写并运行一个“Hello, world!”程序。""},{""detectedSourceLanguage"":""en"",""groupId"":""server-v4-2-b4cf995a922648b0"",""targetLanguage"":""zh"",""translatedText"":""按照 Cargo 的惯例创建并运行一个新项目。""},{""detectedSourceLanguage"":""en"",""groupId"":""server-v4-3-2d9ed645f5a3008c"",""targetLanguage"":""zh"",""translatedText"":""现在正是构建更具实质性的程序，以便习惯阅读和编写 Rust 代码的好时机。因此，在第 2 章中，我们将构建一个猜数游戏程序。如果你更愿意先了解常见的编程概念在 Rust 中如何运作，请先阅读第 3 章，然后再回到第 2 章。""}]}",,True,True,True,True,100,89.9,4
+case-2-s,S 300-599,436,4,gpt-5.6-sol,model_suffix,medium,cold-5522c12e-f02b-40c5-82bc-e6790d28046c,True,200,0.0,0.2,719.6,3244.4,3252.5,5157.5,1027,334,55,1361,1,cf55cc7e5c8a55b8d6c87ab70b7f2e03ab758b4c7adf51281ebde01243d6158b,"{""translations"":[{""detectedSourceLanguage"":""en"",""groupId"":""server-v4-0-330dcb078c62caf4"",""targetLanguage"":""zh"",""translatedText"":""Jdte""},{""detectedSourceLanguage"":""en"",""groupId"":""server-v4-1-3872c03d5ec1afb3"",""targetLanguage"":""zh"",""translatedText"":""打开本地安装的文档。直接使用 rustc 编写并运行一个“Hello, world!”程序。""},{""detectedSourceLanguage"":""en"",""groupId"":""server-v4-2-b4cf995a922648b0"",""targetLanguage"":""zh"",""translatedText"":""按照 Cargo 的约定创建并运行一个新项目。""},{""detectedSourceLanguage"":""en"",""groupId"":""server-v4-3-2d9ed645f5a3008c"",""targetLanguage"":""zh"",""translatedText"":""现在正是构建一个更充实的程序、以熟悉阅读和编写 Rust 代码的好时机。因此，在第 2 章中，我们将构建一个猜数字游戏程序。如果你更愿意先了解常见的编程概念在 Rust 中如何运作，请阅读第 3 章，然后再回到第 2 章。""}]}",,True,True,True,True,100,91.1,4
+case-2-s,S 300-599,436,4,gpt-5.6-sol,model_suffix,high,cold-af7957b3-4054-46a7-a841-fc6ba59b7e1e,True,200,0.1,0.2,778.7,5096.4,5105.6,6777.3,1028,449,169,1477,1,ae1f9cad152d0c2b61bcdd316e2277175fe7da194eac559ba7a968125fced466,"{""translations"":[{""detectedSourceLanguage"":""en"",""groupId"":""server-v4-0-330dcb078c62caf4"",""targetLanguage"":""zh"",""translatedText"":""Jdte""},{""detectedSourceLanguage"":""en"",""groupId"":""server-v4-1-3872c03d5ec1afb3"",""targetLanguage"":""zh"",""translatedText"":""打开本地安装的文档。直接使用 rustc 编写并运行一个“Hello,world!”程序。""},{""detectedSourceLanguage"":""en"",""groupId"":""server-v4-2-b4cf995a922648b0"",""targetLanguage"":""zh"",""translatedText"":""按照 Cargo 的约定创建并运行一个新项目。""},{""detectedSourceLanguage"":""en"",""groupId"":""server-v4-3-2d9ed645f5a3008c"",""targetLanguage"":""zh"",""translatedText"":""现在正是构建一个更具实质性的程序，以便习惯阅读和编写 Rust 代码的好时机。因此，在第 2 章中，我们将构建一个猜数字游戏程序。如果你更想先了解常见的编程概念在 Rust 中如何运作，请先阅读第 3 章，然后再回到第 2 章。""}]}",,True,True,True,True,100,91.9,4
+case-2-s,S 300-599,436,4,qwen3.5-35b-a3b,reasoning_effort,minimal,cold-cd47dd96-8144-49c0-b867-1b1cddd3867f,False,200,0.1,0.3,672.5,1922.0,1934.2,3606.0,1065,244,,1309,1,2380acede6ce97f1d90ea57aba51b450d80309a45a6e752341846a5f296e0919,"[{""groupId"":""server-v4-0-330dcb078c62caf4"",""translatedText"":""Jdte"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""groupId"":""server-v4-1-3872c03d5ec1afb3"",""translatedText"":""打开本地安装的文档。\n编写并运行一个\""Hello,world!\""程序\n直接使用rustc。"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""groupId"":""server-v4-2-b4cf995a922648b0"",""translatedText"":""使用Cargo的约定创建并运行一个新项目。"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""groupId"":""server-v4-3-2d9ed645f5a3008c"",""translatedText"":""现在是构建更大型程序的好时机，以便熟悉阅读和编写Rust代码。因此，在第二章中，我们将构建一个猜数字游戏程序。如果您更愿意先从学习Rust中常见编程概念的工作原理开始，请参阅第三章，然后再返回第二章。"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""}]",,False,False,False,True,20,0.0,0
+case-2-s,S 300-599,436,4,qwen3.5-35b-a3b,reasoning_effort,low,cold-9a6e736f-4bf6-4777-853f-abc8ba0f7656,True,200,0.1,0.3,666.8,2959.9,38520.9,41381.7,1064,4525,4180,5589,1,370e87e277e8876768999630ad09c94fc0a38befbcadb415b112c33d2ff6fe4a,"{
+  ""translations"": [
+    {
+      ""groupId"": ""server-v4-0-330dcb078c62caf4"",
+      ""translatedText"": ""Jdte"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-1-3872c03d5ec1afb3"",
+      ""translatedText"": ""打开本地安装的文档。直接使用 rustc 编写并运行一个“Hello,world!”程序。"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-2-b4cf995a922648b0"",
+      ""translatedText"": ""使用 Cargo 的约定创建并运行一个新项目。"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-3-2d9ed645f5a3008c"",
+      ""translatedText"": ""现在是构建更实质性程序的好时机，以便习惯阅读和编写 Rust 代码。因此，在第二章中，我们将构建一个猜数字游戏程序。如果你更愿意先学习常见的编程概念如何在 Rust 中工作，请查看第三章，然后返回第二章。"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    }
+  ]
+}",,True,True,True,True,100,93.6,4
+case-2-s,S 300-599,436,4,qwen3.5-35b-a3b,reasoning_effort,medium,cold-0c0b2e61-9b6e-4ec2-800c-8b865a5eef43,False,200,0.1,0.2,665.5,2165.6,,120013.6,,,,,1,e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855,,curl: (28) Operation timed out after 120001 milliseconds with 1606986 bytes received,False,False,False,True,20,0.0,0
+case-2-s,S 300-599,436,4,qwen3.5-35b-a3b,reasoning_effort,high,cold-43ff599c-849e-4760-bf18-9069a602b145,True,200,0.1,0.2,730.1,2591.9,47183.3,49701.9,1066,6579,6234,7645,1,8da377bbf9457a02703bd096cf99aa9a003754494c1ab5ef90df907319c96308,"{
+  ""translations"": [
+    {
+      ""groupId"": ""server-v4-0-330dcb078c62caf4"",
+      ""translatedText"": ""Jdte"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-1-3872c03d5ec1afb3"",
+      ""translatedText"": ""打开本地安装的文档。使用 rustc 直接编写并运行一个“Hello,world!”程序。"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-2-b4cf995a922648b0"",
+      ""translatedText"": ""使用 Cargo 的约定创建并运行一个新项目。"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-3-2d9ed645f5a3008c"",
+      ""translatedText"": ""现在是构建更实质性程序的好时机，以便习惯阅读和编写 Rust 代码。因此，在第二章中，我们将构建一个猜数字游戏程序。如果你更愿意先学习常见的编程概念如何在 Rust 中工作，请参阅第三章，然后返回第二章。"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    }
+  ]
+}",,True,True,True,True,100,92.9,4
+case-3-m,M 600-899,888,6,gemini-3.1-flash-lite,thinkingLevel,minimal,cold-090e7bf2-6d20-4f65-acbd-b91c44b1470e,True,200,0.1,0.3,811.8,1969.0,1981.6,3224.5,1474,533,0,2007,1,ed065e406e4d16965f1e8c2e3677a62f6f87059d0bf0f4870b66ceaa9b8e0cce,"{
+  ""translations"": [
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-0-07a1d6cdc1d2ef85"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""注意：本书的这一版本与 No Starch Press 出版的《Rust 程序设计语言》印刷版和电子书版内容相同。""
+    },
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-1-a14bcc11462f8d0f"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""欢迎阅读《Rust 程序设计语言》，这是一本关于 Rust 的入门书。Rust 编程语言能帮助你编写更快、更可靠的软件。在高层人体工程学（High-level ergonomics）和底层控制（low-level control）方面，编程语言设计往往存在矛盾；而 Rust 正是挑战了这种冲突。通过平衡强大的技术能力和出色的开发者体验，Rust 让你既能控制底层细节（如内存使用），又无需处理传统上与此类控制相关的所有麻烦。""
+    },
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-2-707d5d223c6c36da"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""Rust 是为谁准备的""
+    },
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-3-5c883483ba6eba4d"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""基于多种原因，Rust 对许多人来说都是理想的选择。让我们来看看其中几个最重要的群体。""
+    },
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-4-d25638fabca4c1a8"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""开发者团队""
+    },
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-5-fd13fe95735970c0"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""事实证明，Rust 对于在具有不同系统编程水平的大型开发者团队之间进行协作，是一种高效的工具。""
+    }
+  ]
+}",,True,True,True,True,100,65.5,6
+case-3-m,M 600-899,888,6,gemini-3.1-flash-lite,thinkingLevel,low,cold-63637afa-badb-4f04-8c03-652dcb03e88f,True,200,0.1,0.2,672.1,2041.0,2050.5,3263.1,1472,532,0,2004,1,b6240c7c7e07cf8f709e4f4032cb87913c223f8494f589554057044ad0f6a8ba,"{
+  ""translations"": [
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-0-07a1d6cdc1d2ef85"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""注意：本书的这一版本与 No Starch Press 出版的《The Rust Programming Language》纸质版和电子书版本内容相同。""
+    },
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-1-a14bcc11462f8d0f"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""欢迎阅读《The Rust Programming Language》，这是一本关于 Rust 的入门书。Rust 编程语言能够帮助你编写更快速、更可靠的软件。在高层级（High-level）的易用性与底层（low-level）的控制能力之间，编程语言设计往往难以兼顾，而 Rust 挑战了这种冲突。通过平衡强大的技术能力与卓越的开发者体验，Rust 让你能够在无需处理传统底层控制所带来的繁琐负担的情况下，自由地掌控底层细节（例如内存使用）。""
+    },
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-2-707d5d223c6c36da"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""Rust 适合谁""
+    },
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-3-5c883483ba6eba4d"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""出于各种原因，Rust 是许多人的理想选择。让我们看看其中最重要的几个群体。""
+    },
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-4-d25638fabca4c1a8"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""开发团队""
+    },
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-5-fd13fe95735970c0"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""事实证明，Rust 是供具有不同系统编程水平的大型开发者团队进行协作的高效工具。""
+    }
+  ]
+}",,True,True,True,True,100,75.1,6
+case-3-m,M 600-899,888,6,gemini-3.1-flash-lite,thinkingLevel,medium,cold-c162f643-ab0c-4409-95a3-01dfee5dae36,True,200,0.1,0.2,639.0,1610.9,1620.5,2860.3,1473,530,0,2003,1,de573a2c5d56a36cc3b5ea2b6cad62ab9cc3f61dcc60b9cb487150395efcc5bd,"{
+  ""translations"": [
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-0-07a1d6cdc1d2ef85"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""注意：本书的这一版本与 No Starch Press 出版的《Rust 程序设计语言》印刷版和电子书版本内容相同。""
+    },
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-1-a14bcc11462f8d0f"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""欢迎阅读《Rust 程序设计语言》，这是一本关于 Rust 的入门书籍。Rust 编程语言能够帮助你编写更快速、更可靠的软件。在编程语言设计中，High-level 人体工程学和 low-level 控制往往存在冲突，而 Rust 挑战了这种矛盾。通过平衡强大的技术能力和出色的开发者体验，Rust 让你能够在无需处理传统控制方式带来的种种麻烦的情况下，选择对 low-level 细节（如内存使用）进行控制。""
+    },
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-2-707d5d223c6c36da"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""Rust 的目标用户""
+    },
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-3-5c883483ba6eba4d"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""出于各种原因，Rust 对许多人来说都是理想的选择。让我们来看看其中几个最重要的群体。""
+    },
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-4-d25638fabca4c1a8"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""开发者团队""
+    },
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-5-fd13fe95735970c0"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""事实证明，Rust 是一款高效的工具，能够促进系统编程水平参差不齐的大型开发者团队之间的协作。""
+    }
+  ]
+}",,True,True,True,True,100,67.4,6
+case-3-m,M 600-899,888,6,gemini-3.1-flash-lite,thinkingLevel,high,cold-fda93dc6-199a-4592-9f02-a65f6176cd83,True,200,0.1,0.3,667.4,8040.1,8048.5,9925.8,1473,508,0,1981,1,7e95d6164c1e74709e7eb8097c0c5598c722252202292b89732ffc67f082a917,"{
+  ""translations"": [
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-0-07a1d6cdc1d2ef85"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""注意：本书的这一版本与 No Starch Press 出版的纸质版和电子版《Rust 程序设计语言》内容相同。""
+    },
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-1-a14bcc11462f8d0f"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""欢迎阅读《Rust 程序设计语言》，这是一本关于 Rust 的入门书。Rust 编程语言旨在帮助你编写更快、更可靠的软件。在高层抽象（High-level）的人机工程学与底层（low-level）控制之间，编程语言设计往往存在矛盾；而 Rust 挑战了这种冲突。通过平衡强大的技术能力与卓越的开发者体验，Rust 让你能够选择控制底层细节（例如内存使用），而无需承受传统上与此类控制相关的所有麻烦。""
+    },
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-2-707d5d223c6c36da"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""Rust 的适用人群""
+    },
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-3-5c883483ba6eba4d"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""基于各种原因，Rust 对许多人来说都是理想的选择。让我们来看看其中几个最重要的群体。""
+    },
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-4-d25638fabca4c1a8"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""开发者团队""
+    },
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-5-fd13fe95735970c0"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""事实证明，Rust 是一款富有成效的工具，能够让拥有不同系统编程水平的开发者团队进行高效协作。""
+    }
+  ]
+}",,True,True,True,True,100,69.9,6
+case-3-m,M 600-899,888,6,gpt-5.4-nano,reasoning_effort,minimal,cold-ef691ef1-adf9-4614-bfb4-13fdc3736bbc,True,200,0.1,0.2,736.8,1944.9,1954.2,5334.7,1388,451,0,1839,1,b4467903963e17b81ae526fcc6b84439d32936e44ffa4e4bcfb0cee0113a126f,"{""translations"":[{""translatedText"":""注：本书这一版与《Rust 程序设计语言》相同，可在纸质和电子书格式中从 No Starch Press 购买。"",""groupId"":""server-v4-0-07a1d6cdc1d2ef85"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""欢迎来到《Rust 程序设计语言》，这是一本关于 Rust 的入门书。《Rust 编程语言》能帮助你写得更快、软件更可靠。在编程语言设计中，高级（High-level）的易用性与低级（low-level）的控制往往水火不容；Rust 直面这类矛盾。通过在强大的技术能力与出色的开发者体验之间取得平衡，Rust 让你可以在不必承受通常与这种控制相关的所有麻烦的情况下，选择控制底层细节（例如内存使用）。"",""groupId"":""server-v4-1-a14bcc11462f8d0f"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""Rust 适合哪些人"",""groupId"":""server-v4-2-707d5d223c6c36da"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""Rust 对很多人都很理想，原因各不相同。让我们来看看最重要的几个群体。"",""groupId"":""server-v4-3-5c883483ba6eba4d"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""开发团队"",""groupId"":""server-v4-4-d25638fabca4c1a8"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""Rust 正在成为一款高效的协作工具，适用于开发大团队，并且团队成员的系统编程水平各不相同。"",""groupId"":""server-v4-5-fd13fe95735970c0"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""}]}",,True,True,True,True,100,58.2,6
+case-3-m,M 600-899,888,6,gpt-5.4-nano,reasoning_effort,high,cold-73a10a27-1936-482d-b8df-3c1f5152652e,True,200,0.1,0.2,681.6,4519.2,4529.7,7321.7,1391,872,410,2263,1,9a602c048a4613a958f9f228ee933d40cdab35a3d9f32fd6903ad84f69f98f92,"{""translations"":[{""translatedText"":""注：本书这一版与《The Rust Programming Language》相同，提供平装书和电子书格式，由 No Starch Press 出版。"",""groupId"":""server-v4-0-07a1d6cdc1d2ef85"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""欢迎来到《The Rust Programming Language》——一本关于 Rust 的入门书。本《Rust 编程语言》能帮助你写得更快，软件也更可靠。编程语言设计中，“High-level ergonomics（高级可用性）”和“low-level control（底层控制）”往往彼此矛盾；Rust 正是在挑战这种冲突。通过在强大的技术能力与出色的开发者体验之间取得平衡，Rust 让你有机会在不必经历通常与此类控制相关的所有麻烦的情况下，控制 low-level 细节（例如内存使用）。"",""groupId"":""server-v4-1-a14bcc11462f8d0f"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""Rust 适合哪些人"",""groupId"":""server-v4-2-707d5d223c6c36da"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""Rust 对许多人都很理想，原因有很多。让我们来看看一些最重要的群体。"",""groupId"":""server-v4-3-5c883483ba6eba4d"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""开发者团队"",""groupId"":""server-v4-4-d25638fabca4c1a8"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""Rust 正被证明是一种高效的工具，能够让大型开发团队之间开展协作；这些开发者的系统编程水平各不相同。"",""groupId"":""server-v4-5-fd13fe95735970c0"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""}]}",,True,True,True,True,100,60.7,6
+case-3-m,M 600-899,888,6,gpt-5.6-terra,model_suffix,low,cold-c0800d84-744e-4283-9692-44f6eead7418,True,200,0.1,0.3,674.7,2270.3,2280.0,5449.7,1390,433,0,1823,1,2df8936e567225522693267fa146104ac6cbb4a48d7678479e598d1025bddb34,"{""translations"":[{""detectedSourceLanguage"":""en"",""groupId"":""server-v4-0-07a1d6cdc1d2ef85"",""targetLanguage"":""zh"",""translatedText"":""注意：本书这一版本与 No Starch Press 出版的印刷版和电子书版《The Rust Programming Language》内容相同。""},{""detectedSourceLanguage"":""en"",""groupId"":""server-v4-1-a14bcc11462f8d0f"",""targetLanguage"":""zh"",""translatedText"":""欢迎阅读《The Rust Programming Language》，这是一本介绍 Rust 的入门书。Rust 编程语言帮助你编写更快速、更可靠的软件。High-level 的易用性与 low-level 控制在编程语言设计中往往相互矛盾；Rust 挑战了这种冲突。通过平衡强大的技术能力与出色的开发者体验，Rust 让你可以控制 low-level 细节（如内存使用），而无需面对传统上与此类控制相关的种种麻烦。""},{""detectedSourceLanguage"":""en"",""groupId"":""server-v4-2-707d5d223c6c36da"",""targetLanguage"":""zh"",""translatedText"":""Rust 适合哪些人""},{""detectedSourceLanguage"":""en"",""groupId"":""server-v4-3-5c883483ba6eba4d"",""targetLanguage"":""zh"",""translatedText"":""出于多种原因，Rust 非常适合许多人。让我们来看看其中几个最重要的群体。""},{""detectedSourceLanguage"":""en"",""groupId"":""server-v4-4-d25638fabca4c1a8"",""targetLanguage"":""zh"",""translatedText"":""开发者团队""},{""detectedSourceLanguage"":""en"",""groupId"":""server-v4-5-fd13fe95735970c0"",""targetLanguage"":""zh"",""translatedText"":""Rust 正被证明是一个高效的工具，可用于让系统编程经验水平各异的大型开发者团队开展协作。""}]}",,True,True,True,True,100,71.0,6
+case-3-m,M 600-899,888,6,gpt-5.6-terra,model_suffix,medium,cold-62788f2c-c853-46e7-8b32-b3c28d72390d,True,200,0.1,0.2,667.0,7925.1,7934.6,11492.8,1392,431,0,1823,1,b8b2a53343f03b8a0676cb6b87b5424e719e9e252c063117837c7f490f00c5cd,"{""translations"":[{""detectedSourceLanguage"":""en"",""groupId"":""server-v4-0-07a1d6cdc1d2ef85"",""targetLanguage"":""zh"",""translatedText"":""注意：本书这一版本与 No Starch Press 出版的纸质版和电子书版《The Rust Programming Language》相同。""},{""detectedSourceLanguage"":""en"",""groupId"":""server-v4-1-a14bcc11462f8d0f"",""targetLanguage"":""zh"",""translatedText"":""欢迎阅读《The Rust Programming Language》，这是一本介绍 Rust 的入门书。Rust 编程语言帮助你编写更快速、更可靠的软件。High-level 易用性与 low-level 控制在编程语言设计中往往相互冲突；Rust 挑战了这种矛盾。通过平衡强大的技术能力与出色的开发者体验，Rust 让你能够控制 low-level 细节（例如内存使用），而无需承受传统上与这种控制相关的诸多麻烦。""},{""detectedSourceLanguage"":""en"",""groupId"":""server-v4-2-707d5d223c6c36da"",""targetLanguage"":""zh"",""translatedText"":""Rust 适合谁""},{""detectedSourceLanguage"":""en"",""groupId"":""server-v4-3-5c883483ba6eba4d"",""targetLanguage"":""zh"",""translatedText"":""Rust 因多种原因而非常适合许多人。让我们来看看其中几个最重要的群体。""},{""detectedSourceLanguage"":""en"",""groupId"":""server-v4-4-d25638fabca4c1a8"",""targetLanguage"":""zh"",""translatedText"":""开发者团队""},{""detectedSourceLanguage"":""en"",""groupId"":""server-v4-5-fd13fe95735970c0"",""targetLanguage"":""zh"",""translatedText"":""Rust 正被证明是一个高效的工具，适用于在拥有不同系统编程经验水平的大型开发者团队中进行协作。""}]}",,True,True,True,True,100,71.6,6
+case-3-m,M 600-899,888,6,gpt-5.6-terra,model_suffix,high,cold-3b5fe912-f49c-4e90-b254-6ad88a0a0740,True,200,0.1,0.2,726.9,2602.3,2611.5,5567.3,1391,432,0,1823,1,1eaa828999305be6d71f57f9726c8f34433c1c0ed2767d9b16d35096e2924f6a,"{""translations"":[{""translatedText"":""注意：本书这一版本与 No Starch Press 出版的纸质版和电子书版《The Rust Programming Language》内容相同。"",""groupId"":""server-v4-0-07a1d6cdc1d2ef85"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""欢迎阅读《The Rust Programming Language》，这是一本介绍 Rust 的入门书籍。Rust 编程语言可帮助你编写更快速、更可靠的软件。在编程语言设计中，High-level 易用性与 low-level 控制往往相互冲突；Rust 对这一矛盾发起了挑战。通过平衡强大的技术能力与出色的开发者体验，Rust 让你可以控制 low-level 细节（例如内存使用），而无需承受传统上与此类控制相关的种种麻烦。"",""groupId"":""server-v4-1-a14bcc11462f8d0f"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""Rust 适合哪些人"",""groupId"":""server-v4-2-707d5d223c6c36da"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""出于多种原因，Rust 非常适合许多人。让我们来看看其中几个最重要的群体。"",""groupId"":""server-v4-3-5c883483ba6eba4d"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""开发团队"",""groupId"":""server-v4-4-d25638fabca4c1a8"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""Rust 正在成为一种高效的工具，可供系统编程经验水平各异的大型开发团队协作使用。"",""groupId"":""server-v4-5-fd13fe95735970c0"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""}]}",,True,True,True,True,100,72.4,6
+case-3-m,M 600-899,888,6,gpt-5.6-luna,model_suffix,low,cold-da532834-c2c1-475a-a74c-db55c7b7c61e,True,200,0.1,0.2,755.1,2029.5,2038.6,4745.5,1389,427,0,1816,1,29ac6b61e4b33add444d028b0261d7798ffe059596ee69003b32825fd20eda3e,"{""translations"":[{""translatedText"":""注意：本书版本与 No Starch Press 出版的纸质版和电子书版《The Rust Programming Language》相同。"",""groupId"":""server-v4-0-07a1d6cdc1d2ef85"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""欢迎阅读《The Rust Programming Language》，这是一本介绍 Rust 的入门书籍。Rust 编程语言帮助你编写更快速、更可靠的软件。在编程语言设计中，High-level 的易用性与 low-level 的控制通常相互冲突；而 Rust 挑战了这种冲突。通过平衡强大的技术能力与出色的开发者体验，Rust 让你能够控制 low-level 的细节（例如内存使用），同时避免传统上与这种控制相关的诸多麻烦。"",""groupId"":""server-v4-1-a14bcc11462f8d0f"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""Rust 适合哪些人"",""groupId"":""server-v4-2-707d5d223c6c36da"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""Rust 适合许多人，原因各不相同。让我们来看看其中几个最重要的群体。"",""groupId"":""server-v4-3-5c883483ba6eba4d"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""开发者团队"",""groupId"":""server-v4-4-d25638fabca4c1a8"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""事实证明，Rust 是一种高效工具，适合让具有不同系统编程水平的开发者组成大型团队进行协作"",""groupId"":""server-v4-5-fd13fe95735970c0"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""}]}",,True,True,True,True,100,72.1,6
+case-3-m,M 600-899,888,6,gpt-5.6-luna,model_suffix,medium,cold-5acdeb32-8d80-496e-8050-77d8456cf27e,True,200,0.1,0.2,692.4,4650.6,4659.8,8210.4,1390,518,83,1908,1,9b51bbf3b7f0e7637f24965f90c47cb74090ad01c9583bb5d30d043695ef6b3c,"{""translations"":[{""translatedText"":""注意：本书版本与 No Starch Press 出版的纸质书和电子书格式的《The Rust Programming Language》相同。"",""groupId"":""server-v4-0-07a1d6cdc1d2ef85"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""欢迎阅读《The Rust Programming Language》，这是一本 Rust 入门书籍。Rust 编程语言帮助您编写更快速、更可靠的软件。在编程语言设计中，High-level 易用性与 low-level 控制往往彼此冲突；Rust 则挑战了这一矛盾。通过平衡强大的技术能力与出色的开发者体验，Rust 让您能够控制 low-level 细节（例如内存使用），同时避免传统上与这种控制相关的诸多麻烦。"",""groupId"":""server-v4-1-a14bcc11462f8d0f"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""Rust 适合哪些人"",""groupId"":""server-v4-2-707d5d223c6c36da"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""Rust 对许多人来说都很理想，原因多种多样。让我们来看看其中一些最重要的群体。"",""groupId"":""server-v4-3-5c883483ba6eba4d"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""开发者团队"",""groupId"":""server-v4-4-d25638fabca4c1a8"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""事实证明，Rust 是一款高效的工具，能够帮助拥有不同系统编程水平的广大开发者团队进行协作"",""groupId"":""server-v4-5-fd13fe95735970c0"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""}]}",,True,True,True,True,100,71.9,6
+case-3-m,M 600-899,888,6,gpt-5.6-luna,model_suffix,high,cold-d267d568-2d5e-4208-b975-3887144d8b08,True,200,0.1,0.2,783.8,8664.1,8674.2,11580.7,1389,814,375,2203,1,186c95cc08482a2a60cb9c911890ee633e609d9ed286b3a8867e7a4372ad019c,"{""translations"":[{""translatedText"":""注意：本书版本与 No Starch Press 出版的《The Rust Programming Language》印刷版和电子书版本相同。"",""groupId"":""server-v4-0-07a1d6cdc1d2ef85"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""欢迎阅读《The Rust Programming Language》，这是一本介绍 Rust 的入门书籍。Rust 编程语言能够帮助你编写更快速、更可靠的软件。在编程语言设计中，High-level 的易用性与 low-level 的控制力往往难以兼得；Rust 则挑战了这一冲突。通过平衡强大的技术能力与出色的开发者体验，Rust 让你能够控制 low-level 的细节（例如内存使用），同时避免传统上与这种控制相伴的诸多麻烦。"",""groupId"":""server-v4-1-a14bcc11462f8d0f"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""Rust 适合哪些人"",""groupId"":""server-v4-2-707d5d223c6c36da"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""Rust 适合许多人，原因各不相同。让我们来看看其中几个最重要的群体。"",""groupId"":""server-v4-3-5c883483ba6eba4d"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""开发者团队"",""groupId"":""server-v4-4-d25638fabca4c1a8"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""事实证明，Rust 是一种高效的工具，适合系统编程经验水平各不相同的大型开发者团队开展协作。"",""groupId"":""server-v4-5-fd13fe95735970c0"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""}]}",,True,True,True,True,100,69.3,6
+case-3-m,M 600-899,888,6,gpt-5.6-sol,model_suffix,low,cold-50e0da17-c066-4086-ae3e-7cc44d1d4101,True,200,0.1,0.2,669.1,2557.1,2566.1,5838.8,1391,471,29,1862,1,b3e72bf6eccf9c16a42685ebb45aa9f37353dbf4aa0d36a001c8c09d2a3d002b,"{""translations"":[{""translatedText"":""注意：本书此版本与 No Starch Press 以纸质书和电子书形式发行的《The Rust Programming Language》内容相同。"",""groupId"":""server-v4-0-07a1d6cdc1d2ef85"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""欢迎阅读《The Rust Programming Language》，这是一本 Rust 入门书籍。Rust 编程语言能帮助你编写速度更快、更可靠的软件。在编程语言设计中，High-level 的易用性与 low-level 的控制力往往相互冲突；Rust 对这一矛盾提出了挑战。通过平衡强大的技术能力与出色的开发者体验，Rust 让你能够控制 low-level 细节（例如内存使用），同时免去以往这类控制所带来的种种麻烦。"",""groupId"":""server-v4-1-a14bcc11462f8d0f"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""Rust 适合哪些人"",""groupId"":""server-v4-2-707d5d223c6c36da"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""出于各种原因，Rust 非常适合许多人。让我们来看看其中几个最重要的群体。"",""groupId"":""server-v4-3-5c883483ba6eba4d"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""开发者团队"",""groupId"":""server-v4-4-d25638fabca4c1a8"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""事实证明，Rust 是一种高效的工具，适合由系统编程水平各异的开发者组成的大型团队开展协作"",""groupId"":""server-v4-5-fd13fe95735970c0"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""}]}",,True,True,True,True,100,71.4,6
+case-3-m,M 600-899,888,6,gpt-5.6-sol,model_suffix,medium,cold-26bdf660-e02a-487b-bd0a-da91387615a4,True,200,0.1,0.3,685.8,2819.6,2839.7,6321.1,1388,487,38,1875,1,1e6b78fd69a50943a4ea6f6a538efcba256383ad69599831967b15432c4830c0,"{""translations"":[{""translatedText"":""注意：本版图书与 No Starch Press 提供的纸质版和电子版《The Rust Programming Language》内容相同。"",""groupId"":""server-v4-0-07a1d6cdc1d2ef85"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""欢迎阅读《The Rust Programming Language》，这是一本介绍 Rust 的入门书籍。Rust 编程语言可以帮助你编写运行更快、更可靠的软件。在编程语言设计中，High-level 的易用性与 low-level 的控制力往往相互冲突；Rust 对这一矛盾发起了挑战。通过兼顾强大的技术能力与出色的开发者体验，Rust 让你既能控制 low-level 细节（例如内存使用），又不必应付以往这类控制所伴随的种种麻烦。"",""groupId"":""server-v4-1-a14bcc11462f8d0f"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""Rust 适合哪些人"",""groupId"":""server-v4-2-707d5d223c6c36da"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""出于多种原因，Rust 非常适合许多人。下面来看看其中几个最重要的群体。"",""groupId"":""server-v4-3-5c883483ba6eba4d"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""开发者团队"",""groupId"":""server-v4-4-d25638fabca4c1a8"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""事实证明，对于由系统编程水平各不相同的开发者组成的大型团队而言，Rust 是一种富有成效的协作工具"",""groupId"":""server-v4-5-fd13fe95735970c0"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""}]}",,True,True,True,True,100,67.8,6
+case-3-m,M 600-899,888,6,gpt-5.6-sol,model_suffix,high,cold-901e20ce-e798-4740-b430-2d87de0e85c0,True,200,0.1,0.2,701.8,13120.8,13128.7,13442.7,1389,923,477,2312,1,4621a50ea9ac6feb81ef9a71fa318780b41a0bf5051986f138c12991e1879eaf,"{""translations"":[{""translatedText"":""注意：本书此版本与 No Starch Press 提供的纸质版和电子版《Rust 程序设计语言》内容相同。"",""groupId"":""server-v4-0-07a1d6cdc1d2ef85"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""欢迎阅读《Rust 程序设计语言》，这是一本 Rust 入门书籍。Rust 编程语言可以帮助你编写速度更快、更可靠的软件。在编程语言设计中，High-level 易用性与 low-level 控制力往往难以兼得；Rust 则向这一矛盾发起挑战。通过平衡强大的技术能力与出色的开发者体验，Rust 让你能够控制 low-level 细节（例如内存使用），而不必应对传统上与这种控制相伴的种种麻烦。"",""groupId"":""server-v4-1-a14bcc11462f8d0f"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""Rust 适合哪些人"",""groupId"":""server-v4-2-707d5d223c6c36da"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""出于各种原因，Rust 非常适合许多人。下面来看看其中几个最重要的群体。"",""groupId"":""server-v4-3-5c883483ba6eba4d"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""开发者团队"",""groupId"":""server-v4-4-d25638fabca4c1a8"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""事实证明，Rust 是一种能提高生产力的工具，适合系统编程水平各异的大型开发者团队开展协作。"",""groupId"":""server-v4-5-fd13fe95735970c0"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""}]}",,True,True,True,True,100,65.1,6
+case-3-m,M 600-899,888,6,qwen3.5-35b-a3b,reasoning_effort,minimal,cold-d77cf1fb-85a1-4501-83c3-6d5bac9038a0,False,200,0.1,0.2,693.8,2404.7,2412.0,5697.9,1466,523,,1989,1,e1f5dc448df866f2857beebc70b1d0b28a0510cdf8562b15912698405a9d27d9,"{
+  ""translations"": [
+    {
+      ""groupId"": ""server-v4-0-07a1d6cdc1d2ef85"",
+      ""translatedText"": ""注意：本书版本与 No Starch Press 出版的《Rust 编程语言》印刷版和电子书版相同。"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-1-a14bcc11462f8d0f"",
+      ""translatedText"": ""欢迎来到《Rust 编程语言》，这是一本关于 Rust 的入门书籍。Rust 编程语言有助于您编写更快、更可靠的软件。高级易用性与低级控制通常在编程语言设计中相互冲突；Rust 挑战了这一矛盾。通过平衡强大的技术能力和优秀的开发者体验，Rust 让您能够控制低级细节（如内存使用），而无需传统上与此类控制相关的所有麻烦。"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-2-707d5d223c6c36da"",
+      ""translatedText"": ""Rust 适合谁"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-3-5c883483ba6eba4d"",
+      ""translatedText"": ""Rust 因多种原因非常适合许多人。让我们看看其中几个最重要的群体。"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-4-d25638fabca4c1a8"",
+      ""translatedText"": ""开发团队"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-5-fd13fe95735970c0"",
+      ""translatedText"": ""Rust 正被证明是大型开发团队协作的高效工具，这些团队成员的系统编程水平各不相同。"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    }
+  ]
+}",,True,True,True,False,80,68.3,6
+case-3-m,M 600-899,888,6,qwen3.5-35b-a3b,reasoning_effort,low,cold-731112dd-8029-41ac-962c-4cd1edd5b600,False,200,0.1,0.2,663.1,2024.4,36088.4,40139.0,1464,4763,4236,6227,1,0c4e1544dcccc034dfacbe2f902e66cd61c73b9a44878caa612d637505b83140,"{
+  ""translations"": [
+    {
+      ""groupId"": ""server-v4-0-07a1d6cdc1d2ef85"",
+      ""translatedText"": ""注意：本书版本与 No Starch Press 出版的印刷版和电子书版《Rust 编程语言》相同。"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-1-a14bcc11462f8d0f"",
+      ""translatedText"": ""欢迎来到《Rust 编程语言》，这是一本关于 Rust 的入门书籍。Rust 编程语言有助于您编写更快、更可靠的软件。高级易用性与低级控制通常在编程语言设计中相互冲突；Rust 挑战了这一矛盾。通过平衡强大的技术能力和优秀的开发者体验，Rust 让您能够控制低级细节（如内存使用），而无需承担传统上与这种控制相关的所有麻烦。"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-2-707d5d223c6c36da"",
+      ""translatedText"": ""Rust 适合谁"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-3-5c883483ba6eba4d"",
+      ""translatedText"": ""Rust 因多种原因非常适合许多人。让我们看看其中几个最重要的群体。"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-4-d25638fabca4c1a8"",
+      ""translatedText"": ""开发团队"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-5-fd13fe95735970c0"",
+      ""translatedText"": ""Rust 正被证明是大型开发团队协作的高效工具，这些团队成员的系统编程水平各不相同。"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    }
+  ]
+}",,True,True,True,False,80,70.0,6
+case-3-m,M 600-899,888,6,qwen3.5-35b-a3b,reasoning_effort,medium,cold-fedad575-78b6-4d99-b40b-f6856da88d2d,False,200,0.1,0.3,699.2,1986.6,43064.3,46672.1,1462,6092,5562,7554,1,6ec9ddc0d8c1e3cd2121f65a129464901764fd45e177628fb1964da13ecff0c3,"{
+  ""translations"": [
+    {
+      ""groupId"": ""server-v4-0-07a1d6cdc1d2ef85"",
+      ""translatedText"": ""注意：本书的这一版本与 No Starch Press 出版的印刷版和电子书版的《Rust 编程语言》相同。"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-1-a14bcc11462f8d0f"",
+      ""translatedText"": ""欢迎来到《Rust 编程语言》，这是一本关于 Rust 的入门书籍。Rust 编程语言有助于您编写更快、更可靠的软件。高级别的易用性与低级别的控制在编程语言设计中往往相互矛盾；Rust 挑战了这一冲突。通过平衡强大的技术能力和优秀的开发者体验，Rust 让您能够控制低级细节（如内存使用），而无需承担传统上与这种控制相关的所有麻烦。"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-2-707d5d223c6c36da"",
+      ""translatedText"": ""Rust 适合谁"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-3-5c883483ba6eba4d"",
+      ""translatedText"": ""Rust 因多种原因非常适合许多人。让我们看看其中最重要的几个群体。"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-4-d25638fabca4c1a8"",
+      ""translatedText"": ""开发团队"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-5-fd13fe95735970c0"",
+      ""translatedText"": ""Rust 正被证明是大型开发团队协作的高效工具，这些团队成员的系统编程水平各不相同。"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    }
+  ]
+}",,True,True,True,False,80,71.2,6
+case-3-m,M 600-899,888,6,qwen3.5-35b-a3b,reasoning_effort,high,cold-fc434f08-7610-4a21-a143-cc98067638c0,False,200,0.1,0.2,652.6,1873.7,35957.0,39816.3,1466,4799,4270,6265,1,16dad1446c420ec40a8cdc0aeafa5d5bddbb25c0247384d7dc20ac9475348264,"{
+  ""translations"": [
+    {
+      ""groupId"": ""server-v4-0-07a1d6cdc1d2ef85"",
+      ""translatedText"": ""注意：本书的这一版本与 No Starch Press 出版的印刷版和电子书版的《Rust 编程语言》相同。"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-1-a14bcc11462f8d0f"",
+      ""translatedText"": ""欢迎来到《Rust 编程语言》，这是一本关于 Rust 的入门书籍。Rust 编程语言有助于您编写更快、更可靠的软件。高级易用性与低级控制通常在编程语言设计中相互冲突；Rust 挑战了这一矛盾。通过平衡强大的技术能力和优秀的开发者体验，Rust 让您能够控制低级细节（如内存使用），而无需承担传统上与这种控制相关的所有麻烦。"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-2-707d5d223c6c36da"",
+      ""translatedText"": ""Rust 适合谁"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-3-5c883483ba6eba4d"",
+      ""translatedText"": ""出于多种原因，Rust 非常适合许多人。让我们看看其中几个最重要的群体。"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-4-d25638fabca4c1a8"",
+      ""translatedText"": ""开发团队"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-5-fd13fe95735970c0"",
+      ""translatedText"": ""Rust 正被证明是大型开发团队协作的高效工具，这些团队的系统编程水平各不相同。"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    }
+  ]
+}",,True,True,True,False,80,72.1,6
+case-4-l,L 900-1149,990,5,gemini-3.1-flash-lite,thinkingLevel,minimal,cold-7b429607-e9bd-4a00-92aa-bbff89a0e56d,True,200,0.1,0.3,816.8,9112.9,9121.1,11074.8,4953,502,0,5455,1,1e57d1d56d98193840302461d3e3d7d428d479288b63a44f362d66e03419afb0,"{
+  ""translations"": [
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-0-5054cd17abf068ed"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""Rust 程序设计""
+    },
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-1-74e35c35858f4a27"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""你好，Cargo！""
+    },
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-2-76203a0b64effcb7"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""Cargo 是 Rust 的构建系统和包管理器。大多数 Rust 开发者使用此工具来管理他们的 Rust 项目，因为 Cargo 可以为你处理许多任务，例如构建代码、下载代码所依赖的库，以及构建这些库。（我们将代码所需的库称为依赖项。）""
+    },
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-3-5571698aae3dc483"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""最简单的 Rust 程序，就像我们目前编写的那样，没有任何依赖项。如果我们使用 Cargo 构建“Hello, world!”项目，它只会使用 Cargo 中处理构建代码的部分。随着你编写更复杂的 Rust 程序，你将添加依赖项，如果你从一开始就使用 Cargo 启动项目，添加依赖项将会容易得多。""
+    },
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-4-b4ad92d7368a44d5"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""由于绝大多数 Rust 项目都使用 Cargo，本书的其余部分假设你也在使用 Cargo。如果你使用了“安装”一节中讨论的官方安装程序，Cargo 会随 Rust 一起安装。如果你通过其他方式安装了 Rust，请检查 Cargo 是否已安装""
+    }
+  ]
+}",,True,True,True,True,100,85.6,5
+case-4-l,L 900-1149,990,5,gemini-3.1-flash-lite,thinkingLevel,low,cold-279022e2-9d07-4070-afe2-ec1e576b4a8d,True,200,0.1,0.2,645.3,2715.4,2723.9,4123.8,4954,501,0,5455,1,95c01c03c3ae3d15363628c832c23b84946496e598f54a5253b39d8dc66c866c,"{
+  ""translations"": [
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-0-5054cd17abf068ed"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""Rust 程序""
+    },
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-1-74e35c35858f4a27"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""你好，Cargo！""
+    },
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-2-76203a0b64effcb7"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""Cargo 是 Rust 的构建系统和包管理器。大多数 Rust 开发者使用此工具来管理他们的 Rust 项目，因为 Cargo 可以为你处理许多任务，例如构建代码、下载代码所依赖的库，以及构建这些库。（我们将代码所需的库称为依赖项。）""
+    },
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-3-5571698aae3dc483"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""最简单的 Rust 程序，就像我们目前编写的那样，没有任何依赖项。如果我们使用 Cargo 构建了“Hello, world!”项目，它将仅使用 Cargo 中处理构建代码的部分。随着你编写更复杂的 Rust 程序，你将添加依赖项，如果你使用 Cargo 启动项目，添加依赖项将变得容易得多。""
+    },
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-4-b4ad92d7368a44d5"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""由于绝大多数 Rust 项目都使用 Cargo，本书的其余部分假设你也在使用 Cargo。如果你使用了“安装”一节中讨论的官方安装程序，Cargo 会随 Rust 一起安装。如果你通过其他方式安装了 Rust，请检查 Cargo 是否已安装""
+    }
+  ]
+}",,True,True,True,True,100,87.1,5
+case-4-l,L 900-1149,990,5,gemini-3.1-flash-lite,thinkingLevel,medium,cold-ec767651-ce61-4b2c-b183-0d535e249371,True,200,0.2,0.3,639.7,8518.1,8526.8,10431.1,4955,502,0,5457,1,eeef24ec4a085a36aa86ee029e7a5848309bccdc89f8ce77c03cc9e63b6fc396,"{
+  ""translations"": [
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-0-5054cd17abf068ed"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""Rust 程序""
+    },
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-1-74e35c35858f4a27"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""你好，Cargo！""
+    },
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-2-76203a0b64effcb7"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""Cargo 是 Rust 的构建系统和包管理器。大多数 Rust 开发者使用此工具来管理他们的 Rust 项目，因为 Cargo 可以为你处理许多任务，例如构建代码、下载代码所依赖的库，以及构建这些库。（我们将代码所需的库称为依赖项。）""
+    },
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-3-5571698aae3dc483"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""最简单的 Rust 程序，就像我们目前编写的那个，没有任何依赖项。如果我们使用 Cargo 构建“Hello, world!”项目，它只会使用 Cargo 中处理构建代码的部分。随着你编写更复杂的 Rust 程序，你将添加依赖项，如果你从一开始就使用 Cargo 启动项目，添加依赖项将会容易得多。""
+    },
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-4-b4ad92d7368a44d5"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""由于绝大多数 Rust 项目都使用 Cargo，本书的其余部分假设你也在使用 Cargo。如果你使用了“安装”一节中讨论的官方安装程序，那么 Cargo 会随 Rust 一起安装。如果你通过其他方式安装了 Rust，请检查 Cargo 是否已安装""
+    }
+  ]
+}",,True,True,True,True,100,87.1,5
+case-4-l,L 900-1149,990,5,gemini-3.1-flash-lite,thinkingLevel,high,cold-7c33e396-27f3-41c5-99eb-99c06852fd18,True,200,0.1,0.2,636.5,2024.7,2033.4,3422.2,4955,503,0,5458,1,96db48e8d3cff666af8e5c0d5a4c62c6d97ec88e5149034e6f0669ae2e3ca5e5,"{
+  ""translations"": [
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-0-5054cd17abf068ed"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""Rust 程序""
+    },
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-1-74e35c35858f4a27"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""你好，Cargo！""
+    },
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-2-76203a0b64effcb7"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""Cargo 是 Rust 的构建系统和包管理器。大多数 Rust 开发者使用此工具来管理他们的 Rust 项目，因为 Cargo 为你处理了许多任务，例如构建代码、下载代码所依赖的库，以及构建这些库。（我们将代码所需的库称为依赖项。）""
+    },
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-3-5571698aae3dc483"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""最简单的 Rust 程序，比如我们目前编写的那个，没有任何依赖项。如果我们使用 Cargo 构建了“Hello, world!”项目，它只会使用 Cargo 中处理构建代码的部分。随着你编写更复杂的 Rust 程序，你将添加依赖项，如果你从一开始就使用 Cargo 启动项目，添加依赖项将会容易得多。""
+    },
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-4-b4ad92d7368a44d5"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""由于绝大多数 Rust 项目都使用 Cargo，本书的其余部分假设你也在使用 Cargo。如果你使用了“安装”一节中讨论的官方安装程序，Cargo 会随 Rust 一起安装。如果你通过其他方式安装了 Rust，请检查 Cargo 是否已安装。""
+    }
+  ]
+}",,True,True,True,True,100,87.8,5
+case-4-l,L 900-1149,990,5,gpt-5.4-nano,reasoning_effort,minimal,cold-4a0f50d4-535a-4acb-90d0-40a0ff0c06c6,True,200,0.1,0.2,743.5,1754.4,1763.3,3900.5,3205,425,0,3630,1,c81574401d9fef2974ad0bc6439209cc4902bc1b7aca2dc9c600853e4c9e69c7,"{""translations"":[{""translatedText"":""《Rust 程序》…"",""groupId"":""server-v4-0-5054cd17abf068ed"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""你好，Cargo！"",""groupId"":""server-v4-1-74e35c35858f4a27"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""Cargo 是 Rust 的构建系统和包管理器。大多数 Rust 用户都会使用这个工具来管理他们的 Rust 项目，因为 Cargo 会替你处理很多任务，比如构建你的代码、下载你的代码依赖的库，并构建这些库。（我们把你的代码所需要的库称为依赖项。）"",""groupId"":""server-v4-2-76203a0b64effcb7"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""最简单的 Rust 程序（就像我们到目前为止写的那个）不需要任何依赖项。如果你用 Cargo 构建的是“Hello,world!”这个项目，那么它只会使用 Cargo 中负责构建你代码的那一部分。随着你编写更复杂的 Rust 程序，你会添加依赖项；而如果你用 Cargo 开始一个项目，添加依赖项就会容易得多。"",""groupId"":""server-v4-3-5571698aae3dc483"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""由于绝大多数 Rust 项目都使用 Cargo，本书的其余部分都假设你也在使用 Cargo。只要你使用的是前面讨论过的“Installation”部分中的官方安装程序，那么 Cargo 会随 Rust 一起安装。如果你是通过其他方式安装 Rust，请检查一下 Cargo 是否…"",""groupId"":""server-v4-4-b4ad92d7368a44d5"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""}]}",,True,True,True,True,100,82.2,5
+case-4-l,L 900-1149,990,5,gpt-5.4-nano,reasoning_effort,high,cold-d0cbd368-f321-4ffd-9bfb-93264bb8ea3e,True,200,0.1,0.2,670.2,6363.2,6371.5,8172.7,3198,1325,897,4523,1,5b3b0692de98a685ae291682658f1574d95c6283858591a43f462ebba762351a,"{""translations"":[{""translatedText"":""Ea Rust 程序……"",""groupId"":""server-v4-0-5054cd17abf068ed"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""你好，Cargo！"",""groupId"":""server-v4-1-74e35c35858f4a27"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""Cargo 是 Rust 的构建系统和包管理器。大多数 Rustacean 都会使用这个工具来管理他们的 Rust 项目，因为 Cargo 会替你处理很多任务，比如构建你的代码、下载你的代码所依赖的库，以及构建这些库。（我们把你的代码需要的库称为依赖项。）"",""groupId"":""server-v4-2-76203a0b64effcb7"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""最简单的 Rust 程序（就像我们到目前为止写的那个）没有任何依赖。如果我们用 Cargo 构建“Hello,world!”这个项目，那么它只会使用 Cargo 中负责构建你代码的那一部分。随着你编写更复杂的 Rust 程序，你会添加依赖；而如果你用 Cargo 启动一个项目，添加依赖会容易得多。"",""groupId"":""server-v4-3-5571698aae3dc483"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""因为绝大多数 Rust 项目都使用 Cargo，本书其余部分假设你也在使用 Cargo。若你使用了文中讨论的“Installation”部分提到的官方安装程序，Cargo 会随 Rust 一起安装。如果你是通过某些其他方式安装的 Rust，请检查 Cargo 是否已经安装"",""groupId"":""server-v4-4-b4ad92d7368a44d5"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""}]}",,True,True,True,True,100,86.9,5
+case-4-l,L 900-1149,990,5,gpt-5.6-terra,model_suffix,low,cold-5b6ca7a0-4bfa-4ef7-a999-191f3c209a7e,False,000,0.1,0.2,771.0,0.0,,50952.8,,,,,1,e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855,,curl: (52) Empty reply from server,False,False,False,True,20,0.0,0
+case-4-l,L 900-1149,990,5,gpt-5.6-terra,model_suffix,medium,cold-f5dd0145-6d25-437a-a731-83483dc0b1a5,True,200,0.1,0.2,787.7,7422.0,7430.9,10685.3,3200,403,0,3603,1,6033f0b1a8cc8f35d5de766b1a80bee20f50ae2d4861427234555aa3d7c87ef5,"{""translations"":[{""detectedSourceLanguage"":""en"",""groupId"":""server-v4-0-5054cd17abf068ed"",""targetLanguage"":""zh"",""translatedText"":""Ea Rust 程序……""},{""detectedSourceLanguage"":""en"",""groupId"":""server-v4-1-74e35c35858f4a27"",""targetLanguage"":""zh"",""translatedText"":""你好，Cargo！""},{""detectedSourceLanguage"":""en"",""groupId"":""server-v4-2-76203a0b64effcb7"",""targetLanguage"":""zh"",""translatedText"":""Cargo 是 Rust 的构建系统和包管理器。大多数 Rustacean 都使用这个工具来管理他们的 Rust 项目，因为 Cargo 会为你处理许多任务，例如构建代码、下载代码所依赖的库，以及构建这些库。（我们把代码所需的库称为依赖项。）""},{""detectedSourceLanguage"":""en"",""groupId"":""server-v4-3-5571698aae3dc483"",""targetLanguage"":""zh"",""translatedText"":""最简单的 Rust 程序，例如我们目前编写的程序，没有任何依赖项。如果我们用 Cargo 构建“Hello, world!”项目，它只会使用 Cargo 中负责构建代码的部分。随着你编写更复杂的 Rust 程序，你会添加依赖项；如果你使用 Cargo 启动一个项目，添加依赖项会容易得多。""},{""detectedSourceLanguage"":""en"",""groupId"":""server-v4-4-b4ad92d7368a44d5"",""targetLanguage"":""zh"",""translatedText"":""由于绝大多数 Rust 项目都使用 Cargo，本书其余部分假定你也在使用 Cargo。如果你使用了“安装”一节中讨论的官方安装程序，Cargo 会随 Rust 一起安装。如果你通过其他方式安装 Rust，请检查 Cargo 是否""}]}",,True,True,True,True,100,90.5,5
+case-4-l,L 900-1149,990,5,gpt-5.6-terra,model_suffix,high,cold-3cd80662-24ea-4ebb-bd11-c9ebfd1c5bbc,True,200,0.1,0.3,693.3,10039.6,10048.2,12026.2,3199,917,512,4116,1,440f9a0dcf4842070a12c53b7f4407458fcee63d90259e172400bca84614c25c,"{""translations"":[{""detectedSourceLanguage"":""en"",""groupId"":""server-v4-0-5054cd17abf068ed"",""targetLanguage"":""zh"",""translatedText"":""Rust 程序……""},{""detectedSourceLanguage"":""en"",""groupId"":""server-v4-1-74e35c35858f4a27"",""targetLanguage"":""zh"",""translatedText"":""你好，Cargo！""},{""detectedSourceLanguage"":""en"",""groupId"":""server-v4-2-76203a0b64effcb7"",""targetLanguage"":""zh"",""translatedText"":""Cargo 是 Rust 的构建系统和包管理器。大多数 Rustaceans 都使用这个工具来管理他们的 Rust 项目，因为 Cargo 会为你处理许多任务，例如构建代码、下载代码所依赖的库，以及构建这些库。（我们将代码所需的库称为依赖项。）""},{""detectedSourceLanguage"":""en"",""groupId"":""server-v4-3-5571698aae3dc483"",""targetLanguage"":""zh"",""translatedText"":""最简单的 Rust 程序，例如我们目前所写的这个，没有任何依赖项。如果我们使用 Cargo 构建过“Hello,world!”项目，它只会使用 Cargo 中负责构建代码的部分。随着你编写更复杂的 Rust 程序，你会添加依赖项；如果你使用 Cargo 启动一个项目，添加依赖项会容易得多。""},{""detectedSourceLanguage"":""en"",""groupId"":""server-v4-4-b4ad92d7368a44d5"",""targetLanguage"":""zh"",""translatedText"":""由于绝大多数 Rust 项目都使用 Cargo，本书其余部分假定你也在使用 Cargo。如果你使用前文讨论的官方安装程序，Cargo 会随 Rust 一同安装。如果你通过其他方式安装 Rust，请检查 Cargo 是否已""}]}",,True,True,True,True,100,87.1,5
+case-4-l,L 900-1149,990,5,gpt-5.6-luna,model_suffix,low,cold-48775cfd-b01f-4009-abd2-acba43c9100a,True,200,0.1,0.2,695.7,8521.5,8530.4,9048.5,3197,464,58,3661,1,825626f97089c29226d0de862d40c4030493dc90fb997bf1a5ff9f9b444736de,"{""translations"":[{""translatedText"":""Ea Rust 编程语言……"",""groupId"":""server-v4-0-5054cd17abf068ed"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""你好，Cargo！"",""groupId"":""server-v4-1-74e35c35858f4a27"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""Cargo 是 Rust 的构建系统和包管理器。大多数 Rust 用户都使用这个工具来管理他们的 Rust 项目，因为 Cargo 会为你处理许多任务，例如构建代码、下载代码所依赖的库，以及构建这些库。（我们将代码所需的库称为依赖项。）"",""groupId"":""server-v4-2-76203a0b64effcb7"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""最简单的 Rust 程序，例如我们目前编写的这个程序，没有任何依赖项。如果我们使用 Cargo 构建“Hello, world!”项目，它只会使用 Cargo 中负责构建代码的部分。随着你编写更复杂的 Rust 程序，你会添加依赖项；如果你使用 Cargo 启动项目，添加依赖项会容易得多。"",""groupId"":""server-v4-3-5571698aae3dc483"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""由于绝大多数 Rust 项目都使用 Cargo，本书余下内容将假定你也在使用 Cargo。如果你使用本节讨论的官方安装程序，Cargo 会随 Rust 一起安装。如果你通过其他方式安装了 Rust，请确认 Cargo 是否……"",""groupId"":""server-v4-4-b4ad92d7368a44d5"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""}]}",,True,True,True,True,100,85.1,5
+case-4-l,L 900-1149,990,5,gpt-5.6-luna,model_suffix,medium,cold-faa5fc92-3bb0-4cab-b42e-04d6b7f077a3,True,200,0.1,0.2,758.9,11736.9,11745.6,12352.6,3202,556,153,3758,1,d7c37c35c968afaa144ce486dd55220e9f55bf0d402c5929e2a047e6bffe6499,"{""translations"":[{""detectedSourceLanguage"":""en"",""groupId"":""server-v4-0-5054cd17abf068ed"",""targetLanguage"":""zh"",""translatedText"":""Ea Rust 程序……""},{""detectedSourceLanguage"":""en"",""groupId"":""server-v4-1-74e35c35858f4a27"",""targetLanguage"":""zh"",""translatedText"":""你好，Cargo！""},{""detectedSourceLanguage"":""en"",""groupId"":""server-v4-2-76203a0b64effcb7"",""targetLanguage"":""zh"",""translatedText"":""Cargo 是 Rust 的构建系统和包管理器。大多数 Rust 用户都会使用这个工具来管理他们的 Rust 项目，因为 Cargo 会为你处理许多任务，例如构建代码、下载代码所依赖的库，以及构建这些库。（我们将代码所需的库称为依赖项。）""},{""detectedSourceLanguage"":""en"",""groupId"":""server-v4-3-5571698aae3dc483"",""targetLanguage"":""zh"",""translatedText"":""最简单的 Rust 程序，比如我们目前编写的这个程序，没有任何依赖项。如果我们使用 Cargo 构建“Hello,world!”项目，它只会使用 Cargo 中负责构建代码的部分。随着你编写更加复杂的 Rust 程序，你会添加依赖项；如果你使用 Cargo 开始一个项目，添加依赖项会容易得多。""},{""detectedSourceLanguage"":""en"",""groupId"":""server-v4-4-b4ad92d7368a44d5"",""targetLanguage"":""zh"",""translatedText"":""由于绝大多数 Rust 项目都使用 Cargo，本书余下部分默认你也在使用 Cargo。如果你使用本章讨论的官方安装程序，Cargo 会随 Rust 一起安装。如果你通过其他方式安装了 Rust，请检查 Cargo 是否""}]}",,True,True,True,True,100,88.6,5
+case-4-l,L 900-1149,990,5,gpt-5.6-luna,model_suffix,high,cold-d4df125a-9011-47e4-86a7-f0789c4f338a,True,200,0.1,0.2,675.5,17338.8,17348.1,17903.3,3201,1307,890,4508,1,294f20b8d28c032959857acc04fe76cae30a48ba1f625eb4777d42ab49c7d608,"{""translations"":[{""detectedSourceLanguage"":""en"",""groupId"":""server-v4-0-5054cd17abf068ed"",""targetLanguage"":""zh"",""translatedText"":""Ea Rust 程序……""},{""detectedSourceLanguage"":""en"",""groupId"":""server-v4-1-74e35c35858f4a27"",""targetLanguage"":""zh"",""translatedText"":""你好，Cargo！""},{""detectedSourceLanguage"":""en"",""groupId"":""server-v4-2-76203a0b64effcb7"",""targetLanguage"":""zh"",""translatedText"":""Cargo 是 Rust 的构建系统和包管理器。大多数 Rustacean 使用这个工具来管理他们的 Rust 项目，因为 Cargo 会为你处理许多任务，例如构建你的代码、下载你的代码所依赖的库，以及构建这些库。（我们将你的代码所需的库称为依赖项。）""},{""detectedSourceLanguage"":""en"",""groupId"":""server-v4-3-5571698aae3dc483"",""targetLanguage"":""zh"",""translatedText"":""最简单的 Rust 程序，比如我们目前编写的这个程序，都没有任何依赖项。如果我们使用 Cargo 构建“Hello,world!”项目，它只会使用 Cargo 中负责构建代码的部分。随着你编写越来越复杂的 Rust 程序，你会添加依赖项；如果你使用 Cargo 创建项目，添加依赖项将会容易得多。""},{""detectedSourceLanguage"":""en"",""groupId"":""server-v4-4-b4ad92d7368a44d5"",""targetLanguage"":""zh"",""translatedText"":""由于绝大多数 Rust 项目都使用 Cargo，本书其余部分假设你也在使用 Cargo。如果你使用“安装”部分所讨论的官方安装程序安装 Rust，Cargo 会随 Rust 一起安装。如果你通过其他方式安装 Rust，请检查 Cargo 是否""}]}",,True,True,True,True,100,90.3,5
+case-4-l,L 900-1149,990,5,gpt-5.6-sol,model_suffix,low,cold-53563759-fd4d-44b7-ab44-810530e9e134,True,200,0.1,0.2,873.3,4337.7,4345.8,6612.1,3197,477,65,3674,1,0ce36bc9a6d22fbe9efdd52b4498474d989b23525ceb28525d5bb573f28b066f,"{""translations"":[{""translatedText"":""Ea Rust 程序……"",""groupId"":""server-v4-0-5054cd17abf068ed"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""你好，Cargo！"",""groupId"":""server-v4-1-74e35c35858f4a27"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""Cargo 是 Rust 的构建系统和包管理器。大多数 Rustacean 都使用这个工具来管理自己的 Rust 项目，因为 Cargo 会替你处理许多任务，例如构建代码、下载代码所依赖的库，以及构建这些库。（我们把代码所需的库称为依赖项。）"",""groupId"":""server-v4-2-76203a0b64effcb7"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""最简单的 Rust 程序（比如我们目前编写的程序）没有任何依赖项。如果我们使用 Cargo 构建“Hello, world!”项目，那么只会用到 Cargo 中负责构建代码的部分。随着你编写越来越复杂的 Rust 程序，你会添加依赖项；如果使用 Cargo 创建项目，添加依赖项将会容易得多。"",""groupId"":""server-v4-3-5571698aae3dc483"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""由于绝大多数 Rust 项目都使用 Cargo，本书其余部分将假定你也在使用 Cargo。如果你使用的是“安装”一节中介绍的官方安装程序，Cargo 会随 Rust 一起安装。如果你通过其他方式安装了 Rust，请检查是否安装了 Cargo"",""groupId"":""server-v4-4-b4ad92d7368a44d5"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""}]}",,True,True,True,True,100,88.9,5
+case-4-l,L 900-1149,990,5,gpt-5.6-sol,model_suffix,medium,cold-475c106e-e7e7-46c1-860a-6ed10530230e,True,200,0.1,0.2,731.7,4575.9,4584.5,7124.4,3199,537,127,3736,1,e7dfa6f3512e8dd8fde3b6ac05c51144d8b6d2b46d384bb0e4c7b91a6f397186,"{""translations"":[{""translatedText"":""Ea Rust 程序……"",""groupId"":""server-v4-0-5054cd17abf068ed"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""你好，Cargo！"",""groupId"":""server-v4-1-74e35c35858f4a27"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""Cargo 是 Rust 的构建系统和包管理器。大多数 Rustacean 都使用这个工具来管理自己的 Rust 项目，因为 Cargo 可以替你处理许多任务，例如构建代码、下载代码所依赖的库，以及构建这些库。（我们把代码所需的库称为依赖项。）"",""groupId"":""server-v4-2-76203a0b64effcb7"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""最简单的 Rust 程序（比如我们目前编写的程序）没有任何依赖项。如果我们用 Cargo 构建“Hello, world!”项目，它只会用到 Cargo 中负责构建代码的部分。随着你编写更复杂的 Rust 程序，你会添加依赖项；如果你使用 Cargo 创建项目，添加依赖项会容易得多。"",""groupId"":""server-v4-3-5571698aae3dc483"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""由于绝大多数 Rust 项目都使用 Cargo，本书余下部分将假定你也在使用 Cargo。如果你使用的是“安装”一节中介绍的官方安装程序，Cargo 会随 Rust 一同安装。如果你通过其他方式安装了 Rust，请检查 Cargo 是否"",""groupId"":""server-v4-4-b4ad92d7368a44d5"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""}]}",,True,True,True,True,100,89.1,5
+case-4-l,L 900-1149,990,5,gpt-5.6-sol,model_suffix,high,cold-9e917f1a-c66c-46c0-8ceb-74820a9e2528,True,200,0.1,0.2,668.0,11082.4,11092.4,11398.3,3201,735,325,3936,1,dc299ce47f3bf87a47b5a5bbd8411b79fedb6c50a044d3215f9ac5e0d5a1e61d,"{""translations"":[{""translatedText"":""Ea Rust 程序……"",""groupId"":""server-v4-0-5054cd17abf068ed"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""你好，Cargo！"",""groupId"":""server-v4-1-74e35c35858f4a27"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""Cargo 是 Rust 的构建系统和包管理器。大多数 Rustacean 都使用这个工具管理他们的 Rust 项目，因为 Cargo 会替你处理许多任务，例如构建代码、下载代码所依赖的库，以及构建这些库。（我们把代码所需的库称为依赖项。）"",""groupId"":""server-v4-2-76203a0b64effcb7"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""最简单的 Rust 程序，比如我们目前编写的程序，没有任何依赖项。如果我们使用 Cargo 构建“Hello, world!”项目，它只会用到 Cargo 中负责构建代码的部分。随着你编写更复杂的 Rust 程序，你会添加依赖项；如果你使用 Cargo 创建项目，添加依赖项会容易得多。"",""groupId"":""server-v4-3-5571698aae3dc483"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""由于绝大多数 Rust 项目都使用 Cargo，本书余下的内容将假定你也在使用 Cargo。如果你使用了“安装”一节中讨论的官方安装程序，那么 Cargo 会随 Rust 一同安装。如果你通过其他方式安装了 Rust，请检查 Cargo 是否……"",""groupId"":""server-v4-4-b4ad92d7368a44d5"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""}]}",,True,True,True,True,100,88.6,5
+case-4-l,L 900-1149,990,5,qwen3.5-35b-a3b,reasoning_effort,minimal,cold-e116ef8b-7433-426c-9071-97fa1fa192fa,True,200,0.1,0.2,817.4,4043.9,4053.4,7236.8,4705,503,,5208,1,858062f6a1b5dbddc79bdc85b3432aa36dc61404bb03aa2ed406d1094a28e691,"{
+  ""translations"": [
+    {
+      ""groupId"": ""server-v4-0-5054cd17abf068ed"",
+      ""translatedText"": ""第2章 Rust程序..."",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-1-74e35c35858f4a27"",
+      ""translatedText"": ""你好，Cargo！"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-2-76203a0b64effcb7"",
+      ""translatedText"": ""Cargo是Rust的构建系统和包管理器。大多数Rust开发者使用此工具来管理他们的Rust项目，因为Cargo为您处理大量任务，例如构建您的代码、下载您的代码所依赖的库以及构建这些库。（我们将您的代码需要的库称为“依赖项”。）"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-3-5571698aae3dc483"",
+      ""translatedText"": ""最简单的Rust程序，比如我们到目前为止编写的那个，没有任何依赖项。如果我们用Cargo构建\""Hello,world!\""项目，它只会使用Cargo中负责构建您代码的那一部分。随着您编写更复杂的Rust程序，您将添加依赖项，如果您使用Cargo启动一个项目，添加依赖项将变得容易得多。"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-4-b4ad92d7368a44d5"",
+      ""translatedText"": ""由于绝大多数Rust项目都使用Cargo，本书的其余部分假设您也在使用Cargo。如果您使用了本章前面讨论的官方安装程序，Cargo会随Rust一起安装。如果您通过其他方式安装了Rust，请检查Cargo是否已安装。"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    }
+  ]
+}",,True,True,True,True,100,87.5,5
+case-4-l,L 900-1149,990,5,qwen3.5-35b-a3b,reasoning_effort,low,cold-739cf2d7-3a1f-41b7-b9f2-74836a67fa4d,False,200,0.1,0.2,675.0,2582.8,51727.8,54866.4,4705,6791,6393,11496,1,bab1d5350e661ace95fa0f6f43cafdf326242a584ffd2f8d0c3d900870bb708c,"[{""groupId"":""server-v4-0-5054cd17abf068ed"",""translatedText"":""第 2 章 Rust 程序..."",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""groupId"":""server-v4-1-74e35c35858f4a27"",""translatedText"":""你好，Cargo！"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""groupId"":""server-v4-2-76203a0b64effcb7"",""translatedText"":""Cargo 是 Rust 的构建系统和包管理器。大多数 Rustaceans 使用此工具来管理他们的 Rust 项目，因为 Cargo 为您处理大量任务，例如构建您的代码、下载您的代码所依赖的库以及构建这些库。（我们将您的代码需要的库称为依赖项。）"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""groupId"":""server-v4-3-5571698aae3dc483"",""translatedText"":""最简单的 Rust 程序，比如我们到目前为止编写的程序，没有任何依赖项。如果我们用 Cargo 构建\""Hello,world!\""项目，它只会使用 Cargo 中负责构建您代码的部分。随着您编写更复杂的 Rust 程序，您将添加依赖项，如果您使用 Cargo 启动项目，添加依赖项将变得容易得多。"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""groupId"":""server-v4-4-b4ad92d7368a44d5"",""translatedText"":""由于绝大多数 Rust 项目都使用 Cargo，本书的其余部分假设您也在使用 Cargo。如果您使用了“安装”部分中讨论的官方安装程序，则 Cargo 会随 Rust 一起安装。如果您通过其他方式安装了 Rust，请检查 Cargo 是否已"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""}]",,False,False,False,True,20,0.0,0
+case-4-l,L 900-1149,990,5,qwen3.5-35b-a3b,reasoning_effort,medium,cold-cad9f9ff-2d64-4742-b90f-f47fd60fe3fc,True,200,0.1,0.2,711.7,2313.7,36189.9,39472.6,4700,4561,4060,9261,1,db065aecdda9e6dc9d5b4074ed395eb1a4e5edb4d35bb2ce212db438293bcc91,"{
+  ""translations"": [
+    {
+      ""groupId"": ""server-v4-0-5054cd17abf068ed"",
+      ""translatedText"": ""第2章 Rust程序..."",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-1-74e35c35858f4a27"",
+      ""translatedText"": ""你好，Cargo！"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-2-76203a0b64effcb7"",
+      ""translatedText"": ""Cargo是Rust的构建系统和包管理器。大多数Rustacean使用此工具来管理他们的Rust项目，因为Cargo为你处理许多任务，例如构建你的代码、下载你的代码所依赖的库以及构建这些库。（我们将你的代码需要的库称为依赖项。）"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-3-5571698aae3dc483"",
+      ""translatedText"": ""最简单的Rust程序，比如我们到目前为止编写的那个，没有任何依赖项。如果我们用Cargo构建“Hello,world!”项目，它只会使用Cargo中负责构建代码的部分。随着你编写更复杂的Rust程序，你将添加依赖项，如果你开始使用Cargo的项目，添加依赖项将变得容易得多。"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-4-b4ad92d7368a44d5"",
+      ""translatedText"": ""由于绝大多数Rust项目都使用Cargo，本书的其余部分假设你也在使用Cargo。如果你使用了本章前面讨论的官方安装程序，Cargo会随Rust一起安装。如果你通过其他方式安装了Rust，请检查Cargo是否已安装。"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    }
+  ]
+}",,True,True,True,True,100,90.2,5
+case-4-l,L 900-1149,990,5,qwen3.5-35b-a3b,reasoning_effort,high,cold-a810b000-0726-4c61-b4d6-7b84134953d6,True,200,0.1,0.2,650.5,3031.9,47780.6,51138.8,4706,6160,5647,10866,1,2d0429b9b9f8780268d6d8995ca6c2ea7d0f4c002f566560adfe9f0a6a0aca53,"{
+  ""translations"": [
+    {
+      ""groupId"": ""server-v4-0-5054cd17abf068ed"",
+      ""translatedText"": ""第 2 章 Rust 程序..."",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-1-74e35c35858f4a27"",
+      ""translatedText"": ""你好，Cargo！"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-2-76203a0b64effcb7"",
+      ""translatedText"": ""Cargo 是 Rust 的构建系统和包管理器。大多数 Rustaceans 使用此工具来管理他们的 Rust 项目，因为 Cargo 为您处理大量任务，例如构建您的代码、下载您的代码所依赖的库以及构建这些库。（我们将您的代码需要的库称为依赖项。）"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-3-5571698aae3dc483"",
+      ""translatedText"": ""最简单的 Rust 程序，比如我们到目前为止编写的程序，没有任何依赖项。如果我们用 Cargo 构建“Hello, world!”项目，它只会使用负责构建您代码的 Cargo 部分。随着您编写更复杂的 Rust 程序，您将添加依赖项，如果您使用 Cargo 启动项目，添加依赖项将变得容易得多。"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-4-b4ad92d7368a44d5"",
+      ""translatedText"": ""由于绝大多数 Rust 项目都使用 Cargo，本书的其余部分假设您也在使用 Cargo。如果您使用了本节中讨论的官方安装程序，Cargo 会随 Rust 一起安装。“安装”部分。如果您通过其他方式安装了 Rust，请检查 Cargo 是否"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    }
+  ]
+}",,True,True,True,True,100,87.2,5
+case-5-xl,XL 1150-+,1337,5,gemini-3.1-flash-lite,thinkingLevel,minimal,cold-6f440c81-70d8-41b5-90ee-743caaf180a4,True,200,0.1,0.2,752.1,2077.6,2089.2,3592.0,5399,597,0,5996,1,a7f6662bfc74442f8658d1183eb2fa3d0359f285e42bbc48deda51af3337ffd3,"{
+  ""translations"": [
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-0-4bfe5fd019371b43"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""生命周期、特征、类型、函数和闭包。""
+    },
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-1-d4698563c7600026"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""在第 21 章中，我们将完成一个项目，在其中我们将实现一个低级多线程 Web 服务器！""
+    },
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-2-313b750f81edf6db"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""最后，一些附录以更像参考资料的格式包含了有关该语言的有用信息。附录 A 涵盖了 Rust 的关键字，附录 B 涵盖了 Rust 的运算符和符号，附录 C 涵盖了标准库提供的可派生特征，附录 D 涵盖了一些有用的开发工具，附录 E 解释了 Rust 版本。在附录 F 中，您可以找到本书的翻译，在附录 G 中，我们将介绍 Rust 是如何制作的以及什么是 Rust 夜间版。""
+    },
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-3-1f727bc967061ddf"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""阅读本书没有错误的方法：如果您想跳过前面的内容，请随意！如果您感到困惑，可能需要跳回前面的章节。但请做任何对您有效的事情。""
+    },
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-4-313933cdb7e4295c"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""学习 Rust 的一个重要过程是学习如何阅读编译器显示的错误消息：这些消息将引导您编写出可运行的代码。因此，我们将提供许多无法编译的示例，以及编译器在每种情况下向您显示的错误消息。请注意，如果您输入并运行随机示例，它可能无法编译！请确保阅读周围的文本，以查看您尝试运行的示例是否旨在报错。在大多数情况下，我们将引导您找到任何无法编译的代码的正确版本。Ferris""
+    }
+  ]
+}",,True,True,True,True,100,81.1,5
+case-5-xl,XL 1150-+,1337,5,gemini-3.1-flash-lite,thinkingLevel,low,cold-bf5c816b-9128-4404-a963-d7431c5b3473,True,200,0.1,0.2,664.5,8449.2,8457.9,10864.3,5401,595,0,5996,1,6513b4210b1f8e66cf527e3079e6aa004f634808ff9af63842d104dfb34eb911,"{
+  ""translations"": [
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-0-4bfe5fd019371b43"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""生命周期、特征、类型、函数和闭包。""
+    },
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-1-d4698563c7600026"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""在第 21 章中，我们将完成一个项目，在其中我们将实现一个低级多线程 Web 服务器！""
+    },
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-2-313b750f81edf6db"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""最后，一些附录以更像参考资料的格式包含了有关该语言的有用信息。附录 A 涵盖了 Rust 的关键字，附录 B 涵盖了 Rust 的运算符和符号，附录 C 涵盖了标准库提供的可派生特征，附录涵盖了一些有用的开发工具，附录 E 解释了 Rust 版本。在附录中，您可以找到本书的译本，在附录 G 中，我们将介绍 Rust 是如何制作的以及什么是 Rust 夜间版。""
+    },
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-3-1f727bc967061ddf"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""阅读本书没有错误的方法：如果您想跳过某些章节，请随意！如果您感到困惑，可能需要跳回到前面的章节。但请做任何对您有效的事情。""
+    },
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-4-313933cdb7e4295c"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""学习 Rust 的一个重要过程是学习如何阅读编译器显示的错误消息：这些消息将引导您编写出可运行的代码。因此，我们将提供许多无法编译的示例，以及编译器在每种情况下向您显示的错误消息。请注意，如果您输入并运行随机示例，它可能无法编译！请确保阅读周围的文本，以查看您尝试运行的示例是否旨在报错。在大多数情况下，我们将引导您找到任何无法编译的代码的正确版本。Ferris""
+    }
+  ]
+}",,True,True,True,True,100,80.9,5
+case-5-xl,XL 1150-+,1337,5,gemini-3.1-flash-lite,thinkingLevel,medium,cold-5bf25d03-3b83-4055-acde-a6171dd56a15,True,200,0.1,0.2,700.9,2242.5,2251.3,3787.9,5398,595,0,5993,1,1b24b15308a4d275b3b18b3ff74007e88340d1fa55519982bfb933f021827746,"{
+  ""translations"": [
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-0-4bfe5fd019371b43"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""生命周期、特征、类型、函数和闭包。""
+    },
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-1-d4698563c7600026"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""在第 21 章中，我们将完成一个项目，在其中我们将实现一个低级别的多线程 Web 服务器！""
+    },
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-2-313b750f81edf6db"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""最后，一些附录以更像参考资料的格式包含了有关该语言的有用信息。附录 A 涵盖了 Rust 的关键字，附录 B 涵盖了 Rust 的运算符和符号，附录 C 涵盖了标准库提供的可派生特征，附录 D 涵盖了一些有用的开发工具，附录 E 解释了 Rust 版本。在附录 F 中，您可以找到本书的翻译，在附录 G 中，我们将介绍 Rust 是如何制作的以及什么是 nightly Rust。""
+    },
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-3-1f727bc967061ddf"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""阅读本书没有错误的方法：如果您想跳过某些章节，请随意！如果您感到困惑，可能需要跳回前面的章节。但请做任何对您有效的事情。""
+    },
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-4-313933cdb7e4295c"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""学习 Rust 的一个重要过程是学习如何阅读编译器显示的错误消息：这些消息将引导您编写出可运行的代码。因此，我们将提供许多无法编译的示例，以及编译器在每种情况下向您显示的错误消息。请注意，如果您输入并运行随机示例，它可能无法编译！请确保阅读周围的文本，以查看您尝试运行的示例是否旨在报错。在大多数情况下，我们将引导您找到任何无法编译的代码的正确版本。Ferris""
+    }
+  ]
+}",,True,True,True,True,100,81.9,5
+case-5-xl,XL 1150-+,1337,5,gemini-3.1-flash-lite,thinkingLevel,high,cold-a65e2f68-7817-4af6-9c3c-620127e8f4cf,True,200,0.1,0.2,714.7,2147.5,2157.4,3689.2,5400,595,0,5995,1,b5e8ff432a05fff5d327e1766442deef03d137f2a884bf3dfb44053223edbfdc,"{
+  ""translations"": [
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-0-4bfe5fd019371b43"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""生命周期、特征、类型、函数和闭包。""
+    },
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-1-d4698563c7600026"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""在第 21 章中，我们将完成一个项目，在其中我们将实现一个低级多线程 Web 服务器！""
+    },
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-2-313b750f81edf6db"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""最后，一些附录以更像参考资料的格式包含了有关该语言的有用信息。附录 A 涵盖了 Rust 的关键字，附录 B 涵盖了 Rust 的运算符和符号，附录 C 涵盖了标准库提供的可派生特征，附录 D 涵盖了一些有用的开发工具，附录 E 解释了 Rust 版本。在附录 F 中，您可以找到本书的翻译，在附录 G 中，我们将介绍 Rust 是如何制作的以及什么是 nightly Rust。""
+    },
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-3-1f727bc967061ddf"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""阅读本书没有错误的方法：如果您想跳过某些章节，请随意！如果您感到困惑，可能需要跳回前面的章节。但请做任何对您有效的事情。""
+    },
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-4-313933cdb7e4295c"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""学习 Rust 的一个重要过程是学习如何阅读编译器显示的错误消息：这些消息将引导您编写出可运行的代码。因此，我们将提供许多无法编译的示例，以及编译器在每种情况下向您显示的错误消息。请注意，如果您输入并运行随机示例，它可能无法编译！请确保阅读周围的文本，以查看您尝试运行的示例是否旨在报错。在大多数情况下，我们将引导您找到任何无法编译的代码的正确版本。Ferris""
+    }
+  ]
+}",,True,True,True,True,100,81.9,5
+case-5-xl,XL 1150-+,1337,5,gpt-5.4-nano,reasoning_effort,minimal,cold-325a36e8-4be4-48b8-9994-1c082e636e8c,True,200,0.1,0.2,683.4,8665.3,8679.4,8978.4,4191,536,0,4727,1,308464f82b5b46154ac90788474d46e8a706f9395e595d71b0129831cad55649,"{""translations"":[{""translatedText"":""寿命、特征、类型、函数以及闭包。"",""groupId"":""server-v4-0-4bfe5fd019371b43"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""在第 21 章中，我们将完成一个项目：在其中我们会实现一个低层次的多线程 Web 服务器！"",""groupId"":""server-v4-1-d4698563c7600026"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""最后，有些附录包含关于该语言的有用信息，并以更接近参考手册的格式呈现。附录 A 涵盖 Rust 的关键字，附录 B 讲解 Rust 的运算符和符号，附录 C 涵盖标准库提供的可派生特征，附录 D 涵盖一些有用的开发工具，附录 E 解释 Rust 的版本。在附录中你可以找到本书的译文；而在附录 G 中，我们将介绍 Rust 是如何被制造出来的，以及什么是 nightly Rust。"",""groupId"":""server-v4-2-313b750f81edf6db"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""阅读本书没有“错误”的方式：如果你想直接跳到后面，就去做吧！如果你感到有任何困惑，你可能需要回到更早的章节。但只要对你有效就行。"",""groupId"":""server-v4-3-1f727bc967061ddf"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""学习 Rust 过程中一个重要的部分，是学习如何阅读编译器显示的错误信息：这些会引导你走向可工作的代码。因此，我们将提供许多与错误信息一起出现的示例——这些示例不会通过编译，同时每种情境下编译器会向你展示相应的错误信息。请记住：如果你输入并运行某个随机示例，它可能不会通过编译！确保你阅读周围的文字，以判断你试图运行的示例是否本来就应该报错。在大多数情况下，我们会引导你找到任何无法通过编译的代码的正确版本。Ferris"",""groupId"":""server-v4-4-313933cdb7e4295c"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""}]}",,True,True,True,True,100,73.6,5
+case-5-xl,XL 1150-+,1337,5,gpt-5.4-nano,reasoning_effort,high,cold-109b8d09-ce0b-435c-847c-2907f548c14a,True,200,0.1,0.3,789.7,19397.3,19412.5,19842.9,4188,1834,1298,6022,1,f443747028606bb397e7fe1b24254a8b1c398eeebcadb771051160b3b8679855,"{""translations"":[{""translatedText"":""生命周期、特征、类型、函数和闭包。"",""groupId"":""server-v4-0-4bfe5fd019371b43"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""在第 21 章中，我们将完成一个项目：我们将实现一个低级的多线程 Web 服务器！"",""groupId"":""server-v4-1-d4698563c7600026"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""最后，有些附录包含了关于该语言的有用信息，并以更接近参考资料的格式呈现。附录 A 涵盖 Rust 的关键字，附录 B 涵盖 Rust 的运算符和符号，附录 C 涵盖由标准库提供的可派生特征，附录涵盖一些有用的开发工具，而附录 E 解释 Rust 的版本。你可以在附录中找到本书的译文，并且在附录 G 中，我们将讲解 Rust 是如何被制造出来的，以及什么是 nightly Rust。"",""groupId"":""server-v4-2-313b750f81edf6db"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""阅读这本书没有错误的方式：如果你想要跳到前面去，那就去吧！如果你在理解上遇到任何困惑，你可能需要回到更早的章节。但只要做对你有效的事情就行。"",""groupId"":""server-v4-3-1f727bc967061ddf"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""在学习 Rust 的过程中，一个重要的部分是学会阅读编译器显示的错误信息：这些会引导你走向可工作的代码。因此，我们将提供许多无法通过编译的示例，并且会在每种情况下向你展示编译器会给出的错误信息。请记住：如果你输入并运行某个随机示例，它可能无法通过编译！务必阅读周围的文字，看看你试图运行的示例是否被设计为会报错。在大多数情况下，我们都会带你找到任何无法通过编译的代码的正确版本。Ferris"",""groupId"":""server-v4-4-313933cdb7e4295c"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""}]}",,True,True,True,True,100,77.1,5
+case-5-xl,XL 1150-+,1337,5,gpt-5.6-terra,model_suffix,low,cold-f9892e52-5dbc-4bdd-b838-860a08cf38dc,True,200,0.1,0.2,743.5,2724.1,2741.3,5891.3,4185,505,0,4690,1,18545f950394a207d8c10b000d8245b8e03c66d4d7d32632b493bf5cd52a1ebe,"{""translations"":[{""translatedText"":""生命周期、特征、类型、函数和闭包。"",""groupId"":""server-v4-0-4bfe5fd019371b43"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""在第21章中，我们将完成一个项目，在其中实现一个底层的多线程 Web 服务器！"",""groupId"":""server-v4-1-d4698563c7600026"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""最后，一些附录以更类似参考资料的格式包含有关该语言的有用信息。附录 A 涵盖 Rust 的关键字，附录 B 涵盖 Rust 的运算符和符号，附录 C 涵盖标准库提供的可派生特征，附录 D 涵盖一些有用的开发工具，附录 E 解释 Rust 的版本。在附录 F 中可以找到本书的译本，而在附录 G 中，我们将介绍 Rust 是如何构建的以及什么是夜间版 Rust。"",""groupId"":""server-v4-2-313b750f81edf6db"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""阅读本书没有错误的方式：如果你想跳着往前读，尽管这样做！如果遇到任何困惑，你可能需要跳回前面的章节。但怎么适合你就怎么做。"",""groupId"":""server-v4-3-1f727bc967061ddf"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""学习 Rust 过程中的一个重要部分，是学习如何阅读编译器显示的错误信息：它们将引导你写出可运行的代码。因此，我们会提供许多无法编译的示例，以及编译器在每种情况下会向你显示的错误信息。要知道，如果你输入并运行一个随机示例，它可能无法编译！务必阅读周围的文字，以确认你尝试运行的示例是否本来就应当报错。在大多数情况下，我们会引导你找到任何无法编译代码的正确版本。Ferris"",""groupId"":""server-v4-4-313933cdb7e4295c"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""}]}",,True,True,True,True,100,83.3,5
+case-5-xl,XL 1150-+,1337,5,gpt-5.6-terra,model_suffix,medium,cold-ef47ae11-76a3-4c58-9038-44858897e96b,True,200,0.1,0.2,684.6,13311.1,13327.3,13952.2,4188,654,147,4842,1,f75491805cb6c4a12fa3a966c95bc7a88afec5dfb18c4301f1cfc822440f904c,"{""translations"":[{""translatedText"":""生命周期、特征、类型、函数和闭包。"",""groupId"":""server-v4-0-4bfe5fd019371b43"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""在第21章中，我们将完成一个项目，在其中实现一个底层的多线程 Web 服务器！"",""groupId"":""server-v4-1-d4698563c7600026"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""最后，一些附录以更类似参考资料的格式包含有关该语言的实用信息。附录 A 涵盖 Rust 的关键字，附录 B 涵盖 Rust 的运算符和符号，附录 C 涵盖标准库提供的可派生特征，附录涵盖一些有用的开发工具，附录 E 解释 Rust 版本。在附录中，你可以找到本书的译本；在附录 G 中，我们将介绍 Rust 是如何制作的，以及什么是 nightly Rust。"",""groupId"":""server-v4-2-313b750f81edf6db"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""阅读本书没有错误的方法：如果你想跳着往前读，尽管去做！如果遇到任何困惑，你可能需要跳回前面的章节。但怎么适合你就怎么做。"",""groupId"":""server-v4-3-1f727bc967061ddf"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""学习 Rust 过程中的一个重要部分，是学习如何阅读编译器显示的错误信息：这些信息将引导你写出可运行的代码。因此，我们将提供许多无法编译的示例，以及编译器会在每种情况下向你显示的错误信息。要知道，如果你输入并运行一个随机示例，它可能无法编译！务必阅读周围的文字，以了解你尝试运行的示例是否本来就应当报错。在大多数情况下，我们会引导你得到任何无法编译的代码的正确版本。费里斯"",""groupId"":""server-v4-4-313933cdb7e4295c"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""}]}",,True,True,True,True,100,83.6,5
+case-5-xl,XL 1150-+,1337,5,gpt-5.6-terra,model_suffix,high,cold-d6867b30-11e1-4841-9083-e5844e3cd910,True,200,0.1,0.2,720.1,8809.5,8826.0,11512.1,4187,1116,599,5303,1,f090459b0f6ffec4b6e85748e70155dcf68712bd6d4509d37e297878e2694f72,"{""translations"":[{""translatedText"":""生命周期、特征、类型、函数和闭包。"",""groupId"":""server-v4-0-4bfe5fd019371b43"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""在第 21 章中，我们将完成一个项目，在其中我们将实现一个底层的多线程 Web 服务器！"",""groupId"":""server-v4-1-d4698563c7600026"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""最后，一些附录以更类似参考资料的格式包含有关该语言的有用信息。附录 A 涵盖 Rust 的关键字，附录 B 涵盖 Rust 的运算符和符号，附录 C 涵盖标准库提供的可派生特征，附录 D 涵盖一些有用的开发工具，附录 E 解释 Rust 版本。在附录 F 中，你可以找到本书的译本；在附录 G 中，我们将介绍 Rust 是如何制作的，以及什么是 Rust 夜间版。"",""groupId"":""server-v4-2-313b750f81edf6db"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""阅读本书没有错误的方法：如果你想跳到后面去读，那就去吧！如果遇到任何困惑，你可能需要跳回前面的章节。但怎么适合你就怎么做。"",""groupId"":""server-v4-3-1f727bc967061ddf"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""学习 Rust 的过程中的一个重要部分，是学习如何阅读编译器显示的错误信息：它们会指引你写出可运行的代码。因此，我们会提供许多无法编译的示例，以及编译器在每种情况下会显示给你的错误信息。要知道，如果你输入并运行一个随机示例，它可能无法编译！务必阅读上下文，以了解你试图运行的示例是否本来就应当出错。在大多数情况下，我们会引导你找到任何无法编译代码的正确版本。Ferris"",""groupId"":""server-v4-4-313933cdb7e4295c"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""}]}",,True,True,True,True,100,82.7,5
+case-5-xl,XL 1150-+,1337,5,gpt-5.6-luna,model_suffix,low,cold-5fe25c2f-6b2d-4cf9-ae12-e564d87bfda3,True,200,0.1,0.4,849.1,6385.9,9969.1,10325.2,4191,573,69,4764,1,be57fd9ab9cd626e77443c31ed9e9de4122e9709dd88264b4878b6c751dff153,"{""translations"":[{""translatedText"":""生命周期、特征、类型、函数和闭包。"",""groupId"":""server-v4-0-4bfe5fd019371b43"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""在第 21 章中，我们将完成一个项目，在其中实现一个底层多线程 Web 服务器！"",""groupId"":""server-v4-1-d4698563c7600026"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""最后，一些附录以更具参考性质的格式，包含有关这门语言的实用信息。附录 A 介绍 Rust 的关键字，附录 B 介绍 Rust 的运算符和符号，附录 C 介绍标准库提供的可派生特征，附录介绍一些实用的开发工具，附录 E 解释 Rust 版本。在附录中，你可以找到本书的译本；在附录 G 中，我们将介绍 Rust 是如何构建的，以及什么是 nightly Rust。"",""groupId"":""server-v4-2-313b750f81edf6db"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""阅读本书没有错误的方法：如果你想跳到后面阅读，那就去做吧！如果感到困惑，你可能需要跳回前面的章节。不过，怎么适合你就怎么读。"",""groupId"":""server-v4-3-1f727bc967061ddf"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""学习 Rust 的过程中，一个重要部分是学会阅读编译器显示的错误消息：这些消息会引导你写出可运行的代码。因此，我们会提供许多无法编译的示例，并附上编译器在每种情况下显示的错误消息。请注意，如果你输入并运行一个随意的示例，它可能无法编译！务必阅读周围的文字，看看你尝试运行的示例是否本来就应该报错。在大多数情况下，我们会引导你找到任何无法编译代码的正确版本。Ferris"",""groupId"":""server-v4-4-313933cdb7e4295c"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""}]}",,True,True,True,True,100,82.9,5
+case-5-xl,XL 1150-+,1337,5,gpt-5.6-luna,model_suffix,medium,cold-34aa58f2-121e-40eb-8c3c-5d7c27a589d9,True,200,0.1,0.3,1097.3,7592.6,7607.2,11588.1,4192,635,131,4827,1,444bc24b2bfdbaacf27103de1924d8c189b48829f79b230980f82fe3c45e6db8,"{""translations"":[{""translatedText"":""生命周期、特征、类型、函数和闭包。"",""groupId"":""server-v4-0-4bfe5fd019371b43"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""在第 21 章中，我们将完成一个项目，在其中实现一个底层多线程 Web 服务器！"",""groupId"":""server-v4-1-d4698563c7600026"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""最后，一些附录以更具参考性的形式提供了有关这门语言的有用信息。附录 A 介绍 Rust 的关键字，附录 B 介绍 Rust 的运算符和符号，附录 C 介绍标准库提供的可派生特征，附录介绍一些有用的开发工具，附录 E 解释 Rust 版本。在附录中，你可以找到本书的译本，而在附录 G 中，我们将介绍 Rust 是如何构建的，以及什么是 nightly Rust。"",""groupId"":""server-v4-2-313b750f81edf6db"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""阅读本书没有错误的方法：如果你想跳到前面阅读，那就尽管去做！如果遇到困惑，你可能需要跳回前面的章节。但只要选择对你有效的方式即可。"",""groupId"":""server-v4-3-1f727bc967061ddf"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""学习 Rust 的过程中，一个重要部分是学会如何阅读编译器显示的错误消息：这些消息会引导你编写出可运行的代码。因此，我们会提供许多无法编译的示例，以及编译器在每种情况下显示的错误消息。请注意，如果你输入并运行一个随意的示例，它可能无法编译！务必阅读周围的文字，确认你尝试运行的示例是否就是要产生错误。在大多数情况下，我们会引导你找到任何无法编译的代码的正确版本。Ferris"",""groupId"":""server-v4-4-313933cdb7e4295c"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""}]}",,True,True,True,True,100,83.0,5
+case-5-xl,XL 1150-+,1337,5,gpt-5.6-luna,model_suffix,high,cold-7d55efed-6b88-49e3-8d4c-1302604badc1,True,200,0.1,0.2,1017.3,12421.1,15227.5,15575.8,4191,1431,918,5622,1,6680619579a5a7ab24bc5164497887232ba37a9e2d4f2b2e34b91baba1d3e81a,"{""translations"":[{""translatedText"":""生命周期、trait、类型、函数和闭包。"",""groupId"":""server-v4-0-4bfe5fd019371b43"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""在第 21 章中，我们将完成一个项目，在其中实现一个底层多线程 Web 服务器！"",""groupId"":""server-v4-1-d4698563c7600026"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""最后，一些附录以更接近参考资料的形式，包含有关这门语言的有用信息。附录 A 介绍 Rust 的关键字，附录 B 介绍 Rust 的运算符和符号，附录 C 介绍标准库提供的可派生 trait，附录介绍一些有用的开发工具，附录 E 解释 Rust 版本。在附录中可以找到本书的译文，而在附录 G 中，我们将介绍 Rust 是如何构建的，以及 nightly Rust 是什么。"",""groupId"":""server-v4-2-313b750f81edf6db"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""阅读本书没有错误的方式：如果你想跳到前面阅读，就去做吧！如果遇到困惑，你可能需要跳回前面的章节。但只要做对你有效的事情就好。"",""groupId"":""server-v4-3-1f727bc967061ddf"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""Rust 学习过程中的一个重要部分，是学会如何阅读编译器显示的错误消息：这些消息会引导你编写出可运行的代码。因此，我们会提供许多无法编译的示例，以及编译器在每种情况下会向你显示的错误消息。请注意，如果你随意输入并运行一个示例，它可能无法编译！务必阅读周围的文本，了解你尝试运行的示例是否本来就应该报错。在大多数情况下，我们会引导你找到任何无法编译代码的正确版本。Ferris"",""groupId"":""server-v4-4-313933cdb7e4295c"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""}]}",,True,True,True,True,100,87.8,5
+case-5-xl,XL 1150-+,1337,5,gpt-5.6-sol,model_suffix,low,cold-df0684e2-e1b0-4aa5-97e9-e003b98591e1,True,200,0.2,0.4,812.3,3708.7,3736.3,7476.4,4190,600,83,4790,1,e415938fe7c2859956e25d1d1dcc3954242a19c8208c1abcef0f01c90434cc8e,"{""translations"":[{""translatedText"":""生命周期、trait、类型、函数和闭包。"",""groupId"":""server-v4-0-4bfe5fd019371b43"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""在第 21 章中，我们将完成一个项目，在其中实现一个底层的多线程 Web 服务器！"",""groupId"":""server-v4-1-d4698563c7600026"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""最后，一些附录以更接近参考资料的形式提供了有关这门语言的实用信息。附录 A 介绍 Rust 的关键字，附录 B 介绍 Rust 的运算符和符号，附录 C 介绍标准库提供的可派生 trait，另一个附录介绍一些实用的开发工具，而附录 E 则讲解 Rust 版本。在另一个附录中，你可以找到本书的译本；在附录 G 中，我们将介绍 Rust 是如何开发出来的，以及什么是 Rust 夜间版。"",""groupId"":""server-v4-2-313b750f81edf6db"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""阅读本书没有错误的方式：如果你想跳到后面的内容，那就这样做吧！如果遇到任何困惑，你可能需要回头阅读前面的章节。但无论如何，采用适合你的方式即可。"",""groupId"":""server-v4-3-1f727bc967061ddf"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""学习 Rust 的过程中，一个重要环节是学会阅读编译器显示的错误消息：它们会引导你写出能够正常运行的代码。因此，我们会提供许多无法编译的示例，以及编译器在各种情况下会显示的错误消息。请注意，如果你输入并运行某个随机示例，它可能无法编译！请务必阅读其上下文，以确定你尝试运行的示例是否本来就应该报错。在大多数情况下，我们会引导你找到所有无法编译的代码的正确版本。Ferris"",""groupId"":""server-v4-4-313933cdb7e4295c"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""}]}",,True,True,True,True,100,85.2,5
+case-5-xl,XL 1150-+,1337,5,gpt-5.6-sol,model_suffix,medium,cold-b9e3d5c4-c9b7-4397-8ca3-990bbb57f868,True,200,0.1,0.3,780.9,4042.2,4058.8,8651.6,4190,599,85,4789,1,321002aba11a00adbc3e96b26294a630ab2f077db4fbb5e3d22bf144ed1420b1,"{""translations"":[{""translatedText"":""生命周期、trait、类型、函数和闭包。"",""groupId"":""server-v4-0-4bfe5fd019371b43"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""在第21章中，我们将完成一个项目，在其中实现一个底层的多线程 Web 服务器！"",""groupId"":""server-v4-1-d4698563c7600026"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""最后，一些附录以更接近参考资料的形式提供了有关这门语言的实用信息。附录 A 介绍 Rust 的关键字，附录 B 介绍 Rust 的运算符和符号，附录 C 介绍标准库提供的可派生 trait，另一个附录介绍一些实用的开发工具，附录 E 解释 Rust 版本。在另一个附录中，你可以找到本书的译本；在附录 G 中，我们将介绍 Rust 是如何打造的，以及什么是 Rust 夜间版。"",""groupId"":""server-v4-2-313b750f81edf6db"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""阅读本书没有错误的方式：如果你想跳到后面的内容，那就去吧！如果遇到任何困惑，你可能不得不回头查看前面的章节。但无论如何，选择适合你的方式即可。"",""groupId"":""server-v4-3-1f727bc967061ddf"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""学习 Rust 的过程中，一个重要环节是学会阅读编译器显示的错误消息：它们会引导你写出可正常运行的代码。因此，我们会提供许多无法编译的示例，并附上编译器在每种情况下会显示的错误消息。请注意，如果你输入并运行某个随机示例，它可能无法编译！请务必阅读上下文，以确定你尝试运行的示例是否本来就应该报错。在大多数情况下，我们会引导你找到所有无法编译的代码的正确版本。Ferris"",""groupId"":""server-v4-4-313933cdb7e4295c"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""}]}",,True,True,True,True,100,86.0,5
+case-5-xl,XL 1150-+,1337,5,gpt-5.6-sol,model_suffix,high,cold-303a2061-f82e-4306-a251-f73a2c8778ab,True,200,0.1,0.3,696.1,7617.8,7647.4,12054.3,4186,821,310,5007,1,2f44859dca8b9efade817524fba6e0a3214952c4b0b4b827210febd6aa954269,"{""translations"":[{""translatedText"":""生命周期、trait、类型、函数和闭包。"",""groupId"":""server-v4-0-4bfe5fd019371b43"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""在第 21 章中，我们将完成一个项目，实现一个底层的多线程 Web 服务器！"",""groupId"":""server-v4-1-d4698563c7600026"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""最后，一些附录以更接近参考资料的形式提供了有关这门语言的实用信息。附录 A 介绍 Rust 的关键字，附录 B 介绍 Rust 的运算符和符号，附录 C 介绍标准库提供的可派生 trait，另一个附录介绍一些实用的开发工具，附录 E 解释 Rust 版本。在附录中，你可以找到本书的译本；在附录 G 中，我们将介绍 Rust 是如何开发的，以及什么是 Rust 夜间版。"",""groupId"":""server-v4-2-313b750f81edf6db"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""阅读本书没有错误的方式：如果你想跳到后面的内容，那就尽管跳吧！如果遇到任何困惑，你可能不得不返回前面的章节。但无论如何，选择适合你的方式即可。"",""groupId"":""server-v4-3-1f727bc967061ddf"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""translatedText"":""学习 Rust 的过程中，一个重要部分是学会阅读编译器显示的错误消息：这些消息会引导你写出可正常运行的代码。因此，我们会提供许多无法编译的示例，并附上编译器在各种情况下显示的错误消息。请注意，如果你输入并运行一个随机示例，它可能无法编译！务必阅读示例周围的文字，确认你尝试运行的示例是否本来就会报错。在大多数情况下，我们会引导你找到所有无法编译的代码的正确版本。Ferris"",""groupId"":""server-v4-4-313933cdb7e4295c"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""}]}",,True,True,True,True,100,85.5,5
+case-5-xl,XL 1150-+,1337,5,qwen3.5-35b-a3b,reasoning_effort,minimal,cold-ab0466ae-0ab3-45ff-8c52-5ec91aa23f11,False,200,0.1,0.2,664.2,2698.2,2714.2,6564.6,5135,546,,5681,1,78f30486149947dcd31468ad6a44d5f16ee76bd57f1f40f75aecd46dac30c929,"{
+  ""translations"": {
+    ""server-v4-0-4bfe5fd019371b43"": {
+      ""translatedText"": ""生命周期、特征、类型、函数和闭包。"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    ""server-v4-1-d4698563c7600026"": {
+      ""translatedText"": ""在第 21 章中，我们将完成一个项目，在该项目中我们将实现一个低级别的多线程 Web 服务器！"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    ""server-v4-2-313b750f81edf6db"": {
+      ""translatedText"": ""最后，一些附录以更像参考手册的格式包含有关该语言的有用信息。附录 A 涵盖 Rust 的关键字，附录 B 涵盖 Rust 的运算符和符号，附录 C 涵盖标准库提供的可派生特征，附录 D 涵盖一些有用的开发工具，附录 E 解释 Rust 版本。在附录 F 中，你可以找到本书的翻译，而在附录 G 中，我们将介绍 Rust 是如何制作的以及什么是 nightly Rust。"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    ""server-v4-3-1f727bc967061ddf"": {
+      ""translatedText"": ""阅读这本书没有错误的方式：如果你想跳读，尽管去读！如果你遇到任何困惑，你可能需要跳回前面的章节。但请做对你有效的事情。"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    ""server-v4-4-313933cdb7e4295c"": {
+      ""translatedText"": ""学习 Rust 过程中很重要的一部分是学习如何阅读编译器显示的错误消息：这些将引导你走向可运行的代码。因此，我们将提供许多无法编译的示例，并附带编译器在每个情况下会向你展示的错误消息。请记住，如果你输入并运行随机示例，它可能无法编译！请务必阅读周围的文本，看看你试图运行的示例是否旨在报错。在大多数情况下，我们将引导你获得任何无法编译代码的正确版本。Ferris"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    }
+  }
+}",,True,False,False,True,40,0.0,0
+case-5-xl,XL 1150-+,1337,5,qwen3.5-35b-a3b,reasoning_effort,low,cold-beb59b6e-e420-4ec1-9bc8-dbb223a12706,False,200,0.1,0.2,647.3,2715.4,51858.5,55263.0,5133,7065,6523,12198,1,c83cfb80dc70a828611801afd48cdb946923310550767ba4d253eeae38ec5019,"{
+  ""translations"": {
+    ""server-v4-0-4bfe5fd019371b43"": {
+      ""translatedText"": ""生命周期、特征、类型、函数和闭包。"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    ""server-v4-1-d4698563c7600026"": {
+      ""translatedText"": ""在第21章中，我们将完成一个项目，在该项目中我们将实现一个低级多线程Web服务器！"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    ""server-v4-2-313b750f81edf6db"": {
+      ""translatedText"": ""最后，一些附录以更像参考手册的格式包含有关该语言的有用信息。附录A涵盖Rust的关键字，附录B涵盖Rust的运算符和符号，附录C涵盖标准库提供的可派生特征，附录D涵盖一些有用的开发工具，附录E解释Rust版本。在附录F中，您可以找到本书的翻译，在附录G中，我们将介绍Rust是如何制作的以及什么是夜间版Rust。"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    ""server-v4-3-1f727bc967061ddf"": {
+      ""translatedText"": ""阅读本书没有错误的方式：如果您想跳读，尽管去读！如果遇到任何困惑，您可能需要跳回前面的章节。但请做对您有效的事情。"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    ""server-v4-4-313933cdb7e4295c"": {
+      ""translatedText"": ""学习Rust过程中很重要的一部分是学习如何阅读编译器显示的错误消息：这些将引导您走向可运行的代码。因此，我们将提供许多无法编译的示例，并附上编译器在每种情况下向您展示的错误消息。请注意，如果您输入并运行随机示例，它可能无法编译！请务必阅读周围的文本，以查看您尝试运行的示例是否旨在报错。在大多数情况下，我们将引导您获得任何无法编译代码的正确版本。Ferris"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    }
+  }
+}",,True,False,False,True,40,0.0,0
+case-5-xl,XL 1150-+,1337,5,qwen3.5-35b-a3b,reasoning_effort,medium,cold-ac890dda-983d-4024-a51b-ebba1ec25e52,False,200,0.1,0.3,659.4,3211.0,53389.6,56806.3,5132,6941,6400,12073,1,daa71861cf3807d4560f814d2ff3bdc0e3bfd4ee173be8b53736f84766e959b6,"{
+  ""translations"": {
+    ""server-v4-0-4bfe5fd019371b43"": {
+      ""translatedText"": ""生命周期、特征、类型、函数和闭包。"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    ""server-v4-1-d4698563c7600026"": {
+      ""translatedText"": ""在第21章中，我们将完成一个项目，在其中实现一个低级别的多线程Web服务器！"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    ""server-v4-2-313b750f81edf6db"": {
+      ""translatedText"": ""最后，一些附录以更像参考手册的格式包含有关该语言的有用信息。附录A涵盖Rust的关键字，附录B涵盖Rust的运算符和符号，附录C涵盖标准库提供的可派生特征，附录D涵盖一些有用的开发工具，附录E解释Rust版本。在附录F中，您可以找到本书的翻译，而在附录G中，我们将介绍Rust是如何制作的以及什么是夜间版Rust。"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    ""server-v4-3-1f727bc967061ddf"": {
+      ""translatedText"": ""阅读本书没有错误的方式：如果您想跳过前面，尽管去读！如果您遇到任何困惑，可能不得不跳回前面的章节。但请做适合您的事情。"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    ""server-v4-4-313933cdb7e4295c"": {
+      ""translatedText"": ""学习Rust过程中重要的一部分是学习如何阅读编译器显示的错误消息：这些将引导您走向可运行的代码。因此，我们将提供许多无法编译的示例，并附上编译器在每种情况下向您展示的错误消息。请注意，如果您输入并运行随机示例，它可能无法编译！请务必阅读周围的文本，以查看您尝试运行的示例是否旨在报错。在大多数情况下，我们将引导您获得任何无法编译代码的正确版本。Ferris"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    }
+  }
+}",,True,False,False,True,40,0.0,0
+case-5-xl,XL 1150-+,1337,5,qwen3.5-35b-a3b,reasoning_effort,high,cold-27c36c16-123d-4844-9787-b6fec68de0c1,False,200,0.1,0.2,656.0,3397.5,80706.6,84880.1,5136,9444,8889,14580,1,434f80d28225c0645ffc66d02926f003a49abea9d65573828f6f9e1129434e61,"{
+  ""translations"": {
+    ""server-v4-0-4bfe5fd019371b43"": {
+      ""translatedText"": ""生命周期、特征、类型、函数和闭包。"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    ""server-v4-1-d4698563c7600026"": {
+      ""translatedText"": ""在第 21 章中，我们将完成一个项目，在该项目中我们将实现一个低级别的多线程 Web 服务器！"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    ""server-v4-2-313b750f81edf6db"": {
+      ""translatedText"": ""最后，一些附录以更像参考手册的格式包含有关该语言的有用信息。附录 A 涵盖 Rust 的关键字，附录 B 涵盖 Rust 的运算符和符号，附录 C 涵盖标准库提供的可派生特征，附录 D 涵盖一些有用的开发工具，附录 E 解释 Rust 版本。在附录 F 中，您可以找到本书的翻译，而在附录 G 中，我们将介绍 Rust 是如何制作的以及什么是夜间版 Rust。"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    ""server-v4-3-1f727bc967061ddf"": {
+      ""translatedText"": ""阅读本书没有错误的方式：如果您想跳过前面内容，尽管去读！如果您遇到任何困惑，可能需要跳回前面的章节。但请做对您有效的事情。"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    ""server-v4-4-313933cdb7e4295c"": {
+      ""translatedText"": ""学习 Rust 过程中重要的一部分是学习如何阅读编译器显示的错误消息：这些消息将引导您走向可运行的代码。因此，我们将提供许多无法编译的示例，并附上编译器在每种情况下向您展示的错误消息。请记住，如果您输入并运行随机示例，它可能无法编译！请务必阅读周围的文本，以查看您尝试运行的示例是否旨在报错。在大多数情况下，我们将引导您获得任何无法编译代码的正确版本。Ferris"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    }
+  }
+}",,True,False,False,True,40,0.0,0

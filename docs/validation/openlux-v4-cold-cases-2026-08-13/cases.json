@@ -1,0 +1,2643 @@
+{
+  "metadata": {
+    "database": "/Users/lee/Documents/ImageTranslateOCR/demo-server/demo-server.sqlite3",
+    "seed": 20260813,
+    "eligible_records": 127
+  },
+  "cases": [
+    {
+      "case_id": "case-1-xs",
+      "bucket": "XS 80-299",
+      "audit_id": "05d040bd-baa5-4e9e-a794-8ac950edb19b",
+      "input_chars": 133,
+      "group_count": 3,
+      "source_model": "qwen3.5-translation:9b",
+      "source_created_at": "2026-08-09T04:06:01.349512+00:00",
+      "system": "You are a professional screen OCR translation engine.\nThe user supplies a JSON document containing the complete visible context and translateGroups.\nUse documentContext, reading order, roles, and normalized bounds only to disambiguate meaning.\nThe output is a translations object keyed by groupId. Treat every key as an isolated translation cell and bind it strictly to the sourceText with the identical groupId. Neighboring groups and documentContext are context only.\nNever borrow, copy, move, duplicate, or continue text from another group into the current group.\nUse each group's regionLines and renderSlots to understand wrapped text and reading order, not to produce visual line breaks.\nTranslate every translateGroups item as one complete semantic unit.\nTranslate faithfully and completely. Every source phrase, modifier, and relationship must be represented in the translation.\nDo not shorten or compress headlines, even when a shorter paraphrase sounds natural.\nTranslate named entities consistently across groups and never abbreviate person, place, organization, brand, or section names.\nTranslate Perimeter Institute for Theoretical Physics as 圆周理论物理研究所.\nTranslate Next Einstein centres as 下一代爱因斯坦中心; never omit Next.\nWhen document context identifies a person named only by family name in one group, use that person's conventional full target-language name.\nDo not split a translated group back into visual OCR lines.\nDo not summarize, explain, add facts, merge groups, delete groups, or invent IDs.\nNever add translator notes, parenthetical annotations, OCR corrections, guesses, or phrases such as \"note\" or \"the source may mean\".\nNever echo or reproduce the input JSON document.\nPreserve numeric values and currency meaning. C$ means Canadian dollars and US$ means US dollars.\nKeep AIMS and AIMS-Next visible and unchanged when they appear in the source.\nEvery requiredLiteralIdentifiers entry is a machine-checked constraint and must appear verbatim in translatedText.\nKeep each identifier in the same grammatical and semantic role as the source. Never expand, define, parenthesize, rename, or associate it with another organization. For example, translate \"funding for AIMS\" as \"对 AIMS 的资助\" and \"AIMS-Next Einstein Initiative\" as \"AIMS-Next 爱因斯坦计划\".\nPreserve dates, URLs, brands, identifiers, and placeholders exactly unless translation is required by grammar.\nFor AUTO_BIDIRECTIONAL, translate Chinese groups to English and non-Chinese natural-language groups to Chinese.\nReturn only JSON: {\"translations\":{\"<groupId>\":{\"translatedText\":\"...\",\"detectedSourceLanguage\":\"en\",\"targetLanguage\":\"zh\"}}}.\nEvery input groupId must appear exactly once as a property key. Every translatedText must be non-empty.",
+      "user_payload": {
+        "task": "Translate each translateGroups item independently and completely. Write its non-empty translation only under the translations property whose key exactly equals that item groupId. The value for a key may translate only that group's sourceText. Document context and neighboring groups are disambiguation context only: never copy, move, duplicate, continue, or pre-translate their content into another key. Use regionLines and renderSlots only to reconstruct reading order and semantic structure; never split the output back into OCR lines. Every requiredLiteralIdentifiers item must occur verbatim in that group's translatedText and keep the same grammatical and semantic role as in sourceText. Never expand, define, parenthesize, rename, or replace an identifier. For example, 'funding for AIMS' is '对 AIMS 的资助', and 'AIMS-Next Einstein Initiative' is 'AIMS-Next 爱因斯坦计划'. Preserve currency values, units, numbers, URLs, brands, names, and organization identities. Do not summarize, invent, merge, delete, abbreviate, explain OCR errors, or add translator notes. Output only the required translations schema.",
+        "scene": "LIVE_SCREEN",
+        "translationMode": "ENGLISH_TO_CHINESE",
+        "documentContext": "API REFERENCE. The request body contains an ordered list of OCR regions. POST /api/v4/translate/layout-plan",
+        "viewport": {
+          "width": 1080,
+          "height": 2400
+        },
+        "translateGroups": [
+          {
+            "groupId": "server-v4-0-da4eddfc333d77a6",
+            "role": "BODY",
+            "sourceText": "API REFERENCE",
+            "sourceLanguage": "en",
+            "targetLanguage": "zh",
+            "requiredLiteralIdentifiers": [],
+            "readingOrder": 0,
+            "normalizedBounds": [
+              0.037037037,
+              0.16666667,
+              0.39814815,
+              0.2
+            ],
+            "layoutShape": "RECT",
+            "renderSlots": [
+              [
+                0.037037037,
+                0.16666667,
+                0.39814815,
+                0.2
+              ]
+            ],
+            "regionLines": [
+              {
+                "text": "API REFERENCE",
+                "readingOrder": 0,
+                "normalizedBounds": [
+                  0.037037037,
+                  0.16666667,
+                  0.39814815,
+                  0.2
+                ]
+              }
+            ]
+          },
+          {
+            "groupId": "server-v4-1-6eac37596d150b14",
+            "role": "BODY",
+            "sourceText": "The request body contains an ordered list\nof OCR regions and preserves their geometry.",
+            "sourceLanguage": "en",
+            "targetLanguage": "zh",
+            "requiredLiteralIdentifiers": [],
+            "readingOrder": 1,
+            "normalizedBounds": [
+              0.037037037,
+              0.20833333,
+              0.8888889,
+              0.27083334
+            ],
+            "layoutShape": "FLOW_SLOTS",
+            "renderSlots": [
+              [
+                0.037037037,
+                0.20833333,
+                0.8703704,
+                0.2375
+              ],
+              [
+                0.037037037,
+                0.24166666,
+                0.8888889,
+                0.27083334
+              ]
+            ],
+            "regionLines": [
+              {
+                "text": "The request body contains an ordered list",
+                "readingOrder": 1,
+                "normalizedBounds": [
+                  0.037037037,
+                  0.20833333,
+                  0.8703704,
+                  0.2375
+                ]
+              },
+              {
+                "text": "of OCR regions and preserves their geometry.",
+                "readingOrder": 2,
+                "normalizedBounds": [
+                  0.037037037,
+                  0.24166666,
+                  0.8888889,
+                  0.27083334
+                ]
+              }
+            ]
+          },
+          {
+            "groupId": "server-v4-2-b7cb98812b92ed28",
+            "role": "BODY",
+            "sourceText": "POST /api/v4/translate/layout-plan",
+            "sourceLanguage": "en",
+            "targetLanguage": "zh",
+            "requiredLiteralIdentifiers": [],
+            "readingOrder": 3,
+            "normalizedBounds": [
+              0.037037037,
+              0.3,
+              0.8333333,
+              0.33333334
+            ],
+            "layoutShape": "RECT",
+            "renderSlots": [
+              [
+                0.037037037,
+                0.3,
+                0.8333333,
+                0.33333334
+              ]
+            ],
+            "regionLines": [
+              {
+                "text": "POST /api/v4/translate/layout-plan",
+                "readingOrder": 3,
+                "normalizedBounds": [
+                  0.037037037,
+                  0.3,
+                  0.8333333,
+                  0.33333334
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "groups": [
+        {
+          "groupId": "server-v4-0-da4eddfc333d77a6",
+          "role": "BODY",
+          "sourceText": "API REFERENCE",
+          "sourceLanguage": "en",
+          "targetLanguage": "zh",
+          "requiredLiteralIdentifiers": [],
+          "readingOrder": 0,
+          "normalizedBounds": [
+            0.037037037,
+            0.16666667,
+            0.39814815,
+            0.2
+          ],
+          "layoutShape": "RECT",
+          "renderSlots": [
+            [
+              0.037037037,
+              0.16666667,
+              0.39814815,
+              0.2
+            ]
+          ],
+          "regionLines": [
+            {
+              "text": "API REFERENCE",
+              "readingOrder": 0,
+              "normalizedBounds": [
+                0.037037037,
+                0.16666667,
+                0.39814815,
+                0.2
+              ]
+            }
+          ]
+        },
+        {
+          "groupId": "server-v4-1-6eac37596d150b14",
+          "role": "BODY",
+          "sourceText": "The request body contains an ordered list\nof OCR regions and preserves their geometry.",
+          "sourceLanguage": "en",
+          "targetLanguage": "zh",
+          "requiredLiteralIdentifiers": [],
+          "readingOrder": 1,
+          "normalizedBounds": [
+            0.037037037,
+            0.20833333,
+            0.8888889,
+            0.27083334
+          ],
+          "layoutShape": "FLOW_SLOTS",
+          "renderSlots": [
+            [
+              0.037037037,
+              0.20833333,
+              0.8703704,
+              0.2375
+            ],
+            [
+              0.037037037,
+              0.24166666,
+              0.8888889,
+              0.27083334
+            ]
+          ],
+          "regionLines": [
+            {
+              "text": "The request body contains an ordered list",
+              "readingOrder": 1,
+              "normalizedBounds": [
+                0.037037037,
+                0.20833333,
+                0.8703704,
+                0.2375
+              ]
+            },
+            {
+              "text": "of OCR regions and preserves their geometry.",
+              "readingOrder": 2,
+              "normalizedBounds": [
+                0.037037037,
+                0.24166666,
+                0.8888889,
+                0.27083334
+              ]
+            }
+          ]
+        },
+        {
+          "groupId": "server-v4-2-b7cb98812b92ed28",
+          "role": "BODY",
+          "sourceText": "POST /api/v4/translate/layout-plan",
+          "sourceLanguage": "en",
+          "targetLanguage": "zh",
+          "requiredLiteralIdentifiers": [],
+          "readingOrder": 3,
+          "normalizedBounds": [
+            0.037037037,
+            0.3,
+            0.8333333,
+            0.33333334
+          ],
+          "layoutShape": "RECT",
+          "renderSlots": [
+            [
+              0.037037037,
+              0.3,
+              0.8333333,
+              0.33333334
+            ]
+          ],
+          "regionLines": [
+            {
+              "text": "POST /api/v4/translate/layout-plan",
+              "readingOrder": 3,
+              "normalizedBounds": [
+                0.037037037,
+                0.3,
+                0.8333333,
+                0.33333334
+              ]
+            }
+          ]
+        }
+      ],
+      "references": [
+        {
+          "groupId": "server-v4-0-da4eddfc333d77a6",
+          "translatedText": "API 引用",
+          "detectedSourceLanguage": "en",
+          "targetLanguage": "zh"
+        },
+        {
+          "groupId": "server-v4-1-6eac37596d150b14",
+          "translatedText": "请求体包含有序的 OCR 区域列表，并保留其几何形状。",
+          "detectedSourceLanguage": "en",
+          "targetLanguage": "zh"
+        },
+        {
+          "groupId": "server-v4-2-b7cb98812b92ed28",
+          "translatedText": "POST /api/v4/translate/layout-plan",
+          "detectedSourceLanguage": "en",
+          "targetLanguage": "zh"
+        }
+      ],
+      "max_tokens": 4096
+    },
+    {
+      "case_id": "case-2-s",
+      "bucket": "S 300-599",
+      "audit_id": "87f7b82f-3ba6-48c9-9cdb-d3c3c04f889f",
+      "input_chars": 436,
+      "group_count": 4,
+      "source_model": "openlux:gemini-3.5-flash-lite (edge)",
+      "source_created_at": "2026-08-11T08:35:16.312973+00:00",
+      "system": "You are a professional screen OCR translation engine.\nThe input is one visible screen reconstructed from OCR geometry. Translate each translateGroups item independently and completely, while using documentOutline and neighboring geometry only to disambiguate meaning.\nTreat newline-separated OCR lines inside sourceText as one semantic block. Never imitate OCR line breaks, split a block back into lines, merge keys, borrow text from another key, summarize, or add notes.\nPreserve URLs, identifiers, names, brands, numbers, dates, units, and currencies. Every requiredLiteralIdentifiers item must remain visible verbatim and in the same semantic role.\nFor AUTO_BIDIRECTIONAL translate Chinese natural language to English and non-Chinese natural language to Chinese.\nReturn only the strict JSON object requested by response_format. Return translations as an array. Every input groupId must occur exactly once and every translatedText must be non-empty.",
+      "user_payload": {
+        "documentOutline": [
+          {
+            "groupId": "server-v4-0-330dcb078c62caf4",
+            "readingOrder": 0,
+            "role": "BODY",
+            "sourcePreview": "Jdte"
+          },
+          {
+            "groupId": "server-v4-1-3872c03d5ec1afb3",
+            "readingOrder": 1000,
+            "role": "TITLE",
+            "sourcePreview": "Open locally installed documentation. Write and run a\"Hello,world!\"progr..."
+          },
+          {
+            "groupId": "server-v4-2-b4cf995a922648b0",
+            "readingOrder": 2000,
+            "role": "BODY",
+            "sourcePreview": "Create and run a new project using the conventions of Cargo."
+          },
+          {
+            "groupId": "server-v4-3-2d9ed645f5a3008c",
+            "readingOrder": 3000,
+            "role": "BODY",
+            "sourcePreview": "This is great time to build more substantial program to get used to read..."
+          }
+        ],
+        "promptProfile": "COMPACT",
+        "scene": "LIVE_SCREEN",
+        "task": "Translate every translateGroups entry as one complete semantic unit. Geometry is context; the caller creates layout.",
+        "translateGroups": [
+          {
+            "groupId": "server-v4-0-330dcb078c62caf4",
+            "normalizedBounds": [
+              0.211,
+              0.476,
+              0.276,
+              0.484
+            ],
+            "readingOrder": 0,
+            "requiredLiteralIdentifiers": [],
+            "role": "BODY",
+            "sourceLanguage": "en",
+            "sourceText": "Jdte",
+            "targetLanguage": "zh"
+          },
+          {
+            "groupId": "server-v4-1-3872c03d5ec1afb3",
+            "normalizedBounds": [
+              0.147,
+              0.494,
+              0.857,
+              0.565
+            ],
+            "readingOrder": 1000,
+            "requiredLiteralIdentifiers": [],
+            "role": "TITLE",
+            "sourceLanguage": "en",
+            "sourceText": "Open locally installed documentation.\nWrite and run a\"Hello,world!\"program\nusing rustc directly.",
+            "targetLanguage": "zh"
+          },
+          {
+            "groupId": "server-v4-2-b4cf995a922648b0",
+            "normalizedBounds": [
+              0.149,
+              0.573,
+              0.849,
+              0.616
+            ],
+            "readingOrder": 2000,
+            "requiredLiteralIdentifiers": [],
+            "role": "BODY",
+            "sourceLanguage": "en",
+            "sourceText": "Create and run a new project using the\nconventions of Cargo.",
+            "targetLanguage": "zh"
+          },
+          {
+            "groupId": "server-v4-3-2d9ed645f5a3008c",
+            "normalizedBounds": [
+              0.049,
+              0.641,
+              0.919,
+              0.811
+            ],
+            "readingOrder": 3000,
+            "requiredLiteralIdentifiers": [],
+            "role": "BODY",
+            "sourceLanguage": "en",
+            "sourceText": "This is great time to build more substantial\nprogram to get used to reading and writing Rust\ncode.So,in Chapter 2,we'll build a guessing\ngame program.lf you would rather start by\nlearning how common programming concepts\nwork in Rust,see Chapter 3 and then return to\nChapter 2.",
+            "targetLanguage": "zh"
+          }
+        ],
+        "translationMode": "AUTO_BIDIRECTIONAL"
+      },
+      "groups": [
+        {
+          "groupId": "server-v4-0-330dcb078c62caf4",
+          "normalizedBounds": [
+            0.211,
+            0.476,
+            0.276,
+            0.484
+          ],
+          "readingOrder": 0,
+          "requiredLiteralIdentifiers": [],
+          "role": "BODY",
+          "sourceLanguage": "en",
+          "sourceText": "Jdte",
+          "targetLanguage": "zh"
+        },
+        {
+          "groupId": "server-v4-1-3872c03d5ec1afb3",
+          "normalizedBounds": [
+            0.147,
+            0.494,
+            0.857,
+            0.565
+          ],
+          "readingOrder": 1000,
+          "requiredLiteralIdentifiers": [],
+          "role": "TITLE",
+          "sourceLanguage": "en",
+          "sourceText": "Open locally installed documentation.\nWrite and run a\"Hello,world!\"program\nusing rustc directly.",
+          "targetLanguage": "zh"
+        },
+        {
+          "groupId": "server-v4-2-b4cf995a922648b0",
+          "normalizedBounds": [
+            0.149,
+            0.573,
+            0.849,
+            0.616
+          ],
+          "readingOrder": 2000,
+          "requiredLiteralIdentifiers": [],
+          "role": "BODY",
+          "sourceLanguage": "en",
+          "sourceText": "Create and run a new project using the\nconventions of Cargo.",
+          "targetLanguage": "zh"
+        },
+        {
+          "groupId": "server-v4-3-2d9ed645f5a3008c",
+          "normalizedBounds": [
+            0.049,
+            0.641,
+            0.919,
+            0.811
+          ],
+          "readingOrder": 3000,
+          "requiredLiteralIdentifiers": [],
+          "role": "BODY",
+          "sourceLanguage": "en",
+          "sourceText": "This is great time to build more substantial\nprogram to get used to reading and writing Rust\ncode.So,in Chapter 2,we'll build a guessing\ngame program.lf you would rather start by\nlearning how common programming concepts\nwork in Rust,see Chapter 3 and then return to\nChapter 2.",
+          "targetLanguage": "zh"
+        }
+      ],
+      "references": [
+        {
+          "groupId": "server-v4-0-330dcb078c62caf4",
+          "translatedText": "Jdte",
+          "detectedSourceLanguage": "en",
+          "targetLanguage": "zh"
+        },
+        {
+          "groupId": "server-v4-1-3872c03d5ec1afb3",
+          "translatedText": "打开本地安装的文档。\n直接使用 rustc 编写并运行一个“Hello, world!”程序。",
+          "detectedSourceLanguage": "en",
+          "targetLanguage": "zh"
+        },
+        {
+          "groupId": "server-v4-2-b4cf995a922648b0",
+          "translatedText": "使用 Cargo 的约定创建并运行一个新项目。",
+          "detectedSourceLanguage": "en",
+          "targetLanguage": "zh"
+        },
+        {
+          "groupId": "server-v4-3-2d9ed645f5a3008c",
+          "translatedText": "现在是构建更具实质性程序以习惯阅读和编写 Rust 代码的大好时机。因此，在第 2 章中，我们将构建一个猜谜游戏程序。如果您宁愿先学习 Rust 中常见编程概念的工作原理，请参阅第 3 章，然后再返回第 2 章。",
+          "detectedSourceLanguage": "en",
+          "targetLanguage": "zh"
+        }
+      ],
+      "max_tokens": 1204
+    },
+    {
+      "case_id": "case-3-m",
+      "bucket": "M 600-899",
+      "audit_id": "98c4b39d-6db0-4961-8d31-9456de3d6c56",
+      "input_chars": 888,
+      "group_count": 6,
+      "source_model": "openlux:gemini-3.5-flash-lite (edge)",
+      "source_created_at": "2026-08-11T08:42:22.636816+00:00",
+      "system": "You are a professional screen OCR translation engine.\nThe input is one visible screen reconstructed from OCR geometry. Translate each translateGroups item independently and completely, while using documentOutline and neighboring geometry only to disambiguate meaning.\nTreat newline-separated OCR lines inside sourceText as one semantic block. Never imitate OCR line breaks, split a block back into lines, merge keys, borrow text from another key, summarize, or add notes.\nPreserve URLs, identifiers, names, brands, numbers, dates, units, and currencies. Every requiredLiteralIdentifiers item must remain visible verbatim and in the same semantic role.\nFor AUTO_BIDIRECTIONAL translate Chinese natural language to English and non-Chinese natural language to Chinese.\nReturn only the strict JSON object requested by response_format. Return translations as an array. Every input groupId must occur exactly once and every translatedText must be non-empty.",
+      "user_payload": {
+        "documentOutline": [
+          {
+            "groupId": "server-v4-0-07a1d6cdc1d2ef85",
+            "readingOrder": 0,
+            "role": "TITLE",
+            "sourcePreview": "Note:This edition of the book is the same as The Rust Programming Langua..."
+          },
+          {
+            "groupId": "server-v4-1-a14bcc11462f8d0f",
+            "readingOrder": 1000,
+            "role": "BODY",
+            "sourcePreview": "Welcome toThe Rust Programming Language,an introductory book about Rust...."
+          },
+          {
+            "groupId": "server-v4-2-707d5d223c6c36da",
+            "readingOrder": 3000,
+            "role": "BODY",
+            "sourcePreview": "Who Rust Is For"
+          },
+          {
+            "groupId": "server-v4-3-5c883483ba6eba4d",
+            "readingOrder": 4000,
+            "role": "BODY",
+            "sourcePreview": "Rust is idealfor many people for varietyof reasons.Let's look at a few o..."
+          },
+          {
+            "groupId": "server-v4-4-d25638fabca4c1a8",
+            "readingOrder": 6000,
+            "role": "BODY",
+            "sourcePreview": "Teams of Developers"
+          },
+          {
+            "groupId": "server-v4-5-fd13fe95735970c0",
+            "readingOrder": 7000,
+            "role": "BODY",
+            "sourcePreview": "Rust is proving to be productive tool for collaborating among large team..."
+          }
+        ],
+        "promptProfile": "COMPACT",
+        "scene": "LIVE_SCREEN",
+        "task": "Translate every translateGroups entry as one complete semantic unit. Geometry is context; the caller creates layout.",
+        "translateGroups": [
+          {
+            "groupId": "server-v4-0-07a1d6cdc1d2ef85",
+            "normalizedBounds": [
+              0.097,
+              0.134,
+              0.899,
+              0.224
+            ],
+            "readingOrder": 0,
+            "requiredLiteralIdentifiers": [],
+            "role": "TITLE",
+            "sourceLanguage": "en",
+            "sourceText": "Note:This edition of the book is the same as\nThe Rust Programming Language available\nin print and ebook format from No Starch\nPress.",
+            "targetLanguage": "zh"
+          },
+          {
+            "groupId": "server-v4-1-a14bcc11462f8d0f",
+            "normalizedBounds": [
+              0.049,
+              0.274,
+              0.933,
+              0.569
+            ],
+            "readingOrder": 1000,
+            "requiredLiteralIdentifiers": [
+              "low-level",
+              "High-level"
+            ],
+            "role": "BODY",
+            "sourceLanguage": "en",
+            "sourceText": "Welcome toThe Rust Programming Language,an\nintroductory book about Rust.The Rust\nprogramming language helps you write faster,\nmore reliable software.High-level ergonomics\nand low-level control are often at odds in\nprogramming language design;Rust challenges\nthat conflict.Through balancing powerful\ntechnical capacity and a great developer\nexperience,Rust gives youthe option to control\nlow-level details(such as memory usage)without\nall the hassle traditionally associated with such\ncontrol.",
+            "targetLanguage": "zh"
+          },
+          {
+            "groupId": "server-v4-2-707d5d223c6c36da",
+            "normalizedBounds": [
+              0.049,
+              0.649,
+              0.498,
+              0.669
+            ],
+            "readingOrder": 3000,
+            "requiredLiteralIdentifiers": [],
+            "role": "BODY",
+            "sourceLanguage": "en",
+            "sourceText": "Who Rust Is For",
+            "targetLanguage": "zh"
+          },
+          {
+            "groupId": "server-v4-3-5c883483ba6eba4d",
+            "normalizedBounds": [
+              0.049,
+              0.703,
+              0.943,
+              0.773
+            ],
+            "readingOrder": 4000,
+            "requiredLiteralIdentifiers": [],
+            "role": "BODY",
+            "sourceLanguage": "en",
+            "sourceText": "Rust is idealfor many people for varietyof\nreasons.Let's look at a few of the most important\ngroups.",
+            "targetLanguage": "zh"
+          },
+          {
+            "groupId": "server-v4-4-d25638fabca4c1a8",
+            "normalizedBounds": [
+              0.049,
+              0.829,
+              0.518,
+              0.852
+            ],
+            "readingOrder": 6000,
+            "requiredLiteralIdentifiers": [],
+            "role": "BODY",
+            "sourceLanguage": "en",
+            "sourceText": "Teams of Developers",
+            "targetLanguage": "zh"
+          },
+          {
+            "groupId": "server-v4-5-fd13fe95735970c0",
+            "normalizedBounds": [
+              0.049,
+              0.879,
+              0.901,
+              0.947
+            ],
+            "readingOrder": 7000,
+            "requiredLiteralIdentifiers": [],
+            "role": "BODY",
+            "sourceLanguage": "en",
+            "sourceText": "Rust is proving to be productive tool for\ncollaborating among large teams of developers\nwith varying levels of systems programming",
+            "targetLanguage": "zh"
+          }
+        ],
+        "translationMode": "AUTO_BIDIRECTIONAL"
+      },
+      "groups": [
+        {
+          "groupId": "server-v4-0-07a1d6cdc1d2ef85",
+          "normalizedBounds": [
+            0.097,
+            0.134,
+            0.899,
+            0.224
+          ],
+          "readingOrder": 0,
+          "requiredLiteralIdentifiers": [],
+          "role": "TITLE",
+          "sourceLanguage": "en",
+          "sourceText": "Note:This edition of the book is the same as\nThe Rust Programming Language available\nin print and ebook format from No Starch\nPress.",
+          "targetLanguage": "zh"
+        },
+        {
+          "groupId": "server-v4-1-a14bcc11462f8d0f",
+          "normalizedBounds": [
+            0.049,
+            0.274,
+            0.933,
+            0.569
+          ],
+          "readingOrder": 1000,
+          "requiredLiteralIdentifiers": [
+            "low-level",
+            "High-level"
+          ],
+          "role": "BODY",
+          "sourceLanguage": "en",
+          "sourceText": "Welcome toThe Rust Programming Language,an\nintroductory book about Rust.The Rust\nprogramming language helps you write faster,\nmore reliable software.High-level ergonomics\nand low-level control are often at odds in\nprogramming language design;Rust challenges\nthat conflict.Through balancing powerful\ntechnical capacity and a great developer\nexperience,Rust gives youthe option to control\nlow-level details(such as memory usage)without\nall the hassle traditionally associated with such\ncontrol.",
+          "targetLanguage": "zh"
+        },
+        {
+          "groupId": "server-v4-2-707d5d223c6c36da",
+          "normalizedBounds": [
+            0.049,
+            0.649,
+            0.498,
+            0.669
+          ],
+          "readingOrder": 3000,
+          "requiredLiteralIdentifiers": [],
+          "role": "BODY",
+          "sourceLanguage": "en",
+          "sourceText": "Who Rust Is For",
+          "targetLanguage": "zh"
+        },
+        {
+          "groupId": "server-v4-3-5c883483ba6eba4d",
+          "normalizedBounds": [
+            0.049,
+            0.703,
+            0.943,
+            0.773
+          ],
+          "readingOrder": 4000,
+          "requiredLiteralIdentifiers": [],
+          "role": "BODY",
+          "sourceLanguage": "en",
+          "sourceText": "Rust is idealfor many people for varietyof\nreasons.Let's look at a few of the most important\ngroups.",
+          "targetLanguage": "zh"
+        },
+        {
+          "groupId": "server-v4-4-d25638fabca4c1a8",
+          "normalizedBounds": [
+            0.049,
+            0.829,
+            0.518,
+            0.852
+          ],
+          "readingOrder": 6000,
+          "requiredLiteralIdentifiers": [],
+          "role": "BODY",
+          "sourceLanguage": "en",
+          "sourceText": "Teams of Developers",
+          "targetLanguage": "zh"
+        },
+        {
+          "groupId": "server-v4-5-fd13fe95735970c0",
+          "normalizedBounds": [
+            0.049,
+            0.879,
+            0.901,
+            0.947
+          ],
+          "readingOrder": 7000,
+          "requiredLiteralIdentifiers": [],
+          "role": "BODY",
+          "sourceLanguage": "en",
+          "sourceText": "Rust is proving to be productive tool for\ncollaborating among large teams of developers\nwith varying levels of systems programming",
+          "targetLanguage": "zh"
+        }
+      ],
+      "references": [
+        {
+          "groupId": "server-v4-0-07a1d6cdc1d2ef85",
+          "translatedText": "注：本书的该版本与 No Starch Press 出版的纸质版和电子书版的《The Rust Programming Language》相同。",
+          "detectedSourceLanguage": "en",
+          "targetLanguage": "zh"
+        },
+        {
+          "groupId": "server-v4-1-a14bcc11462f8d0f",
+          "translatedText": "欢迎阅读《The Rust Programming Language》，这是一本关于 Rust 的入门书。Rust 编程语言能帮助你编写出更快、更可靠的软件。在编程语言设计中，High-level 的易用性与 low-level 的控制力往往是相互冲突的；Rust 挑战了这一冲突。通过平衡强大的技术能力和极佳的开发者体验，Rust 让你能够选择控制 low-level 的细节（例如内存使用），而无需承担传统上与此类控制相关的各种繁琐工作。",
+          "detectedSourceLanguage": "en",
+          "targetLanguage": "zh"
+        },
+        {
+          "groupId": "server-v4-2-707d5d223c6c36da",
+          "translatedText": "Rust 的受众",
+          "detectedSourceLanguage": "en",
+          "targetLanguage": "zh"
+        },
+        {
+          "groupId": "server-v4-3-5c883483ba6eba4d",
+          "translatedText": "出于各种原因，Rust 是许多人的理想选择。让我们来看看其中最主要的几个群体。",
+          "detectedSourceLanguage": "en",
+          "targetLanguage": "zh"
+        },
+        {
+          "groupId": "server-v4-4-d25638fabca4c1a8",
+          "translatedText": "开发团队",
+          "detectedSourceLanguage": "en",
+          "targetLanguage": "zh"
+        },
+        {
+          "groupId": "server-v4-5-fd13fe95735970c0",
+          "translatedText": "事实证明，Rust 是大型开发团队之间协作的高效工具，这些团队中的成员拥有不同水平的系统编程经验",
+          "detectedSourceLanguage": "en",
+          "targetLanguage": "zh"
+        }
+      ],
+      "max_tokens": 1848
+    },
+    {
+      "case_id": "case-4-l",
+      "bucket": "L 900-1149",
+      "audit_id": "cf6036dc-c36b-40dc-af3d-62d0c79580b6",
+      "input_chars": 990,
+      "group_count": 5,
+      "source_model": "openlux:gpt-4.1",
+      "source_created_at": "2026-08-11T03:45:03.826967+00:00",
+      "system": "You are a professional screen OCR translation engine.\nThe input is one visible screen reconstructed from OCR geometry. Translate each translateGroups item independently and completely, while using documentOutline and neighboring geometry only to disambiguate meaning.\nTreat newline-separated OCR lines inside sourceText as one semantic block. Never imitate OCR line breaks, split a block back into lines, merge keys, borrow text from another key, summarize, or add notes.\nPreserve URLs, identifiers, names, brands, numbers, dates, units, and currencies. Every requiredLiteralIdentifiers item must remain visible verbatim and in the same semantic role.\nFor AUTO_BIDIRECTIONAL translate Chinese natural language to English and non-Chinese natural language to Chinese.\nReturn only the strict JSON object requested by response_format. Return translations as an array. Every input groupId must occur exactly once and every translatedText must be non-empty.",
+      "user_payload": {
+        "documentOutline": [
+          {
+            "groupId": "server-v4-0-5054cd17abf068ed",
+            "readingOrder": 0,
+            "role": "BODY",
+            "sourcePreview": "Ea The Rust Program..."
+          },
+          {
+            "groupId": "server-v4-1-74e35c35858f4a27",
+            "readingOrder": 1000,
+            "role": "BODY",
+            "sourcePreview": "Hello,Cargo!"
+          },
+          {
+            "groupId": "server-v4-2-76203a0b64effcb7",
+            "readingOrder": 2000,
+            "role": "BODY",
+            "sourcePreview": "Cargo is Rust's build system and package manager.Most Rustaceans use thi..."
+          },
+          {
+            "groupId": "server-v4-3-5571698aae3dc483",
+            "readingOrder": 3000,
+            "role": "BODY",
+            "sourcePreview": "The simplest Rust programs,like the one we've written so far,don't have ..."
+          },
+          {
+            "groupId": "server-v4-4-b4ad92d7368a44d5",
+            "readingOrder": 4000,
+            "role": "BODY",
+            "sourcePreview": "Because the vast majority of Rust projects use Cargo,the rest of this bo..."
+          }
+        ],
+        "scene": "LIVE_SCREEN",
+        "task": "Translate every translateGroups entry as one complete semantic unit. Geometry is context; the server creates layout.",
+        "translateGroups": [
+          {
+            "groupId": "server-v4-0-5054cd17abf068ed",
+            "layoutShape": "RECT",
+            "normalizedBounds": [
+              0.03750000149011612,
+              0.11874999850988388,
+              0.7909722328186035,
+              0.14624999463558197
+            ],
+            "readingOrder": 0,
+            "regionLines": [
+              {
+                "normalizedBounds": [
+                  0.03750000149011612,
+                  0.11874999850988388,
+                  0.7909722328186035,
+                  0.14624999463558197
+                ],
+                "readingOrder": 0,
+                "regionId": "semantic-cad9bab8-region-0"
+              }
+            ],
+            "renderSlots": [
+              [
+                0.03750000149011612,
+                0.11874999850988388,
+                0.7909722328186035,
+                0.14624999463558197
+              ]
+            ],
+            "requiredLiteralIdentifiers": [],
+            "role": "BODY",
+            "sourceLanguage": "en",
+            "sourceText": "Ea The Rust Program...",
+            "targetLanguage": "zh"
+          },
+          {
+            "groupId": "server-v4-1-74e35c35858f4a27",
+            "layoutShape": "RECT",
+            "normalizedBounds": [
+              0.05277777835726738,
+              0.23468750715255737,
+              0.41111111640930176,
+              0.25999999046325684
+            ],
+            "readingOrder": 1000,
+            "regionLines": [
+              {
+                "normalizedBounds": [
+                  0.05277777835726738,
+                  0.23468750715255737,
+                  0.41111111640930176,
+                  0.25999999046325684
+                ],
+                "readingOrder": 1000,
+                "regionId": "semantic-e304a413-region-0"
+              }
+            ],
+            "renderSlots": [
+              [
+                0.05277777835726738,
+                0.23468750715255737,
+                0.41111111640930176,
+                0.25999999046325684
+              ]
+            ],
+            "requiredLiteralIdentifiers": [],
+            "role": "BODY",
+            "sourceLanguage": "en",
+            "sourceText": "Hello,Cargo!",
+            "targetLanguage": "zh"
+          },
+          {
+            "groupId": "server-v4-2-76203a0b64effcb7",
+            "layoutShape": "RECT",
+            "normalizedBounds": [
+              0.0486111119389534,
+              0.29093751311302185,
+              0.9333333373069763,
+              0.4612500071525574
+            ],
+            "readingOrder": 2000,
+            "regionLines": [
+              {
+                "normalizedBounds": [
+                  0.05069444328546524,
+                  0.29093751311302185,
+                  0.7854166626930237,
+                  0.30906251072883606
+                ],
+                "readingOrder": 2000,
+                "regionId": "semantic-2975aee1-region-0"
+              },
+              {
+                "normalizedBounds": [
+                  0.05277777835726738,
+                  0.3165625035762787,
+                  0.8138889074325562,
+                  0.3334375023841858
+                ],
+                "readingOrder": 2001,
+                "regionId": "semantic-2975aee1-region-1"
+              },
+              {
+                "normalizedBounds": [
+                  0.05277777835726738,
+                  0.34156250953674316,
+                  0.8111110925674438,
+                  0.3596875071525574
+                ],
+                "readingOrder": 2002,
+                "regionId": "semantic-2975aee1-region-2"
+              },
+              {
+                "normalizedBounds": [
+                  0.05138888955116272,
+                  0.3668749928474426,
+                  0.8805555701255798,
+                  0.3843750059604645
+                ],
+                "readingOrder": 2003,
+                "regionId": "semantic-2975aee1-region-3"
+              },
+              {
+                "normalizedBounds": [
+                  0.0486111119389534,
+                  0.39281249046325684,
+                  0.8999999761581421,
+                  0.4099999964237213
+                ],
+                "readingOrder": 2004,
+                "regionId": "semantic-2975aee1-region-4"
+              },
+              {
+                "normalizedBounds": [
+                  0.05069444328546524,
+                  0.4165624976158142,
+                  0.9333333373069763,
+                  0.43531250953674316
+                ],
+                "readingOrder": 2005,
+                "regionId": "semantic-2975aee1-region-5"
+              },
+              {
+                "normalizedBounds": [
+                  0.04930555447936058,
+                  0.44343748688697815,
+                  0.9222221970558167,
+                  0.4612500071525574
+                ],
+                "readingOrder": 2006,
+                "regionId": "semantic-2975aee1-region-6"
+              }
+            ],
+            "renderSlots": [
+              [
+                0.0486111119389534,
+                0.29093751311302185,
+                0.9333333373069763,
+                0.4612500071525574
+              ]
+            ],
+            "requiredLiteralIdentifiers": [],
+            "role": "BODY",
+            "sourceLanguage": "en",
+            "sourceText": "Cargo is Rust's build system and package\nmanager.Most Rustaceans use this tool to\nmanage their Rust projects because Cargo\nhandles lot of tasks for you,such as building\nyour code,downloading the libraries your code\ndepends on,and building those libraries.(We call\nthe libraries that your code needs dependencies.)",
+            "targetLanguage": "zh"
+          },
+          {
+            "groupId": "server-v4-3-5571698aae3dc483",
+            "layoutShape": "RECT",
+            "normalizedBounds": [
+              0.04930555447936058,
+              0.48656249046325684,
+              0.9423611164093018,
+              0.6815624833106995
+            ],
+            "readingOrder": 3000,
+            "regionLines": [
+              {
+                "normalizedBounds": [
+                  0.04930555447936058,
+                  0.48656249046325684,
+                  0.893750011920929,
+                  0.5040624737739563
+                ],
+                "readingOrder": 3000,
+                "regionId": "semantic-e9d267f3-region-0"
+              },
+              {
+                "normalizedBounds": [
+                  0.04930555447936058,
+                  0.5112500190734863,
+                  0.9423611164093018,
+                  0.528124988079071
+                ],
+                "readingOrder": 3001,
+                "regionId": "semantic-e9d267f3-region-1"
+              },
+              {
+                "normalizedBounds": [
+                  0.05138888955116272,
+                  0.5368750095367432,
+                  0.9277777671813965,
+                  0.5540624856948853
+                ],
+                "readingOrder": 3002,
+                "regionId": "semantic-e9d267f3-region-2"
+              },
+              {
+                "normalizedBounds": [
+                  0.04930555447936058,
+                  0.5621874928474426,
+                  0.8743055462837219,
+                  0.5803124904632568
+                ],
+                "readingOrder": 3003,
+                "regionId": "semantic-e9d267f3-region-3"
+              },
+              {
+                "normalizedBounds": [
+                  0.05138888955116272,
+                  0.5878124833106995,
+                  0.8965277671813965,
+                  0.6059374809265137
+                ],
+                "readingOrder": 3004,
+                "regionId": "semantic-e9d267f3-region-4"
+              },
+              {
+                "normalizedBounds": [
+                  0.05138888955116272,
+                  0.6100000143051147,
+                  0.8951388597488403,
+                  0.6299999952316284
+                ],
+                "readingOrder": 3005,
+                "regionId": "semantic-e9d267f3-region-5"
+              },
+              {
+                "normalizedBounds": [
+                  0.06111111119389534,
+                  0.637499988079071,
+                  0.7472222447395325,
+                  0.65625
+                ],
+                "readingOrder": 3006,
+                "regionId": "semantic-e9d267f3-region-6"
+              },
+              {
+                "normalizedBounds": [
+                  0.05069444328546524,
+                  0.6618750095367432,
+                  0.7715277671813965,
+                  0.6815624833106995
+                ],
+                "readingOrder": 3007,
+                "regionId": "semantic-e9d267f3-region-7"
+              }
+            ],
+            "renderSlots": [
+              [
+                0.04930555447936058,
+                0.48656249046325684,
+                0.9423611164093018,
+                0.6815624833106995
+              ]
+            ],
+            "requiredLiteralIdentifiers": [],
+            "role": "BODY",
+            "sourceLanguage": "en",
+            "sourceText": "The simplest Rust programs,like the one we've\nwritten so far,don't have any dependencies.If we\nhad built the\"Hello,world!\"project with Cargo,it\nwould only use the part of Cargo that handles\nbuilding your code.As youwrite more complex\nRust programs,you'll add dependencies,and if\nyoustart a project using Cargo,adding\ndependencies will be much easier to do.",
+            "targetLanguage": "zh"
+          },
+          {
+            "groupId": "server-v4-4-b4ad92d7368a44d5",
+            "layoutShape": "RECT",
+            "normalizedBounds": [
+              0.05069444328546524,
+              0.7065625190734863,
+              0.9444444179534912,
+              0.8500000238418579
+            ],
+            "readingOrder": 4000,
+            "regionLines": [
+              {
+                "normalizedBounds": [
+                  0.05277777835726738,
+                  0.7065625190734863,
+                  0.8777777552604675,
+                  0.7243750095367432
+                ],
+                "readingOrder": 4000,
+                "regionId": "semantic-f496630e-region-0"
+              },
+              {
+                "normalizedBounds": [
+                  0.05069444328546524,
+                  0.7318750023841858,
+                  0.9104166626930237,
+                  0.7490624785423279
+                ],
+                "readingOrder": 4001,
+                "regionId": "semantic-f496630e-region-1"
+              },
+              {
+                "normalizedBounds": [
+                  0.05138888955116272,
+                  0.7559375166893005,
+                  0.9298611283302307,
+                  0.7756249904632568
+                ],
+                "readingOrder": 4002,
+                "regionId": "semantic-f496630e-region-2"
+              },
+              {
+                "normalizedBounds": [
+                  0.05138888955116272,
+                  0.7803124785423279,
+                  0.918055534362793,
+                  0.7987499833106995
+                ],
+                "readingOrder": 4003,
+                "regionId": "semantic-f496630e-region-3"
+              },
+              {
+                "normalizedBounds": [
+                  0.05486110970377922,
+                  0.8068749904632568,
+                  0.9444444179534912,
+                  0.824999988079071
+                ],
+                "readingOrder": 4004,
+                "regionId": "semantic-f496630e-region-4"
+              },
+              {
+                "normalizedBounds": [
+                  0.05069444328546524,
+                  0.8337500095367432,
+                  0.8270833492279053,
+                  0.8500000238418579
+                ],
+                "readingOrder": 4005,
+                "regionId": "semantic-f496630e-region-5"
+              }
+            ],
+            "renderSlots": [
+              [
+                0.05069444328546524,
+                0.7065625190734863,
+                0.9444444179534912,
+                0.8500000238418579
+              ]
+            ],
+            "requiredLiteralIdentifiers": [],
+            "role": "BODY",
+            "sourceLanguage": "en",
+            "sourceText": "Because the vast majority of Rust projects use\nCargo,the rest of this book assumes that you're\nusing Cargo too.Cargo comes installed with Rust\nif you used the official installers discussed in the\n\"Installation\"section.If you installed Rust through\nSome other means,check whether Cargo is",
+            "targetLanguage": "zh"
+          }
+        ],
+        "translationMode": "AUTO_BIDIRECTIONAL",
+        "viewport": {
+          "height": 3200,
+          "width": 1440
+        }
+      },
+      "groups": [
+        {
+          "groupId": "server-v4-0-5054cd17abf068ed",
+          "layoutShape": "RECT",
+          "normalizedBounds": [
+            0.03750000149011612,
+            0.11874999850988388,
+            0.7909722328186035,
+            0.14624999463558197
+          ],
+          "readingOrder": 0,
+          "regionLines": [
+            {
+              "normalizedBounds": [
+                0.03750000149011612,
+                0.11874999850988388,
+                0.7909722328186035,
+                0.14624999463558197
+              ],
+              "readingOrder": 0,
+              "regionId": "semantic-cad9bab8-region-0"
+            }
+          ],
+          "renderSlots": [
+            [
+              0.03750000149011612,
+              0.11874999850988388,
+              0.7909722328186035,
+              0.14624999463558197
+            ]
+          ],
+          "requiredLiteralIdentifiers": [],
+          "role": "BODY",
+          "sourceLanguage": "en",
+          "sourceText": "Ea The Rust Program...",
+          "targetLanguage": "zh"
+        },
+        {
+          "groupId": "server-v4-1-74e35c35858f4a27",
+          "layoutShape": "RECT",
+          "normalizedBounds": [
+            0.05277777835726738,
+            0.23468750715255737,
+            0.41111111640930176,
+            0.25999999046325684
+          ],
+          "readingOrder": 1000,
+          "regionLines": [
+            {
+              "normalizedBounds": [
+                0.05277777835726738,
+                0.23468750715255737,
+                0.41111111640930176,
+                0.25999999046325684
+              ],
+              "readingOrder": 1000,
+              "regionId": "semantic-e304a413-region-0"
+            }
+          ],
+          "renderSlots": [
+            [
+              0.05277777835726738,
+              0.23468750715255737,
+              0.41111111640930176,
+              0.25999999046325684
+            ]
+          ],
+          "requiredLiteralIdentifiers": [],
+          "role": "BODY",
+          "sourceLanguage": "en",
+          "sourceText": "Hello,Cargo!",
+          "targetLanguage": "zh"
+        },
+        {
+          "groupId": "server-v4-2-76203a0b64effcb7",
+          "layoutShape": "RECT",
+          "normalizedBounds": [
+            0.0486111119389534,
+            0.29093751311302185,
+            0.9333333373069763,
+            0.4612500071525574
+          ],
+          "readingOrder": 2000,
+          "regionLines": [
+            {
+              "normalizedBounds": [
+                0.05069444328546524,
+                0.29093751311302185,
+                0.7854166626930237,
+                0.30906251072883606
+              ],
+              "readingOrder": 2000,
+              "regionId": "semantic-2975aee1-region-0"
+            },
+            {
+              "normalizedBounds": [
+                0.05277777835726738,
+                0.3165625035762787,
+                0.8138889074325562,
+                0.3334375023841858
+              ],
+              "readingOrder": 2001,
+              "regionId": "semantic-2975aee1-region-1"
+            },
+            {
+              "normalizedBounds": [
+                0.05277777835726738,
+                0.34156250953674316,
+                0.8111110925674438,
+                0.3596875071525574
+              ],
+              "readingOrder": 2002,
+              "regionId": "semantic-2975aee1-region-2"
+            },
+            {
+              "normalizedBounds": [
+                0.05138888955116272,
+                0.3668749928474426,
+                0.8805555701255798,
+                0.3843750059604645
+              ],
+              "readingOrder": 2003,
+              "regionId": "semantic-2975aee1-region-3"
+            },
+            {
+              "normalizedBounds": [
+                0.0486111119389534,
+                0.39281249046325684,
+                0.8999999761581421,
+                0.4099999964237213
+              ],
+              "readingOrder": 2004,
+              "regionId": "semantic-2975aee1-region-4"
+            },
+            {
+              "normalizedBounds": [
+                0.05069444328546524,
+                0.4165624976158142,
+                0.9333333373069763,
+                0.43531250953674316
+              ],
+              "readingOrder": 2005,
+              "regionId": "semantic-2975aee1-region-5"
+            },
+            {
+              "normalizedBounds": [
+                0.04930555447936058,
+                0.44343748688697815,
+                0.9222221970558167,
+                0.4612500071525574
+              ],
+              "readingOrder": 2006,
+              "regionId": "semantic-2975aee1-region-6"
+            }
+          ],
+          "renderSlots": [
+            [
+              0.0486111119389534,
+              0.29093751311302185,
+              0.9333333373069763,
+              0.4612500071525574
+            ]
+          ],
+          "requiredLiteralIdentifiers": [],
+          "role": "BODY",
+          "sourceLanguage": "en",
+          "sourceText": "Cargo is Rust's build system and package\nmanager.Most Rustaceans use this tool to\nmanage their Rust projects because Cargo\nhandles lot of tasks for you,such as building\nyour code,downloading the libraries your code\ndepends on,and building those libraries.(We call\nthe libraries that your code needs dependencies.)",
+          "targetLanguage": "zh"
+        },
+        {
+          "groupId": "server-v4-3-5571698aae3dc483",
+          "layoutShape": "RECT",
+          "normalizedBounds": [
+            0.04930555447936058,
+            0.48656249046325684,
+            0.9423611164093018,
+            0.6815624833106995
+          ],
+          "readingOrder": 3000,
+          "regionLines": [
+            {
+              "normalizedBounds": [
+                0.04930555447936058,
+                0.48656249046325684,
+                0.893750011920929,
+                0.5040624737739563
+              ],
+              "readingOrder": 3000,
+              "regionId": "semantic-e9d267f3-region-0"
+            },
+            {
+              "normalizedBounds": [
+                0.04930555447936058,
+                0.5112500190734863,
+                0.9423611164093018,
+                0.528124988079071
+              ],
+              "readingOrder": 3001,
+              "regionId": "semantic-e9d267f3-region-1"
+            },
+            {
+              "normalizedBounds": [
+                0.05138888955116272,
+                0.5368750095367432,
+                0.9277777671813965,
+                0.5540624856948853
+              ],
+              "readingOrder": 3002,
+              "regionId": "semantic-e9d267f3-region-2"
+            },
+            {
+              "normalizedBounds": [
+                0.04930555447936058,
+                0.5621874928474426,
+                0.8743055462837219,
+                0.5803124904632568
+              ],
+              "readingOrder": 3003,
+              "regionId": "semantic-e9d267f3-region-3"
+            },
+            {
+              "normalizedBounds": [
+                0.05138888955116272,
+                0.5878124833106995,
+                0.8965277671813965,
+                0.6059374809265137
+              ],
+              "readingOrder": 3004,
+              "regionId": "semantic-e9d267f3-region-4"
+            },
+            {
+              "normalizedBounds": [
+                0.05138888955116272,
+                0.6100000143051147,
+                0.8951388597488403,
+                0.6299999952316284
+              ],
+              "readingOrder": 3005,
+              "regionId": "semantic-e9d267f3-region-5"
+            },
+            {
+              "normalizedBounds": [
+                0.06111111119389534,
+                0.637499988079071,
+                0.7472222447395325,
+                0.65625
+              ],
+              "readingOrder": 3006,
+              "regionId": "semantic-e9d267f3-region-6"
+            },
+            {
+              "normalizedBounds": [
+                0.05069444328546524,
+                0.6618750095367432,
+                0.7715277671813965,
+                0.6815624833106995
+              ],
+              "readingOrder": 3007,
+              "regionId": "semantic-e9d267f3-region-7"
+            }
+          ],
+          "renderSlots": [
+            [
+              0.04930555447936058,
+              0.48656249046325684,
+              0.9423611164093018,
+              0.6815624833106995
+            ]
+          ],
+          "requiredLiteralIdentifiers": [],
+          "role": "BODY",
+          "sourceLanguage": "en",
+          "sourceText": "The simplest Rust programs,like the one we've\nwritten so far,don't have any dependencies.If we\nhad built the\"Hello,world!\"project with Cargo,it\nwould only use the part of Cargo that handles\nbuilding your code.As youwrite more complex\nRust programs,you'll add dependencies,and if\nyoustart a project using Cargo,adding\ndependencies will be much easier to do.",
+          "targetLanguage": "zh"
+        },
+        {
+          "groupId": "server-v4-4-b4ad92d7368a44d5",
+          "layoutShape": "RECT",
+          "normalizedBounds": [
+            0.05069444328546524,
+            0.7065625190734863,
+            0.9444444179534912,
+            0.8500000238418579
+          ],
+          "readingOrder": 4000,
+          "regionLines": [
+            {
+              "normalizedBounds": [
+                0.05277777835726738,
+                0.7065625190734863,
+                0.8777777552604675,
+                0.7243750095367432
+              ],
+              "readingOrder": 4000,
+              "regionId": "semantic-f496630e-region-0"
+            },
+            {
+              "normalizedBounds": [
+                0.05069444328546524,
+                0.7318750023841858,
+                0.9104166626930237,
+                0.7490624785423279
+              ],
+              "readingOrder": 4001,
+              "regionId": "semantic-f496630e-region-1"
+            },
+            {
+              "normalizedBounds": [
+                0.05138888955116272,
+                0.7559375166893005,
+                0.9298611283302307,
+                0.7756249904632568
+              ],
+              "readingOrder": 4002,
+              "regionId": "semantic-f496630e-region-2"
+            },
+            {
+              "normalizedBounds": [
+                0.05138888955116272,
+                0.7803124785423279,
+                0.918055534362793,
+                0.7987499833106995
+              ],
+              "readingOrder": 4003,
+              "regionId": "semantic-f496630e-region-3"
+            },
+            {
+              "normalizedBounds": [
+                0.05486110970377922,
+                0.8068749904632568,
+                0.9444444179534912,
+                0.824999988079071
+              ],
+              "readingOrder": 4004,
+              "regionId": "semantic-f496630e-region-4"
+            },
+            {
+              "normalizedBounds": [
+                0.05069444328546524,
+                0.8337500095367432,
+                0.8270833492279053,
+                0.8500000238418579
+              ],
+              "readingOrder": 4005,
+              "regionId": "semantic-f496630e-region-5"
+            }
+          ],
+          "renderSlots": [
+            [
+              0.05069444328546524,
+              0.7065625190734863,
+              0.9444444179534912,
+              0.8500000238418579
+            ]
+          ],
+          "requiredLiteralIdentifiers": [],
+          "role": "BODY",
+          "sourceLanguage": "en",
+          "sourceText": "Because the vast majority of Rust projects use\nCargo,the rest of this book assumes that you're\nusing Cargo too.Cargo comes installed with Rust\nif you used the official installers discussed in the\n\"Installation\"section.If you installed Rust through\nSome other means,check whether Cargo is",
+          "targetLanguage": "zh"
+        }
+      ],
+      "references": [
+        {
+          "groupId": "server-v4-0-5054cd17abf068ed",
+          "translatedText": "Ea Rust 程序...",
+          "detectedSourceLanguage": "en",
+          "targetLanguage": "zh"
+        },
+        {
+          "groupId": "server-v4-1-74e35c35858f4a27",
+          "translatedText": "你好，Cargo！",
+          "detectedSourceLanguage": "en",
+          "targetLanguage": "zh"
+        },
+        {
+          "groupId": "server-v4-2-76203a0b64effcb7",
+          "translatedText": "Cargo 是 Rust 的构建系统和包管理器。大多数 Rustaceans 使用这个工具来管理他们的 Rust 项目，因为 Cargo 为你处理了许多任务，比如构建你的代码、下载你的代码所依赖的库，以及构建这些库。（我们称你的代码需要的库为依赖项。）",
+          "detectedSourceLanguage": "en",
+          "targetLanguage": "zh"
+        },
+        {
+          "groupId": "server-v4-3-5571698aae3dc483",
+          "translatedText": "最简单的 Rust 程序，比如我们目前写的那个，并没有任何依赖。如果我们用 Cargo 构建“Hello, world!”项目，它只会使用 Cargo 中负责构建代码的部分。随着你编写更复杂的 Rust 程序，你会添加依赖项，如果你用 Cargo 启动一个项目，添加依赖项会变得容易得多。",
+          "detectedSourceLanguage": "en",
+          "targetLanguage": "zh"
+        },
+        {
+          "groupId": "server-v4-4-b4ad92d7368a44d5",
+          "translatedText": "由于绝大多数 Rust 项目都使用 Cargo，本书的其余部分也假定你在使用 Cargo。如果你使用“安装”章节中介绍的官方安装程序安装了 Rust，Cargo 会随 Rust 一起安装。如果你通过其他方式安装了 Rust，请检查是否有 Cargo。",
+          "detectedSourceLanguage": "en",
+          "targetLanguage": "zh"
+        }
+      ],
+      "max_tokens": 1854
+    },
+    {
+      "case_id": "case-5-xl",
+      "bucket": "XL 1150-+",
+      "audit_id": "061e7404-8c41-4e0a-819b-926ed432c7fb",
+      "input_chars": 1337,
+      "group_count": 5,
+      "source_model": "openlux:gemini-3.5-flash-lite",
+      "source_created_at": "2026-08-10T06:01:09.740788+00:00",
+      "system": "You are a professional screen OCR translation engine.\nThe user supplies a JSON document containing the complete visible context and translateGroups.\nUse documentContext, reading order, roles, and normalized bounds only to disambiguate meaning.\nThe output is a translations object keyed by groupId. Treat every key as an isolated translation cell and bind it strictly to the sourceText with the identical groupId. Neighboring groups and documentContext are context only.\nNever borrow, copy, move, duplicate, or continue text from another group into the current group.\nUse each group's regionLines and renderSlots to understand wrapped text and reading order, not to produce visual line breaks.\nTranslate every translateGroups item as one complete semantic unit.\nTranslate faithfully and completely. Every source phrase, modifier, and relationship must be represented in the translation.\nDo not shorten or compress headlines, even when a shorter paraphrase sounds natural.\nTranslate named entities consistently across groups and never abbreviate person, place, organization, brand, or section names.\nTranslate Perimeter Institute for Theoretical Physics as 圆周理论物理研究所.\nTranslate Next Einstein centres as 下一代爱因斯坦中心; never omit Next.\nWhen document context identifies a person named only by family name in one group, use that person's conventional full target-language name.\nDo not split a translated group back into visual OCR lines.\nDo not summarize, explain, add facts, merge groups, delete groups, or invent IDs.\nNever add translator notes, parenthetical annotations, OCR corrections, guesses, or phrases such as \"note\" or \"the source may mean\".\nNever echo or reproduce the input JSON document.\nPreserve numeric values and currency meaning. C$ means Canadian dollars and US$ means US dollars.\nKeep AIMS and AIMS-Next visible and unchanged when they appear in the source.\nEvery requiredLiteralIdentifiers entry is a machine-checked constraint and must appear verbatim in translatedText.\nKeep each identifier in the same grammatical and semantic role as the source. Never expand, define, parenthesize, rename, or associate it with another organization. For example, translate \"funding for AIMS\" as \"对 AIMS 的资助\" and \"AIMS-Next Einstein Initiative\" as \"AIMS-Next 爱因斯坦计划\".\nPreserve dates, URLs, brands, identifiers, and placeholders exactly unless translation is required by grammar.\nFor AUTO_BIDIRECTIONAL, translate Chinese groups to English and non-Chinese natural-language groups to Chinese.\nReturn only JSON: {\"translations\":{\"<groupId>\":{\"translatedText\":\"...\",\"detectedSourceLanguage\":\"en\",\"targetLanguage\":\"zh\"}}}.\nEvery input groupId must appear exactly once as a property key. Every translatedText must be non-empty.",
+      "user_payload": {
+        "task": "Translate each translateGroups item independently and completely. Write its non-empty translation only under the translations property whose key exactly equals that item groupId. The value for a key may translate only that group's sourceText. A group's sourceText is an already reconstructed semantic block: treat newline-separated OCR lines as one continuous passage and never translate line by line or imitate the source line breaks. Document context and neighboring groups are disambiguation context only: never copy, move, duplicate, continue, or pre-translate their content into another key. Use regionLines and renderSlots only to understand reading order and protected page geometry; layout is produced deterministically by the server, so do not add visual line breaks. Every requiredLiteralIdentifiers item must occur verbatim in that group's translatedText and keep the same grammatical and semantic role as in sourceText. Never expand, define, parenthesize, rename, or replace an identifier. Do not add parenthetical glosses or retain source-language terms in parentheses unless those parentheses already exist in sourceText. For example, 'funding for AIMS' is '对 AIMS 的资助', and 'AIMS-Next Einstein Initiative' is 'AIMS-Next 爱因斯坦计划'. Preserve currency values, units, numbers, URLs, brands, names, and organization identities. Do not summarize, invent, merge, delete, abbreviate, explain OCR errors, or add translator notes. Output only the required translations schema.",
+        "scene": "LIVE_SCREEN",
+        "translationMode": "AUTO_BIDIRECTIONAL",
+        "documentContext": "[BODY] lifetimes,traits,types,functions,and closures.\n[BODY] In Chapter 21,well complete a project in which\nwe'llimplement a low-level multithreaded web\nserver!\n[BODY] Finally,some appendixes contain useful\ninformation about the language ina more\nreference-like format.Appendix A cOvers Rust's\nkeywords,Appendix B covers Rust's operators\nand symbols,Appendix C covers derivable traits\nprovided by the standard library,Appendix\ncovers some useful development tools,and\nAppendix E explains Rust editions.In Appendix\nyou can find translations of the book,and in\nAppendix G we'll cover how Rust is made and\nwhat nightly Rust is.\n[BODY] There is no wrong way to read this book:If you\nwant to skip ahead,go for it!You might have to\njump back toearlier chapters if youexperience\nany confusion.But do whatever works for you.\n[BODY] An important part of the process of learning Rust\nis learning how to read the error messages the\ncompiler displays:These will guide you toward\nworking code.As such,we'll provide many\nexamples that don't compile along with the error\nmessage the compiler will show you in each\nsituation.Know that if you enter and run\nrandom example,it may not compile!Make sure\nyou read the surrounding text to see whether the\nexample you're trying to run is meant to error.In\nmost situations,we'll lead you to the correct\nversion of any code that doesn't compile.Ferris",
+        "viewport": {
+          "width": 1440,
+          "height": 3200
+        },
+        "translateGroups": [
+          {
+            "groupId": "server-v4-0-4bfe5fd019371b43",
+            "role": "BODY",
+            "sourceText": "lifetimes,traits,types,functions,and closures.",
+            "sourceLanguage": "en",
+            "targetLanguage": "zh",
+            "requiredLiteralIdentifiers": [],
+            "readingOrder": 0,
+            "normalizedBounds": [
+              0.05277778,
+              0.080625,
+              0.87916666,
+              0.0971875
+            ],
+            "layoutShape": "RECT",
+            "renderSlots": [
+              [
+                0.05277778,
+                0.080625,
+                0.87916666,
+                0.0971875
+              ]
+            ],
+            "regionLines": [
+              {
+                "text": "lifetimes,traits,types,functions,and closures.",
+                "readingOrder": 0,
+                "normalizedBounds": [
+                  0.05277778,
+                  0.080625,
+                  0.87916666,
+                  0.0971875
+                ]
+              }
+            ]
+          },
+          {
+            "groupId": "server-v4-1-d4698563c7600026",
+            "role": "BODY",
+            "sourceText": "In Chapter 21,well complete a project in which\nwe'llimplement a low-level multithreaded web\nserver!",
+            "sourceLanguage": "en",
+            "targetLanguage": "zh",
+            "requiredLiteralIdentifiers": [],
+            "readingOrder": 1000,
+            "normalizedBounds": [
+              0.05,
+              0.1221875,
+              0.9076389,
+              0.188125
+            ],
+            "layoutShape": "RECT",
+            "renderSlots": [
+              [
+                0.05,
+                0.1221875,
+                0.9076389,
+                0.188125
+              ]
+            ],
+            "regionLines": [
+              {
+                "text": "In Chapter 21,well complete a project in which",
+                "readingOrder": 1000,
+                "normalizedBounds": [
+                  0.05277778,
+                  0.1221875,
+                  0.9076389,
+                  0.1415625
+                ]
+              },
+              {
+                "text": "we'llimplement a low-level multithreaded web",
+                "readingOrder": 1001,
+                "normalizedBounds": [
+                  0.07638889,
+                  0.145625,
+                  0.8902778,
+                  0.165
+                ]
+              },
+              {
+                "text": "server!",
+                "readingOrder": 1002,
+                "normalizedBounds": [
+                  0.05,
+                  0.174375,
+                  0.16805555,
+                  0.188125
+                ]
+              }
+            ]
+          },
+          {
+            "groupId": "server-v4-2-313b750f81edf6db",
+            "role": "BODY",
+            "sourceText": "Finally,some appendixes contain useful\ninformation about the language ina more\nreference-like format.Appendix A cOvers Rust's\nkeywords,Appendix B covers Rust's operators\nand symbols,Appendix C covers derivable traits\nprovided by the standard library,Appendix\ncovers some useful development tools,and\nAppendix E explains Rust editions.In Appendix\nyou can find translations of the book,and in\nAppendix G we'll cover how Rust is made and\nwhat nightly Rust is.",
+            "sourceLanguage": "en",
+            "targetLanguage": "zh",
+            "requiredLiteralIdentifiers": [],
+            "readingOrder": 2000,
+            "normalizedBounds": [
+              0.048611112,
+              0.216875,
+              0.9236111,
+              0.488125
+            ],
+            "layoutShape": "FLOW_SLOTS",
+            "renderSlots": [
+              [
+                0.05277778,
+                0.216875,
+                0.7652778,
+                0.235
+              ],
+              [
+                0.05138889,
+                0.2415625,
+                0.80625,
+                0.2590625
+              ],
+              [
+                0.05138889,
+                0.2678125,
+                0.9145833,
+                0.284375
+              ],
+              [
+                0.05277778,
+                0.293125,
+                0.8909722,
+                0.310625
+              ],
+              [
+                0.050694443,
+                0.3184375,
+                0.9236111,
+                0.33625
+              ],
+              [
+                0.05138889,
+                0.3434375,
+                0.8361111,
+                0.36
+              ],
+              [
+                0.050694443,
+                0.3690625,
+                0.83263886,
+                0.38625
+              ],
+              [
+                0.048611112,
+                0.394375,
+                0.91736114,
+                0.4125
+              ],
+              [
+                0.108333334,
+                0.418125,
+                0.8833333,
+                0.4378125
+              ],
+              [
+                0.048611112,
+                0.445,
+                0.87430555,
+                0.4621875
+              ],
+              [
+                0.049305554,
+                0.4709375,
+                0.40555555,
+                0.488125
+              ]
+            ],
+            "regionLines": [
+              {
+                "text": "Finally,some appendixes contain useful",
+                "readingOrder": 2000,
+                "normalizedBounds": [
+                  0.05277778,
+                  0.216875,
+                  0.7652778,
+                  0.235
+                ]
+              },
+              {
+                "text": "information about the language ina more",
+                "readingOrder": 2001,
+                "normalizedBounds": [
+                  0.05138889,
+                  0.2415625,
+                  0.80625,
+                  0.2590625
+                ]
+              },
+              {
+                "text": "reference-like format.Appendix A cOvers Rust's",
+                "readingOrder": 2002,
+                "normalizedBounds": [
+                  0.05138889,
+                  0.2678125,
+                  0.9145833,
+                  0.284375
+                ]
+              },
+              {
+                "text": "keywords,Appendix B covers Rust's operators",
+                "readingOrder": 2003,
+                "normalizedBounds": [
+                  0.05277778,
+                  0.293125,
+                  0.8909722,
+                  0.310625
+                ]
+              },
+              {
+                "text": "and symbols,Appendix C covers derivable traits",
+                "readingOrder": 2004,
+                "normalizedBounds": [
+                  0.050694443,
+                  0.3184375,
+                  0.9236111,
+                  0.33625
+                ]
+              },
+              {
+                "text": "provided by the standard library,Appendix",
+                "readingOrder": 2005,
+                "normalizedBounds": [
+                  0.05138889,
+                  0.3434375,
+                  0.8361111,
+                  0.36
+                ]
+              },
+              {
+                "text": "covers some useful development tools,and",
+                "readingOrder": 2006,
+                "normalizedBounds": [
+                  0.050694443,
+                  0.3690625,
+                  0.83263886,
+                  0.38625
+                ]
+              },
+              {
+                "text": "Appendix E explains Rust editions.In Appendix",
+                "readingOrder": 2007,
+                "normalizedBounds": [
+                  0.048611112,
+                  0.394375,
+                  0.91736114,
+                  0.4125
+                ]
+              },
+              {
+                "text": "you can find translations of the book,and in",
+                "readingOrder": 2008,
+                "normalizedBounds": [
+                  0.108333334,
+                  0.418125,
+                  0.8833333,
+                  0.4378125
+                ]
+              },
+              {
+                "text": "Appendix G we'll cover how Rust is made and",
+                "readingOrder": 2009,
+                "normalizedBounds": [
+                  0.048611112,
+                  0.445,
+                  0.87430555,
+                  0.4621875
+                ]
+              },
+              {
+                "text": "what nightly Rust is.",
+                "readingOrder": 2010,
+                "normalizedBounds": [
+                  0.049305554,
+                  0.4709375,
+                  0.40555555,
+                  0.488125
+                ]
+              }
+            ]
+          },
+          {
+            "groupId": "server-v4-3-1f727bc967061ddf",
+            "role": "BODY",
+            "sourceText": "There is no wrong way to read this book:If you\nwant to skip ahead,go for it!You might have to\njump back toearlier chapters if youexperience\nany confusion.But do whatever works for you.",
+            "sourceLanguage": "en",
+            "targetLanguage": "zh",
+            "requiredLiteralIdentifiers": [],
+            "readingOrder": 3000,
+            "normalizedBounds": [
+              0.047222223,
+              0.5134375,
+              0.8972222,
+              0.60625
+            ],
+            "layoutShape": "RECT",
+            "renderSlots": [
+              [
+                0.047222223,
+                0.5134375,
+                0.8972222,
+                0.60625
+              ]
+            ],
+            "regionLines": [
+              {
+                "text": "There is no wrong way to read this book:If you",
+                "readingOrder": 3000,
+                "normalizedBounds": [
+                  0.049305554,
+                  0.5134375,
+                  0.89166665,
+                  0.5315625
+                ]
+              },
+              {
+                "text": "want to skip ahead,go for it!You might have to",
+                "readingOrder": 3001,
+                "normalizedBounds": [
+                  0.049305554,
+                  0.53875,
+                  0.8972222,
+                  0.5559375
+                ]
+              },
+              {
+                "text": "jump back toearlier chapters if youexperience",
+                "readingOrder": 3002,
+                "normalizedBounds": [
+                  0.047222223,
+                  0.563125,
+                  0.89652777,
+                  0.583125
+                ]
+              },
+              {
+                "text": "any confusion.But do whatever works for you.",
+                "readingOrder": 3003,
+                "normalizedBounds": [
+                  0.050694443,
+                  0.5896875,
+                  0.8833333,
+                  0.60625
+                ]
+              }
+            ]
+          },
+          {
+            "groupId": "server-v4-4-313933cdb7e4295c",
+            "role": "BODY",
+            "sourceText": "An important part of the process of learning Rust\nis learning how to read the error messages the\ncompiler displays:These will guide you toward\nworking code.As such,we'll provide many\nexamples that don't compile along with the error\nmessage the compiler will show you in each\nsituation.Know that if you enter and run\nrandom example,it may not compile!Make sure\nyou read the surrounding text to see whether the\nexample you're trying to run is meant to error.In\nmost situations,we'll lead you to the correct\nversion of any code that doesn't compile.Ferris",
+            "sourceLanguage": "en",
+            "targetLanguage": "zh",
+            "requiredLiteralIdentifiers": [],
+            "readingOrder": 4000,
+            "normalizedBounds": [
+              0.048611112,
+              0.6325,
+              0.94027776,
+              0.9278125
+            ],
+            "layoutShape": "RECT",
+            "renderSlots": [
+              [
+                0.048611112,
+                0.6325,
+                0.94027776,
+                0.9278125
+              ]
+            ],
+            "regionLines": [
+              {
+                "text": "An important part of the process of learning Rust",
+                "readingOrder": 4000,
+                "normalizedBounds": [
+                  0.048611112,
+                  0.6325,
+                  0.9361111,
+                  0.650625
+                ]
+              },
+              {
+                "text": "is learning how to read the error messages the",
+                "readingOrder": 4001,
+                "normalizedBounds": [
+                  0.05277778,
+                  0.6575,
+                  0.89166665,
+                  0.675625
+                ]
+              },
+              {
+                "text": "compiler displays:These will guide you toward",
+                "readingOrder": 4002,
+                "normalizedBounds": [
+                  0.050694443,
+                  0.681875,
+                  0.88472223,
+                  0.70125
+                ]
+              },
+              {
+                "text": "working code.As such,we'll provide many",
+                "readingOrder": 4003,
+                "normalizedBounds": [
+                  0.049305554,
+                  0.70875,
+                  0.8076389,
+                  0.72625
+                ]
+              },
+              {
+                "text": "examples that don't compile along with the error",
+                "readingOrder": 4004,
+                "normalizedBounds": [
+                  0.050694443,
+                  0.7340625,
+                  0.9305556,
+                  0.751875
+                ]
+              },
+              {
+                "text": "message the compiler will show you in each",
+                "readingOrder": 4005,
+                "normalizedBounds": [
+                  0.05138889,
+                  0.7575,
+                  0.8375,
+                  0.778125
+                ]
+              },
+              {
+                "text": "situation.Know that if you enter and run",
+                "readingOrder": 4006,
+                "normalizedBounds": [
+                  0.050694443,
+                  0.784375,
+                  0.77916664,
+                  0.80125
+                ]
+              },
+              {
+                "text": "random example,it may not compile!Make sure",
+                "readingOrder": 4007,
+                "normalizedBounds": [
+                  0.05138889,
+                  0.81,
+                  0.9222222,
+                  0.828125
+                ]
+              },
+              {
+                "text": "you read the surrounding text to see whether the",
+                "readingOrder": 4008,
+                "normalizedBounds": [
+                  0.063194446,
+                  0.8346875,
+                  0.94027776,
+                  0.8528125
+                ]
+              },
+              {
+                "text": "example you're trying to run is meant to error.In",
+                "readingOrder": 4009,
+                "normalizedBounds": [
+                  0.050694443,
+                  0.86125,
+                  0.9291667,
+                  0.87875
+                ]
+              },
+              {
+                "text": "most situations,we'll lead you to the correct",
+                "readingOrder": 4010,
+                "normalizedBounds": [
+                  0.05277778,
+                  0.8865625,
+                  0.84444445,
+                  0.9025
+                ]
+              },
+              {
+                "text": "version of any code that doesn't compile.Ferris",
+                "readingOrder": 4011,
+                "normalizedBounds": [
+                  0.048611112,
+                  0.9115625,
+                  0.90069443,
+                  0.9278125
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "groups": [
+        {
+          "groupId": "server-v4-0-4bfe5fd019371b43",
+          "role": "BODY",
+          "sourceText": "lifetimes,traits,types,functions,and closures.",
+          "sourceLanguage": "en",
+          "targetLanguage": "zh",
+          "requiredLiteralIdentifiers": [],
+          "readingOrder": 0,
+          "normalizedBounds": [
+            0.05277778,
+            0.080625,
+            0.87916666,
+            0.0971875
+          ],
+          "layoutShape": "RECT",
+          "renderSlots": [
+            [
+              0.05277778,
+              0.080625,
+              0.87916666,
+              0.0971875
+            ]
+          ],
+          "regionLines": [
+            {
+              "text": "lifetimes,traits,types,functions,and closures.",
+              "readingOrder": 0,
+              "normalizedBounds": [
+                0.05277778,
+                0.080625,
+                0.87916666,
+                0.0971875
+              ]
+            }
+          ]
+        },
+        {
+          "groupId": "server-v4-1-d4698563c7600026",
+          "role": "BODY",
+          "sourceText": "In Chapter 21,well complete a project in which\nwe'llimplement a low-level multithreaded web\nserver!",
+          "sourceLanguage": "en",
+          "targetLanguage": "zh",
+          "requiredLiteralIdentifiers": [],
+          "readingOrder": 1000,
+          "normalizedBounds": [
+            0.05,
+            0.1221875,
+            0.9076389,
+            0.188125
+          ],
+          "layoutShape": "RECT",
+          "renderSlots": [
+            [
+              0.05,
+              0.1221875,
+              0.9076389,
+              0.188125
+            ]
+          ],
+          "regionLines": [
+            {
+              "text": "In Chapter 21,well complete a project in which",
+              "readingOrder": 1000,
+              "normalizedBounds": [
+                0.05277778,
+                0.1221875,
+                0.9076389,
+                0.1415625
+              ]
+            },
+            {
+              "text": "we'llimplement a low-level multithreaded web",
+              "readingOrder": 1001,
+              "normalizedBounds": [
+                0.07638889,
+                0.145625,
+                0.8902778,
+                0.165
+              ]
+            },
+            {
+              "text": "server!",
+              "readingOrder": 1002,
+              "normalizedBounds": [
+                0.05,
+                0.174375,
+                0.16805555,
+                0.188125
+              ]
+            }
+          ]
+        },
+        {
+          "groupId": "server-v4-2-313b750f81edf6db",
+          "role": "BODY",
+          "sourceText": "Finally,some appendixes contain useful\ninformation about the language ina more\nreference-like format.Appendix A cOvers Rust's\nkeywords,Appendix B covers Rust's operators\nand symbols,Appendix C covers derivable traits\nprovided by the standard library,Appendix\ncovers some useful development tools,and\nAppendix E explains Rust editions.In Appendix\nyou can find translations of the book,and in\nAppendix G we'll cover how Rust is made and\nwhat nightly Rust is.",
+          "sourceLanguage": "en",
+          "targetLanguage": "zh",
+          "requiredLiteralIdentifiers": [],
+          "readingOrder": 2000,
+          "normalizedBounds": [
+            0.048611112,
+            0.216875,
+            0.9236111,
+            0.488125
+          ],
+          "layoutShape": "FLOW_SLOTS",
+          "renderSlots": [
+            [
+              0.05277778,
+              0.216875,
+              0.7652778,
+              0.235
+            ],
+            [
+              0.05138889,
+              0.2415625,
+              0.80625,
+              0.2590625
+            ],
+            [
+              0.05138889,
+              0.2678125,
+              0.9145833,
+              0.284375
+            ],
+            [
+              0.05277778,
+              0.293125,
+              0.8909722,
+              0.310625
+            ],
+            [
+              0.050694443,
+              0.3184375,
+              0.9236111,
+              0.33625
+            ],
+            [
+              0.05138889,
+              0.3434375,
+              0.8361111,
+              0.36
+            ],
+            [
+              0.050694443,
+              0.3690625,
+              0.83263886,
+              0.38625
+            ],
+            [
+              0.048611112,
+              0.394375,
+              0.91736114,
+              0.4125
+            ],
+            [
+              0.108333334,
+              0.418125,
+              0.8833333,
+              0.4378125
+            ],
+            [
+              0.048611112,
+              0.445,
+              0.87430555,
+              0.4621875
+            ],
+            [
+              0.049305554,
+              0.4709375,
+              0.40555555,
+              0.488125
+            ]
+          ],
+          "regionLines": [
+            {
+              "text": "Finally,some appendixes contain useful",
+              "readingOrder": 2000,
+              "normalizedBounds": [
+                0.05277778,
+                0.216875,
+                0.7652778,
+                0.235
+              ]
+            },
+            {
+              "text": "information about the language ina more",
+              "readingOrder": 2001,
+              "normalizedBounds": [
+                0.05138889,
+                0.2415625,
+                0.80625,
+                0.2590625
+              ]
+            },
+            {
+              "text": "reference-like format.Appendix A cOvers Rust's",
+              "readingOrder": 2002,
+              "normalizedBounds": [
+                0.05138889,
+                0.2678125,
+                0.9145833,
+                0.284375
+              ]
+            },
+            {
+              "text": "keywords,Appendix B covers Rust's operators",
+              "readingOrder": 2003,
+              "normalizedBounds": [
+                0.05277778,
+                0.293125,
+                0.8909722,
+                0.310625
+              ]
+            },
+            {
+              "text": "and symbols,Appendix C covers derivable traits",
+              "readingOrder": 2004,
+              "normalizedBounds": [
+                0.050694443,
+                0.3184375,
+                0.9236111,
+                0.33625
+              ]
+            },
+            {
+              "text": "provided by the standard library,Appendix",
+              "readingOrder": 2005,
+              "normalizedBounds": [
+                0.05138889,
+                0.3434375,
+                0.8361111,
+                0.36
+              ]
+            },
+            {
+              "text": "covers some useful development tools,and",
+              "readingOrder": 2006,
+              "normalizedBounds": [
+                0.050694443,
+                0.3690625,
+                0.83263886,
+                0.38625
+              ]
+            },
+            {
+              "text": "Appendix E explains Rust editions.In Appendix",
+              "readingOrder": 2007,
+              "normalizedBounds": [
+                0.048611112,
+                0.394375,
+                0.91736114,
+                0.4125
+              ]
+            },
+            {
+              "text": "you can find translations of the book,and in",
+              "readingOrder": 2008,
+              "normalizedBounds": [
+                0.108333334,
+                0.418125,
+                0.8833333,
+                0.4378125
+              ]
+            },
+            {
+              "text": "Appendix G we'll cover how Rust is made and",
+              "readingOrder": 2009,
+              "normalizedBounds": [
+                0.048611112,
+                0.445,
+                0.87430555,
+                0.4621875
+              ]
+            },
+            {
+              "text": "what nightly Rust is.",
+              "readingOrder": 2010,
+              "normalizedBounds": [
+                0.049305554,
+                0.4709375,
+                0.40555555,
+                0.488125
+              ]
+            }
+          ]
+        },
+        {
+          "groupId": "server-v4-3-1f727bc967061ddf",
+          "role": "BODY",
+          "sourceText": "There is no wrong way to read this book:If you\nwant to skip ahead,go for it!You might have to\njump back toearlier chapters if youexperience\nany confusion.But do whatever works for you.",
+          "sourceLanguage": "en",
+          "targetLanguage": "zh",
+          "requiredLiteralIdentifiers": [],
+          "readingOrder": 3000,
+          "normalizedBounds": [
+            0.047222223,
+            0.5134375,
+            0.8972222,
+            0.60625
+          ],
+          "layoutShape": "RECT",
+          "renderSlots": [
+            [
+              0.047222223,
+              0.5134375,
+              0.8972222,
+              0.60625
+            ]
+          ],
+          "regionLines": [
+            {
+              "text": "There is no wrong way to read this book:If you",
+              "readingOrder": 3000,
+              "normalizedBounds": [
+                0.049305554,
+                0.5134375,
+                0.89166665,
+                0.5315625
+              ]
+            },
+            {
+              "text": "want to skip ahead,go for it!You might have to",
+              "readingOrder": 3001,
+              "normalizedBounds": [
+                0.049305554,
+                0.53875,
+                0.8972222,
+                0.5559375
+              ]
+            },
+            {
+              "text": "jump back toearlier chapters if youexperience",
+              "readingOrder": 3002,
+              "normalizedBounds": [
+                0.047222223,
+                0.563125,
+                0.89652777,
+                0.583125
+              ]
+            },
+            {
+              "text": "any confusion.But do whatever works for you.",
+              "readingOrder": 3003,
+              "normalizedBounds": [
+                0.050694443,
+                0.5896875,
+                0.8833333,
+                0.60625
+              ]
+            }
+          ]
+        },
+        {
+          "groupId": "server-v4-4-313933cdb7e4295c",
+          "role": "BODY",
+          "sourceText": "An important part of the process of learning Rust\nis learning how to read the error messages the\ncompiler displays:These will guide you toward\nworking code.As such,we'll provide many\nexamples that don't compile along with the error\nmessage the compiler will show you in each\nsituation.Know that if you enter and run\nrandom example,it may not compile!Make sure\nyou read the surrounding text to see whether the\nexample you're trying to run is meant to error.In\nmost situations,we'll lead you to the correct\nversion of any code that doesn't compile.Ferris",
+          "sourceLanguage": "en",
+          "targetLanguage": "zh",
+          "requiredLiteralIdentifiers": [],
+          "readingOrder": 4000,
+          "normalizedBounds": [
+            0.048611112,
+            0.6325,
+            0.94027776,
+            0.9278125
+          ],
+          "layoutShape": "RECT",
+          "renderSlots": [
+            [
+              0.048611112,
+              0.6325,
+              0.94027776,
+              0.9278125
+            ]
+          ],
+          "regionLines": [
+            {
+              "text": "An important part of the process of learning Rust",
+              "readingOrder": 4000,
+              "normalizedBounds": [
+                0.048611112,
+                0.6325,
+                0.9361111,
+                0.650625
+              ]
+            },
+            {
+              "text": "is learning how to read the error messages the",
+              "readingOrder": 4001,
+              "normalizedBounds": [
+                0.05277778,
+                0.6575,
+                0.89166665,
+                0.675625
+              ]
+            },
+            {
+              "text": "compiler displays:These will guide you toward",
+              "readingOrder": 4002,
+              "normalizedBounds": [
+                0.050694443,
+                0.681875,
+                0.88472223,
+                0.70125
+              ]
+            },
+            {
+              "text": "working code.As such,we'll provide many",
+              "readingOrder": 4003,
+              "normalizedBounds": [
+                0.049305554,
+                0.70875,
+                0.8076389,
+                0.72625
+              ]
+            },
+            {
+              "text": "examples that don't compile along with the error",
+              "readingOrder": 4004,
+              "normalizedBounds": [
+                0.050694443,
+                0.7340625,
+                0.9305556,
+                0.751875
+              ]
+            },
+            {
+              "text": "message the compiler will show you in each",
+              "readingOrder": 4005,
+              "normalizedBounds": [
+                0.05138889,
+                0.7575,
+                0.8375,
+                0.778125
+              ]
+            },
+            {
+              "text": "situation.Know that if you enter and run",
+              "readingOrder": 4006,
+              "normalizedBounds": [
+                0.050694443,
+                0.784375,
+                0.77916664,
+                0.80125
+              ]
+            },
+            {
+              "text": "random example,it may not compile!Make sure",
+              "readingOrder": 4007,
+              "normalizedBounds": [
+                0.05138889,
+                0.81,
+                0.9222222,
+                0.828125
+              ]
+            },
+            {
+              "text": "you read the surrounding text to see whether the",
+              "readingOrder": 4008,
+              "normalizedBounds": [
+                0.063194446,
+                0.8346875,
+                0.94027776,
+                0.8528125
+              ]
+            },
+            {
+              "text": "example you're trying to run is meant to error.In",
+              "readingOrder": 4009,
+              "normalizedBounds": [
+                0.050694443,
+                0.86125,
+                0.9291667,
+                0.87875
+              ]
+            },
+            {
+              "text": "most situations,we'll lead you to the correct",
+              "readingOrder": 4010,
+              "normalizedBounds": [
+                0.05277778,
+                0.8865625,
+                0.84444445,
+                0.9025
+              ]
+            },
+            {
+              "text": "version of any code that doesn't compile.Ferris",
+              "readingOrder": 4011,
+              "normalizedBounds": [
+                0.048611112,
+                0.9115625,
+                0.90069443,
+                0.9278125
+              ]
+            }
+          ]
+        }
+      ],
+      "references": [
+        {
+          "groupId": "server-v4-0-4bfe5fd019371b43",
+          "translatedText": "生命周期、trait、类型、函数和闭包。",
+          "detectedSourceLanguage": "en",
+          "targetLanguage": "zh"
+        },
+        {
+          "groupId": "server-v4-1-d4698563c7600026",
+          "translatedText": "在第 21 章中，我们将完成一个项目，在其中实现一个底层的多线程 Web 服务器！",
+          "detectedSourceLanguage": "en",
+          "targetLanguage": "zh"
+        },
+        {
+          "groupId": "server-v4-2-313b750f81edf6db",
+          "translatedText": "最后，附录包含一些以更像参考手册的形式呈现的关于该语言的实用信息。附录 A 介绍了 Rust 的关键字，附录 B 介绍了 Rust 的运算符和符号，附录 C 介绍了标准库提供的可派生 trait，附录 D 介绍了一些实用的开发工具，附录 E 解释了 Rust 的版本。在附录 F 中，您可以找到本书的翻译版，在附录 G 中，我们将介绍 Rust 是如何制作的以及什么是 nightly 版 Rust。",
+          "detectedSourceLanguage": "en",
+          "targetLanguage": "zh"
+        },
+        {
+          "groupId": "server-v4-3-1f727bc967061ddf",
+          "translatedText": "阅读本书没有错误的方式：如果您想跳着看，那就去吧！如果您遇到任何困惑，可能必须跳回之前的章节。但只要适合您就行。",
+          "detectedSourceLanguage": "en",
+          "targetLanguage": "zh"
+        },
+        {
+          "groupId": "server-v4-4-313933cdb7e4295c",
+          "translatedText": "学习 Rust 过程中的一个重要部分是学习如何阅读编译器显示的错误信息：这些信息将引导您写出可以运行的代码。因此，我们将提供许多无法编译的示例，以及编译器在每种情况下会显示给您的错误信息。请记住，如果您输入并运行一个随机的示例，它可能无法编译！请确保阅读周围的文本，以查看您尝试运行的示例是否本来就会出错。在大多数情况下，我们会引导您找到任何无法编译代码的正确版本。Ferris",
+          "detectedSourceLanguage": "en",
+          "targetLanguage": "zh"
+        }
+      ],
+      "max_tokens": 4096
+    }
+  ]
+}

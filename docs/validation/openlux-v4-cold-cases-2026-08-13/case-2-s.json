@@ -1,0 +1,193 @@
+{
+  "case_id": "case-2-s",
+  "bucket": "S 300-599",
+  "audit_id": "87f7b82f-3ba6-48c9-9cdb-d3c3c04f889f",
+  "input_chars": 436,
+  "group_count": 4,
+  "source_model": "openlux:gemini-3.5-flash-lite (edge)",
+  "source_created_at": "2026-08-11T08:35:16.312973+00:00",
+  "system": "You are a professional screen OCR translation engine.\nThe input is one visible screen reconstructed from OCR geometry. Translate each translateGroups item independently and completely, while using documentOutline and neighboring geometry only to disambiguate meaning.\nTreat newline-separated OCR lines inside sourceText as one semantic block. Never imitate OCR line breaks, split a block back into lines, merge keys, borrow text from another key, summarize, or add notes.\nPreserve URLs, identifiers, names, brands, numbers, dates, units, and currencies. Every requiredLiteralIdentifiers item must remain visible verbatim and in the same semantic role.\nFor AUTO_BIDIRECTIONAL translate Chinese natural language to English and non-Chinese natural language to Chinese.\nReturn only the strict JSON object requested by response_format. Return translations as an array. Every input groupId must occur exactly once and every translatedText must be non-empty.",
+  "user_payload": {
+    "documentOutline": [
+      {
+        "groupId": "server-v4-0-330dcb078c62caf4",
+        "readingOrder": 0,
+        "role": "BODY",
+        "sourcePreview": "Jdte"
+      },
+      {
+        "groupId": "server-v4-1-3872c03d5ec1afb3",
+        "readingOrder": 1000,
+        "role": "TITLE",
+        "sourcePreview": "Open locally installed documentation. Write and run a\"Hello,world!\"progr..."
+      },
+      {
+        "groupId": "server-v4-2-b4cf995a922648b0",
+        "readingOrder": 2000,
+        "role": "BODY",
+        "sourcePreview": "Create and run a new project using the conventions of Cargo."
+      },
+      {
+        "groupId": "server-v4-3-2d9ed645f5a3008c",
+        "readingOrder": 3000,
+        "role": "BODY",
+        "sourcePreview": "This is great time to build more substantial program to get used to read..."
+      }
+    ],
+    "promptProfile": "COMPACT",
+    "scene": "LIVE_SCREEN",
+    "task": "Translate every translateGroups entry as one complete semantic unit. Geometry is context; the caller creates layout.",
+    "translateGroups": [
+      {
+        "groupId": "server-v4-0-330dcb078c62caf4",
+        "normalizedBounds": [
+          0.211,
+          0.476,
+          0.276,
+          0.484
+        ],
+        "readingOrder": 0,
+        "requiredLiteralIdentifiers": [],
+        "role": "BODY",
+        "sourceLanguage": "en",
+        "sourceText": "Jdte",
+        "targetLanguage": "zh"
+      },
+      {
+        "groupId": "server-v4-1-3872c03d5ec1afb3",
+        "normalizedBounds": [
+          0.147,
+          0.494,
+          0.857,
+          0.565
+        ],
+        "readingOrder": 1000,
+        "requiredLiteralIdentifiers": [],
+        "role": "TITLE",
+        "sourceLanguage": "en",
+        "sourceText": "Open locally installed documentation.\nWrite and run a\"Hello,world!\"program\nusing rustc directly.",
+        "targetLanguage": "zh"
+      },
+      {
+        "groupId": "server-v4-2-b4cf995a922648b0",
+        "normalizedBounds": [
+          0.149,
+          0.573,
+          0.849,
+          0.616
+        ],
+        "readingOrder": 2000,
+        "requiredLiteralIdentifiers": [],
+        "role": "BODY",
+        "sourceLanguage": "en",
+        "sourceText": "Create and run a new project using the\nconventions of Cargo.",
+        "targetLanguage": "zh"
+      },
+      {
+        "groupId": "server-v4-3-2d9ed645f5a3008c",
+        "normalizedBounds": [
+          0.049,
+          0.641,
+          0.919,
+          0.811
+        ],
+        "readingOrder": 3000,
+        "requiredLiteralIdentifiers": [],
+        "role": "BODY",
+        "sourceLanguage": "en",
+        "sourceText": "This is great time to build more substantial\nprogram to get used to reading and writing Rust\ncode.So,in Chapter 2,we'll build a guessing\ngame program.lf you would rather start by\nlearning how common programming concepts\nwork in Rust,see Chapter 3 and then return to\nChapter 2.",
+        "targetLanguage": "zh"
+      }
+    ],
+    "translationMode": "AUTO_BIDIRECTIONAL"
+  },
+  "groups": [
+    {
+      "groupId": "server-v4-0-330dcb078c62caf4",
+      "normalizedBounds": [
+        0.211,
+        0.476,
+        0.276,
+        0.484
+      ],
+      "readingOrder": 0,
+      "requiredLiteralIdentifiers": [],
+      "role": "BODY",
+      "sourceLanguage": "en",
+      "sourceText": "Jdte",
+      "targetLanguage": "zh"
+    },
+    {
+      "groupId": "server-v4-1-3872c03d5ec1afb3",
+      "normalizedBounds": [
+        0.147,
+        0.494,
+        0.857,
+        0.565
+      ],
+      "readingOrder": 1000,
+      "requiredLiteralIdentifiers": [],
+      "role": "TITLE",
+      "sourceLanguage": "en",
+      "sourceText": "Open locally installed documentation.\nWrite and run a\"Hello,world!\"program\nusing rustc directly.",
+      "targetLanguage": "zh"
+    },
+    {
+      "groupId": "server-v4-2-b4cf995a922648b0",
+      "normalizedBounds": [
+        0.149,
+        0.573,
+        0.849,
+        0.616
+      ],
+      "readingOrder": 2000,
+      "requiredLiteralIdentifiers": [],
+      "role": "BODY",
+      "sourceLanguage": "en",
+      "sourceText": "Create and run a new project using the\nconventions of Cargo.",
+      "targetLanguage": "zh"
+    },
+    {
+      "groupId": "server-v4-3-2d9ed645f5a3008c",
+      "normalizedBounds": [
+        0.049,
+        0.641,
+        0.919,
+        0.811
+      ],
+      "readingOrder": 3000,
+      "requiredLiteralIdentifiers": [],
+      "role": "BODY",
+      "sourceLanguage": "en",
+      "sourceText": "This is great time to build more substantial\nprogram to get used to reading and writing Rust\ncode.So,in Chapter 2,we'll build a guessing\ngame program.lf you would rather start by\nlearning how common programming concepts\nwork in Rust,see Chapter 3 and then return to\nChapter 2.",
+      "targetLanguage": "zh"
+    }
+  ],
+  "references": [
+    {
+      "groupId": "server-v4-0-330dcb078c62caf4",
+      "translatedText": "Jdte",
+      "detectedSourceLanguage": "en",
+      "targetLanguage": "zh"
+    },
+    {
+      "groupId": "server-v4-1-3872c03d5ec1afb3",
+      "translatedText": "打开本地安装的文档。\n直接使用 rustc 编写并运行一个“Hello, world!”程序。",
+      "detectedSourceLanguage": "en",
+      "targetLanguage": "zh"
+    },
+    {
+      "groupId": "server-v4-2-b4cf995a922648b0",
+      "translatedText": "使用 Cargo 的约定创建并运行一个新项目。",
+      "detectedSourceLanguage": "en",
+      "targetLanguage": "zh"
+    },
+    {
+      "groupId": "server-v4-3-2d9ed645f5a3008c",
+      "translatedText": "现在是构建更具实质性程序以习惯阅读和编写 Rust 代码的大好时机。因此，在第 2 章中，我们将构建一个猜谜游戏程序。如果您宁愿先学习 Rust 中常见编程概念的工作原理，请参阅第 3 章，然后再返回第 2 章。",
+      "detectedSourceLanguage": "en",
+      "targetLanguage": "zh"
+    }
+  ],
+  "max_tokens": 1204
+}

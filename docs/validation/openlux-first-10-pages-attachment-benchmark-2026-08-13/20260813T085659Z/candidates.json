@@ -1,0 +1,129 @@
+[
+  {
+    "model": "gemini-3.6-flash",
+    "listed": true,
+    "control": "thinkingLevel",
+    "control_evidence": "family_known",
+    "chat_completions_compatible": true,
+    "description": "Gemini 3.6 Flash consistently delivers state-of-the-art model intelligence. Optimized to process real-world tasks at greater speed and lower cost, it is built for the agent era and excels at code generation, agent execution, and spatial reasoning. This model performs exceptionally well in fast agent loops involving complex coding cycles and iterations.",
+    "tags": "对话,识图,工具",
+    "usage_count": 934866,
+    "model_ratio": 0.75,
+    "completion_ratio": 5,
+    "supported_endpoint_types": [
+      "gemini",
+      "openai"
+    ]
+  },
+  {
+    "model": "gemini-3.1-flash-lite",
+    "listed": true,
+    "control": "thinkingLevel",
+    "control_evidence": "family_known",
+    "chat_completions_compatible": true,
+    "description": "Google's most cost-effective model, optimized for high-volume agent tasks, translation, and simple data processing.",
+    "tags": "对话,工具,识图",
+    "usage_count": 6306098,
+    "model_ratio": 0.125,
+    "completion_ratio": 6,
+    "supported_endpoint_types": [
+      "gemini",
+      "openai"
+    ]
+  },
+  {
+    "model": "gemini-3.5-flash-lite",
+    "listed": true,
+    "control": "thinkingLevel",
+    "control_evidence": "family_known",
+    "chat_completions_compatible": true,
+    "description": "Gemini 3.5 Flash-Lite is a cost-efficient multimodal model that enables low-cost sub-agent task execution and document parsing. The model supports text, image, video, audio and PDF inputs, and is engineered for high-volume agent workflows, simple data extraction, and applications where latency and API costs constitute primary constraints.",
+    "tags": "对话,识图,工具",
+    "usage_count": 5274694,
+    "model_ratio": 0.15,
+    "completion_ratio": 8.33333333333,
+    "supported_endpoint_types": [
+      "gemini",
+      "openai"
+    ]
+  },
+  {
+    "model": "gpt-5.6-luna",
+    "listed": true,
+    "control": "model_suffix",
+    "control_evidence": "family_known",
+    "chat_completions_compatible": true,
+    "description": "GPT-5.6 Luna 主打低成本、大批量处理场景，对应早期 GPT-5 Nano 轻量化模型层级，兼容 -high/-xhigh/-low/-medium/-max/-ultra 全部后缀变体。",
+    "tags": "对话,工具,识图",
+    "usage_count": 9028616,
+    "model_ratio": 0.1,
+    "completion_ratio": 6,
+    "supported_endpoint_types": [
+      "openai",
+      "openai-response"
+    ]
+  },
+  {
+    "model": "gpt-5.6-terra",
+    "listed": true,
+    "control": "model_suffix",
+    "control_evidence": "family_known",
+    "chat_completions_compatible": true,
+    "description": "GPT-5.6 Terra 主打算力与成本均衡，对应早期 GPT-5 迷你模型层级，兼容 -high/-xhigh/-low/-medium/-max/-ultra 全部后缀变体",
+    "tags": "对话,工具,识图",
+    "usage_count": 3028549,
+    "model_ratio": 1,
+    "completion_ratio": 6,
+    "supported_endpoint_types": [
+      "openai",
+      "openai-response"
+    ]
+  },
+  {
+    "model": "gpt-5.6-sol",
+    "listed": true,
+    "control": "model_suffix",
+    "control_evidence": "family_known",
+    "chat_completions_compatible": true,
+    "description": "GPT-5.6 Sol is the flagship high-end model of the GPT-5.6 product line, with specifications benchmarking the top-tier original GPT-5 without suffixes. You may call the API using the alias gpt-5.6-sol, and the platform will automatically route requests to the GPT-5.6 Sol service cluster. This model supports differentiated calls via multiple suffixes, which can be appended to select performance tiers: -high, -xhigh, -low, -medium, -max, -ultra.",
+    "tags": "对话,工具,识图,思考",
+    "usage_count": 15031470,
+    "model_ratio": 2.5,
+    "completion_ratio": 6,
+    "supported_endpoint_types": [
+      "openai",
+      "openai-response"
+    ]
+  },
+  {
+    "model": "gpt-5.4-nano",
+    "listed": true,
+    "control": "reasoning_effort",
+    "control_evidence": "family_known",
+    "chat_completions_compatible": true,
+    "description": "GPT-5.4 nano is the lightest and fastest version of GPT-5.4, designed for tasks with the most demanding speed and cost requirements.",
+    "tags": "对话,识图,思考,工具",
+    "usage_count": 954438,
+    "model_ratio": 0.1,
+    "completion_ratio": 6.25,
+    "supported_endpoint_types": [
+      "openai",
+      "openai-response"
+    ]
+  },
+  {
+    "model": "qwen3.5-35b-a3b",
+    "listed": true,
+    "control": "reasoning_effort",
+    "control_evidence": "compatibility_probe",
+    "chat_completions_compatible": true,
+    "description": "Qwen3.5 series 35B-A3B native vision-language model built on a hybrid architecture combining linear attention with sparse MoE, achieving higher inference efficiency. Its overall performance is close to Qwen3.5-27B.",
+    "tags": "对话,识图,工具",
+    "usage_count": 835,
+    "model_ratio": 0.2,
+    "completion_ratio": 8,
+    "supported_endpoint_types": [
+      "openai"
+    ]
+  }
+]

@@ -1,0 +1,1057 @@
+{
+  "case_id": "case-5-xl",
+  "bucket": "XL 1150-+",
+  "audit_id": "061e7404-8c41-4e0a-819b-926ed432c7fb",
+  "input_chars": 1337,
+  "group_count": 5,
+  "source_model": "openlux:gemini-3.5-flash-lite",
+  "source_created_at": "2026-08-10T06:01:09.740788+00:00",
+  "system": "You are a professional screen OCR translation engine.\nThe user supplies a JSON document containing the complete visible context and translateGroups.\nUse documentContext, reading order, roles, and normalized bounds only to disambiguate meaning.\nThe output is a translations object keyed by groupId. Treat every key as an isolated translation cell and bind it strictly to the sourceText with the identical groupId. Neighboring groups and documentContext are context only.\nNever borrow, copy, move, duplicate, or continue text from another group into the current group.\nUse each group's regionLines and renderSlots to understand wrapped text and reading order, not to produce visual line breaks.\nTranslate every translateGroups item as one complete semantic unit.\nTranslate faithfully and completely. Every source phrase, modifier, and relationship must be represented in the translation.\nDo not shorten or compress headlines, even when a shorter paraphrase sounds natural.\nTranslate named entities consistently across groups and never abbreviate person, place, organization, brand, or section names.\nTranslate Perimeter Institute for Theoretical Physics as 圆周理论物理研究所.\nTranslate Next Einstein centres as 下一代爱因斯坦中心; never omit Next.\nWhen document context identifies a person named only by family name in one group, use that person's conventional full target-language name.\nDo not split a translated group back into visual OCR lines.\nDo not summarize, explain, add facts, merge groups, delete groups, or invent IDs.\nNever add translator notes, parenthetical annotations, OCR corrections, guesses, or phrases such as \"note\" or \"the source may mean\".\nNever echo or reproduce the input JSON document.\nPreserve numeric values and currency meaning. C$ means Canadian dollars and US$ means US dollars.\nKeep AIMS and AIMS-Next visible and unchanged when they appear in the source.\nEvery requiredLiteralIdentifiers entry is a machine-checked constraint and must appear verbatim in translatedText.\nKeep each identifier in the same grammatical and semantic role as the source. Never expand, define, parenthesize, rename, or associate it with another organization. For example, translate \"funding for AIMS\" as \"对 AIMS 的资助\" and \"AIMS-Next Einstein Initiative\" as \"AIMS-Next 爱因斯坦计划\".\nPreserve dates, URLs, brands, identifiers, and placeholders exactly unless translation is required by grammar.\nFor AUTO_BIDIRECTIONAL, translate Chinese groups to English and non-Chinese natural-language groups to Chinese.\nReturn only JSON: {\"translations\":{\"<groupId>\":{\"translatedText\":\"...\",\"detectedSourceLanguage\":\"en\",\"targetLanguage\":\"zh\"}}}.\nEvery input groupId must appear exactly once as a property key. Every translatedText must be non-empty.",
+  "user_payload": {
+    "task": "Translate each translateGroups item independently and completely. Write its non-empty translation only under the translations property whose key exactly equals that item groupId. The value for a key may translate only that group's sourceText. A group's sourceText is an already reconstructed semantic block: treat newline-separated OCR lines as one continuous passage and never translate line by line or imitate the source line breaks. Document context and neighboring groups are disambiguation context only: never copy, move, duplicate, continue, or pre-translate their content into another key. Use regionLines and renderSlots only to understand reading order and protected page geometry; layout is produced deterministically by the server, so do not add visual line breaks. Every requiredLiteralIdentifiers item must occur verbatim in that group's translatedText and keep the same grammatical and semantic role as in sourceText. Never expand, define, parenthesize, rename, or replace an identifier. Do not add parenthetical glosses or retain source-language terms in parentheses unless those parentheses already exist in sourceText. For example, 'funding for AIMS' is '对 AIMS 的资助', and 'AIMS-Next Einstein Initiative' is 'AIMS-Next 爱因斯坦计划'. Preserve currency values, units, numbers, URLs, brands, names, and organization identities. Do not summarize, invent, merge, delete, abbreviate, explain OCR errors, or add translator notes. Output only the required translations schema.",
+    "scene": "LIVE_SCREEN",
+    "translationMode": "AUTO_BIDIRECTIONAL",
+    "documentContext": "[BODY] lifetimes,traits,types,functions,and closures.\n[BODY] In Chapter 21,well complete a project in which\nwe'llimplement a low-level multithreaded web\nserver!\n[BODY] Finally,some appendixes contain useful\ninformation about the language ina more\nreference-like format.Appendix A cOvers Rust's\nkeywords,Appendix B covers Rust's operators\nand symbols,Appendix C covers derivable traits\nprovided by the standard library,Appendix\ncovers some useful development tools,and\nAppendix E explains Rust editions.In Appendix\nyou can find translations of the book,and in\nAppendix G we'll cover how Rust is made and\nwhat nightly Rust is.\n[BODY] There is no wrong way to read this book:If you\nwant to skip ahead,go for it!You might have to\njump back toearlier chapters if youexperience\nany confusion.But do whatever works for you.\n[BODY] An important part of the process of learning Rust\nis learning how to read the error messages the\ncompiler displays:These will guide you toward\nworking code.As such,we'll provide many\nexamples that don't compile along with the error\nmessage the compiler will show you in each\nsituation.Know that if you enter and run\nrandom example,it may not compile!Make sure\nyou read the surrounding text to see whether the\nexample you're trying to run is meant to error.In\nmost situations,we'll lead you to the correct\nversion of any code that doesn't compile.Ferris",
+    "viewport": {
+      "width": 1440,
+      "height": 3200
+    },
+    "translateGroups": [
+      {
+        "groupId": "server-v4-0-4bfe5fd019371b43",
+        "role": "BODY",
+        "sourceText": "lifetimes,traits,types,functions,and closures.",
+        "sourceLanguage": "en",
+        "targetLanguage": "zh",
+        "requiredLiteralIdentifiers": [],
+        "readingOrder": 0,
+        "normalizedBounds": [
+          0.05277778,
+          0.080625,
+          0.87916666,
+          0.0971875
+        ],
+        "layoutShape": "RECT",
+        "renderSlots": [
+          [
+            0.05277778,
+            0.080625,
+            0.87916666,
+            0.0971875
+          ]
+        ],
+        "regionLines": [
+          {
+            "text": "lifetimes,traits,types,functions,and closures.",
+            "readingOrder": 0,
+            "normalizedBounds": [
+              0.05277778,
+              0.080625,
+              0.87916666,
+              0.0971875
+            ]
+          }
+        ]
+      },
+      {
+        "groupId": "server-v4-1-d4698563c7600026",
+        "role": "BODY",
+        "sourceText": "In Chapter 21,well complete a project in which\nwe'llimplement a low-level multithreaded web\nserver!",
+        "sourceLanguage": "en",
+        "targetLanguage": "zh",
+        "requiredLiteralIdentifiers": [],
+        "readingOrder": 1000,
+        "normalizedBounds": [
+          0.05,
+          0.1221875,
+          0.9076389,
+          0.188125
+        ],
+        "layoutShape": "RECT",
+        "renderSlots": [
+          [
+            0.05,
+            0.1221875,
+            0.9076389,
+            0.188125
+          ]
+        ],
+        "regionLines": [
+          {
+            "text": "In Chapter 21,well complete a project in which",
+            "readingOrder": 1000,
+            "normalizedBounds": [
+              0.05277778,
+              0.1221875,
+              0.9076389,
+              0.1415625
+            ]
+          },
+          {
+            "text": "we'llimplement a low-level multithreaded web",
+            "readingOrder": 1001,
+            "normalizedBounds": [
+              0.07638889,
+              0.145625,
+              0.8902778,
+              0.165
+            ]
+          },
+          {
+            "text": "server!",
+            "readingOrder": 1002,
+            "normalizedBounds": [
+              0.05,
+              0.174375,
+              0.16805555,
+              0.188125
+            ]
+          }
+        ]
+      },
+      {
+        "groupId": "server-v4-2-313b750f81edf6db",
+        "role": "BODY",
+        "sourceText": "Finally,some appendixes contain useful\ninformation about the language ina more\nreference-like format.Appendix A cOvers Rust's\nkeywords,Appendix B covers Rust's operators\nand symbols,Appendix C covers derivable traits\nprovided by the standard library,Appendix\ncovers some useful development tools,and\nAppendix E explains Rust editions.In Appendix\nyou can find translations of the book,and in\nAppendix G we'll cover how Rust is made and\nwhat nightly Rust is.",
+        "sourceLanguage": "en",
+        "targetLanguage": "zh",
+        "requiredLiteralIdentifiers": [],
+        "readingOrder": 2000,
+        "normalizedBounds": [
+          0.048611112,
+          0.216875,
+          0.9236111,
+          0.488125
+        ],
+        "layoutShape": "FLOW_SLOTS",
+        "renderSlots": [
+          [
+            0.05277778,
+            0.216875,
+            0.7652778,
+            0.235
+          ],
+          [
+            0.05138889,
+            0.2415625,
+            0.80625,
+            0.2590625
+          ],
+          [
+            0.05138889,
+            0.2678125,
+            0.9145833,
+            0.284375
+          ],
+          [
+            0.05277778,
+            0.293125,
+            0.8909722,
+            0.310625
+          ],
+          [
+            0.050694443,
+            0.3184375,
+            0.9236111,
+            0.33625
+          ],
+          [
+            0.05138889,
+            0.3434375,
+            0.8361111,
+            0.36
+          ],
+          [
+            0.050694443,
+            0.3690625,
+            0.83263886,
+            0.38625
+          ],
+          [
+            0.048611112,
+            0.394375,
+            0.91736114,
+            0.4125
+          ],
+          [
+            0.108333334,
+            0.418125,
+            0.8833333,
+            0.4378125
+          ],
+          [
+            0.048611112,
+            0.445,
+            0.87430555,
+            0.4621875
+          ],
+          [
+            0.049305554,
+            0.4709375,
+            0.40555555,
+            0.488125
+          ]
+        ],
+        "regionLines": [
+          {
+            "text": "Finally,some appendixes contain useful",
+            "readingOrder": 2000,
+            "normalizedBounds": [
+              0.05277778,
+              0.216875,
+              0.7652778,
+              0.235
+            ]
+          },
+          {
+            "text": "information about the language ina more",
+            "readingOrder": 2001,
+            "normalizedBounds": [
+              0.05138889,
+              0.2415625,
+              0.80625,
+              0.2590625
+            ]
+          },
+          {
+            "text": "reference-like format.Appendix A cOvers Rust's",
+            "readingOrder": 2002,
+            "normalizedBounds": [
+              0.05138889,
+              0.2678125,
+              0.9145833,
+              0.284375
+            ]
+          },
+          {
+            "text": "keywords,Appendix B covers Rust's operators",
+            "readingOrder": 2003,
+            "normalizedBounds": [
+              0.05277778,
+              0.293125,
+              0.8909722,
+              0.310625
+            ]
+          },
+          {
+            "text": "and symbols,Appendix C covers derivable traits",
+            "readingOrder": 2004,
+            "normalizedBounds": [
+              0.050694443,
+              0.3184375,
+              0.9236111,
+              0.33625
+            ]
+          },
+          {
+            "text": "provided by the standard library,Appendix",
+            "readingOrder": 2005,
+            "normalizedBounds": [
+              0.05138889,
+              0.3434375,
+              0.8361111,
+              0.36
+            ]
+          },
+          {
+            "text": "covers some useful development tools,and",
+            "readingOrder": 2006,
+            "normalizedBounds": [
+              0.050694443,
+              0.3690625,
+              0.83263886,
+              0.38625
+            ]
+          },
+          {
+            "text": "Appendix E explains Rust editions.In Appendix",
+            "readingOrder": 2007,
+            "normalizedBounds": [
+              0.048611112,
+              0.394375,
+              0.91736114,
+              0.4125
+            ]
+          },
+          {
+            "text": "you can find translations of the book,and in",
+            "readingOrder": 2008,
+            "normalizedBounds": [
+              0.108333334,
+              0.418125,
+              0.8833333,
+              0.4378125
+            ]
+          },
+          {
+            "text": "Appendix G we'll cover how Rust is made and",
+            "readingOrder": 2009,
+            "normalizedBounds": [
+              0.048611112,
+              0.445,
+              0.87430555,
+              0.4621875
+            ]
+          },
+          {
+            "text": "what nightly Rust is.",
+            "readingOrder": 2010,
+            "normalizedBounds": [
+              0.049305554,
+              0.4709375,
+              0.40555555,
+              0.488125
+            ]
+          }
+        ]
+      },
+      {
+        "groupId": "server-v4-3-1f727bc967061ddf",
+        "role": "BODY",
+        "sourceText": "There is no wrong way to read this book:If you\nwant to skip ahead,go for it!You might have to\njump back toearlier chapters if youexperience\nany confusion.But do whatever works for you.",
+        "sourceLanguage": "en",
+        "targetLanguage": "zh",
+        "requiredLiteralIdentifiers": [],
+        "readingOrder": 3000,
+        "normalizedBounds": [
+          0.047222223,
+          0.5134375,
+          0.8972222,
+          0.60625
+        ],
+        "layoutShape": "RECT",
+        "renderSlots": [
+          [
+            0.047222223,
+            0.5134375,
+            0.8972222,
+            0.60625
+          ]
+        ],
+        "regionLines": [
+          {
+            "text": "There is no wrong way to read this book:If you",
+            "readingOrder": 3000,
+            "normalizedBounds": [
+              0.049305554,
+              0.5134375,
+              0.89166665,
+              0.5315625
+            ]
+          },
+          {
+            "text": "want to skip ahead,go for it!You might have to",
+            "readingOrder": 3001,
+            "normalizedBounds": [
+              0.049305554,
+              0.53875,
+              0.8972222,
+              0.5559375
+            ]
+          },
+          {
+            "text": "jump back toearlier chapters if youexperience",
+            "readingOrder": 3002,
+            "normalizedBounds": [
+              0.047222223,
+              0.563125,
+              0.89652777,
+              0.583125
+            ]
+          },
+          {
+            "text": "any confusion.But do whatever works for you.",
+            "readingOrder": 3003,
+            "normalizedBounds": [
+              0.050694443,
+              0.5896875,
+              0.8833333,
+              0.60625
+            ]
+          }
+        ]
+      },
+      {
+        "groupId": "server-v4-4-313933cdb7e4295c",
+        "role": "BODY",
+        "sourceText": "An important part of the process of learning Rust\nis learning how to read the error messages the\ncompiler displays:These will guide you toward\nworking code.As such,we'll provide many\nexamples that don't compile along with the error\nmessage the compiler will show you in each\nsituation.Know that if you enter and run\nrandom example,it may not compile!Make sure\nyou read the surrounding text to see whether the\nexample you're trying to run is meant to error.In\nmost situations,we'll lead you to the correct\nversion of any code that doesn't compile.Ferris",
+        "sourceLanguage": "en",
+        "targetLanguage": "zh",
+        "requiredLiteralIdentifiers": [],
+        "readingOrder": 4000,
+        "normalizedBounds": [
+          0.048611112,
+          0.6325,
+          0.94027776,
+          0.9278125
+        ],
+        "layoutShape": "RECT",
+        "renderSlots": [
+          [
+            0.048611112,
+            0.6325,
+            0.94027776,
+            0.9278125
+          ]
+        ],
+        "regionLines": [
+          {
+            "text": "An important part of the process of learning Rust",
+            "readingOrder": 4000,
+            "normalizedBounds": [
+              0.048611112,
+              0.6325,
+              0.9361111,
+              0.650625
+            ]
+          },
+          {
+            "text": "is learning how to read the error messages the",
+            "readingOrder": 4001,
+            "normalizedBounds": [
+              0.05277778,
+              0.6575,
+              0.89166665,
+              0.675625
+            ]
+          },
+          {
+            "text": "compiler displays:These will guide you toward",
+            "readingOrder": 4002,
+            "normalizedBounds": [
+              0.050694443,
+              0.681875,
+              0.88472223,
+              0.70125
+            ]
+          },
+          {
+            "text": "working code.As such,we'll provide many",
+            "readingOrder": 4003,
+            "normalizedBounds": [
+              0.049305554,
+              0.70875,
+              0.8076389,
+              0.72625
+            ]
+          },
+          {
+            "text": "examples that don't compile along with the error",
+            "readingOrder": 4004,
+            "normalizedBounds": [
+              0.050694443,
+              0.7340625,
+              0.9305556,
+              0.751875
+            ]
+          },
+          {
+            "text": "message the compiler will show you in each",
+            "readingOrder": 4005,
+            "normalizedBounds": [
+              0.05138889,
+              0.7575,
+              0.8375,
+              0.778125
+            ]
+          },
+          {
+            "text": "situation.Know that if you enter and run",
+            "readingOrder": 4006,
+            "normalizedBounds": [
+              0.050694443,
+              0.784375,
+              0.77916664,
+              0.80125
+            ]
+          },
+          {
+            "text": "random example,it may not compile!Make sure",
+            "readingOrder": 4007,
+            "normalizedBounds": [
+              0.05138889,
+              0.81,
+              0.9222222,
+              0.828125
+            ]
+          },
+          {
+            "text": "you read the surrounding text to see whether the",
+            "readingOrder": 4008,
+            "normalizedBounds": [
+              0.063194446,
+              0.8346875,
+              0.94027776,
+              0.8528125
+            ]
+          },
+          {
+            "text": "example you're trying to run is meant to error.In",
+            "readingOrder": 4009,
+            "normalizedBounds": [
+              0.050694443,
+              0.86125,
+              0.9291667,
+              0.87875
+            ]
+          },
+          {
+            "text": "most situations,we'll lead you to the correct",
+            "readingOrder": 4010,
+            "normalizedBounds": [
+              0.05277778,
+              0.8865625,
+              0.84444445,
+              0.9025
+            ]
+          },
+          {
+            "text": "version of any code that doesn't compile.Ferris",
+            "readingOrder": 4011,
+            "normalizedBounds": [
+              0.048611112,
+              0.9115625,
+              0.90069443,
+              0.9278125
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "groups": [
+    {
+      "groupId": "server-v4-0-4bfe5fd019371b43",
+      "role": "BODY",
+      "sourceText": "lifetimes,traits,types,functions,and closures.",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh",
+      "requiredLiteralIdentifiers": [],
+      "readingOrder": 0,
+      "normalizedBounds": [
+        0.05277778,
+        0.080625,
+        0.87916666,
+        0.0971875
+      ],
+      "layoutShape": "RECT",
+      "renderSlots": [
+        [
+          0.05277778,
+          0.080625,
+          0.87916666,
+          0.0971875
+        ]
+      ],
+      "regionLines": [
+        {
+          "text": "lifetimes,traits,types,functions,and closures.",
+          "readingOrder": 0,
+          "normalizedBounds": [
+            0.05277778,
+            0.080625,
+            0.87916666,
+            0.0971875
+          ]
+        }
+      ]
+    },
+    {
+      "groupId": "server-v4-1-d4698563c7600026",
+      "role": "BODY",
+      "sourceText": "In Chapter 21,well complete a project in which\nwe'llimplement a low-level multithreaded web\nserver!",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh",
+      "requiredLiteralIdentifiers": [],
+      "readingOrder": 1000,
+      "normalizedBounds": [
+        0.05,
+        0.1221875,
+        0.9076389,
+        0.188125
+      ],
+      "layoutShape": "RECT",
+      "renderSlots": [
+        [
+          0.05,
+          0.1221875,
+          0.9076389,
+          0.188125
+        ]
+      ],
+      "regionLines": [
+        {
+          "text": "In Chapter 21,well complete a project in which",
+          "readingOrder": 1000,
+          "normalizedBounds": [
+            0.05277778,
+            0.1221875,
+            0.9076389,
+            0.1415625
+          ]
+        },
+        {
+          "text": "we'llimplement a low-level multithreaded web",
+          "readingOrder": 1001,
+          "normalizedBounds": [
+            0.07638889,
+            0.145625,
+            0.8902778,
+            0.165
+          ]
+        },
+        {
+          "text": "server!",
+          "readingOrder": 1002,
+          "normalizedBounds": [
+            0.05,
+            0.174375,
+            0.16805555,
+            0.188125
+          ]
+        }
+      ]
+    },
+    {
+      "groupId": "server-v4-2-313b750f81edf6db",
+      "role": "BODY",
+      "sourceText": "Finally,some appendixes contain useful\ninformation about the language ina more\nreference-like format.Appendix A cOvers Rust's\nkeywords,Appendix B covers Rust's operators\nand symbols,Appendix C covers derivable traits\nprovided by the standard library,Appendix\ncovers some useful development tools,and\nAppendix E explains Rust editions.In Appendix\nyou can find translations of the book,and in\nAppendix G we'll cover how Rust is made and\nwhat nightly Rust is.",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh",
+      "requiredLiteralIdentifiers": [],
+      "readingOrder": 2000,
+      "normalizedBounds": [
+        0.048611112,
+        0.216875,
+        0.9236111,
+        0.488125
+      ],
+      "layoutShape": "FLOW_SLOTS",
+      "renderSlots": [
+        [
+          0.05277778,
+          0.216875,
+          0.7652778,
+          0.235
+        ],
+        [
+          0.05138889,
+          0.2415625,
+          0.80625,
+          0.2590625
+        ],
+        [
+          0.05138889,
+          0.2678125,
+          0.9145833,
+          0.284375
+        ],
+        [
+          0.05277778,
+          0.293125,
+          0.8909722,
+          0.310625
+        ],
+        [
+          0.050694443,
+          0.3184375,
+          0.9236111,
+          0.33625
+        ],
+        [
+          0.05138889,
+          0.3434375,
+          0.8361111,
+          0.36
+        ],
+        [
+          0.050694443,
+          0.3690625,
+          0.83263886,
+          0.38625
+        ],
+        [
+          0.048611112,
+          0.394375,
+          0.91736114,
+          0.4125
+        ],
+        [
+          0.108333334,
+          0.418125,
+          0.8833333,
+          0.4378125
+        ],
+        [
+          0.048611112,
+          0.445,
+          0.87430555,
+          0.4621875
+        ],
+        [
+          0.049305554,
+          0.4709375,
+          0.40555555,
+          0.488125
+        ]
+      ],
+      "regionLines": [
+        {
+          "text": "Finally,some appendixes contain useful",
+          "readingOrder": 2000,
+          "normalizedBounds": [
+            0.05277778,
+            0.216875,
+            0.7652778,
+            0.235
+          ]
+        },
+        {
+          "text": "information about the language ina more",
+          "readingOrder": 2001,
+          "normalizedBounds": [
+            0.05138889,
+            0.2415625,
+            0.80625,
+            0.2590625
+          ]
+        },
+        {
+          "text": "reference-like format.Appendix A cOvers Rust's",
+          "readingOrder": 2002,
+          "normalizedBounds": [
+            0.05138889,
+            0.2678125,
+            0.9145833,
+            0.284375
+          ]
+        },
+        {
+          "text": "keywords,Appendix B covers Rust's operators",
+          "readingOrder": 2003,
+          "normalizedBounds": [
+            0.05277778,
+            0.293125,
+            0.8909722,
+            0.310625
+          ]
+        },
+        {
+          "text": "and symbols,Appendix C covers derivable traits",
+          "readingOrder": 2004,
+          "normalizedBounds": [
+            0.050694443,
+            0.3184375,
+            0.9236111,
+            0.33625
+          ]
+        },
+        {
+          "text": "provided by the standard library,Appendix",
+          "readingOrder": 2005,
+          "normalizedBounds": [
+            0.05138889,
+            0.3434375,
+            0.8361111,
+            0.36
+          ]
+        },
+        {
+          "text": "covers some useful development tools,and",
+          "readingOrder": 2006,
+          "normalizedBounds": [
+            0.050694443,
+            0.3690625,
+            0.83263886,
+            0.38625
+          ]
+        },
+        {
+          "text": "Appendix E explains Rust editions.In Appendix",
+          "readingOrder": 2007,
+          "normalizedBounds": [
+            0.048611112,
+            0.394375,
+            0.91736114,
+            0.4125
+          ]
+        },
+        {
+          "text": "you can find translations of the book,and in",
+          "readingOrder": 2008,
+          "normalizedBounds": [
+            0.108333334,
+            0.418125,
+            0.8833333,
+            0.4378125
+          ]
+        },
+        {
+          "text": "Appendix G we'll cover how Rust is made and",
+          "readingOrder": 2009,
+          "normalizedBounds": [
+            0.048611112,
+            0.445,
+            0.87430555,
+            0.4621875
+          ]
+        },
+        {
+          "text": "what nightly Rust is.",
+          "readingOrder": 2010,
+          "normalizedBounds": [
+            0.049305554,
+            0.4709375,
+            0.40555555,
+            0.488125
+          ]
+        }
+      ]
+    },
+    {
+      "groupId": "server-v4-3-1f727bc967061ddf",
+      "role": "BODY",
+      "sourceText": "There is no wrong way to read this book:If you\nwant to skip ahead,go for it!You might have to\njump back toearlier chapters if youexperience\nany confusion.But do whatever works for you.",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh",
+      "requiredLiteralIdentifiers": [],
+      "readingOrder": 3000,
+      "normalizedBounds": [
+        0.047222223,
+        0.5134375,
+        0.8972222,
+        0.60625
+      ],
+      "layoutShape": "RECT",
+      "renderSlots": [
+        [
+          0.047222223,
+          0.5134375,
+          0.8972222,
+          0.60625
+        ]
+      ],
+      "regionLines": [
+        {
+          "text": "There is no wrong way to read this book:If you",
+          "readingOrder": 3000,
+          "normalizedBounds": [
+            0.049305554,
+            0.5134375,
+            0.89166665,
+            0.5315625
+          ]
+        },
+        {
+          "text": "want to skip ahead,go for it!You might have to",
+          "readingOrder": 3001,
+          "normalizedBounds": [
+            0.049305554,
+            0.53875,
+            0.8972222,
+            0.5559375
+          ]
+        },
+        {
+          "text": "jump back toearlier chapters if youexperience",
+          "readingOrder": 3002,
+          "normalizedBounds": [
+            0.047222223,
+            0.563125,
+            0.89652777,
+            0.583125
+          ]
+        },
+        {
+          "text": "any confusion.But do whatever works for you.",
+          "readingOrder": 3003,
+          "normalizedBounds": [
+            0.050694443,
+            0.5896875,
+            0.8833333,
+            0.60625
+          ]
+        }
+      ]
+    },
+    {
+      "groupId": "server-v4-4-313933cdb7e4295c",
+      "role": "BODY",
+      "sourceText": "An important part of the process of learning Rust\nis learning how to read the error messages the\ncompiler displays:These will guide you toward\nworking code.As such,we'll provide many\nexamples that don't compile along with the error\nmessage the compiler will show you in each\nsituation.Know that if you enter and run\nrandom example,it may not compile!Make sure\nyou read the surrounding text to see whether the\nexample you're trying to run is meant to error.In\nmost situations,we'll lead you to the correct\nversion of any code that doesn't compile.Ferris",
+      "sourceLanguage": "en",
+      "targetLanguage": "zh",
+      "requiredLiteralIdentifiers": [],
+      "readingOrder": 4000,
+      "normalizedBounds": [
+        0.048611112,
+        0.6325,
+        0.94027776,
+        0.9278125
+      ],
+      "layoutShape": "RECT",
+      "renderSlots": [
+        [
+          0.048611112,
+          0.6325,
+          0.94027776,
+          0.9278125
+        ]
+      ],
+      "regionLines": [
+        {
+          "text": "An important part of the process of learning Rust",
+          "readingOrder": 4000,
+          "normalizedBounds": [
+            0.048611112,
+            0.6325,
+            0.9361111,
+            0.650625
+          ]
+        },
+        {
+          "text": "is learning how to read the error messages the",
+          "readingOrder": 4001,
+          "normalizedBounds": [
+            0.05277778,
+            0.6575,
+            0.89166665,
+            0.675625
+          ]
+        },
+        {
+          "text": "compiler displays:These will guide you toward",
+          "readingOrder": 4002,
+          "normalizedBounds": [
+            0.050694443,
+            0.681875,
+            0.88472223,
+            0.70125
+          ]
+        },
+        {
+          "text": "working code.As such,we'll provide many",
+          "readingOrder": 4003,
+          "normalizedBounds": [
+            0.049305554,
+            0.70875,
+            0.8076389,
+            0.72625
+          ]
+        },
+        {
+          "text": "examples that don't compile along with the error",
+          "readingOrder": 4004,
+          "normalizedBounds": [
+            0.050694443,
+            0.7340625,
+            0.9305556,
+            0.751875
+          ]
+        },
+        {
+          "text": "message the compiler will show you in each",
+          "readingOrder": 4005,
+          "normalizedBounds": [
+            0.05138889,
+            0.7575,
+            0.8375,
+            0.778125
+          ]
+        },
+        {
+          "text": "situation.Know that if you enter and run",
+          "readingOrder": 4006,
+          "normalizedBounds": [
+            0.050694443,
+            0.784375,
+            0.77916664,
+            0.80125
+          ]
+        },
+        {
+          "text": "random example,it may not compile!Make sure",
+          "readingOrder": 4007,
+          "normalizedBounds": [
+            0.05138889,
+            0.81,
+            0.9222222,
+            0.828125
+          ]
+        },
+        {
+          "text": "you read the surrounding text to see whether the",
+          "readingOrder": 4008,
+          "normalizedBounds": [
+            0.063194446,
+            0.8346875,
+            0.94027776,
+            0.8528125
+          ]
+        },
+        {
+          "text": "example you're trying to run is meant to error.In",
+          "readingOrder": 4009,
+          "normalizedBounds": [
+            0.050694443,
+            0.86125,
+            0.9291667,
+            0.87875
+          ]
+        },
+        {
+          "text": "most situations,we'll lead you to the correct",
+          "readingOrder": 4010,
+          "normalizedBounds": [
+            0.05277778,
+            0.8865625,
+            0.84444445,
+            0.9025
+          ]
+        },
+        {
+          "text": "version of any code that doesn't compile.Ferris",
+          "readingOrder": 4011,
+          "normalizedBounds": [
+            0.048611112,
+            0.9115625,
+            0.90069443,
+            0.9278125
+          ]
+        }
+      ]
+    }
+  ],
+  "references": [
+    {
+      "groupId": "server-v4-0-4bfe5fd019371b43",
+      "translatedText": "生命周期、trait、类型、函数和闭包。",
+      "detectedSourceLanguage": "en",
+      "targetLanguage": "zh"
+    },
+    {
+      "groupId": "server-v4-1-d4698563c7600026",
+      "translatedText": "在第 21 章中，我们将完成一个项目，在其中实现一个底层的多线程 Web 服务器！",
+      "detectedSourceLanguage": "en",
+      "targetLanguage": "zh"
+    },
+    {
+      "groupId": "server-v4-2-313b750f81edf6db",
+      "translatedText": "最后，附录包含一些以更像参考手册的形式呈现的关于该语言的实用信息。附录 A 介绍了 Rust 的关键字，附录 B 介绍了 Rust 的运算符和符号，附录 C 介绍了标准库提供的可派生 trait，附录 D 介绍了一些实用的开发工具，附录 E 解释了 Rust 的版本。在附录 F 中，您可以找到本书的翻译版，在附录 G 中，我们将介绍 Rust 是如何制作的以及什么是 nightly 版 Rust。",
+      "detectedSourceLanguage": "en",
+      "targetLanguage": "zh"
+    },
+    {
+      "groupId": "server-v4-3-1f727bc967061ddf",
+      "translatedText": "阅读本书没有错误的方式：如果您想跳着看，那就去吧！如果您遇到任何困惑，可能必须跳回之前的章节。但只要适合您就行。",
+      "detectedSourceLanguage": "en",
+      "targetLanguage": "zh"
+    },
+    {
+      "groupId": "server-v4-4-313933cdb7e4295c",
+      "translatedText": "学习 Rust 过程中的一个重要部分是学习如何阅读编译器显示的错误信息：这些信息将引导您写出可以运行的代码。因此，我们将提供许多无法编译的示例，以及编译器在每种情况下会显示给您的错误信息。请记住，如果您输入并运行一个随机的示例，它可能无法编译！请确保阅读周围的文本，以查看您尝试运行的示例是否本来就会出错。在大多数情况下，我们会引导您找到任何无法编译代码的正确版本。Ferris",
+      "detectedSourceLanguage": "en",
+      "targetLanguage": "zh"
+    }
+  ],
+  "max_tokens": 4096
+}

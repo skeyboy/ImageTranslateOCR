@@ -1,0 +1,55 @@
+{
+  "method": {
+    "review_type": "manual source-to-translation comparison",
+    "scope": "preferred inference level for each Top-5 candidate across five cases",
+    "rubric": {
+      "semantic_accuracy": 40,
+      "completeness": 25,
+      "technical_terminology": 20,
+      "fluency_and_ocr_robustness": 15
+    },
+    "ranking_weights": {
+      "semantic_quality": 0.55,
+      "strict_delivery_reliability": 0.30,
+      "cold_start_speed": 0.15
+    }
+  },
+  "models": [
+    {
+      "model": "gemini-3.1-flash-lite",
+      "level": "minimal",
+      "case_scores": [98, 97, 90, 96, 92],
+      "mean_quality": 94.6,
+      "notes": "Fastest and complete on every case. One material terminology issue: ergonomics was translated as 人体工程学 in the Rust context."
+    },
+    {
+      "model": "gpt-5.4-nano",
+      "level": "minimal",
+      "case_scores": [97, 96, 90, 91, 84],
+      "mean_quality": 91.6,
+      "notes": "Complete and generally accurate. Technical terminology was weaker on the longest case, notably translating Rust lifetimes as 寿命."
+    },
+    {
+      "model": "gpt-5.6-terra",
+      "level": "low",
+      "case_scores": [97, 94, 96, 0, 96],
+      "successful_case_mean_quality": 95.8,
+      "delivered_mean_quality": 76.6,
+      "notes": "High quality when a response was delivered, but the 990-character case failed with an empty server reply and no JSON."
+    },
+    {
+      "model": "gpt-5.6-luna",
+      "level": "low",
+      "case_scores": [97, 94, 96, 94, 90],
+      "mean_quality": 94.2,
+      "notes": "Consistent technical translation and complete JSON. It did not reconstruct missing appendix letters from OCR context in the longest case."
+    },
+    {
+      "model": "gpt-5.6-sol",
+      "level": "low",
+      "case_scores": [98, 97, 97, 96, 94],
+      "mean_quality": 96.4,
+      "notes": "Best overall terminology and fluency, including keeping Rust trait as trait. It conservatively avoided inventing missing appendix letters in OCR-damaged text."
+    }
+  ]
+}

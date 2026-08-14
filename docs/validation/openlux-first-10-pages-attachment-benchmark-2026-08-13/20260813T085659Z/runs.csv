@@ -1,0 +1,647 @@
+model,control,level,round,success,http_code,ttft_ms,total_ms,prompt_tokens,completion_tokens,reasoning_tokens,quality_score,json_valid,coverage_valid,literals_valid,schema_valid,terms_hit,terms_total,response_text,error
+gemini-3.1-flash-lite,thinkingLevel,minimal,1,True,200,1847,3218,1620,559,0,100,True,True,True,True,0,0,"{
+  ""translations"": [
+    {
+      ""groupId"": ""server-v4-0-8ad88d30d16509e6"",
+      ""translatedText"": ""Rust 程序……"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-1-6bb52a7f4cfb18ff"",
+      ""translatedText"": ""编程"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-2-6681bf2d82976dac"",
+      ""translatedText"": ""猜谜游戏"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-3-54fa9a3d1b5feb94"",
+      ""translatedText"": ""让我们通过一个实践项目来一起深入学习 Rust！本章将通过一个真实程序展示如何使用 Rust，从而为您介绍几个常见的 Rust 概念。您将学习到 let、match、方法、关联函数、外部 crate 等内容！在接下来的章节中，我们将更详细地探讨这些概念。在本章中，您只需练习基础知识即可。"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-4-41fd2fe54d0d3179"",
+      ""translatedText"": ""我们将实现一个经典的编程入门问题：猜谜游戏。它的工作原理如下：程序会生成一个 100 以内的随机整数。然后它会提示玩家输入一个猜测。输入猜测后，程序会指出猜测是太低还是太高。如果猜测正确，游戏将打印一条祝贺信息并退出。"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-5-900ded218d7ee904"",
+      ""translatedText"": ""建立新项目"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-6-c156d461822b6f12"",
+      ""translatedText"": ""要建立一个新项目，请前往您在第几章中创建的项目目录并执行"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    }
+  ]
+}",
+gemini-3.1-flash-lite,thinkingLevel,low,1,True,200,2145,3421,1620,564,0,100,True,True,True,True,0,0,"{
+  ""translations"": [
+    {
+      ""groupId"": ""server-v4-0-8ad88d30d16509e6"",
+      ""translatedText"": ""Rust 程序……"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-1-6bb52a7f4cfb18ff"",
+      ""translatedText"": ""编程"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-2-6681bf2d82976dac"",
+      ""translatedText"": ""猜谜游戏"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-3-54fa9a3d1b5feb94"",
+      ""translatedText"": ""让我们通过一个实践项目来一起深入学习 Rust！本章将通过展示如何在实际程序中使用一些常见的 Rust 概念来为你进行介绍。你将学习有关 let、match、方法、关联函数、外部 crate 等内容！在接下来的章节中，我们将更详细地探讨这些概念。在本章中，你只需练习基础知识即可。"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-4-41fd2fe54d0d3179"",
+      ""translatedText"": ""我们将实现一个经典的编程入门问题：猜谜游戏。它的工作原理如下：程序将生成一个介于 1 和 100 之间的随机整数。然后它会提示玩家输入一个猜测。在输入猜测后，程序将指出猜测是太低还是太高。如果猜测正确，游戏将打印一条祝贺消息并退出。"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-5-900ded218d7ee904"",
+      ""translatedText"": ""设置新项目"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-6-c156d461822b6f12"",
+      ""translatedText"": ""要设置一个新项目，请转到你在本章中创建的 projects 目录并执行"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    }
+  ]
+}",
+gemini-3.1-flash-lite,thinkingLevel,medium,1,True,200,1778,3061,1620,563,0,100,True,True,True,True,0,0,"{
+  ""translations"": [
+    {
+      ""groupId"": ""server-v4-0-8ad88d30d16509e6"",
+      ""translatedText"": ""Rust 程序……"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-1-6bb52a7f4cfb18ff"",
+      ""translatedText"": ""编程"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-2-6681bf2d82976dac"",
+      ""translatedText"": ""猜谜游戏"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-3-54fa9a3d1b5feb94"",
+      ""translatedText"": ""让我们通过一个实践项目来一起深入学习 Rust！本章将通过展示如何在实际程序中使用一些常见的 Rust 概念来为你进行介绍。你将学习有关 let、match、方法、关联函数、外部 crate 等内容！在接下来的章节中，我们将更详细地探讨这些概念。在本章中，你只需练习基础知识即可。"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-4-41fd2fe54d0d3179"",
+      ""translatedText"": ""我们将实现一个经典的编程入门问题：猜谜游戏。它的工作原理如下：程序将生成一个 1 到 100 之间的随机整数。然后它会提示玩家输入一个猜测。在输入猜测后，程序将指出猜测是太低还是太高。如果猜测正确，游戏将打印一条祝贺信息并退出。"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-5-900ded218d7ee904"",
+      ""translatedText"": ""设置新项目"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-6-c156d461822b6f12"",
+      ""translatedText"": ""要设置一个新项目，请转到你在本章中创建的 projects 目录并进行操作"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    }
+  ]
+}",
+gemini-3.1-flash-lite,thinkingLevel,high,1,True,200,2082,3393,1620,561,0,100,True,True,True,True,0,0,"{
+  ""translations"": [
+    {
+      ""groupId"": ""server-v4-0-8ad88d30d16509e6"",
+      ""translatedText"": ""Rust 程序..."",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-1-6bb52a7f4cfb18ff"",
+      ""translatedText"": ""编程"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-2-6681bf2d82976dac"",
+      ""translatedText"": ""猜谜游戏"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-3-54fa9a3d1b5feb94"",
+      ""translatedText"": ""让我们通过一个实践项目一起来深入了解 Rust！本章通过向你展示如何在实际程序中使用 Rust，来介绍一些常见的 Rust 概念。你将学习到 let、match、方法、关联函数、外部 crate 等知识！在接下来的章节中，我们将更详细地探讨这些概念。在本章中，你只需练习这些基础知识。"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-4-41fd2fe54d0d3179"",
+      ""translatedText"": ""我们将实现一个经典的编程入门问题：猜谜游戏。它的工作原理如下：程序将生成一个介于 1 和 100 之间的随机整数。然后它会提示玩家输入一个猜测。输入猜测后，程序将指出猜测是太低还是太高。如果猜测正确，游戏将打印一条祝贺消息并退出。"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-5-900ded218d7ee904"",
+      ""translatedText"": ""设置新项目"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-6-c156d461822b6f12"",
+      ""translatedText"": ""要设置一个新项目，请转到你在本章中创建的 projects 目录并进行操作"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    }
+  ]
+}",
+gemini-3.5-flash-lite,thinkingLevel,minimal,1,False,200,5863,5972,1619,1888,1567,10,False,False,False,False,0,0,"```json
+{
+  ""translations"": [
+    {
+      ""groupId"": ""server-v4-0-8ad88d30d16509e6"",
+      ""translatedText"": ""Rust 程序..."",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-1-6bb52a7f4cfb18ff"",
+      ""translatedText"": ""编写"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-2-6681bf2d82976dac"",
+      ""translatedText"": ""猜数游戏"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-3-54fa9a3d1b5feb94"",
+      ""translatedText"": ""让我们通过一起动手做一个项目来跳入 Rust 的世界！本章将通过展示如何在实际程序中使用一些常见的 Rust 概念来向你介绍它们。你将学习 let、match、方法、关联函数、外部 crate 等等！在接下来的章节中，我们将更详细地探讨这些概念。在本章中，你将只练习基础知识。"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-4-41fd2fe54d0d3179"",
+      ""translatedText"": ""我们将实现一个",
+gemini-3.5-flash-lite,thinkingLevel,low,1,False,200,5757,5951,1619,1907,1574,10,False,False,False,False,0,0,"```json
+{
+  ""translations"": [
+    {
+      ""groupId"": ""server-v4-0-8ad88d30d16509e6"",
+      ""translatedText"": ""Rust 程序..."",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-1-6bb52a7f4cfb18ff"",
+      ""translatedText"": ""编程"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-2-6681bf2d82976dac"",
+      ""translatedText"": ""猜数游戏"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-3-54fa9a3d1b5feb94"",
+      ""translatedText"": ""让我们通过一起动手完成一个项目来跳入 Rust 的世界！本章将通过展示如何在实际程序中使用它们，来向你介绍一些常见的 Rust 概念。你将学习 let、match、方法、关联函数、外部 crate 等等！在接下来的章节中，我们将更详细地探讨这些概念。而在本章中，你将只练习基础知识。"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-4-41fd2fe54d0d3179"",",
+gemini-3.5-flash-lite,thinkingLevel,medium,1,False,200,5914,5916,1619,1940,1868,10,False,False,False,False,0,0,"An error in the source ""between and 100"": ""在 与 100 之间"" or just ""在 1 和 100 之间"". Let's translate it naturally: ""在 1 到 100 之间"" (since 'between and 100' is a typo in source text",
+gemini-3.5-flash-lite,thinkingLevel,high,1,False,200,4938,4940,1619,1886,1785,10,False,False,False,False,0,0,"```json
+{
+  ""translations"": [
+    {
+      ""groupId"": ""server-v4-0-8ad88d30d16509e6"",
+      ""translatedText"": ""Rust 程序设计..."",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-1-6bb52a7f4cfb18ff"",
+      ""translatedText"": ""编写"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-2-668",
+gpt-5.6-luna,model_suffix,low,1,True,200,3597,6058,1438,454,0,100,True,True,True,True,0,0,"{""translations"":[{""groupId"":""server-v4-0-8ad88d30d16509e6"",""translatedText"":""Rust 程序……"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""groupId"":""server-v4-1-6bb52a7f4cfb18ff"",""translatedText"":""编程"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""groupId"":""server-v4-2-6681bf2d82976dac"",""translatedText"":""猜数字游戏"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""groupId"":""server-v4-3-54fa9a3d1b5feb94"",""translatedText"":""让我们通过一起完成一个实践项目来开始学习 Rust！本章将通过展示如何在实际程序中使用它们，向你介绍一些常见的 Rust 概念。你将了解 let、match、方法、关联函数、外部 crate 等更多内容！在接下来的章节中，我们会更详细地探索这些概念。在本章中，你只需练习基础知识。"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""groupId"":""server-v4-4-41fd2fe54d0d3179"",""translatedText"":""我们将实现一个经典的初学者编程问题：猜数字游戏。它的工作方式如下：程序会生成一个介于 1 和 100 之间的随机整数。然后提示玩家输入猜测值。输入猜测值后，程序会指出猜测值过低还是过高。如果猜对了，游戏将打印祝贺消息并退出。"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""groupId"":""server-v4-5-900ded218d7ee904"",""translatedText"":""设置新项目"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""groupId"":""server-v4-6-c156d461822b6f12"",""translatedText"":""要设置一个新项目，请前往你在第 1 章中创建的项目目录，然后"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""}]}",
+gpt-5.6-luna,model_suffix,medium,1,True,200,5719,7730,1438,598,132,100,True,True,True,True,0,0,"{""translations"":[{""groupId"":""server-v4-0-8ad88d30d16509e6"",""translatedText"":""Rust 程序……"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""groupId"":""server-v4-1-6bb52a7f4cfb18ff"",""translatedText"":""编程"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""groupId"":""server-v4-2-6681bf2d82976dac"",""translatedText"":""猜谜游戏"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""groupId"":""server-v4-3-54fa9a3d1b5feb94"",""translatedText"":""让我们通过一起完成一个动手项目来开始学习 Rust！本章将通过展示如何在实际程序中使用这些概念，向你介绍一些常见的 Rust 概念。你将了解 let、match、方法、关联函数、外部 crate 等更多内容！在接下来的章节中，我们会更详细地探讨这些概念。在本章中，你只需练习基础知识。"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""groupId"":""server-v4-4-41fd2fe54d0d3179"",""translatedText"":""我们将实现一个经典的初学者编程问题：猜谜游戏。它的工作方式如下：程序将生成一个介于某个数和 100 之间的随机整数。然后提示玩家输入一个猜测值。输入猜测值后，程序会指示该猜测值是太小还是太大。如果猜对了，游戏将打印祝贺消息并退出。"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""groupId"":""server-v4-5-900ded218d7ee904"",""translatedText"":""设置新项目"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""groupId"":""server-v4-6-c156d461822b6f12"",""translatedText"":""要设置一个新项目，请转到你在第 章中创建的项目目录，然后"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""}]}",
+gpt-5.6-luna,model_suffix,high,1,True,200,5463,7751,1438,605,142,100,True,True,True,True,0,0,"{""translations"":[{""groupId"":""server-v4-0-8ad88d30d16509e6"",""translatedText"":""Rust 程序……"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""groupId"":""server-v4-1-6bb52a7f4cfb18ff"",""translatedText"":""编程"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""groupId"":""server-v4-2-6681bf2d82976dac"",""translatedText"":""猜数字游戏"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""groupId"":""server-v4-3-54fa9a3d1b5feb94"",""translatedText"":""让我们通过一起完成一个动手项目来开始学习 Rust！本章将通过展示如何在一个实际程序中使用它们，向你介绍一些常见的 Rust 概念。你将了解 let、match、方法、关联函数、外部 crate 等！在接下来的章节中，我们将更详细地探讨这些概念。在本章中，你只需练习基础知识。"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""groupId"":""server-v4-4-41fd2fe54d0d3179"",""translatedText"":""我们将实现一个经典的初学者编程问题：猜数字游戏。它的运行方式如下：程序将生成一个介于 1 和 100 之间的随机整数。然后提示玩家输入一个猜测值。输入猜测值后，程序会指出猜测值太小还是太大。如果猜对了，游戏将打印祝贺消息并退出。"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""groupId"":""server-v4-5-900ded218d7ee904"",""translatedText"":""设置新项目"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""groupId"":""server-v4-6-c156d461822b6f12"",""translatedText"":""要设置一个新项目，请转到你在第 1 章中创建的 projects 目录，然后"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""}]}",
+gpt-5.6-terra,model_suffix,low,1,True,200,2667,5571,1438,458,0,100,True,True,True,True,0,0,"{""translations"":[{""groupId"":""server-v4-0-8ad88d30d16509e6"",""translatedText"":""Rust 程序……"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""groupId"":""server-v4-1-6bb52a7f4cfb18ff"",""translatedText"":""编程"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""groupId"":""server-v4-2-6681bf2d82976dac"",""translatedText"":""猜数字游戏"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""groupId"":""server-v4-3-54fa9a3d1b5feb94"",""translatedText"":""让我们通过一起完成一个动手项目来进入 Rust 的世界！本章将通过展示如何在实际程序中使用它们，向你介绍一些常见的 Rust 概念。你将了解 let、match、方法、关联函数、外部 crate 等内容！在接下来的章节中，我们会更详细地探讨这些概念。本章中，你只需练习基础知识。"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""groupId"":""server-v4-4-41fd2fe54d0d3179"",""translatedText"":""我们将实现一个经典的编程入门问题：猜数字游戏。它的工作方式如下：程序会生成一个介于 1 和 100 之间的随机整数。随后会提示玩家输入一个猜测。输入猜测后，程序会指出猜得太小还是太大。如果猜对了，游戏将打印一条祝贺信息并退出。"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""groupId"":""server-v4-5-900ded218d7ee904"",""translatedText"":""创建新项目"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""groupId"":""server-v4-6-c156d461822b6f12"",""translatedText"":""要创建一个新项目，请前往你在第 1 章中创建的 projects 目录，然后执行"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""}]}",
+gpt-5.6-terra,model_suffix,medium,1,True,200,5799,6138,1438,456,0,100,True,True,True,True,0,0,"{""translations"":[{""groupId"":""server-v4-0-8ad88d30d16509e6"",""translatedText"":""Rust 程序……"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""groupId"":""server-v4-1-6bb52a7f4cfb18ff"",""translatedText"":""编程"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""groupId"":""server-v4-2-6681bf2d82976dac"",""translatedText"":""猜数字游戏"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""groupId"":""server-v4-3-54fa9a3d1b5feb94"",""translatedText"":""让我们一起通过完成一个动手项目来进入 Rust 的世界吧！本章将通过展示如何在实际程序中使用它们，向你介绍一些常见的 Rust 概念。你将了解 let、match、方法、关联函数、外部 crate 等内容！在接下来的章节中，我们会更详细地探讨这些概念。在本章中，你只需练习基础知识。"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""groupId"":""server-v4-4-41fd2fe54d0d3179"",""translatedText"":""我们将实现一个经典的编程入门问题：猜数字游戏。它的工作方式如下：程序会生成一个介于 1 和 100 之间的随机整数。然后会提示玩家输入猜测。输入猜测后，程序会指出猜得太小还是太大。如果猜对了，游戏将打印一条祝贺消息并退出。"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""groupId"":""server-v4-5-900ded218d7ee904"",""translatedText"":""设置新项目"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""groupId"":""server-v4-6-c156d461822b6f12"",""translatedText"":""要设置一个新项目，请前往你在本章中创建的 projects 目录，并执行"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""}]}",
+gpt-5.6-terra,model_suffix,high,1,True,200,2358,5205,1438,460,0,100,True,True,True,True,0,0,"{""translations"":[{""groupId"":""server-v4-0-8ad88d30d16509e6"",""translatedText"":""Rust 程序……"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""groupId"":""server-v4-1-6bb52a7f4cfb18ff"",""translatedText"":""编程"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""groupId"":""server-v4-2-6681bf2d82976dac"",""translatedText"":""猜数字游戏"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""groupId"":""server-v4-3-54fa9a3d1b5feb94"",""translatedText"":""让我们通过一起完成一个动手项目来深入学习 Rust！本章将通过展示如何在实际程序中使用它们，向你介绍一些常见的 Rust 概念。你将学习 let、match、方法、关联函数、外部 crate 等内容！在接下来的章节中，我们会更详细地探讨这些概念。在本章中，你只需练习基础知识。"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""groupId"":""server-v4-4-41fd2fe54d0d3179"",""translatedText"":""我们将实现一个经典的编程初学者问题：猜数字游戏。它的工作方式如下：程序将生成一个介于 1 和 100 之间的随机整数。然后它会提示玩家输入一个猜测。输入猜测后，程序会指出猜测的数字是太小还是太大。如果猜对了，游戏将打印一条祝贺消息并退出。"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""groupId"":""server-v4-5-900ded218d7ee904"",""translatedText"":""设置新项目"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""groupId"":""server-v4-6-c156d461822b6f12"",""translatedText"":""要设置一个新项目，请前往你在本章中创建的 projects 目录，并执行"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""}]}",
+gpt-5.6-sol,model_suffix,low,1,True,200,6575,6937,1438,444,0,100,True,True,True,True,0,0,"{""translations"":[{""groupId"":""server-v4-0-8ad88d30d16509e6"",""translatedText"":""Rust 程序……"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""groupId"":""server-v4-1-6bb52a7f4cfb18ff"",""translatedText"":""编写"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""groupId"":""server-v4-2-6681bf2d82976dac"",""translatedText"":""猜数字游戏"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""groupId"":""server-v4-3-54fa9a3d1b5feb94"",""translatedText"":""让我们通过一起动手完成一个项目来快速入门 Rust！本章将通过展示如何在实际程序中运用一些常见的 Rust 概念来介绍它们。你将学习 let、match、方法、关联函数、外部 crate 等内容！在接下来的章节中，我们会更详细地探讨这些概念。在本章中，你只需练习基础知识。"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""groupId"":""server-v4-4-41fd2fe54d0d3179"",""translatedText"":""我们将实现一个经典的编程入门题目：猜数字游戏。玩法如下：程序会生成一个不超过 100 的随机整数，然后提示玩家输入一个猜测值。输入后，程序会指出猜测值是太小还是太大。如果猜对了，游戏将显示祝贺消息并退出。"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""groupId"":""server-v4-5-900ded218d7ee904"",""translatedText"":""创建新项目"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""groupId"":""server-v4-6-c156d461822b6f12"",""translatedText"":""要创建一个新项目，请进入你在前一章创建的 projects 目录，然后创建"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""}]}",
+gpt-5.6-sol,model_suffix,medium,1,True,200,5896,6193,1438,447,0,100,True,True,True,True,0,0,"{""translations"":[{""groupId"":""server-v4-0-8ad88d30d16509e6"",""translatedText"":""Rust 程序……"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""groupId"":""server-v4-1-6bb52a7f4cfb18ff"",""translatedText"":""编写"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""groupId"":""server-v4-2-6681bf2d82976dac"",""translatedText"":""猜数字游戏"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""groupId"":""server-v4-3-54fa9a3d1b5feb94"",""translatedText"":""让我们通过共同完成一个实践项目来快速上手 Rust！本章将通过展示如何在实际程序中运用一些常见的 Rust 概念，向你介绍这些概念。你将学习 let、match、方法、关联函数、外部 crate 等内容！在后续章节中，我们会更详细地探讨这些概念。本章中，你只需练习基础知识。"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""groupId"":""server-v4-4-41fd2fe54d0d3179"",""translatedText"":""我们将实现一个经典的初学者编程问题：猜数字游戏。游戏的玩法如下：程序会生成一个不超过 100 的随机整数，然后提示玩家输入一个猜测值。输入后，程序会指出猜测值是太小还是太大。如果猜对了，游戏将输出祝贺信息并退出。"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""groupId"":""server-v4-5-900ded218d7ee904"",""translatedText"":""设置新项目"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""groupId"":""server-v4-6-c156d461822b6f12"",""translatedText"":""要设置一个新项目，请前往你在前一章创建的 projects 目录并创建"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""}]}",
+gpt-5.6-sol,model_suffix,high,1,True,200,5691,5990,1438,452,0,100,True,True,True,True,0,0,"{""translations"":[{""groupId"":""server-v4-0-8ad88d30d16509e6"",""translatedText"":""Rust 程序……"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""groupId"":""server-v4-1-6bb52a7f4cfb18ff"",""translatedText"":""编程"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""groupId"":""server-v4-2-6681bf2d82976dac"",""translatedText"":""猜数字游戏"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""groupId"":""server-v4-3-54fa9a3d1b5feb94"",""translatedText"":""让我们通过一起动手完成一个项目来快速入门 Rust！本章将通过展示如何在实际程序中运用一些常见的 Rust 概念，带你初步了解它们。你将学习 let、match、方法、关联函数、外部 crate 等内容！在接下来的章节中，我们会更深入地探讨这些概念。本章中，你只需练习基础知识。"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""groupId"":""server-v4-4-41fd2fe54d0d3179"",""translatedText"":""我们将实现一个经典的初学者编程项目：猜数字游戏。游戏的运作方式如下：程序会生成一个不超过 100 的随机整数，然后提示玩家输入一个猜测值。输入后，程序会指出猜测值是太小还是太大。如果猜对了，游戏将输出祝贺信息并退出。"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""groupId"":""server-v4-5-900ded218d7ee904"",""translatedText"":""创建新项目"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""},{""groupId"":""server-v4-6-c156d461822b6f12"",""translatedText"":""要创建新项目，请前往你在前一章中创建的 projects 目录，然后创建"",""detectedSourceLanguage"":""en"",""targetLanguage"":""zh""}]}",
+gpt-5.4-nano,reasoning_effort,minimal,1,True,200,1730,4220,1438,570,0,100,True,True,True,True,0,0,"{
+  ""translations"": [
+    {
+      ""groupId"": ""server-v4-0-8ad88d30d16509e6"",
+      ""translatedText"": ""Rust 程序..."",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-1-6bb52a7f4cfb18ff"",
+      ""translatedText"": ""编程"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-2-6681bf2d82976dac"",
+      ""translatedText"": ""猜数字游戏"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-3-54fa9a3d1b5feb94"",
+      ""translatedText"": ""让我们通过一起动手做一个项目来进入 Rust！本章将通过展示如何在真实程序中使用这些概念，向你介绍一些常见的 Rust 概念。你将学习 let、match、方法、关联函数、外部 crate 等内容！在接下来的章节中，我们会更详细地探讨这些想法。本章中，你只需要练习这些基础。"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-4-41fd2fe54d0d3179"",
+      ""translatedText"": ""我们将实现一个经典的初学者编程问题：猜数字游戏。它是这样工作的：程序会生成一个介于 100 和 100 之间的随机整数。然后它会提示玩家输入一个猜测。玩家输入猜测后，程序会告知你的猜测是太低还是太高。如果猜测正确，游戏会输出一条祝贺信息并退出。"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-5-900ded218d7ee904"",
+      ""translatedText"": ""设置新项目"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-6-c156d461822b6f12"",
+      ""translatedText"": ""要设置一个新项目，请进入你在第 章节中创建的 projects 目录，然后"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    }
+  ]
+}",
+gpt-5.4-nano,reasoning_effort,high,1,True,200,6704,9339,1438,1529,950,100,True,True,True,True,0,0,"{
+  ""translations"": [
+    {
+      ""groupId"": ""server-v4-0-8ad88d30d16509e6"",
+      ""translatedText"": ""Rust 程序……"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-1-6bb52a7f4cfb18ff"",
+      ""translatedText"": ""编程"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-2-6681bf2d82976dac"",
+      ""translatedText"": ""猜数游戏"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-3-54fa9a3d1b5feb94"",
+      ""translatedText"": ""让我们通过一起完成一个动手项目来进入 Rust！本章将通过向你展示如何在真实程序中使用它们，介绍一些你可能会常遇到的 Rust 概念。你将学习 let、match、methods、associated functions、external crates 等更多内容！在接下来的章节里，我们会更详细地探索这些想法。在本章中，你只需要练习这些基础。"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-4-41fd2fe54d0d3179"",
+      ""translatedText"": ""我们将实现一个经典的初学者编程练习：猜数游戏。它是这样工作的：程序会生成一个位于 1 到 100 之间的随机整数。然后，它会提示玩家输入一个猜测。输入猜测后，程序会告知你的猜测太低还是太高。如果猜测正确，游戏会输出一条祝贺信息并结束。"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-5-900ded218d7ee904"",
+      ""translatedText"": ""设置新项目"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-6-c156d461822b6f12"",
+      ""translatedText"": ""要设置一个新项目，请进入你在本章中创建的 projects 目录，并创建"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    }
+  ]
+}",
+qwen3.5-35b-a3b,reasoning_effort,minimal,1,True,200,2143,6592,1593,599,,100,True,True,True,True,0,0,"{
+  ""translations"": [
+    {
+      ""groupId"": ""server-v4-0-8ad88d30d16509e6"",
+      ""translatedText"": ""Rust 程序..."",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-1-6bb52a7f4cfb18ff"",
+      ""translatedText"": ""编程"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-2-6681bf2d82976dac"",
+      ""translatedText"": ""猜数字游戏"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-3-54fa9a3d1b5feb94"",
+      ""translatedText"": ""让我们通过共同完成一个实践项目来进入 Rust！本章将通过展示如何在实际程序中使用它们，向您介绍一些常见的 Rust 概念。您将学习 let、match、方法、关联函数、外部 crate 等更多内容！在接下来的章节中，我们将更详细地探讨这些概念。在本章中，您只需练习基础知识。"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-4-41fd2fe54d0d3179"",
+      ""translatedText"": ""我们将实现一个经典的初学者编程问题：猜数字游戏。工作原理如下：程序将生成一个介于 1 和 100 之间的随机整数。然后它会提示玩家输入一个猜测。输入猜测后，程序会指示该猜测是太低还是太高。如果猜测正确，游戏将打印祝贺消息并退出。"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-5-900ded218d7ee904"",
+      ""translatedText"": ""设置新项目"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-6-c156d461822b6f12"",
+      ""translatedText"": ""要设置新项目，请转到您在第 100 章中创建的项目目录并进行"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    }
+  ]
+}",
+qwen3.5-35b-a3b,reasoning_effort,high,1,True,200,51111,55366,1591,6568,5968,100,True,True,True,True,0,0,"{
+  ""translations"": [
+    {
+      ""groupId"": ""server-v4-0-8ad88d30d16509e6"",
+      ""translatedText"": ""Rust 编程..."",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-1-6bb52a7f4cfb18ff"",
+      ""translatedText"": ""编程"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-2-6681bf2d82976dac"",
+      ""translatedText"": ""猜数字游戏"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-3-54fa9a3d1b5feb94"",
+      ""translatedText"": ""让我们通过共同完成一个动手项目来进入 Rust！本章将通过展示如何在实际程序中使用它们，向你介绍一些常见的 Rust 概念。你将学习 let、match、方法、关联函数、外部 crate 等更多内容！在接下来的章节中，我们将更详细地探讨这些想法。在本章中，你只需练习基础知识。"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-4-41fd2fe54d0d3179"",
+      ""translatedText"": ""我们将实现一个经典的初学者编程问题：猜数字游戏。工作原理如下：程序将生成一个介于 0 到 100 之间的随机整数。然后它会提示玩家输入猜测。输入猜测后，程序会指示该猜测是太低还是太高。如果猜测正确，游戏将打印一条祝贺消息并退出。"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-5-900ded218d7ee904"",
+      ""translatedText"": ""设置新项目"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    },
+    {
+      ""groupId"": ""server-v4-6-c156d461822b6f12"",
+      ""translatedText"": ""要设置新项目，请前往你在章节中创建的 projects 目录并创建"",
+      ""detectedSourceLanguage"": ""en"",
+      ""targetLanguage"": ""zh""
+    }
+  ]
+}",
+gemini-3.6-flash,thinkingLevel,minimal,1,False,200,3524,3800,1620,1557,0,10,False,False,False,False,0,0,"```json
+{
+  ""translations"": [
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-0-8ad88d30d16509e6"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""Rust 程序设计...""
+    },
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-1-6bb52a7f4cfb18ff"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""编写""
+    },
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-2-6681bf2d82976dac"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""猜数字游戏""
+    },
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-3-54fa9a3d1b5feb94"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""让我们通过共同完成一个动手实践项目来一起体验 Rust 吧！本章将通过展示如何在实际程序中使用一些常见的 Rust 概念来向您进行介绍。您将学习 let、match、方法、关联函数、外部 crate 等内容！在后续的章节中，我们将更详细地探究这些概念。而在本章中，您只需练习基础知识。""
+    },
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-4-41fd2fe54d0d3179"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""我们将实现一个经典的初学者编程问题：猜数字游戏。工作原理如下：程序将生成一个 1 到 100 之间的随机整数。然后它会提示玩家输入一个猜测。在输入猜测后，程序会指示该猜测是偏小还是偏大。如果猜测正确，游戏将打印一条祝贺信息并退出。""
+    },
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-5-900ded218d7ee904"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""创建新项目""
+    },
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-6-c156d461822b6f12"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""要创建一个新项目，请转到您在第 1 章中创建的 projects 目录，并新建""
+    }
+  ]
+}
+```",
+gemini-3.6-flash,thinkingLevel,low,1,False,200,3181,3547,1620,1449,0,10,False,False,False,False,0,0,"```json
+{
+  ""translations"": [
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-0-8ad88d30d16509e6"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""Rust 程序设计语言...""
+    },
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-1-6bb52a7f4cfb18ff"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""编写""
+    },
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-2-6681bf2d82976dac"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""猜数字游戏""
+    },
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-3-54fa9a3d1b5feb94"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""让我们通过共同完成一个动手实践项目来深入学习 Rust 吧！本章将通过展示如何在真实程序中使用一些常见的 Rust 概念来向你进行介绍。你将学习 let、match、方法、关联函数、外部 crate 等知识！在接下来的章节中，我们将更详细地探讨这些概念。而在本章中，你只需练习基础知识。""
+    },
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-4-41fd2fe54d0d3179"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""我们将实现一个经典的初学者编程问题：猜数字游戏。它的运行机制如下：程序将生成一个 1 到 100 之间的随机整数。然后提示玩家输入猜测的数字。输入猜测后，程序会指出猜得偏小还是偏大。如果猜对了，游戏将打印祝贺信息并退出。""
+    },
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-5-900ded218d7ee904"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""设置新项目""
+    },
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-6-c156d461822b6f12"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""要设置新项目，请转到你在前一章创建的 projects 目录并创建""
+    }
+  ]
+}
+```",
+gemini-3.6-flash,thinkingLevel,medium,1,False,200,3384,3690,1620,1480,0,10,False,False,False,False,0,0,"```json
+{
+  ""translations"": [
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-0-8ad88d30d16509e6"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""Rust 程序...""
+    },
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-1-6bb52a7f4cfb18ff"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""编写""
+    },
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-2-6681bf2d82976dac"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""猜数游戏""
+    },
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-3-54fa9a3d1b5feb94"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""让我们通过共同完成一个动手项目来深入了解 Rust 吧！本章将通过展示如何在实际程序中使用它们，向您介绍几个常见的 Rust 概念。您将学习 let、match、方法、关联函数、外部 crate 等内容！在接下来的章节中，我们将更详细地探讨这些概念。而在本章中，您只需练习基础知识。""
+    },
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-4-41fd2fe54d0d3179"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""我们将实现一个经典的初学者编程问题：猜数游戏。它的工作原理如下：程序将生成一个 1 到 100 之间的随机整数。然后提示玩家输入猜测。输入猜测后，程序会指出猜测是偏小还是偏大。如果猜测正确，游戏将打印一条祝贺信息并退出。""
+    },
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-5-900ded218d7ee904"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""设置新项目""
+    },
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-6-c156d461822b6f12"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""要设置新项目，请前往您在前面章节中创建的 projects 目录并新建""
+    }
+  ]
+}
+```",
+gemini-3.6-flash,thinkingLevel,high,1,False,200,3106,3483,1620,1398,0,10,False,False,False,False,0,0,"```json
+{
+  ""translations"": [
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-0-8ad88d30d16509e6"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""Rust 程序设计...""
+    },
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-1-6bb52a7f4cfb18ff"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""编写""
+    },
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-2-6681bf2d82976dac"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""猜数字游戏""
+    },
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-3-54fa9a3d1b5feb94"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""让我们通过共同完成一个实践项目来深入了解 Rust 吧！本章将通过展示如何在实际程序中使用一些常见的 Rust 概念来向你介绍它们。你将了解 let、match、方法、关联函数、外部 crate 等内容！在接下来的章节中，我们将更详细地探讨这些概念。而在本章中，你只需要练习基础知识。""
+    },
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-4-41fd2fe54d0d3179"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""我们将实现一个经典的初学者编程题目：猜数字游戏。它的工作机制如下：程序将生成一个 1 到 100 之间的随机整数，然后提示玩家输入一个猜测值。在输入猜测后，程序会提示该猜测是偏小还是偏大。如果猜测正确，游戏将打印祝贺信息并退出。""
+    },
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-5-900ded218d7ee904"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""创建新项目""
+    },
+    {
+      ""detectedSourceLanguage"": ""en"",
+      ""groupId"": ""server-v4-6-c156d461822b6f12"",
+      ""targetLanguage"": ""zh"",
+      ""translatedText"": ""要创建新项目，请转到你在前面章节中创建的 projects 目录，并执行""
+    }
+  ]
+}
+```",

@@ -1,0 +1,808 @@
+{
+  "case_id": "case-4-l",
+  "bucket": "L 900-1149",
+  "audit_id": "cf6036dc-c36b-40dc-af3d-62d0c79580b6",
+  "input_chars": 990,
+  "group_count": 5,
+  "source_model": "openlux:gpt-4.1",
+  "source_created_at": "2026-08-11T03:45:03.826967+00:00",
+  "system": "You are a professional screen OCR translation engine.\nThe input is one visible screen reconstructed from OCR geometry. Translate each translateGroups item independently and completely, while using documentOutline and neighboring geometry only to disambiguate meaning.\nTreat newline-separated OCR lines inside sourceText as one semantic block. Never imitate OCR line breaks, split a block back into lines, merge keys, borrow text from another key, summarize, or add notes.\nPreserve URLs, identifiers, names, brands, numbers, dates, units, and currencies. Every requiredLiteralIdentifiers item must remain visible verbatim and in the same semantic role.\nFor AUTO_BIDIRECTIONAL translate Chinese natural language to English and non-Chinese natural language to Chinese.\nReturn only the strict JSON object requested by response_format. Return translations as an array. Every input groupId must occur exactly once and every translatedText must be non-empty.",
+  "user_payload": {
+    "documentOutline": [
+      {
+        "groupId": "server-v4-0-5054cd17abf068ed",
+        "readingOrder": 0,
+        "role": "BODY",
+        "sourcePreview": "Ea The Rust Program..."
+      },
+      {
+        "groupId": "server-v4-1-74e35c35858f4a27",
+        "readingOrder": 1000,
+        "role": "BODY",
+        "sourcePreview": "Hello,Cargo!"
+      },
+      {
+        "groupId": "server-v4-2-76203a0b64effcb7",
+        "readingOrder": 2000,
+        "role": "BODY",
+        "sourcePreview": "Cargo is Rust's build system and package manager.Most Rustaceans use thi..."
+      },
+      {
+        "groupId": "server-v4-3-5571698aae3dc483",
+        "readingOrder": 3000,
+        "role": "BODY",
+        "sourcePreview": "The simplest Rust programs,like the one we've written so far,don't have ..."
+      },
+      {
+        "groupId": "server-v4-4-b4ad92d7368a44d5",
+        "readingOrder": 4000,
+        "role": "BODY",
+        "sourcePreview": "Because the vast majority of Rust projects use Cargo,the rest of this bo..."
+      }
+    ],
+    "scene": "LIVE_SCREEN",
+    "task": "Translate every translateGroups entry as one complete semantic unit. Geometry is context; the server creates layout.",
+    "translateGroups": [
+      {
+        "groupId": "server-v4-0-5054cd17abf068ed",
+        "layoutShape": "RECT",
+        "normalizedBounds": [
+          0.03750000149011612,
+          0.11874999850988388,
+          0.7909722328186035,
+          0.14624999463558197
+        ],
+        "readingOrder": 0,
+        "regionLines": [
+          {
+            "normalizedBounds": [
+              0.03750000149011612,
+              0.11874999850988388,
+              0.7909722328186035,
+              0.14624999463558197
+            ],
+            "readingOrder": 0,
+            "regionId": "semantic-cad9bab8-region-0"
+          }
+        ],
+        "renderSlots": [
+          [
+            0.03750000149011612,
+            0.11874999850988388,
+            0.7909722328186035,
+            0.14624999463558197
+          ]
+        ],
+        "requiredLiteralIdentifiers": [],
+        "role": "BODY",
+        "sourceLanguage": "en",
+        "sourceText": "Ea The Rust Program...",
+        "targetLanguage": "zh"
+      },
+      {
+        "groupId": "server-v4-1-74e35c35858f4a27",
+        "layoutShape": "RECT",
+        "normalizedBounds": [
+          0.05277777835726738,
+          0.23468750715255737,
+          0.41111111640930176,
+          0.25999999046325684
+        ],
+        "readingOrder": 1000,
+        "regionLines": [
+          {
+            "normalizedBounds": [
+              0.05277777835726738,
+              0.23468750715255737,
+              0.41111111640930176,
+              0.25999999046325684
+            ],
+            "readingOrder": 1000,
+            "regionId": "semantic-e304a413-region-0"
+          }
+        ],
+        "renderSlots": [
+          [
+            0.05277777835726738,
+            0.23468750715255737,
+            0.41111111640930176,
+            0.25999999046325684
+          ]
+        ],
+        "requiredLiteralIdentifiers": [],
+        "role": "BODY",
+        "sourceLanguage": "en",
+        "sourceText": "Hello,Cargo!",
+        "targetLanguage": "zh"
+      },
+      {
+        "groupId": "server-v4-2-76203a0b64effcb7",
+        "layoutShape": "RECT",
+        "normalizedBounds": [
+          0.0486111119389534,
+          0.29093751311302185,
+          0.9333333373069763,
+          0.4612500071525574
+        ],
+        "readingOrder": 2000,
+        "regionLines": [
+          {
+            "normalizedBounds": [
+              0.05069444328546524,
+              0.29093751311302185,
+              0.7854166626930237,
+              0.30906251072883606
+            ],
+            "readingOrder": 2000,
+            "regionId": "semantic-2975aee1-region-0"
+          },
+          {
+            "normalizedBounds": [
+              0.05277777835726738,
+              0.3165625035762787,
+              0.8138889074325562,
+              0.3334375023841858
+            ],
+            "readingOrder": 2001,
+            "regionId": "semantic-2975aee1-region-1"
+          },
+          {
+            "normalizedBounds": [
+              0.05277777835726738,
+              0.34156250953674316,
+              0.8111110925674438,
+              0.3596875071525574
+            ],
+            "readingOrder": 2002,
+            "regionId": "semantic-2975aee1-region-2"
+          },
+          {
+            "normalizedBounds": [
+              0.05138888955116272,
+              0.3668749928474426,
+              0.8805555701255798,
+              0.3843750059604645
+            ],
+            "readingOrder": 2003,
+            "regionId": "semantic-2975aee1-region-3"
+          },
+          {
+            "normalizedBounds": [
+              0.0486111119389534,
+              0.39281249046325684,
+              0.8999999761581421,
+              0.4099999964237213
+            ],
+            "readingOrder": 2004,
+            "regionId": "semantic-2975aee1-region-4"
+          },
+          {
+            "normalizedBounds": [
+              0.05069444328546524,
+              0.4165624976158142,
+              0.9333333373069763,
+              0.43531250953674316
+            ],
+            "readingOrder": 2005,
+            "regionId": "semantic-2975aee1-region-5"
+          },
+          {
+            "normalizedBounds": [
+              0.04930555447936058,
+              0.44343748688697815,
+              0.9222221970558167,
+              0.4612500071525574
+            ],
+            "readingOrder": 2006,
+            "regionId": "semantic-2975aee1-region-6"
+          }
+        ],
+        "renderSlots": [
+          [
+            0.0486111119389534,
+            0.29093751311302185,
+            0.9333333373069763,
+            0.4612500071525574
+          ]
+        ],
+        "requiredLiteralIdentifiers": [],
+        "role": "BODY",
+        "sourceLanguage": "en",
+        "sourceText": "Cargo is Rust's build system and package\nmanager.Most Rustaceans use this tool to\nmanage their Rust projects because Cargo\nhandles lot of tasks for you,such as building\nyour code,downloading the libraries your code\ndepends on,and building those libraries.(We call\nthe libraries that your code needs dependencies.)",
+        "targetLanguage": "zh"
+      },
+      {
+        "groupId": "server-v4-3-5571698aae3dc483",
+        "layoutShape": "RECT",
+        "normalizedBounds": [
+          0.04930555447936058,
+          0.48656249046325684,
+          0.9423611164093018,
+          0.6815624833106995
+        ],
+        "readingOrder": 3000,
+        "regionLines": [
+          {
+            "normalizedBounds": [
+              0.04930555447936058,
+              0.48656249046325684,
+              0.893750011920929,
+              0.5040624737739563
+            ],
+            "readingOrder": 3000,
+            "regionId": "semantic-e9d267f3-region-0"
+          },
+          {
+            "normalizedBounds": [
+              0.04930555447936058,
+              0.5112500190734863,
+              0.9423611164093018,
+              0.528124988079071
+            ],
+            "readingOrder": 3001,
+            "regionId": "semantic-e9d267f3-region-1"
+          },
+          {
+            "normalizedBounds": [
+              0.05138888955116272,
+              0.5368750095367432,
+              0.9277777671813965,
+              0.5540624856948853
+            ],
+            "readingOrder": 3002,
+            "regionId": "semantic-e9d267f3-region-2"
+          },
+          {
+            "normalizedBounds": [
+              0.04930555447936058,
+              0.5621874928474426,
+              0.8743055462837219,
+              0.5803124904632568
+            ],
+            "readingOrder": 3003,
+            "regionId": "semantic-e9d267f3-region-3"
+          },
+          {
+            "normalizedBounds": [
+              0.05138888955116272,
+              0.5878124833106995,
+              0.8965277671813965,
+              0.6059374809265137
+            ],
+            "readingOrder": 3004,
+            "regionId": "semantic-e9d267f3-region-4"
+          },
+          {
+            "normalizedBounds": [
+              0.05138888955116272,
+              0.6100000143051147,
+              0.8951388597488403,
+              0.6299999952316284
+            ],
+            "readingOrder": 3005,
+            "regionId": "semantic-e9d267f3-region-5"
+          },
+          {
+            "normalizedBounds": [
+              0.06111111119389534,
+              0.637499988079071,
+              0.7472222447395325,
+              0.65625
+            ],
+            "readingOrder": 3006,
+            "regionId": "semantic-e9d267f3-region-6"
+          },
+          {
+            "normalizedBounds": [
+              0.05069444328546524,
+              0.6618750095367432,
+              0.7715277671813965,
+              0.6815624833106995
+            ],
+            "readingOrder": 3007,
+            "regionId": "semantic-e9d267f3-region-7"
+          }
+        ],
+        "renderSlots": [
+          [
+            0.04930555447936058,
+            0.48656249046325684,
+            0.9423611164093018,
+            0.6815624833106995
+          ]
+        ],
+        "requiredLiteralIdentifiers": [],
+        "role": "BODY",
+        "sourceLanguage": "en",
+        "sourceText": "The simplest Rust programs,like the one we've\nwritten so far,don't have any dependencies.If we\nhad built the\"Hello,world!\"project with Cargo,it\nwould only use the part of Cargo that handles\nbuilding your code.As youwrite more complex\nRust programs,you'll add dependencies,and if\nyoustart a project using Cargo,adding\ndependencies will be much easier to do.",
+        "targetLanguage": "zh"
+      },
+      {
+        "groupId": "server-v4-4-b4ad92d7368a44d5",
+        "layoutShape": "RECT",
+        "normalizedBounds": [
+          0.05069444328546524,
+          0.7065625190734863,
+          0.9444444179534912,
+          0.8500000238418579
+        ],
+        "readingOrder": 4000,
+        "regionLines": [
+          {
+            "normalizedBounds": [
+              0.05277777835726738,
+              0.7065625190734863,
+              0.8777777552604675,
+              0.7243750095367432
+            ],
+            "readingOrder": 4000,
+            "regionId": "semantic-f496630e-region-0"
+          },
+          {
+            "normalizedBounds": [
+              0.05069444328546524,
+              0.7318750023841858,
+              0.9104166626930237,
+              0.7490624785423279
+            ],
+            "readingOrder": 4001,
+            "regionId": "semantic-f496630e-region-1"
+          },
+          {
+            "normalizedBounds": [
+              0.05138888955116272,
+              0.7559375166893005,
+              0.9298611283302307,
+              0.7756249904632568
+            ],
+            "readingOrder": 4002,
+            "regionId": "semantic-f496630e-region-2"
+          },
+          {
+            "normalizedBounds": [
+              0.05138888955116272,
+              0.7803124785423279,
+              0.918055534362793,
+              0.7987499833106995
+            ],
+            "readingOrder": 4003,
+            "regionId": "semantic-f496630e-region-3"
+          },
+          {
+            "normalizedBounds": [
+              0.05486110970377922,
+              0.8068749904632568,
+              0.9444444179534912,
+              0.824999988079071
+            ],
+            "readingOrder": 4004,
+            "regionId": "semantic-f496630e-region-4"
+          },
+          {
+            "normalizedBounds": [
+              0.05069444328546524,
+              0.8337500095367432,
+              0.8270833492279053,
+              0.8500000238418579
+            ],
+            "readingOrder": 4005,
+            "regionId": "semantic-f496630e-region-5"
+          }
+        ],
+        "renderSlots": [
+          [
+            0.05069444328546524,
+            0.7065625190734863,
+            0.9444444179534912,
+            0.8500000238418579
+          ]
+        ],
+        "requiredLiteralIdentifiers": [],
+        "role": "BODY",
+        "sourceLanguage": "en",
+        "sourceText": "Because the vast majority of Rust projects use\nCargo,the rest of this book assumes that you're\nusing Cargo too.Cargo comes installed with Rust\nif you used the official installers discussed in the\n\"Installation\"section.If you installed Rust through\nSome other means,check whether Cargo is",
+        "targetLanguage": "zh"
+      }
+    ],
+    "translationMode": "AUTO_BIDIRECTIONAL",
+    "viewport": {
+      "height": 3200,
+      "width": 1440
+    }
+  },
+  "groups": [
+    {
+      "groupId": "server-v4-0-5054cd17abf068ed",
+      "layoutShape": "RECT",
+      "normalizedBounds": [
+        0.03750000149011612,
+        0.11874999850988388,
+        0.7909722328186035,
+        0.14624999463558197
+      ],
+      "readingOrder": 0,
+      "regionLines": [
+        {
+          "normalizedBounds": [
+            0.03750000149011612,
+            0.11874999850988388,
+            0.7909722328186035,
+            0.14624999463558197
+          ],
+          "readingOrder": 0,
+          "regionId": "semantic-cad9bab8-region-0"
+        }
+      ],
+      "renderSlots": [
+        [
+          0.03750000149011612,
+          0.11874999850988388,
+          0.7909722328186035,
+          0.14624999463558197
+        ]
+      ],
+      "requiredLiteralIdentifiers": [],
+      "role": "BODY",
+      "sourceLanguage": "en",
+      "sourceText": "Ea The Rust Program...",
+      "targetLanguage": "zh"
+    },
+    {
+      "groupId": "server-v4-1-74e35c35858f4a27",
+      "layoutShape": "RECT",
+      "normalizedBounds": [
+        0.05277777835726738,
+        0.23468750715255737,
+        0.41111111640930176,
+        0.25999999046325684
+      ],
+      "readingOrder": 1000,
+      "regionLines": [
+        {
+          "normalizedBounds": [
+            0.05277777835726738,
+            0.23468750715255737,
+            0.41111111640930176,
+            0.25999999046325684
+          ],
+          "readingOrder": 1000,
+          "regionId": "semantic-e304a413-region-0"
+        }
+      ],
+      "renderSlots": [
+        [
+          0.05277777835726738,
+          0.23468750715255737,
+          0.41111111640930176,
+          0.25999999046325684
+        ]
+      ],
+      "requiredLiteralIdentifiers": [],
+      "role": "BODY",
+      "sourceLanguage": "en",
+      "sourceText": "Hello,Cargo!",
+      "targetLanguage": "zh"
+    },
+    {
+      "groupId": "server-v4-2-76203a0b64effcb7",
+      "layoutShape": "RECT",
+      "normalizedBounds": [
+        0.0486111119389534,
+        0.29093751311302185,
+        0.9333333373069763,
+        0.4612500071525574
+      ],
+      "readingOrder": 2000,
+      "regionLines": [
+        {
+          "normalizedBounds": [
+            0.05069444328546524,
+            0.29093751311302185,
+            0.7854166626930237,
+            0.30906251072883606
+          ],
+          "readingOrder": 2000,
+          "regionId": "semantic-2975aee1-region-0"
+        },
+        {
+          "normalizedBounds": [
+            0.05277777835726738,
+            0.3165625035762787,
+            0.8138889074325562,
+            0.3334375023841858
+          ],
+          "readingOrder": 2001,
+          "regionId": "semantic-2975aee1-region-1"
+        },
+        {
+          "normalizedBounds": [
+            0.05277777835726738,
+            0.34156250953674316,
+            0.8111110925674438,
+            0.3596875071525574
+          ],
+          "readingOrder": 2002,
+          "regionId": "semantic-2975aee1-region-2"
+        },
+        {
+          "normalizedBounds": [
+            0.05138888955116272,
+            0.3668749928474426,
+            0.8805555701255798,
+            0.3843750059604645
+          ],
+          "readingOrder": 2003,
+          "regionId": "semantic-2975aee1-region-3"
+        },
+        {
+          "normalizedBounds": [
+            0.0486111119389534,
+            0.39281249046325684,
+            0.8999999761581421,
+            0.4099999964237213
+          ],
+          "readingOrder": 2004,
+          "regionId": "semantic-2975aee1-region-4"
+        },
+        {
+          "normalizedBounds": [
+            0.05069444328546524,
+            0.4165624976158142,
+            0.9333333373069763,
+            0.43531250953674316
+          ],
+          "readingOrder": 2005,
+          "regionId": "semantic-2975aee1-region-5"
+        },
+        {
+          "normalizedBounds": [
+            0.04930555447936058,
+            0.44343748688697815,
+            0.9222221970558167,
+            0.4612500071525574
+          ],
+          "readingOrder": 2006,
+          "regionId": "semantic-2975aee1-region-6"
+        }
+      ],
+      "renderSlots": [
+        [
+          0.0486111119389534,
+          0.29093751311302185,
+          0.9333333373069763,
+          0.4612500071525574
+        ]
+      ],
+      "requiredLiteralIdentifiers": [],
+      "role": "BODY",
+      "sourceLanguage": "en",
+      "sourceText": "Cargo is Rust's build system and package\nmanager.Most Rustaceans use this tool to\nmanage their Rust projects because Cargo\nhandles lot of tasks for you,such as building\nyour code,downloading the libraries your code\ndepends on,and building those libraries.(We call\nthe libraries that your code needs dependencies.)",
+      "targetLanguage": "zh"
+    },
+    {
+      "groupId": "server-v4-3-5571698aae3dc483",
+      "layoutShape": "RECT",
+      "normalizedBounds": [
+        0.04930555447936058,
+        0.48656249046325684,
+        0.9423611164093018,
+        0.6815624833106995
+      ],
+      "readingOrder": 3000,
+      "regionLines": [
+        {
+          "normalizedBounds": [
+            0.04930555447936058,
+            0.48656249046325684,
+            0.893750011920929,
+            0.5040624737739563
+          ],
+          "readingOrder": 3000,
+          "regionId": "semantic-e9d267f3-region-0"
+        },
+        {
+          "normalizedBounds": [
+            0.04930555447936058,
+            0.5112500190734863,
+            0.9423611164093018,
+            0.528124988079071
+          ],
+          "readingOrder": 3001,
+          "regionId": "semantic-e9d267f3-region-1"
+        },
+        {
+          "normalizedBounds": [
+            0.05138888955116272,
+            0.5368750095367432,
+            0.9277777671813965,
+            0.5540624856948853
+          ],
+          "readingOrder": 3002,
+          "regionId": "semantic-e9d267f3-region-2"
+        },
+        {
+          "normalizedBounds": [
+            0.04930555447936058,
+            0.5621874928474426,
+            0.8743055462837219,
+            0.5803124904632568
+          ],
+          "readingOrder": 3003,
+          "regionId": "semantic-e9d267f3-region-3"
+        },
+        {
+          "normalizedBounds": [
+            0.05138888955116272,
+            0.5878124833106995,
+            0.8965277671813965,
+            0.6059374809265137
+          ],
+          "readingOrder": 3004,
+          "regionId": "semantic-e9d267f3-region-4"
+        },
+        {
+          "normalizedBounds": [
+            0.05138888955116272,
+            0.6100000143051147,
+            0.8951388597488403,
+            0.6299999952316284
+          ],
+          "readingOrder": 3005,
+          "regionId": "semantic-e9d267f3-region-5"
+        },
+        {
+          "normalizedBounds": [
+            0.06111111119389534,
+            0.637499988079071,
+            0.7472222447395325,
+            0.65625
+          ],
+          "readingOrder": 3006,
+          "regionId": "semantic-e9d267f3-region-6"
+        },
+        {
+          "normalizedBounds": [
+            0.05069444328546524,
+            0.6618750095367432,
+            0.7715277671813965,
+            0.6815624833106995
+          ],
+          "readingOrder": 3007,
+          "regionId": "semantic-e9d267f3-region-7"
+        }
+      ],
+      "renderSlots": [
+        [
+          0.04930555447936058,
+          0.48656249046325684,
+          0.9423611164093018,
+          0.6815624833106995
+        ]
+      ],
+      "requiredLiteralIdentifiers": [],
+      "role": "BODY",
+      "sourceLanguage": "en",
+      "sourceText": "The simplest Rust programs,like the one we've\nwritten so far,don't have any dependencies.If we\nhad built the\"Hello,world!\"project with Cargo,it\nwould only use the part of Cargo that handles\nbuilding your code.As youwrite more complex\nRust programs,you'll add dependencies,and if\nyoustart a project using Cargo,adding\ndependencies will be much easier to do.",
+      "targetLanguage": "zh"
+    },
+    {
+      "groupId": "server-v4-4-b4ad92d7368a44d5",
+      "layoutShape": "RECT",
+      "normalizedBounds": [
+        0.05069444328546524,
+        0.7065625190734863,
+        0.9444444179534912,
+        0.8500000238418579
+      ],
+      "readingOrder": 4000,
+      "regionLines": [
+        {
+          "normalizedBounds": [
+            0.05277777835726738,
+            0.7065625190734863,
+            0.8777777552604675,
+            0.7243750095367432
+          ],
+          "readingOrder": 4000,
+          "regionId": "semantic-f496630e-region-0"
+        },
+        {
+          "normalizedBounds": [
+            0.05069444328546524,
+            0.7318750023841858,
+            0.9104166626930237,
+            0.7490624785423279
+          ],
+          "readingOrder": 4001,
+          "regionId": "semantic-f496630e-region-1"
+        },
+        {
+          "normalizedBounds": [
+            0.05138888955116272,
+            0.7559375166893005,
+            0.9298611283302307,
+            0.7756249904632568
+          ],
+          "readingOrder": 4002,
+          "regionId": "semantic-f496630e-region-2"
+        },
+        {
+          "normalizedBounds": [
+            0.05138888955116272,
+            0.7803124785423279,
+            0.918055534362793,
+            0.7987499833106995
+          ],
+          "readingOrder": 4003,
+          "regionId": "semantic-f496630e-region-3"
+        },
+        {
+          "normalizedBounds": [
+            0.05486110970377922,
+            0.8068749904632568,
+            0.9444444179534912,
+            0.824999988079071
+          ],
+          "readingOrder": 4004,
+          "regionId": "semantic-f496630e-region-4"
+        },
+        {
+          "normalizedBounds": [
+            0.05069444328546524,
+            0.8337500095367432,
+            0.8270833492279053,
+            0.8500000238418579
+          ],
+          "readingOrder": 4005,
+          "regionId": "semantic-f496630e-region-5"
+        }
+      ],
+      "renderSlots": [
+        [
+          0.05069444328546524,
+          0.7065625190734863,
+          0.9444444179534912,
+          0.8500000238418579
+        ]
+      ],
+      "requiredLiteralIdentifiers": [],
+      "role": "BODY",
+      "sourceLanguage": "en",
+      "sourceText": "Because the vast majority of Rust projects use\nCargo,the rest of this book assumes that you're\nusing Cargo too.Cargo comes installed with Rust\nif you used the official installers discussed in the\n\"Installation\"section.If you installed Rust through\nSome other means,check whether Cargo is",
+      "targetLanguage": "zh"
+    }
+  ],
+  "references": [
+    {
+      "groupId": "server-v4-0-5054cd17abf068ed",
+      "translatedText": "Ea Rust 程序...",
+      "detectedSourceLanguage": "en",
+      "targetLanguage": "zh"
+    },
+    {
+      "groupId": "server-v4-1-74e35c35858f4a27",
+      "translatedText": "你好，Cargo！",
+      "detectedSourceLanguage": "en",
+      "targetLanguage": "zh"
+    },
+    {
+      "groupId": "server-v4-2-76203a0b64effcb7",
+      "translatedText": "Cargo 是 Rust 的构建系统和包管理器。大多数 Rustaceans 使用这个工具来管理他们的 Rust 项目，因为 Cargo 为你处理了许多任务，比如构建你的代码、下载你的代码所依赖的库，以及构建这些库。（我们称你的代码需要的库为依赖项。）",
+      "detectedSourceLanguage": "en",
+      "targetLanguage": "zh"
+    },
+    {
+      "groupId": "server-v4-3-5571698aae3dc483",
+      "translatedText": "最简单的 Rust 程序，比如我们目前写的那个，并没有任何依赖。如果我们用 Cargo 构建“Hello, world!”项目，它只会使用 Cargo 中负责构建代码的部分。随着你编写更复杂的 Rust 程序，你会添加依赖项，如果你用 Cargo 启动一个项目，添加依赖项会变得容易得多。",
+      "detectedSourceLanguage": "en",
+      "targetLanguage": "zh"
+    },
+    {
+      "groupId": "server-v4-4-b4ad92d7368a44d5",
+      "translatedText": "由于绝大多数 Rust 项目都使用 Cargo，本书的其余部分也假定你在使用 Cargo。如果你使用“安装”章节中介绍的官方安装程序安装了 Rust，Cargo 会随 Rust 一起安装。如果你通过其他方式安装了 Rust，请检查是否有 Cargo。",
+      "detectedSourceLanguage": "en",
+      "targetLanguage": "zh"
+    }
+  ],
+  "max_tokens": 1854
+}
