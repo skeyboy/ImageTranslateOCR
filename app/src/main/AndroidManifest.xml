@@ -16,7 +16,7 @@
     <application
         android:name=".App"
         android:allowBackup="true"
-        android:icon="@mipmap/ic_launcher"
+        android:icon="@drawable/ic_translate"
         android:label="图片翻译"
         android:theme="@style/Theme.ImageTranslate">
         <provider

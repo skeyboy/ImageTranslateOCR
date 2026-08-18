@@ -1,5 +1,6 @@
 package com.example.imagetranslate.translate
 
+import android.content.Context
 import com.example.imagetranslate.BuildConfig
 import kotlinx.coroutines.suspendCancellableCoroutine
 import org.json.JSONArray
@@ -17,15 +18,17 @@ import kotlin.coroutines.resumeWithException
 internal class SelfHostedSemanticTranslationProvider(
     baseUrl: String,
     private val bearerToken: String?,
-    private val schemaVersion: Int = SELF_HOSTED_V3_SCHEMA_VERSION
+    private val schemaVersion: Int = SELF_HOSTED_V3_SCHEMA_VERSION,
+    endpointPath: String? = null,
+    private val context: Context? = null
 ) : SemanticTranslationProvider {
     private val normalizedBaseUrl = baseUrl.trimEnd('/')
     private val endpoint = URL(
-        normalizedBaseUrl + if (schemaVersion == SELF_HOSTED_V4_SCHEMA_VERSION) {
+        normalizedBaseUrl + (endpointPath ?: if (schemaVersion == SELF_HOSTED_V4_SCHEMA_VERSION) {
             SELF_HOSTED_REGIONS_FIRST_PATH
         } else {
             SELF_HOSTED_LAYOUT_PLAN_PATH
-        }
+        })
     ).also {
         require(schemaVersion in setOf(SELF_HOSTED_V3_SCHEMA_VERSION, SELF_HOSTED_V4_SCHEMA_VERSION)) {
             "Unsupported self-hosted semantic schema version"
@@ -43,12 +46,40 @@ internal class SelfHostedSemanticTranslationProvider(
         request: SemanticTranslationRequest
     ): SemanticTranslationBatchResult {
         check(!closed.get()) { "Self-hosted translation provider is closed" }
-        val responseText = executeRequest(buildRequestBody(request), request.requestId)
-        return parseResponse(JSONObject(responseText), request)
+        val requestBody = buildRequestBody(request)
+        var responseText: String? = null
+        return try {
+            responseText = executeRequest(requestBody, request.requestId)
+            val parsed = parseResponse(JSONObject(responseText), request)
+            context?.let {
+                TranslationRequestArchiveStore.recordExchange(
+                    context = it,
+                    requestJson = requestBody,
+                    responseJson = responseText,
+                    provider = "local-server"
+                )
+            }
+            parsed
+        } catch (error: Exception) {
+            context?.let {
+                runCatching {
+                    TranslationRequestArchiveStore.recordExchange(
+                        context = it,
+                        requestJson = requestBody,
+                        responseJson = responseText,
+                        provider = "local-server",
+                        errorMessage = error.message ?: "Local server translation failed"
+                    )
+                }
+            }
+            throw error
+        }
     }
 
     internal fun requestBodyForTest(request: SemanticTranslationRequest): String =
         buildRequestBody(request)
+
+    internal fun endpointForTest(): String = endpoint.toString()
 
     internal fun parseResponseForTest(
         response: String,
@@ -77,6 +108,14 @@ internal class SelfHostedSemanticTranslationProvider(
                 .put("targetLanguage", targetLanguageForMode(request.mode))
                 .put("preserveIdentifiers", true)
                 .put("useDocumentContext", true)
+                .put("directStructuredOutput", request.directStructuredOutput)
+                .put("compactProviderPrompt", request.compactProviderPrompt)
+                .apply {
+                    request.thinkingControlMode?.let {
+                        put("thinkingControlMode", it.name)
+                    }
+                    request.thinkingLevel?.let { put("thinkingLevel", it) }
+                }
         )
         .put(
             "documentContext",

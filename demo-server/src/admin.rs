@@ -1,15 +1,20 @@
 use axum::{
-    Form,
+    Form, Json,
+    body::Bytes,
     extract::{Path, Query, State},
     http::{HeaderMap, StatusCode, header},
     response::{Html, IntoResponse, Redirect, Response},
 };
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 use serde::Deserialize;
+use std::collections::HashMap;
 
 use crate::{
+    archive_import::import_archive,
     config::{Config, TranslationProvider},
-    database::{PaginatedRequestAudits, RequestRecord, schema_version_from_request_json},
+    database::{
+        PaginatedRequestAudits, RequestPayload, RequestRecord, schema_version_from_request_json,
+    },
     qwen::TranslationProviderStatus,
     routes::AppState,
 };
@@ -18,6 +23,24 @@ const DEFAULT_HISTORY_PAGE_SIZE: i64 = 20;
 
 pub async fn admin_root() -> Redirect {
     Redirect::temporary("/admin/requests")
+}
+
+pub async fn import_request_archive(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    body: Bytes,
+) -> Response {
+    if !admin_authorized(&headers, state.config.bearer_token.as_deref()) {
+        return unauthorized();
+    }
+    match import_archive(&state, &body).await {
+        Ok(audit_id) => Json(serde_json::json!({
+            "auditId": audit_id,
+            "location": format!("/admin/requests/{audit_id}")
+        }))
+        .into_response(),
+        Err(error) => (StatusCode::BAD_REQUEST, error.to_string()).into_response(),
+    }
 }
 
 #[derive(Default, Deserialize)]
@@ -40,7 +63,7 @@ pub async fn request_history(
     let selected_status = filter
         .status
         .as_deref()
-        .filter(|status| matches!(*status, "SUCCEEDED" | "FAILED" | "CANCELLED"));
+        .filter(|status| matches!(*status, "SUCCEEDED" | "PARTIAL" | "FAILED" | "CANCELLED"));
     let selected_version = filter
         .version
         .as_deref()
@@ -63,14 +86,27 @@ pub async fn request_history(
         )
         .await
     {
-        Ok(audits) => Html(history_page(
-            audits,
-            state.config.request_history_limit,
-            selected_status,
-            selected_version,
-            &provider_statuses,
-        ))
-        .into_response(),
+        Ok(audits) => {
+            let audit_ids = audits
+                .items
+                .iter()
+                .map(|item| item.audit.id.clone())
+                .collect::<Vec<_>>();
+            let payloads = state
+                .database
+                .request_payloads_for_audits(&audit_ids)
+                .await
+                .unwrap_or_default();
+            Html(history_page(
+                audits,
+                &payloads,
+                state.config.request_history_limit,
+                selected_status,
+                selected_version,
+                &provider_statuses,
+            ))
+            .into_response()
+        }
         Err(error) => server_error(error.to_string()),
     }
 }
@@ -90,7 +126,11 @@ pub async fn select_translation_provider(
         return unauthorized();
     }
     let Some(provider) = TranslationProvider::parse(&selection.provider) else {
-        return (StatusCode::BAD_REQUEST, "provider must be qwen or openlux").into_response();
+        return (
+            StatusCode::BAD_REQUEST,
+            "provider must be qwen, openlux, or gemini-native",
+        )
+            .into_response();
     };
     match state.models.select(provider, &selection.model).await {
         Ok(()) => (
@@ -208,6 +248,7 @@ pub async fn admin_script() -> impl IntoResponse {
 
 fn history_page(
     pagination: PaginatedRequestAudits,
+    payloads: &HashMap<String, RequestPayload>,
     history_limit: i64,
     selected_status: Option<&str>,
     selected_version: Option<u32>,
@@ -234,7 +275,7 @@ fn history_page(
                         <td class=\"numeric\">{chars}</td>\
                         <td>{model}</td>\
                         <td class=\"numeric\">{duration} ms</td>\
-                        <td><time>{created}</time></td>\
+                        <td>{created}</td>\
                     </tr>",
                     id = escape_html(&audit.id),
                     request_id = escape_html(&audit.request_id),
@@ -247,7 +288,7 @@ fn history_page(
                     chars = audit.input_chars,
                     model = escape_html(&audit.model),
                     duration = audit.duration_ms,
-                    created = escape_html(&audit.created_at),
+                    created = timestamp_html(&audit.created_at),
                 )
             })
             .collect::<Vec<_>>()
@@ -261,12 +302,13 @@ fn history_page(
     let range_end = (pagination.page * pagination.page_size).min(pagination.total as i64) as usize;
     let pagination_controls = pagination_controls(&pagination, selected_status, selected_version);
     let provider_controls = provider_controls(provider_statuses);
+    let reasoning_statistics = reasoning_statistics_html(&pagination, payloads);
     page_shell(
         "请求历史",
         &format!(
             "<header class=\"topbar\">\
                 <div><span class=\"product\">OCR Translation Trace</span><h1>请求历史</h1></div>\
-                <div class=\"topbar-actions\">{provider_controls}<a class=\"health-link\" href=\"/healthz\">服务状态</a></div>\
+                <div class=\"topbar-actions\">{provider_controls}<div class=\"archive-import\"><input id=\"archive-import-file\" type=\"file\" accept=\".zip,application/zip\" hidden><button id=\"archive-import-button\" type=\"button\">导入请求 ZIP</button><span id=\"archive-import-status\" role=\"status\"></span></div><a class=\"health-link\" href=\"/healthz\">服务状态</a></div>\
             </header>\
             <main>\
                 <section class=\"summary-band\">\
@@ -275,6 +317,7 @@ fn history_page(
                     <span>页码</span><strong>{page}/{total_pages}</strong>\
                     <span>保留上限</span><strong>{history_limit}</strong>\
                 </section>\
+                {reasoning_statistics}\
                 <form class=\"history-filters\" method=\"get\" action=\"/admin/requests\">\
                     <label for=\"status-filter\">状态</label>\
                     <select id=\"status-filter\" name=\"status\">{status_options}</select>\
@@ -299,8 +342,88 @@ fn history_page(
             version_options = version_options(selected_version),
             page_size_options = page_size_options(pagination.page_size),
             provider_controls = provider_controls,
+            reasoning_statistics = reasoning_statistics,
         ),
         "history-page",
+    )
+}
+
+#[derive(Default)]
+struct ReasoningStatistics {
+    requests: usize,
+    succeeded: usize,
+    duration_ms: Vec<i64>,
+    provider_ms: Vec<i64>,
+    reasoning_tokens: Vec<i64>,
+}
+
+fn reasoning_statistics_html(
+    pagination: &PaginatedRequestAudits,
+    payloads: &HashMap<String, RequestPayload>,
+) -> String {
+    let mut by_level = HashMap::<String, ReasoningStatistics>::new();
+    for item in &pagination.items {
+        let Some(payload) = payloads.get(&item.audit.id) else {
+            continue;
+        };
+        let Some(raw) = payload.model_request_json.as_deref() else {
+            continue;
+        };
+        let Ok(value) = serde_json::from_str::<serde_json::Value>(raw) else {
+            continue;
+        };
+        let request = value.get("request").unwrap_or(&value);
+        let timings = value.get("_timings").or_else(|| value.get("timings"));
+        let level = request
+            .get("reasoning_effort")
+            .and_then(serde_json::Value::as_str)
+            .unwrap_or("default");
+        if !matches!(level, "default" | "none" | "low" | "medium") {
+            continue;
+        }
+        let entry = by_level.entry(level.to_owned()).or_default();
+        entry.requests += 1;
+        entry.succeeded += usize::from(item.audit.status == "SUCCEEDED");
+        entry.duration_ms.push(item.audit.duration_ms);
+        if let Some(provider_ms) = timings
+            .and_then(|item| item.get("providerTotalMs"))
+            .and_then(serde_json::Value::as_i64)
+        {
+            entry.provider_ms.push(provider_ms);
+        }
+        let reasoning_tokens = timings
+            .and_then(|item| item.get("reasoningTokens"))
+            .and_then(serde_json::Value::as_i64)
+            .or_else(|| {
+                value
+                    .pointer("/response/usage/completion_tokens_details/reasoning_tokens")
+                    .and_then(serde_json::Value::as_i64)
+            });
+        if let Some(reasoning_tokens) = reasoning_tokens {
+            entry.reasoning_tokens.push(reasoning_tokens);
+        }
+    }
+    let median = |values: &Vec<i64>| -> String {
+        if values.is_empty() {
+            return "-".to_owned();
+        }
+        let mut values = values.clone();
+        values.sort_unstable();
+        values[values.len() / 2].to_string()
+    };
+    let rows = ["default", "none", "low", "medium"].into_iter().map(|level| {
+        let stats = by_level.get(level);
+        format!(
+            "<tr><th>{level}</th><td>{requests}</td><td>{succeeded}/{requests}</td><td>{duration} ms</td><td>{provider} ms</td><td>{reasoning}</td></tr>",
+            requests = stats.map_or(0, |item| item.requests),
+            succeeded = stats.map_or(0, |item| item.succeeded),
+            duration = stats.map_or("-".to_owned(), |item| median(&item.duration_ms)),
+            provider = stats.map_or("-".to_owned(), |item| median(&item.provider_ms)),
+            reasoning = stats.map_or("-".to_owned(), |item| median(&item.reasoning_tokens)),
+        )
+    }).collect::<String>();
+    format!(
+        "<section class=\"reasoning-statistics\"><div><h2>推理档位统计</h2><span>当前页真实端侧审计，中位数</span></div><div class=\"reasoning-statistics-scroll\"><table><thead><tr><th>档位</th><th>请求</th><th>成功</th><th>端侧总耗时</th><th>Provider 耗时</th><th>推理 tokens</th></tr></thead><tbody>{rows}</tbody></table></div></section>"
     )
 }
 
@@ -450,6 +573,7 @@ fn status_options(selected: Option<&str>) -> String {
     [
         ("", "全部"),
         ("SUCCEEDED", "成功"),
+        ("PARTIAL", "部分成功"),
         ("FAILED", "失败"),
         ("CANCELLED", "已取消"),
     ]
@@ -462,6 +586,102 @@ fn status_options(selected: Option<&str>) -> String {
     })
     .collect::<Vec<_>>()
     .join("")
+}
+
+fn provider_audit_sections(raw: &str) -> (String, String, String) {
+    let Ok(mut value) = serde_json::from_str::<serde_json::Value>(raw) else {
+        return (
+            raw.to_owned(),
+            "当前记录未保存 Provider 原始响应。".to_owned(),
+            "当前记录未保存分段计时。".to_owned(),
+        );
+    };
+    let is_edge_wrapper = value.get("request").is_some();
+    let timing = value
+        .get("_timings")
+        .or_else(|| value.get("timings"))
+        .cloned();
+    let request = if is_edge_wrapper {
+        value.get("request").cloned().unwrap_or_default()
+    } else {
+        if let Some(object) = value.as_object_mut() {
+            object.remove("_timings");
+            object.remove("timings");
+        }
+        value.clone()
+    };
+    let response = is_edge_wrapper
+        .then(|| value.get("response").cloned())
+        .flatten();
+    (
+        serde_json::to_string_pretty(&request).unwrap_or_else(|_| raw.to_owned()),
+        response
+            .and_then(|item| serde_json::to_string_pretty(&item).ok())
+            .unwrap_or_else(|| "当前记录未保存 Provider 原始响应。".to_owned()),
+        timing
+            .and_then(|item| serde_json::to_string_pretty(&item).ok())
+            .unwrap_or_else(|| "当前记录未保存分段计时。".to_owned()),
+    )
+}
+
+fn provider_thinking_summary(raw: &str) -> (String, String, String) {
+    let Ok(value) = serde_json::from_str::<serde_json::Value>(raw) else {
+        return ("旧记录未标注".to_owned(), "-".to_owned(), "未知".to_owned());
+    };
+    let request = value.get("request").unwrap_or(&value);
+    let timings = value.get("_timings").or_else(|| value.get("timings"));
+    let provider_timings = timings.and_then(|item| item.get("provider")).or(timings);
+    let configured_mode = provider_timings
+        .and_then(|item| item.get("thinkingControlMode"))
+        .and_then(serde_json::Value::as_str);
+    let configured_level = provider_timings
+        .and_then(|item| item.get("thinkingLevel"))
+        .and_then(serde_json::Value::as_str);
+    let (actual_parameter, actual_level) = if let Some(level) = request
+        .get("reasoning_effort")
+        .and_then(serde_json::Value::as_str)
+    {
+        ("reasoning_effort", Some(level))
+    } else if let Some(level) = request
+        .pointer("/google/thinking_config/thinking_level")
+        .and_then(serde_json::Value::as_str)
+    {
+        ("google.thinking_config.thinking_level", Some(level))
+    } else if let Some(level) = request
+        .pointer("/extra_body/google/thinking_config/thinking_level")
+        .and_then(serde_json::Value::as_str)
+    {
+        // Preserve readability for audits captured before the wire-format fix.
+        (
+            "legacy extra_body.google.thinking_config.thinking_level",
+            Some(level),
+        )
+    } else {
+        ("none", None)
+    };
+    let fallback = provider_timings
+        .and_then(|item| {
+            item.get("thinkingParameterFallback")
+                .or_else(|| item.get("reasoningParameterFallback"))
+        })
+        .and_then(serde_json::Value::as_bool)
+        .unwrap_or(false);
+    let configured = match configured_mode.unwrap_or(actual_parameter) {
+        "NONE" | "none" => "none",
+        "REASONING_EFFORT" | "reasoning_effort" => "reasoning_effort",
+        "THINKING_LEVEL" | "thinking_level" => "google.thinking_config.thinking_level",
+        value => value,
+    };
+    let control = if configured == actual_parameter {
+        actual_parameter.to_owned()
+    } else {
+        format!("{configured} -> {actual_parameter}")
+    };
+    (
+        control,
+        actual_level.or(configured_level).unwrap_or("-").to_owned(),
+        if fallback { "是" } else { "否" }.to_owned(),
+    )
 }
 
 fn detail_page(record: RequestRecord, config: &Config) -> String {
@@ -512,22 +732,19 @@ fn detail_page(record: RequestRecord, config: &Config) -> String {
                 "data-request-json=\"\" data-response-json=\"\"".to_owned(),
             ),
         };
-    let model_timing_html = serde_json::from_str::<serde_json::Value>(&model_request_json)
+    let (provider_request_json, provider_response_json, provider_timing_json) =
+        provider_audit_sections(&model_request_json);
+    let (thinking_control_label, thinking_level_label, thinking_fallback_label) =
+        provider_thinking_summary(&model_request_json);
+    let direct_output_label = serde_json::from_str::<serde_json::Value>(&request_json)
         .ok()
         .and_then(|value| {
             value
-                .get("_timings")
-                .or_else(|| value.get("timings"))
-                .cloned()
+                .pointer("/translation/directStructuredOutput")
+                .and_then(serde_json::Value::as_bool)
         })
-        .and_then(|timing| serde_json::to_string_pretty(&timing).ok())
-        .map(|timing| {
-            format!(
-                "<details><summary>查看分段计时</summary><pre>{}</pre></details>",
-                escape_html(&timing)
-            )
-        })
-        .unwrap_or_default();
+        .map(|enabled| if enabled { "开启" } else { "关闭" })
+        .unwrap_or("旧记录未标注");
     let error_html = error_message
         .filter(|value| !value.is_empty())
         .map(|value| {
@@ -639,6 +856,26 @@ fn detail_page(record: RequestRecord, config: &Config) -> String {
                 )
             },
         );
+    let (
+        translation_background,
+        translation_background_toggle_attributes,
+        translation_background_toggle_label,
+    ) = if record.image.is_some() {
+        (
+            format!(
+                "<img id=\"translation-source-background\" class=\"layout-background\" src=\"/admin/requests/{id}/image\" alt=\"\" aria-hidden=\"true\">",
+                id = escape_html(&audit.id),
+            ),
+            " checked",
+            "显示原图",
+        )
+    } else {
+        (
+            String::new(),
+            " disabled aria-disabled=\"true\"",
+            "无采集图",
+        )
+    };
     let status_class = audit.status.to_ascii_lowercase();
     let (curl_endpoint, curl_api_key_env, curl_requires_auth) =
         provider_curl_settings(&audit.model, config);
@@ -654,6 +891,8 @@ fn detail_page(record: RequestRecord, config: &Config) -> String {
                     <div><span>协议版本</span><strong>{version_label}</strong></div>\
                     <div><span>场景</span><strong>{scene}</strong></div>\
                     <div><span>模型</span><strong>{model}</strong></div>\
+                    <div><span>推理参数</span><strong>{thinking_control_label}</strong></div>\
+                    <div><span>思考深度</span><strong>{thinking_level_label}</strong></div>\
                     <div><span>语义组</span><strong>{groups}</strong></div>\
                     <div><span>OCR 区域</span><strong>{regions}</strong></div>\
                     <div><span>输入字符</span><strong>{chars}</strong></div>\
@@ -687,7 +926,16 @@ fn detail_page(record: RequestRecord, config: &Config) -> String {
                     <div class=\"layout-grid analysis-grid\">\
                         <div class=\"preview-panel\"><h3>OCR 与语义组</h3><div id=\"source-layout\" class=\"layout-canvas\"></div></div>\
                         <div class=\"preview-panel\"><h3>服务端语义计划</h3><div id=\"server-layout\" class=\"layout-canvas\"></div></div>\
-                        <div class=\"preview-panel\"><h3>译文与 renderSlots</h3><div id=\"translation-layout\" class=\"layout-canvas\"></div></div>\
+                        <div class=\"preview-panel\">\
+                            <div class=\"preview-panel-heading\">\
+                                <h3>译文与 renderSlots</h3>\
+                                <label class=\"layout-background-toggle\">\
+                                    <input id=\"translation-background-toggle\" type=\"checkbox\" aria-controls=\"translation-source-background\"{translation_background_toggle_attributes}>\
+                                    <span>{translation_background_toggle_label}</span>\
+                                </label>\
+                            </div>\
+                            <div id=\"translation-layout\" class=\"layout-canvas\">{translation_background}</div>\
+                        </div>\
                     </div>\
                 </section>\
                 <section class=\"payload-section\">\
@@ -702,7 +950,7 @@ fn detail_page(record: RequestRecord, config: &Config) -> String {
                 </section>\
                 <section class=\"model-request-section\">\
                     <details class=\"model-request-details\">\
-                        <summary><span>发送给翻译 Provider 的请求</span><small>默认折叠 · 不包含 API Key</small></summary>\
+                        <summary><span>Provider 交互审计</span><small>推理参数：{thinking_control_label} · 深度：{thinking_level_label} · 参数回退：{thinking_fallback_label} · 直接输出：{direct_output_label}</small></summary>\
                         <div class=\"model-request-content\">\
                             <div class=\"model-request-toolbar\">\
                                 <span>curl 使用当前 Provider 地址，API Key 仅引用环境变量</span>\
@@ -711,8 +959,9 @@ fn detail_page(record: RequestRecord, config: &Config) -> String {
                                     <button type=\"button\" class=\"copy-button copy-button-primary\" data-copy-curl=\"model-provider-request-json\" data-endpoint=\"{curl_endpoint}\" data-api-key-env=\"{curl_api_key_env}\" data-requires-auth=\"{curl_requires_auth}\">复制 curl</button>\
                                 </div>\
                             </div>\
-                            {model_timing_html}\
-                            <pre id=\"model-provider-request-json\">{model_request_json}</pre>\
+                            <details class=\"provider-audit-part\" open><summary>实际请求</summary><pre id=\"model-provider-request-json\">{provider_request_json}</pre></details>\
+                            <details class=\"provider-audit-part\"><summary>原始响应</summary><pre>{provider_response_json}</pre></details>\
+                            <details class=\"provider-audit-part\"><summary>分段计时</summary><pre>{provider_timing_json}</pre></details>\
                         </div>\
                     </details>\
                 </section>\
@@ -727,16 +976,24 @@ fn detail_page(record: RequestRecord, config: &Config) -> String {
             regions = audit.region_count,
             chars = audit.input_chars,
             duration = audit.duration_ms,
-            created = escape_html(&audit.created_at),
+            created = timestamp_html(&audit.created_at),
             request_json = escape_html(&request_json),
             response_json = escape_html(&response_json),
-            model_request_json = escape_html(&model_request_json),
-            model_timing_html = model_timing_html,
+            provider_request_json = escape_html(&provider_request_json),
+            provider_response_json = escape_html(&provider_response_json),
+            provider_timing_json = escape_html(&provider_timing_json),
+            direct_output_label = direct_output_label,
+            thinking_control_label = escape_html(&thinking_control_label),
+            thinking_level_label = escape_html(&thinking_level_label),
+            thinking_fallback_label = escape_html(&thinking_fallback_label),
             curl_endpoint = escape_html(&curl_endpoint),
             curl_api_key_env = curl_api_key_env,
             curl_requires_auth = curl_requires_auth,
             rendered_toggle_attributes = rendered_toggle_attributes,
             rendered_toggle_label = rendered_toggle_label,
+            translation_background = translation_background,
+            translation_background_toggle_attributes = translation_background_toggle_attributes,
+            translation_background_toggle_label = translation_background_toggle_label,
         ),
         "detail-page",
     )
@@ -777,6 +1034,13 @@ fn pretty_json(value: &str) -> String {
     serde_json::from_str::<serde_json::Value>(value)
         .and_then(|parsed| serde_json::to_string_pretty(&parsed))
         .unwrap_or_else(|_| value.to_owned())
+}
+
+fn timestamp_html(value: &str) -> String {
+    let escaped = escape_html(value);
+    format!(
+        "<time class=\"timestamp\" datetime=\"{escaped}\" data-format-local-time>{escaped}</time>"
+    )
 }
 
 fn escape_html(value: &str) -> String {
@@ -875,5 +1139,70 @@ mod tests {
             "/admin/requests?page=2&amp;pageSize=50&amp;status=FAILED&amp;version=3"
         );
         assert!(page_size_options(20).contains("value=\"20\" selected"));
+    }
+
+    #[test]
+    fn timestamp_keeps_machine_value_for_browser_local_formatting() {
+        let html = timestamp_html("2026-08-18T03:21:09.123Z");
+        assert!(html.contains("class=\"timestamp\""));
+        assert!(html.contains("datetime=\"2026-08-18T03:21:09.123Z\""));
+        assert!(html.contains("data-format-local-time"));
+    }
+
+    #[test]
+    fn provider_edge_audit_is_split_into_request_response_and_timings() {
+        let raw = serde_json::json!({
+            "request": {"model":"gemini", "messages":[]},
+            "response": {"choices":[{"message":{"content":"你好"}}]},
+            "timings": {"providerTotalMs":123}
+        })
+        .to_string();
+
+        let (request, response, timings) = provider_audit_sections(&raw);
+
+        assert!(request.contains("gemini"));
+        assert!(!request.contains("你好"));
+        assert!(response.contains("你好"));
+        assert!(timings.contains("providerTotalMs"));
+    }
+
+    #[test]
+    fn provider_thinking_summary_reports_actual_mutually_exclusive_parameter() {
+        let reasoning = serde_json::json!({
+            "request": {"reasoning_effort":"minimal"},
+            "timings": {
+                "thinkingControlMode":"REASONING_EFFORT",
+                "thinkingLevel":"minimal",
+                "thinkingParameterFallback":false
+            }
+        })
+        .to_string();
+        assert_eq!(
+            provider_thinking_summary(&reasoning),
+            (
+                "reasoning_effort".to_owned(),
+                "minimal".to_owned(),
+                "否".to_owned()
+            )
+        );
+
+        let native = serde_json::json!({
+            "request": {
+                "google":{"thinking_config":{"thinking_level":"low"}}
+            },
+            "timings": {"thinkingControlMode":"THINKING_LEVEL","thinkingLevel":"low"}
+        })
+        .to_string();
+        let summary = provider_thinking_summary(&native);
+        assert!(summary.0.contains("google.thinking_config.thinking_level"));
+        assert_eq!(summary.1, "low");
+        assert_eq!(summary.2, "否");
+
+        let baseline = serde_json::json!({
+            "request":{"model":"gemini"},
+            "timings":{"thinkingControlMode":"NONE","thinkingParameterFallback":true}
+        })
+        .to_string();
+        assert_eq!(provider_thinking_summary(&baseline).2, "是");
     }
 }

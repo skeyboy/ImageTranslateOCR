@@ -23,6 +23,11 @@ class SemanticDebugCaptureUploadPolicyTest {
         assertFalse(eligible(missingGroupCount = 0))
     }
 
+    @Test
+    fun embeddedV4ServerForwardingUploadsTheSourceFrame() {
+        assertTrue(eligible(backend = TranslationBackend.EMBEDDED_V4))
+    }
+
     private fun eligible(
         isDebugBuild: Boolean = true,
         scene: String = "LIVE_SCREEN",

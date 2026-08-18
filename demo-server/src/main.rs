@@ -4,6 +4,7 @@ use image_translate_demo_server::{
     app_with_models,
     config::{Config, TranslationProvider},
     database::Database,
+    gemini::GeminiNativeClient,
     qwen::{QwenClient, TranslationModel, TranslationModelRegistry},
 };
 use tokio::net::TcpListener;
@@ -35,12 +36,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             Arc::new(QwenClient::new_openlux_model(&config, model)?) as Arc<dyn TranslationModel>,
         ));
     }
+    configured_models.push((
+        TranslationProvider::GeminiNative,
+        config.gemini_model.clone(),
+        Arc::new(GeminiNativeClient::new(&config)?) as Arc<dyn TranslationModel>,
+    ));
     let active_model = match config.translation_provider {
         TranslationProvider::Qwen => config.qwen_model.clone(),
         TranslationProvider::Openlux => config
             .openlux_model
             .clone()
             .expect("validated OpenLux default model"),
+        TranslationProvider::GeminiNative => config.gemini_model.clone(),
     };
     let models = Arc::new(TranslationModelRegistry::new(
         config.translation_provider,

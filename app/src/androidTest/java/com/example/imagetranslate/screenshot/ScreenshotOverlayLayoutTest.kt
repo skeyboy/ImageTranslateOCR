@@ -17,6 +17,7 @@ import com.example.imagetranslate.databinding.OverlayActiveScreenCaptureBinding
 import com.example.imagetranslate.databinding.OverlayScreenshotActionsBinding
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -24,6 +25,19 @@ import kotlinx.coroutines.runBlocking
 
 @RunWith(AndroidJUnit4::class)
 class ScreenshotOverlayLayoutTest {
+    @Test
+    fun imageWrappedFlowDoesNotUseBodyRectFallback() {
+        val slots = listOf(
+            Rect(176, 461, 373, 511),
+            Rect(130, 517, 373, 569),
+            Rect(7, 573, 373, 642)
+        )
+
+        assertNull(
+            denseBodyRectFallback(slots, "FLOW_SLOTS", sourceLineCount = 3, role = "BODY")
+        )
+    }
+
     @Test
     fun sourceCoverSlotsEraseMemberTextOutsideTheUsedTranslationSlot() = runBlocking {
         val context = ApplicationProvider.getApplicationContext<Context>()
@@ -129,6 +143,72 @@ class ScreenshotOverlayLayoutTest {
             assertEquals(0, result.failedRegionCount)
             assertEquals(1, result.patches.size)
             assertEquals(1, result.renderedText.size)
+        } finally {
+            processor.close()
+            bitmap.recycle()
+        }
+    }
+
+    @Test
+    fun degenerateBodyFlowFallsBackToOneRectBeforeOverflow() = runBlocking {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val bitmap = Bitmap.createBitmap(1440, 2600, Bitmap.Config.ARGB_8888)
+        val slots = listOf(
+            Rect(57, 1914, 1371, 1971),
+            Rect(59, 2009, 921, 2066),
+            Rect(97, 2097, 1094, 2161),
+            Rect(59, 2198, 1303, 2256),
+            Rect(58, 2291, 1292, 2351),
+            Rect(58, 2387, 190, 2430)
+        )
+        Canvas(bitmap).apply {
+            drawColor(Color.WHITE)
+            Paint().apply { color = Color.BLACK }.also { paint ->
+                slots.forEach { slot -> drawRect(slot, paint) }
+                drawRect(1332f, 2310f, 1350f, 2345f, paint)
+            }
+        }
+        val translation = "公钥是你之前生成的那一个，看起来应该类似于 did:key:string。" +
+            "一旦此命令完成，你就大功告成了。你现在已经将自己的轮换密钥附加到了你的账户上。看一看！"
+        assertNull(
+            denseBodyRectFallback(slots, "FLOW_SLOTS", sourceLineCount = 6, role = "CAPTION")
+        )
+        val processor = BackgroundTranslatedImageProcessor(context)
+        try {
+            val result = processor.renderDeterministicOverlay(
+                bitmap = bitmap,
+                regions = listOf(
+                    LiveDeterministicTranslationRegion(
+                        sourceText = "The public key is the one you generated earlier\n" +
+                            "and should look something like\ndid:key:string.Once this command\n" +
+                            "completes you're done.You've now attached\n" +
+                            "your own rotation key to your account.Take\nlook!",
+                        translation = translation,
+                        bounds = Rect(57, 1914, 1371, 2430),
+                        sourceLineBounds = slots,
+                        renderSlots = slots,
+                        displayHints = SmartAssistDisplayHints(
+                            preferredMaxLines = 6,
+                            minimumTextScale = 0.86f,
+                            lineSpacingMultiplier = 1f,
+                            allowMore = true,
+                            sourceLineCount = 6,
+                            layoutShape = "FLOW_SLOTS",
+                            role = "BODY"
+                        )
+                    )
+                )
+            )
+
+            assertEquals(1, result.renderedRegionCount)
+            val evidence = result.renderedText.single()
+            assertEquals(516, evidence.availableHeightPx)
+            val patch = result.patches.single()
+            val residualPixel = patch.bitmap.getPixel(
+                1340 - patch.bounds.left,
+                2325 - patch.bounds.top
+            )
+            assertTrue("The merged BODY rect must cover missed OCR glyphs", Color.red(residualPixel) > 96)
         } finally {
             processor.close()
             bitmap.recycle()

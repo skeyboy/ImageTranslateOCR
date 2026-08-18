@@ -18,6 +18,8 @@ import com.example.imagetranslate.screenshot.LivePatchBackgroundExperiencePrefer
 import com.example.imagetranslate.screenshot.LiveSmartAssistPreferences
 import com.example.imagetranslate.screenshot.OneShotScreenCaptureService
 import com.example.imagetranslate.translate.ExperimentalTranslationSettings
+import com.example.imagetranslate.translate.TranslationBackend
+import com.example.imagetranslate.translate.TranslationBackendSettings
 import com.example.experimentaltranslation.ExperimentalTranslationEngine
 
 class LiveScrollBenchmarkLauncherActivity : ComponentActivity() {
@@ -68,10 +70,15 @@ class LiveScrollBenchmarkLauncherActivity : ComponentActivity() {
         )
         LiveSmartAssistPreferences.setEnabled(this, false)
         ExperimentalTranslationSettings.set(this, ExperimentalTranslationEngine.DISABLED)
+        intent.getStringExtra(EXTRA_EDGE_AUDIT_BASE_URL)?.takeIf(String::isNotBlank)?.let {
+            TranslationBackendSettings.setEdgeAuditBaseUrl(this, it)
+        }
+        TranslationBackendSettings.set(this, TranslationBackend.EMBEDDED_V4)
     }
 
     companion object {
         const val EXTRA_BACKGROUND_MODE = "background_mode"
         const val EXTRA_EXPERIENCE_MODE = "experience_mode"
+        const val EXTRA_EDGE_AUDIT_BASE_URL = "edge_audit_base_url"
     }
 }

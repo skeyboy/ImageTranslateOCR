@@ -10,8 +10,8 @@ use crate::{
     },
     error::CoreError,
     model::{
-        ModelPrompt, ModelTranslation, PROMPT_VERSION, build_model_prompt,
-        parse_completion_envelope,
+        ModelPrompt, ModelTranslation, ModelTranslationFailure, PROMPT_VERSION, build_model_prompt,
+        missing_literal_identifiers, parse_completion_envelope_unvalidated,
     },
     planning::DocumentPlan,
     planning_v4::build_regions_first_plan,
@@ -25,6 +25,7 @@ pub struct PreparedTranslation {
     pub execution_groups: Vec<TranslationGroup>,
     pub actionable_groups: Vec<TranslationGroup>,
     pub model_prompt: ModelPrompt,
+    pub prompt_version: String,
     pub provider: String,
     pub model: String,
     #[serde(default = "embedded_execution")]
@@ -60,6 +61,7 @@ pub fn prepare_translation(
         execution_groups,
         actionable_groups,
         model_prompt,
+        prompt_version: PROMPT_VERSION.to_owned(),
         provider: provider.trim().to_owned(),
         model: model.trim().to_owned(),
         execution: embedded_execution(),
@@ -72,8 +74,31 @@ pub fn complete_translation(
     total_ms: u64,
 ) -> Result<CompletedTranslation, CoreError> {
     let prepared: PreparedTranslation = serde_json::from_str(prepared_json)?;
-    let translations =
-        parse_completion_envelope(completion_envelope_json, &prepared.actionable_groups)?;
+    let mut translations = parse_completion_envelope_unvalidated(
+        completion_envelope_json,
+        &prepared.actionable_groups,
+    )?;
+    if prepared.request.translation.preserve_identifiers {
+        for group in &prepared.actionable_groups {
+            if let Some(translation) = translations
+                .iter_mut()
+                .find(|translation| translation.group_id == group.group_id)
+            {
+                let missing = missing_literal_identifiers(group, &translation.translated_text);
+                if !missing.is_empty() {
+                    translation.failure = Some(ModelTranslationFailure {
+                        code: "IDENTIFIER_PRESERVATION_FAILED".to_owned(),
+                        message: format!(
+                            "Translation misses identifiers {} for group {}",
+                            missing.join(", "),
+                            group.group_id
+                        ),
+                        retryable: true,
+                    });
+                }
+            }
+        }
+    }
     let response = assemble_translation(&prepared, &translations, total_ms)?;
     Ok(CompletedTranslation {
         response,
@@ -141,6 +166,28 @@ pub fn assemble_translation(
                     group.group_id
                 ))
             })?;
+            if let Some(failure) = &item.failure {
+                results.push(GroupTranslationResult {
+                    group_id: group.group_id.clone(),
+                    source_group_ids,
+                    role: group.role.clone(),
+                    grouping_confidence: group.grouping_confidence,
+                    status: "FAILED".to_owned(),
+                    render_mode: "NONE".to_owned(),
+                    translated_text: None,
+                    member_region_ids: group.member_region_ids.clone(),
+                    detected_source_language: item.detected_source_language.clone(),
+                    target_language: item.target_language.clone(),
+                    anchor_bounds: group.bounds.clone(),
+                    layout_hint: layout_hint(group, &group.source_text, slots, cover),
+                    error: Some(crate::contract::ResultError {
+                        code: failure.code.clone(),
+                        message: failure.message.clone(),
+                        retryable: failure.retryable,
+                    }),
+                });
+                continue;
+            }
             translated_count += 1;
             results.push(GroupTranslationResult {
                 group_id: group.group_id.clone(),
@@ -159,6 +206,10 @@ pub fn assemble_translation(
             });
         }
     }
+    let failed_count = results
+        .iter()
+        .filter(|item| item.status == "FAILED")
+        .count();
     let response = SemanticTranslationResponse {
         schema_version: REGIONS_FIRST_SCHEMA_VERSION,
         request_id: prepared.request.request_id.clone(),
@@ -178,7 +229,7 @@ pub fn assemble_translation(
             group_count: prepared.execution_groups.len(),
             translated_group_count: translated_count,
             preserved_group_count: preserved_count,
-            failed_group_count: 0,
+            failed_group_count: failed_count,
             total_ms,
         },
     };
@@ -202,15 +253,12 @@ mod tests {
         )
         .unwrap();
         assert_eq!(prepared.execution_groups.len(), 1);
-        assert!(prepared.model_prompt.user.contains("regionLines"));
+        assert!(!prepared.model_prompt.user.contains("regionLines"));
+        assert!(!prepared.model_prompt.user.contains("renderSlots"));
         assert!(!prepared.model_prompt.user.contains("documentContext"));
         assert_eq!(prepared.model_prompt.recommended_max_tokens, 1024);
         let user: serde_json::Value = serde_json::from_str(&prepared.model_prompt.user).unwrap();
-        assert!(
-            user["translateGroups"][0]["regionLines"][0]
-                .get("text")
-                .is_none()
-        );
+        assert_eq!(user["promptProfile"], "COMPACT");
         assert_eq!(
             prepared.model_prompt.response_format["json_schema"]["schema"]["properties"]["translations"]
                 ["type"],
@@ -234,6 +282,72 @@ mod tests {
         );
         assert_eq!(completed.response.provider, "embedded-openlux-v4");
         assert_eq!(completed.response.metrics.total_ms, 25);
+    }
+
+    #[test]
+    fn compact_prompt_does_not_change_document_plan_or_dsl_geometry() {
+        let request_json = include_str!("../examples/v4-minimal-request.json");
+        let compact = prepare_translation(request_json, "openlux", "gpt-4.1").unwrap();
+        let mut full_request: SemanticTranslationRequest =
+            serde_json::from_str(request_json).unwrap();
+        full_request.translation.compact_provider_prompt = false;
+        let full = prepare_translation(
+            &serde_json::to_string(&full_request).unwrap(),
+            "openlux",
+            "gpt-4.1",
+        )
+        .unwrap();
+        assert!(full.model_prompt.user.contains("regionLines"));
+        assert_eq!(
+            serde_json::to_value(&compact.document_plan).unwrap(),
+            serde_json::to_value(&full.document_plan).unwrap()
+        );
+
+        let translations = vec![ModelTranslation {
+            group_id: compact.actionable_groups[0].group_id.clone(),
+            translated_text: "Rust 是一种系统编程语言。".to_owned(),
+            detected_source_language: "en".to_owned(),
+            target_language: "zh".to_owned(),
+            failure: None,
+        }];
+        let compact_response = assemble_translation(&compact, &translations, 10).unwrap();
+        let full_response = assemble_translation(&full, &translations, 10).unwrap();
+        assert_eq!(
+            serde_json::to_value(&compact_response.results[0].anchor_bounds).unwrap(),
+            serde_json::to_value(&full_response.results[0].anchor_bounds).unwrap()
+        );
+        assert_eq!(
+            serde_json::to_value(&compact_response.results[0].layout_hint).unwrap(),
+            serde_json::to_value(&full_response.results[0].layout_hint).unwrap()
+        );
+    }
+
+    #[test]
+    fn assembles_identifier_validation_failure_without_losing_other_groups() {
+        let prepared = prepare_translation(
+            include_str!("../examples/v4-minimal-request.json"),
+            "gemini-native",
+            "gemini-test",
+        )
+        .unwrap();
+        let group = &prepared.actionable_groups[0];
+        let translations = vec![ModelTranslation {
+            group_id: group.group_id.clone(),
+            translated_text: group.source_text.clone(),
+            detected_source_language: "en".to_owned(),
+            target_language: "zh".to_owned(),
+            failure: Some(crate::model::ModelTranslationFailure {
+                code: "IDENTIFIER_PRESERVATION_FAILED".to_owned(),
+                message: "missing CCPA".to_owned(),
+                retryable: true,
+            }),
+        }];
+
+        let response = assemble_translation(&prepared, &translations, 12).unwrap();
+
+        assert_eq!(response.results[0].status, "FAILED");
+        assert!(response.results[0].translated_text.is_none());
+        assert_eq!(response.metrics.failed_group_count, 1);
     }
 }
 

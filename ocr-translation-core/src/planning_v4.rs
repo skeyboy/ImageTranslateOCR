@@ -72,6 +72,7 @@ struct RegionGroup {
     evidence: Vec<String>,
     bounds: Bounds,
     render_slots: Vec<Bounds>,
+    all_advisory_layouts_rect: bool,
     first_region: OcrRegion,
     last_region: OcrRegion,
 }
@@ -118,6 +119,8 @@ impl RegionGroup {
             evidence,
             bounds: region.bounds.clone(),
             render_slots: vec![region.bounds.clone()],
+            all_advisory_layouts_rect: advisory
+                .is_some_and(|group| group.layout_shape == "RECT" && group.render_slots.len() <= 1),
             first_region: region.clone(),
             last_region: region.clone(),
         }
@@ -130,6 +133,7 @@ impl RegionGroup {
         self.source_text = format!("{}\n{}", self.source_text.trim(), next.source_text.trim());
         self.bounds = self.bounds.union(&next.bounds);
         self.render_slots.extend(next.render_slots);
+        self.all_advisory_layouts_rect &= next.all_advisory_layouts_rect;
         self.confidence = self
             .confidence
             .min(next.confidence)
@@ -155,7 +159,12 @@ impl RegionGroup {
     fn into_planned(self, index: usize) -> PlannedGroup {
         let group_id = stable_group_id(index, &self.member_region_ids);
         let source_line_count = self.render_slots.len().max(1) as i32;
-        let render_slots = layout_slots(&self.render_slots, &self.bounds);
+        let render_slots = layout_slots(
+            &self.render_slots,
+            &self.bounds,
+            &self.role,
+            self.all_advisory_layouts_rect,
+        );
         let mut grouping_evidence = self.evidence;
         if source_line_count > 1 && render_slots.len() == 1 {
             grouping_evidence.push("DENSE_RECT_LAYOUT_COLLAPSED".to_owned());
@@ -269,11 +278,53 @@ fn merge_decision(
     })
 }
 
-fn layout_slots(source_slots: &[Bounds], group_bounds: &Bounds) -> Vec<Bounds> {
-    if source_slots.len() <= 1 || !is_dense_rectangular_text_flow(source_slots, group_bounds) {
+fn layout_slots(
+    source_slots: &[Bounds],
+    group_bounds: &Bounds,
+    role: &str,
+    all_advisory_layouts_rect: bool,
+) -> Vec<Bounds> {
+    let is_rect = is_dense_rectangular_text_flow(source_slots, group_bounds)
+        || (role == "BODY"
+            && all_advisory_layouts_rect
+            && is_natural_wrapped_rect_flow(source_slots, group_bounds));
+    if source_slots.len() <= 1 || !is_rect {
         return source_slots.to_vec();
     }
     vec![group_bounds.clone()]
+}
+
+fn is_natural_wrapped_rect_flow(source_slots: &[Bounds], group_bounds: &Bounds) -> bool {
+    if source_slots.len() < 3 || group_bounds.width() <= 0 {
+        return false;
+    }
+    let mut heights = source_slots
+        .iter()
+        .map(|slot| slot.height().max(1))
+        .collect::<Vec<_>>();
+    heights.sort_unstable();
+    let typical_height = heights[heights.len() / 2].max(1);
+    let maximum_gap = source_slots
+        .windows(2)
+        .map(|pair| pair[1].top - pair[0].bottom)
+        .max()
+        .unwrap_or_default();
+    if maximum_gap > typical_height {
+        return false;
+    }
+
+    let left_tolerance = (typical_height * 2).max(group_bounds.width() * 12 / 100);
+    if range(source_slots.iter().map(|slot| slot.left)) > left_tolerance {
+        return false;
+    }
+
+    let non_final = &source_slots[..source_slots.len() - 1];
+    let main_column_width = group_bounds.width() * 72 / 100;
+    let wide_line_count = non_final
+        .iter()
+        .filter(|slot| slot.width() >= main_column_width)
+        .count();
+    wide_line_count * 2 >= non_final.len()
 }
 
 fn is_dense_rectangular_text_flow(source_slots: &[Bounds], group_bounds: &Bounds) -> bool {
@@ -695,6 +746,84 @@ mod tests {
             plan.groups[0]
                 .grouping_evidence
                 .contains(&"DENSE_RECT_LAYOUT_COLLAPSED".to_owned())
+        );
+    }
+
+    #[test]
+    fn collapses_rect_advisories_with_natural_short_lines() {
+        let mut request = request();
+        let slot_bounds = [
+            (57, 1914, 1371, 1971),
+            (59, 2009, 921, 2066),
+            (97, 2097, 1094, 2161),
+            (59, 2198, 1303, 2256),
+            (58, 2291, 1292, 2351),
+            (58, 2387, 190, 2430),
+        ];
+        let texts = [
+            "The public key is the one you generated earlier",
+            "and should look something like",
+            "did:key:string.Once this command",
+            "completes you're done.You've now attached",
+            "your own rotation key to your account.Take",
+            "look!",
+        ];
+        let mut regions = Vec::new();
+        let mut groups = Vec::new();
+        for group_index in 0..3 {
+            let line_range = match group_index {
+                0 => 0..2,
+                1 => 2..3,
+                _ => 3..6,
+            };
+            let group_id = format!("client-rect-{group_index}");
+            let mut advisory = request.groups[0].clone();
+            advisory.group_id = group_id.clone();
+            advisory.role = "BODY".to_owned();
+            advisory.layout_shape = "RECT".to_owned();
+            advisory.render_slots.clear();
+            advisory.member_region_ids.clear();
+            let mut group_bounds: Option<Bounds> = None;
+            let mut group_text = Vec::new();
+            for index in line_range {
+                let (left, top, right, bottom) = slot_bounds[index];
+                let mut region = request.regions[0].clone();
+                region.region_id = format!("natural-line-{index}");
+                region.group_id = group_id.clone();
+                region.block_id = Some(format!("natural-block-{group_index}"));
+                region.line_index = Some(index as i32);
+                region.reading_order = index as i32;
+                region.text = texts[index].to_owned();
+                region.bounds = Bounds {
+                    left,
+                    top,
+                    right,
+                    bottom,
+                };
+                group_bounds = Some(group_bounds.map_or_else(
+                    || region.bounds.clone(),
+                    |bounds| bounds.union(&region.bounds),
+                ));
+                advisory.member_region_ids.push(region.region_id.clone());
+                group_text.push(region.text.clone());
+                regions.push(region);
+            }
+            advisory.bounds = group_bounds.unwrap();
+            advisory.render_slots = vec![advisory.bounds.clone()];
+            advisory.source_text = group_text.join("\n");
+            groups.push(advisory);
+        }
+        request.regions = regions;
+        request.groups = groups;
+
+        let plan = build_regions_first_plan(&request);
+
+        assert_eq!(plan.groups.len(), 1);
+        assert_eq!(plan.groups[0].member_region_ids.len(), 6);
+        assert_eq!(plan.groups[0].layout_shape, "RECT");
+        assert_eq!(
+            plan.groups[0].render_slots,
+            vec![plan.groups[0].bounds.clone()]
         );
     }
 

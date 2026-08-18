@@ -1,4 +1,7 @@
-use std::sync::Arc;
+use std::{
+    io::{Cursor, Write},
+    sync::Arc,
+};
 
 use async_trait::async_trait;
 use axum::{
@@ -17,10 +20,91 @@ use serde_json::{Value, json};
 use tempfile::TempDir;
 use tokio::sync::Notify;
 use tower::ServiceExt;
+use zip::{ZipWriter, write::SimpleFileOptions};
 
 struct FakeQwen;
 
 struct FakeOpenlux;
+
+struct FakeGeminiNative;
+
+fn request_archive(entries: &[(&str, String)]) -> Vec<u8> {
+    let mut output = Cursor::new(Vec::new());
+    {
+        let mut writer = ZipWriter::new(&mut output);
+        for (name, contents) in entries {
+            writer
+                .start_file(*name, SimpleFileOptions::default())
+                .unwrap();
+            writer.write_all(contents.as_bytes()).unwrap();
+        }
+        writer.finish().unwrap();
+    }
+    output.into_inner()
+}
+
+#[tokio::test]
+async fn imports_android_request_archive_into_admin_history() {
+    let temporary = TempDir::new().unwrap();
+    let database_url = temporary
+        .path()
+        .join("archive-import.sqlite3")
+        .to_string_lossy()
+        .into_owned();
+    let database = Database::new(database_url.clone());
+    database.migrate().await.unwrap();
+    let router = app(
+        Config::for_test(database_url),
+        database.clone(),
+        Arc::new(FakeQwen),
+    );
+    let mut request = valid_request();
+    request["schemaVersion"] = json!(4);
+    request["groups"] = json!([]);
+    let request_id = request["requestId"].as_str().unwrap();
+    let response = json!({
+        "schemaVersion": 4,
+        "requestId": request_id,
+        "metrics": {"failedGroupCount": 0, "totalMs": 37},
+        "results": [],
+        "documentPlan": {"mode": "AUTHORITATIVE", "planVersion": "server-regions-first-plan-v4", "groups": []}
+    });
+    let archive = request_archive(&[
+        (
+            "manifest.json",
+            json!({"archiveSchemaVersion":1,"provider":"openlux","model":"gemini-test"})
+                .to_string(),
+        ),
+        ("request.json", request.to_string()),
+        ("response.json", response.to_string()),
+    ]);
+    let imported = router
+        .clone()
+        .oneshot(
+            Request::post("/admin/request-archives/import")
+                .header("content-type", "application/zip")
+                .body(Body::from(archive))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(imported.status(), StatusCode::OK);
+    let imported_body: Value =
+        serde_json::from_slice(&to_bytes(imported.into_body(), 1024 * 1024).await.unwrap())
+            .unwrap();
+    let detail = router
+        .oneshot(
+            Request::get(imported_body["location"].as_str().unwrap())
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(detail.status(), StatusCode::OK);
+    let audits = database.list_audits(10).await.unwrap();
+    assert_eq!(audits[0].request_id, request_id);
+    assert!(audits[0].model.contains("openlux:gemini-test"));
+}
 
 #[async_trait]
 impl TranslationModel for FakeQwen {
@@ -53,6 +137,7 @@ impl TranslationModel for FakeQwen {
                 translated_text: "习近平在北京会见斯洛伐克总统".to_owned(),
                 detected_source_language: "en".to_owned(),
                 target_language: "zh".to_owned(),
+                failure: None,
             })
             .collect())
     }
@@ -86,9 +171,86 @@ impl TranslationModel for FakeOpenlux {
                 translated_text: "OpenLux 译文".to_owned(),
                 detected_source_language: "en".to_owned(),
                 target_language: "zh".to_owned(),
+                failure: None,
             })
             .collect())
     }
+}
+
+#[async_trait]
+impl TranslationModel for FakeGeminiNative {
+    async fn translate(
+        &self,
+        _request: &SemanticTranslationRequest,
+        groups: &[image_translate_demo_server::contract::TranslationGroup],
+    ) -> Result<Vec<ModelTranslation>, AppError> {
+        Ok(groups
+            .iter()
+            .map(|group| ModelTranslation {
+                group_id: group.group_id.clone(),
+                translated_text: "Gemini 原生译文".to_owned(),
+                detected_source_language: "en".to_owned(),
+                target_language: "zh".to_owned(),
+                failure: None,
+            })
+            .collect())
+    }
+}
+
+#[tokio::test]
+async fn gemini_native_v4_route_forces_the_native_provider() {
+    let temporary = TempDir::new().unwrap();
+    let database_url = temporary
+        .path()
+        .join("gemini-native-route.sqlite3")
+        .to_string_lossy()
+        .into_owned();
+    let database = Database::new(database_url.clone());
+    database.migrate().await.unwrap();
+    let mut config = Config::for_test(database_url);
+    config.gemini_model = "gemini-test".to_owned();
+    let models = Arc::new(TranslationModelRegistry::new(
+        TranslationProvider::Qwen,
+        "fake-qwen".to_owned(),
+        vec![
+            (
+                TranslationProvider::Qwen,
+                "fake-qwen".to_owned(),
+                Arc::new(FakeQwen) as Arc<dyn TranslationModel>,
+            ),
+            (
+                TranslationProvider::GeminiNative,
+                "gemini-test".to_owned(),
+                Arc::new(FakeGeminiNative) as Arc<dyn TranslationModel>,
+            ),
+        ],
+    ));
+    let router = app_with_models(config, database, models);
+    let mut request = valid_request();
+    request["schemaVersion"] = json!(4);
+    request["groups"] = json!([]);
+
+    let response = router
+        .oneshot(
+            Request::post("/api/v4/translate/gemini-native/layout-plan")
+                .header("content-type", "application/json")
+                .header("x-translation-provider", "qwen")
+                .body(Body::from(request.to_string()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let body: Value =
+        serde_json::from_slice(&to_bytes(response.into_body(), 1024 * 1024).await.unwrap())
+            .unwrap();
+    assert_eq!(
+        body["provider"],
+        "self-hosted-gemini-native-regions-first-v4"
+    );
+    assert_eq!(body["modelVersion"], "gemini-test");
+    assert_eq!(body["results"][0]["translatedText"], "Gemini 原生译文");
 }
 
 #[tokio::test]
@@ -471,8 +633,18 @@ async fn translates_semantic_group_and_echoes_generation() {
     assert!(detail_body.contains("data-request-json="));
     assert!(detail_body.contains("renderSlots"));
     assert!(detail_body.contains("全屏采集原图"));
-    assert!(detail_body.contains("发送给翻译 Provider 的请求"));
-    assert!(detail_body.contains("默认折叠 · 不包含 API Key"));
+    assert!(detail_body.contains(
+        "id=\"translation-background-toggle\" type=\"checkbox\" aria-controls=\"translation-source-background\" checked"
+    ));
+    assert!(
+        detail_body.contains("id=\"translation-source-background\" class=\"layout-background\"")
+    );
+    assert!(detail_body.contains("Provider 交互审计"));
+    assert!(detail_body.contains("实际请求"));
+    assert!(detail_body.contains("原始响应"));
+    assert!(detail_body.contains("分段计时"));
+    assert!(detail_body.contains("推理参数："));
+    assert!(detail_body.contains("参数回退："));
     assert!(detail_body.contains("data-copy-target=\"request-payload-json\""));
     assert!(detail_body.contains("data-copy-target=\"response-payload-json\""));
     assert!(detail_body.contains("data-copy-provider-request=\"model-provider-request-json\""));
@@ -503,6 +675,8 @@ async fn translates_semantic_group_and_echoes_generation() {
     assert!(admin_script_body.contains("lines.join(\"\\n\")"));
     assert!(admin_script_body.contains("rendered-capture-toggle"));
     assert!(admin_script_body.contains("captureToggle?.addEventListener(\"change\""));
+    assert!(admin_script_body.contains("translation-background-toggle"));
+    assert!(admin_script_body.contains("has-visible-background"));
     assert!(admin_script_body.contains("data-copy-provider-request"));
     assert!(admin_script_body.contains("providerRequestBody"));
     assert!(admin_script_body.contains("--data-binary @- <<'JSON'"));
@@ -535,6 +709,9 @@ async fn translates_semantic_group_and_echoes_generation() {
     ));
     assert!(admin_styles_body.contains(
         ".capture-view img { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: contain; }"
+    ));
+    assert!(admin_styles_body.contains(
+        ".layout-background { position: absolute; inset: 0; z-index: 0; display: block; width: 100%; height: 100%; object-fit: contain; object-position: center;"
     ));
 
     let rendered_image_response = router

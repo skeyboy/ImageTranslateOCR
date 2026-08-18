@@ -33,6 +33,7 @@ cargo run
 - 健康检查：`GET /healthz`
 - 影子分组兼容：`POST /api/v2/translate/groups`
 - 权威组与布局计划：`POST /api/v3/translate/layout-plan`
+- Gemini 原生 V4 转发：`POST /api/v4/translate/gemini-native/layout-plan`
 - 取消翻译：`POST /api/v2/translate/requests/{requestId}/cancel`
 - 回贴后调试图：`POST /api/v3/translate/requests/{requestId}/rendered-capture` 或 `POST /api/v4/translate/requests/{requestId}/rendered-capture`
 - 请求历史：`GET /admin/requests`
@@ -76,9 +77,39 @@ OPENLUX_MODELS=gemini-3.5-flash-lite,gpt-4.1,claude-sonnet-4-6
 `/admin/requests` 页眉的“翻译 Provider / Model”控件中切换；切换只影响新请求，正在执行的请求继续使用
 其开始时固定的 Provider 和模型。API Key 仅从环境变量读取，不会进入管理页、健康检查或请求审计。
 
+Android 端侧也支持 Google Gemini 原生 `generateContent`：将 Provider 设置为 `google`，
+Base URL 设置为 `https://generativelanguage.googleapis.com/v1beta`，并在设备高级设置中填写
+独立的 Gemini API Key。原生请求使用 `generationConfig.thinkingConfig.thinkingLevel`；Key
+通过 `x-goog-api-key` 请求头发送，并由 Android Keystore 加密保存，不写入 URL、日志或审计。
+生产环境仍建议通过自有后端调用，避免长期服务端密钥分发到终端设备。
+
+本地服务端也提供固定的 Gemini 原生 V4 转发入口。端侧向
+`/api/v4/translate/gemini-native/layout-plan` 发送与普通 V4 相同的 OCR 请求；服务端执行
+regions-first 分组，使用 `GEMINI_API_KEY` 调用原生 `generateContent`，再返回现有 V4 DSL。
+原生请求采用 `responseMimeType=application/json`、`responseJsonSchema` 和 Gemini 3
+`thinkingConfig.thinkingLevel`，与 `scripts/gemini_native_translation_validation.py` 的验证方式一致。
+可通过 `GEMINI_PROXY_URL` 配置服务端出站代理；API Key 不由端侧上传，也不会写入审计。
+若不需要代理，应将 `GEMINI_PROXY_URL` 留空。也可将 `TRANSLATION_PROVIDER=gemini-native`
+设为全局默认；此时服务启动阶段会要求存在 Gemini API Key。
+
 OpenLux 还可独立设置 `OPENLUX_REASONING_EFFORT`、`OPENLUX_MAX_TOKENS` 和
 `OPENLUX_TIMEOUT_SECONDS`。当 `TRANSLATION_PROVIDER=openlux` 时，
 `OPENLUX_API_KEY` 和 `OPENLUX_MODEL` 必填。
+
+Provider 推理控制使用互斥配置：
+
+```dotenv
+OPENLUX_THINKING_MODE=thinking_level    # none | reasoning_effort | thinking_level
+OPENLUX_THINKING_LEVEL=medium           # minimal | low | medium | high
+```
+
+`reasoning_effort` 会发送 OpenAI 兼容顶层字段；`thinking_level` 会发送
+大写枚举值到 `google.thinking_config.thinking_level`。`extra_body` 只是 OpenAI SDK 的客户端参数名，
+使用原始 HTTP 请求时不能把它作为 JSON 字段发送。两种推理控制不会同时出现。V4 请求可在
+`translation.thinkingControlMode/thinkingLevel` 中覆盖该次调用，方便使用同一份 OCR
+数据执行 A/B。Gemini 3 可验证两种写法；GPT-4.1 不发送推理字段；非 Gemini
+模型不发送 Gemini `thinking_level`。Admin 详情页同时显示配置方式、
+实际字段、级别和兼容回退状态。
 
 `QWEN_MODELS` 和 `OPENLUX_MODELS` 是逗号分隔的模型白名单，`QWEN_MODEL` / `OPENLUX_MODEL`
 是各 Provider 的启动默认模型且必须包含在对应白名单内。Admin 会为每个配置模型显示独立切换项。

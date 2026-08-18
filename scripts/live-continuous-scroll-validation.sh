@@ -9,6 +9,8 @@ experience_mode="${SCROLL_EXPERIENCE_MODE:-DEFAULT}"
 gesture_profile="${SCROLL_GESTURE_PROFILE:-FIXED}"
 port="${SCROLL_SERVER_PORT:-8766}"
 page_package="${SCROLL_PAGE_PACKAGE:-com.android.browser}"
+edge_provider="${SCROLL_EDGE_PROVIDER:-}"
+edge_audit_base_url="${SCROLL_EDGE_AUDIT_BASE_URL:-}"
 package_name="com.example.imagetranslate"
 component="$package_name/.debug.LiveScrollBenchmarkLauncherActivity"
 fixture_root="docs/validation/live-scroll-atomic-2026-07-29"
@@ -545,9 +547,18 @@ if [[ "$experience_mode" == "ENHANCED" ]]; then
     "${adb_command[@]}" shell settings put secure accessibility_enabled 1 >/dev/null
     wait_for_accessibility_service
 fi
-"${adb_command[@]}" shell am start -n "$component" \
-    --es background_mode "$background_mode" \
-    --es experience_mode "$experience_mode" >/dev/null
+launcher_args=(
+    shell am start -n "$component"
+    --es background_mode "$background_mode"
+    --es experience_mode "$experience_mode"
+)
+if [[ -n "$edge_provider" ]]; then
+    launcher_args+=(--es edge_provider "$edge_provider")
+fi
+if [[ -n "$edge_audit_base_url" ]]; then
+    launcher_args+=(--es edge_audit_base_url "$edge_audit_base_url")
+fi
+"${adb_command[@]}" "${launcher_args[@]}" >/dev/null
 accept_projection_permission
 wait_for_initial_translation
 if [[ "$experience_mode" == "ENHANCED" ]]; then

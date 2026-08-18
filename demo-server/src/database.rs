@@ -570,6 +570,25 @@ impl Database {
         }))
     }
 
+    pub async fn request_payloads_for_audits(
+        &self,
+        audit_ids: &[String],
+    ) -> Result<HashMap<String, RequestPayload>, AppError> {
+        if audit_ids.is_empty() {
+            return Ok(HashMap::new());
+        }
+        let mut connection = self.connect().await?;
+        let payloads = request_payloads::table
+            .filter(request_payloads::audit_id.eq_any(audit_ids))
+            .load::<RequestPayload>(&mut connection)
+            .await
+            .map_err(AppError::database)?;
+        Ok(payloads
+            .into_iter()
+            .map(|payload| (payload.audit_id.clone(), payload))
+            .collect())
+    }
+
     pub async fn matching_request_record(
         &self,
         request_id: &str,

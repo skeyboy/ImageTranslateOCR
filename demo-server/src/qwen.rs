@@ -6,14 +6,17 @@ use std::{
 
 use async_trait::async_trait;
 pub use ocr_translation_core::model::ModelTranslation;
-use ocr_translation_core::model::{adaptive_max_tokens, build_model_prompt};
+use ocr_translation_core::{
+    contract::ThinkingControlMode as RequestThinkingControlMode,
+    model::{adaptive_max_tokens, build_model_prompt},
+};
 use reqwest::{Client, StatusCode};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::time::{Duration, Instant};
 
 use crate::{
-    config::{Config, TranslationProvider},
+    config::{Config, ThinkingControlMode, TranslationProvider},
     contract::{SemanticTranslationRequest, TranslationGroup},
     error::AppError,
 };
@@ -65,7 +68,8 @@ pub struct QwenClient {
     models_endpoint: String,
     api_key: Option<String>,
     model: String,
-    reasoning_effort: Option<String>,
+    thinking_mode: ThinkingControlMode,
+    thinking_level: String,
     max_tokens: u32,
     request_timeout: Duration,
     execution_mode: &'static str,
@@ -85,7 +89,8 @@ impl QwenClient {
             &config.qwen_base_url,
             config.qwen_api_key.clone(),
             model,
-            config.qwen_reasoning_effort.clone(),
+            config.qwen_thinking_mode,
+            config.qwen_thinking_level.clone(),
             config.qwen_max_tokens,
             config.qwen_timeout,
             "Qwen",
@@ -102,7 +107,8 @@ impl QwenClient {
             &config.openlux_base_url,
             config.openlux_api_key.clone(),
             model,
-            config.openlux_reasoning_effort.clone(),
+            config.openlux_thinking_mode,
+            config.openlux_thinking_level.clone(),
             config.openlux_max_tokens,
             config.openlux_timeout,
             "OpenLux",
@@ -114,7 +120,8 @@ impl QwenClient {
         base_url: &str,
         api_key: Option<String>,
         model: &str,
-        reasoning_effort: Option<String>,
+        thinking_mode: ThinkingControlMode,
+        thinking_level: String,
         max_tokens: u32,
         request_timeout: Duration,
         provider_name: &'static str,
@@ -137,7 +144,8 @@ impl QwenClient {
             models_endpoint,
             api_key,
             model: model.to_owned(),
-            reasoning_effort,
+            thinking_mode,
+            thinking_level,
             max_tokens,
             request_timeout,
             execution_mode: if is_loopback_endpoint(base) {
@@ -156,7 +164,7 @@ impl QwenClient {
         &self,
         request: &SemanticTranslationRequest,
         groups: &[TranslationGroup],
-    ) -> Result<ChatRequest<'_>, AppError> {
+    ) -> Result<ChatRequest, AppError> {
         self.chat_request_with_system_prompt(request, groups, SYSTEM_PROMPT.to_owned())
     }
 
@@ -165,7 +173,7 @@ impl QwenClient {
         request: &SemanticTranslationRequest,
         groups: &[TranslationGroup],
         system_prompt: String,
-    ) -> Result<ChatRequest<'_>, AppError> {
+    ) -> Result<ChatRequest, AppError> {
         let prompt = build_model_prompt(request, groups).map_err(AppError::from)?;
         let user_content = prompt.user;
         let system_prompt = if system_prompt == SYSTEM_PROMPT {
@@ -173,6 +181,15 @@ impl QwenClient {
         } else {
             system_prompt
         };
+        let gemini_3 = is_gemini_3_model(&self.model);
+        let (thinking_mode, thinking_level) = self.thinking_control(request)?;
+        let reasoning_effort = (thinking_mode == ThinkingControlMode::ReasoningEffort)
+            .then_some(thinking_level.clone());
+        let google = (thinking_mode == ThinkingControlMode::ThinkingLevel).then(|| {
+            serde_json::json!({
+                "thinking_config": {"thinking_level": thinking_level.to_ascii_uppercase()}
+            })
+        });
         Ok(ChatRequest {
             model: self.model.clone(),
             messages: vec![
@@ -185,19 +202,64 @@ impl QwenClient {
                     content: user_content,
                 },
             ],
-            temperature: 0.0,
-            seed: 0,
+            temperature: (!gemini_3).then_some(0.0),
+            seed: (!gemini_3).then_some(0),
             max_tokens: adaptive_max_tokens(groups).min(self.max_tokens),
             response_format: prompt.response_format,
-            reasoning_effort: self.reasoning_effort.as_deref().filter(|value| {
-                self.provider_name == "Qwen" || !value.eq_ignore_ascii_case("none")
-            }),
+            reasoning_effort,
+            google,
         })
+    }
+
+    fn thinking_control(
+        &self,
+        request: &SemanticTranslationRequest,
+    ) -> Result<(ThinkingControlMode, String), AppError> {
+        let mode = request
+            .translation
+            .thinking_control_mode
+            .map(|mode| match mode {
+                RequestThinkingControlMode::None => ThinkingControlMode::None,
+                RequestThinkingControlMode::ReasoningEffort => ThinkingControlMode::ReasoningEffort,
+                RequestThinkingControlMode::ThinkingLevel => ThinkingControlMode::ThinkingLevel,
+            })
+            .unwrap_or(self.thinking_mode);
+        let level = request
+            .translation
+            .thinking_level
+            .clone()
+            .unwrap_or_else(|| self.thinking_level.clone());
+        if is_gpt_4_1_model(&self.model) {
+            return Ok((ThinkingControlMode::None, level));
+        }
+        if mode == ThinkingControlMode::ThinkingLevel && !is_gemini_3_model(&self.model) {
+            return Err(AppError::invalid(
+                "thinkingLevel is only supported for configured Gemini 3 models",
+            ));
+        }
+        if mode == ThinkingControlMode::ThinkingLevel
+            && !matches!(level.as_str(), "minimal" | "low" | "medium" | "high")
+        {
+            return Err(AppError::invalid(
+                "thinkingLevel must be minimal, low, medium, or high",
+            ));
+        }
+        if mode == ThinkingControlMode::ReasoningEffort
+            && !matches!(
+                level.as_str(),
+                "none" | "minimal" | "low" | "medium" | "high"
+            )
+        {
+            return Err(AppError::invalid(
+                "reasoning_effort must be none, minimal, low, medium, or high",
+            ));
+        }
+        Ok((mode, level))
     }
 
     async fn completion(
         &self,
-        body: &ChatRequest<'_>,
+        body: &ChatRequest,
         group_count: usize,
     ) -> Result<CompletionResult, AppError> {
         let timeout = self.completion_timeout(group_count);
@@ -318,11 +380,15 @@ impl TranslationModel for QwenClient {
             .cloned()
             .collect::<Vec<_>>();
         if missing_groups.is_empty() {
+            let (thinking_mode, thinking_level) = self.thinking_control(request)?;
             self.store_timing(
                 &request.request_id,
                 serde_json::json!({
                     "cacheHitGroups": groups.len(), "cacheMissGroups": 0,
                     "actualModelRequest": Value::Null,
+                    "thinkingControlMode": thinking_mode.as_str(),
+                    "thinkingLevel": thinking_level,
+                    "actualThinkingParameter": "cache",
                     "dnsMs": Value::Null, "tlsMs": Value::Null,
                     "providerTotalMs": 0, "ttftMs": 0, "modelGenerationMs": 0
                 }),
@@ -333,7 +399,15 @@ impl TranslationModel for QwenClient {
         let actual_model_request = serde_json::to_value(&body).ok();
         let completion = self.completion(&body, missing_groups.len()).await?;
         let mut timing = completion.timing;
+        let (thinking_mode, thinking_level) = self.thinking_control(request)?;
         timing["actualModelRequest"] = actual_model_request.unwrap_or(Value::Null);
+        timing["thinkingControlMode"] = Value::from(thinking_mode.as_str());
+        timing["thinkingLevel"] = Value::from(thinking_level);
+        timing["actualThinkingParameter"] = Value::from(match thinking_mode {
+            ThinkingControlMode::None => "none",
+            ThinkingControlMode::ReasoningEffort => "reasoning_effort",
+            ThinkingControlMode::ThinkingLevel => "google.thinking_config.thinking_level",
+        });
         timing["cacheHitGroups"] = Value::from(groups.len() - missing_groups.len());
         timing["cacheMissGroups"] = Value::from(missing_groups.len());
         let mut fresh =
@@ -475,7 +549,21 @@ impl QwenClient {
         let mut hasher = DefaultHasher::new();
         self.provider_name.hash(&mut hasher);
         self.model.hash(&mut hasher);
+        PROMPT_VERSION.hash(&mut hasher);
         request.translation.mode.hash(&mut hasher);
+        request
+            .translation
+            .direct_structured_output
+            .hash(&mut hasher);
+        request
+            .translation
+            .compact_provider_prompt
+            .hash(&mut hasher);
+        let (thinking_mode, thinking_level) = self
+            .thinking_control(request)
+            .unwrap_or((ThinkingControlMode::None, String::new()));
+        thinking_mode.hash(&mut hasher);
+        thinking_level.hash(&mut hasher);
         request.translation.source_language.hash(&mut hasher);
         request.translation.target_language.hash(&mut hasher);
         group.role.hash(&mut hasher);
@@ -605,7 +693,9 @@ impl TranslationModelRegistry {
         let provider = provider
             .map(|value| {
                 TranslationProvider::parse(value).ok_or_else(|| {
-                    AppError::invalid("X-Translation-Provider must be qwen or openlux")
+                    AppError::invalid(
+                        "X-Translation-Provider must be qwen, openlux, or gemini-native",
+                    )
                 })
             })
             .transpose()?
@@ -710,15 +800,27 @@ impl TranslationModelRegistry {
 }
 
 #[derive(Serialize)]
-struct ChatRequest<'a> {
+struct ChatRequest {
     model: String,
     messages: Vec<ChatMessage>,
-    temperature: f32,
-    seed: u64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    temperature: Option<f32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    seed: Option<u64>,
     max_tokens: u32,
     response_format: Value,
     #[serde(skip_serializing_if = "Option::is_none")]
-    reasoning_effort: Option<&'a str>,
+    reasoning_effort: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    google: Option<Value>,
+}
+
+fn is_gemini_3_model(model: &str) -> bool {
+    model.to_ascii_lowercase().starts_with("gemini-3")
+}
+
+fn is_gpt_4_1_model(model: &str) -> bool {
+    model.to_ascii_lowercase().starts_with("gpt-4.1")
 }
 
 #[derive(Serialize)]
@@ -909,6 +1011,7 @@ fn parse_model_response_without_critical_validation(
                 translated_text,
                 detected_source_language: normalized_language(&result.detected_source_language),
                 target_language: normalized_language(&result.target_language),
+                failure: None,
             },
         );
     }
@@ -1337,6 +1440,60 @@ mod tests {
         server.abort();
     }
 
+    #[test]
+    fn thinking_control_cases_are_mutually_exclusive_for_all_levels() {
+        let mut config = Config::for_test(":memory:".to_owned());
+        config.openlux_api_key = Some("test".to_owned());
+        config.openlux_model = Some("gemini-3.5-flash-lite".to_owned());
+        config.openlux_models = vec!["gemini-3.5-flash-lite".to_owned()];
+        let client = QwenClient::new_openlux(&config).unwrap();
+
+        for level in ["minimal", "low", "medium", "high"] {
+            let mut baseline = semantic_request();
+            baseline.translation.thinking_control_mode = Some(RequestThinkingControlMode::None);
+            baseline.translation.thinking_level = Some(level.to_owned());
+            let body =
+                serde_json::to_value(client.chat_request(&baseline, &baseline.groups).unwrap())
+                    .unwrap();
+            assert!(body.get("reasoning_effort").is_none());
+            assert!(body.get("google").is_none());
+
+            let mut reasoning = baseline.clone();
+            reasoning.translation.thinking_control_mode =
+                Some(RequestThinkingControlMode::ReasoningEffort);
+            let body =
+                serde_json::to_value(client.chat_request(&reasoning, &reasoning.groups).unwrap())
+                    .unwrap();
+            assert_eq!(body["reasoning_effort"], level);
+            assert!(body.get("google").is_none());
+
+            let mut native = baseline.clone();
+            native.translation.thinking_control_mode =
+                Some(RequestThinkingControlMode::ThinkingLevel);
+            let body = serde_json::to_value(client.chat_request(&native, &native.groups).unwrap())
+                .unwrap();
+            assert_eq!(
+                body["google"]["thinking_config"]["thinking_level"],
+                level.to_ascii_uppercase()
+            );
+            assert!(body.get("reasoning_effort").is_none());
+        }
+
+        let gpt_client = QwenClient::new_openlux_model(&config, "gpt-4.1").unwrap();
+        let mut gpt_request = semantic_request();
+        gpt_request.translation.thinking_control_mode =
+            Some(RequestThinkingControlMode::ReasoningEffort);
+        gpt_request.translation.thinking_level = Some("low".to_owned());
+        let gpt_body = serde_json::to_value(
+            gpt_client
+                .chat_request(&gpt_request, &gpt_request.groups)
+                .unwrap(),
+        )
+        .unwrap();
+        assert!(gpt_body.get("reasoning_effort").is_none());
+        assert!(gpt_body.get("google").is_none());
+    }
+
     #[tokio::test]
     async fn retries_only_groups_that_lose_required_literal_identifiers() {
         let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
@@ -1425,6 +1582,10 @@ mod tests {
                 target_language: "zh".to_owned(),
                 preserve_identifiers: true,
                 use_document_context: true,
+                direct_structured_output: false,
+                compact_provider_prompt: true,
+                thinking_control_mode: None,
+                thinking_level: None,
             },
             document_context: DocumentContext {
                 text: "Hello".to_owned(),
@@ -1597,12 +1758,14 @@ mod tests {
                 translated_text: "第一段的正确译文。第二段的正确译文。".to_owned(),
                 detected_source_language: "en".to_owned(),
                 target_language: "zh".to_owned(),
+                failure: None,
             },
             ModelTranslation {
                 group_id: "second".to_owned(),
                 translated_text: "第二段的正确译文。".to_owned(),
                 detected_source_language: "en".to_owned(),
                 target_language: "zh".to_owned(),
+                failure: None,
             },
         ];
 

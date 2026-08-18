@@ -290,9 +290,11 @@
         app:layout_constraintStart_toStartOf="parent">
 
         <LinearLayout
+            android:id="@+id/legacyScreenshotSettings"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical">
+            android:orientation="vertical"
+            android:visibility="gone">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -360,6 +362,7 @@
                 android:layout_height="44dp"
                 app:checkedButton="@id/btnModeBidirectional"
                 app:selectionRequired="true"
+                android:visibility="gone"
                 app:singleSelection="true">
 
                 <com.google.android.material.button.MaterialButton
@@ -393,7 +396,8 @@
                 android:layout_height="48dp"
                 android:text="@string/setting_review_before_translation"
                 android:textColor="?attr/colorOnSurfaceVariant"
-                android:textSize="13sp" />
+                android:textSize="13sp"
+                android:visibility="gone" />
 
             <com.google.android.material.button.MaterialButtonToggleGroup
                 android:id="@+id/translationBackendGroup"
@@ -401,6 +405,7 @@
                 android:layout_height="44dp"
                 app:checkedButton="@id/btnBackendLocal"
                 app:selectionRequired="true"
+                android:visibility="gone"
                 app:singleSelection="true">
 
                 <com.google.android.material.button.MaterialButton
@@ -450,7 +455,8 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="4dp"
-                android:hint="@string/embedded_translation_model">
+                android:hint="@string/embedded_translation_model"
+                android:visibility="visible">
 
                 <AutoCompleteTextView
                     android:id="@+id/editEmbeddedTranslationModel"
@@ -461,22 +467,121 @@
             </com.google.android.material.textfield.TextInputLayout>
 
             <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/inputEmbeddedThinkingMode"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="4dp"
+                android:hint="@string/embedded_thinking_control_mode"
+                android:visibility="gone"
+                app:helperText="@string/embedded_thinking_control_mode_summary">
+
+                <AutoCompleteTextView
+                    android:id="@+id/editEmbeddedThinkingMode"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="none"
+                    android:textSize="12sp" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/inputEmbeddedThinkingLevel"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="4dp"
+                android:hint="@string/embedded_thinking_level"
+                android:visibility="gone">
+
+                <AutoCompleteTextView
+                    android:id="@+id/editEmbeddedThinkingLevel"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="none"
+                    android:textSize="12sp" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/switchDirectStructuredOutput"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="4dp"
+                android:minHeight="48dp"
+                android:text="@string/setting_direct_structured_output"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:textSize="13sp"
+                android:visibility="gone"
+                app:useMaterialThemeColors="true" />
+
+            <TextView
+                android:id="@+id/textDirectStructuredOutputSummary"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="8dp"
+                android:text="@string/setting_direct_structured_output_summary"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:textSize="11sp"
+                android:visibility="gone" />
+
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/switchCompactProviderPrompt"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="4dp"
+                android:minHeight="48dp"
+                android:text="@string/setting_compact_provider_prompt"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:textSize="13sp"
+                android:visibility="gone"
+                app:useMaterialThemeColors="true" />
+
+            <TextView
+                android:id="@+id/textCompactProviderPromptSummary"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="8dp"
+                android:text="@string/setting_compact_provider_prompt_summary"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:textSize="11sp"
+                android:visibility="gone" />
+
+            <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/inputEmbeddedProvider"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="4dp"
                 android:hint="@string/embedded_translation_provider"
-                app:boxBackgroundMode="outline">
+                android:visibility="visible">
 
-                <com.google.android.material.textfield.TextInputEditText
+                <AutoCompleteTextView
                     android:id="@+id/editEmbeddedProvider"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:imeOptions="actionNext"
-                    android:inputType="text"
+                    android:inputType="none"
                     android:maxLines="1"
                     android:textSize="12sp" />
             </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/switchOpenAiOxideTranslation"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="4dp"
+                android:minHeight="48dp"
+                android:text="@string/setting_openai_oxide_translation"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:textSize="13sp"
+                app:useMaterialThemeColors="true" />
+
+            <TextView
+                android:id="@+id/textOpenAiOxideSummary"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="8dp"
+                android:text="@string/setting_openai_oxide_translation_summary"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:textSize="11sp" />
 
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/inputEmbeddedBaseUrl"
@@ -484,6 +589,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="4dp"
                 android:hint="@string/embedded_translation_base_url"
+                android:visibility="gone"
                 app:boxBackgroundMode="outline">
 
                 <com.google.android.material.textfield.TextInputEditText
@@ -502,6 +608,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="4dp"
                 android:hint="@string/embedded_translation_api_key"
+                android:visibility="visible"
                 app:boxBackgroundMode="outline"
                 app:endIconMode="password_toggle">
 
@@ -521,6 +628,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="4dp"
                 android:hint="@string/embedded_translation_models"
+                android:visibility="gone"
                 app:boxBackgroundMode="outline">
 
                 <com.google.android.material.textfield.TextInputEditText
@@ -534,12 +642,90 @@
             </com.google.android.material.textfield.TextInputLayout>
 
             <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/inputEmbeddedProxyUrl"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="4dp"
+                android:hint="@string/embedded_translation_proxy_url"
+                app:boxBackgroundMode="outline"
+                android:visibility="gone"
+                app:helperText="@string/embedded_translation_proxy_summary">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/editEmbeddedProxyUrl"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:imeOptions="actionNext"
+                    android:inputType="textUri"
+                    android:maxLines="1"
+                    android:textSize="12sp" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/inputEdgeAuditBaseUrl"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="4dp"
+                android:hint="@string/edge_audit_base_url"
+                app:boxBackgroundMode="outline"
+                android:visibility="gone"
+                app:helperText="@string/edge_audit_base_url_summary">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/editEdgeAuditBaseUrl"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:imeOptions="actionDone"
+                    android:inputType="textUri"
+                    android:maxLines="1"
+                    android:textSize="12sp" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/switchServerGeminiTranslation"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:text="@string/server_gemini_translation_enabled"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:textSize="13sp"
+                app:useMaterialThemeColors="true" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="8dp"
+                android:text="@string/server_gemini_translation_summary"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:textSize="11sp" />
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/inputServerGeminiBaseUrl"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="4dp"
+                android:hint="@string/server_gemini_translation_base_url"
+                app:boxBackgroundMode="outline"
+                app:helperTextEnabled="true">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/editServerGeminiBaseUrl"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:imeOptions="actionDone"
+                    android:inputType="textUri"
+                    android:maxLines="1"
+                    android:singleLine="true"
+                    android:textSize="12sp" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/inputNetworkTranslationBaseUrl"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="4dp"
                 android:hint="@string/pnuts_translation_base_url"
                 app:boxBackgroundMode="outline"
+                android:visibility="gone"
                 app:helperTextEnabled="true">
 
                 <com.google.android.material.textfield.TextInputEditText
@@ -560,6 +746,7 @@
                 android:layout_marginBottom="4dp"
                 android:hint="@string/self_hosted_translation_base_url"
                 app:boxBackgroundMode="outline"
+                android:visibility="gone"
                 app:helperTextEnabled="true">
 
                 <com.google.android.material.textfield.TextInputEditText
@@ -580,6 +767,7 @@
                 android:layout_marginBottom="4dp"
                 android:hint="@string/self_hosted_bearer_token"
                 app:boxBackgroundMode="outline"
+                android:visibility="gone"
                 app:endIconMode="password_toggle">
 
                 <com.google.android.material.textfield.TextInputEditText
@@ -613,6 +801,23 @@
                 android:textSize="13sp"
                 android:visibility="gone" />
 
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/switchExportRequestArchive"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:layout_marginBottom="4dp"
+                android:text="@string/setting_export_request_archive"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:textSize="13sp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="8dp"
+                android:text="@string/setting_export_request_archive_summary"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:textSize="11sp" />
+
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnPaddleNetworkSettings"
                 style="@style/Widget.Material3.Button.OutlinedButton"
@@ -626,14 +831,17 @@
                 app:icon="@drawable/ic_capture_settings"
                 app:iconGravity="textStart"
                 app:iconPadding="8dp"
+                android:visibility="gone"
                 app:iconSize="18dp" />
 
             <LinearLayout
+                android:id="@+id/legacyRenderingSettings"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="5dp"
                 android:gravity="center_vertical"
-                android:orientation="horizontal">
+                android:orientation="horizontal"
+                android:visibility="gone">
 
                 <com.google.android.material.switchmaterial.SwitchMaterial
                     android:id="@+id/switchPreciseMask"

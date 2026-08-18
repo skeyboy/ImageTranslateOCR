@@ -1,7 +1,43 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
 }
+
+val localProperties = Properties().apply {
+    rootProject.file("local.properties").takeIf { it.isFile }?.inputStream()?.use { load(it) }
+}
+
+fun localSecret(name: String): String = localProperties.getProperty(name)?.trim().orEmpty()
+
+val excludeEdgeAiSecrets = providers.gradleProperty("EXCLUDE_EDGE_AI_SECRETS").orNull
+    ?.toBooleanStrictOrNull()
+    ?: localSecret("EXCLUDE_EDGE_AI_SECRETS").toBooleanStrictOrNull()
+    ?: true
+val configuredGeminiApiKey = providers.gradleProperty("EDGE_AI_API_KEY").orNull
+    ?.trim().orEmpty()
+    .ifBlank { localSecret("EDGE_AI_API_KEY") }
+    .ifBlank { localSecret("GEMINI_API_KEY") }
+val configuredOpenLuxApiKey = providers.gradleProperty("OPENLUX_API_KEY").orNull
+    ?.trim().orEmpty()
+    .ifBlank { localSecret("OPENLUX_API_KEY") }
+val packagedGeminiApiKey = configuredGeminiApiKey.takeUnless { excludeEdgeAiSecrets }.orEmpty()
+val packagedOpenLuxApiKey = configuredOpenLuxApiKey.takeUnless { excludeEdgeAiSecrets }.orEmpty()
+val packagedGeminiModels = providers.gradleProperty("EDGE_AI_MODELS").orNull
+    ?.trim().orEmpty()
+    .ifBlank { localSecret("GEMINI_MODELS") }
+    .ifBlank { "gemini-3.5-flash-lite" }
+val packagedGeminiThinkingLevel = providers.gradleProperty("EDGE_AI_THINKING_LEVEL").orNull
+    ?.trim().orEmpty()
+    .ifBlank { localSecret("GEMINI_THINKING_LEVEL") }
+    .ifBlank { "medium" }
+val packagedGeminiProxyUrl = providers.gradleProperty("EDGE_AI_PROXY_URL").orNull
+    ?.trim().orEmpty()
+    .ifBlank { localSecret("GEMINI_PROXY_URL") }
+val configuredDemoServerBaseUrl = providers.gradleProperty("DEMO_SERVER_BASE_URL").orNull
+    ?.trim().orEmpty()
+    .ifBlank { localSecret("DEMO_SERVER_BASE_URL") }
 
 android {
     namespace = "com.example.imagetranslate"
@@ -26,19 +62,6 @@ android {
         .orNull
         ?.trim()
         .orEmpty()
-    val demoServerEnv = rootProject.file("demo-server/.env")
-        .takeIf { it.isFile }
-        ?.readLines()
-        ?.mapNotNull { line ->
-            val trimmed = line.trim()
-            if (trimmed.isEmpty() || trimmed.startsWith("#") || !trimmed.contains('=')) null
-            else trimmed.substringBefore('=').trim() to trimmed.substringAfter('=').trim().trim('"', '\'')
-        }
-        ?.toMap()
-        .orEmpty()
-    fun debugEdgeValue(property: String, envName: String, fallback: String = ""): String =
-        providers.gradleProperty(property).orNull?.trim()?.takeIf { it.isNotEmpty() }
-            ?: demoServerEnv[envName].orEmpty().ifBlank { fallback }
     fun buildConfigString(value: String): String = value
         .replace("\\", "\\\\")
         .replace("\"", "\\\"")
@@ -54,10 +77,20 @@ android {
                 "REMOTE_TRANSLATION_BASE_URL",
                 buildConfigString(endpoint)
             )
-            buildConfigField("String", "EDGE_AI_PROVIDER", buildConfigString(debugEdgeValue("EDGE_AI_PROVIDER", "TRANSLATION_PROVIDER", "openlux")))
-            buildConfigField("String", "EDGE_AI_BASE_URL", buildConfigString(debugEdgeValue("EDGE_AI_BASE_URL", "OPENLUX_BASE_URL", "https://api.openlux.ai/v1")))
-            buildConfigField("String", "EDGE_AI_API_KEY", buildConfigString(debugEdgeValue("EDGE_AI_API_KEY", "OPENLUX_API_KEY")))
-            buildConfigField("String", "EDGE_AI_MODELS", buildConfigString(debugEdgeValue("EDGE_AI_MODELS", "OPENLUX_MODELS", "gemini-3.5-flash-lite,gpt-4.1,claude-sonnet-3.6")))
+            buildConfigField("String", "EDGE_AI_PROVIDER", buildConfigString("openlux"))
+            buildConfigField("String", "EDGE_AI_BASE_URL", buildConfigString("https://generativelanguage.googleapis.com/v1beta"))
+            // The native V4 client reads its key only from an explicit Gradle property or
+            // the untracked local.properties file; server-side .env secrets are never copied.
+            buildConfigField("String", "EDGE_AI_API_KEY", buildConfigString(packagedGeminiApiKey))
+            buildConfigField("String", "OPENLUX_API_KEY", buildConfigString(packagedOpenLuxApiKey))
+            buildConfigField("String", "OPENLUX_BASE_URL", buildConfigString("https://api.openlux.ai/v1"))
+            buildConfigField("String", "OPENLUX_MODELS", buildConfigString("gemini-3.5-flash-lite"))
+            buildConfigField("String", "EDGE_AI_MODELS", buildConfigString(packagedGeminiModels))
+            buildConfigField("String", "EDGE_AI_REASONING_EFFORT", buildConfigString(""))
+            buildConfigField("String", "EDGE_AI_THINKING_MODE", buildConfigString("THINKING_LEVEL"))
+            buildConfigField("String", "EDGE_AI_THINKING_LEVEL", buildConfigString(packagedGeminiThinkingLevel))
+            buildConfigField("String", "EDGE_AI_PROXY_URL", buildConfigString(packagedGeminiProxyUrl))
+            buildConfigField("String", "DEMO_SERVER_BASE_URL", buildConfigString(configuredDemoServerBaseUrl))
         }
         getByName("release") {
             buildConfigField(
@@ -65,10 +98,18 @@ android {
                 "REMOTE_TRANSLATION_BASE_URL",
                 buildConfigString(configuredRemoteTranslationBaseUrl)
             )
-            buildConfigField("String", "EDGE_AI_PROVIDER", buildConfigString(""))
-            buildConfigField("String", "EDGE_AI_BASE_URL", buildConfigString(""))
-            buildConfigField("String", "EDGE_AI_API_KEY", buildConfigString(""))
-            buildConfigField("String", "EDGE_AI_MODELS", buildConfigString(""))
+            buildConfigField("String", "EDGE_AI_PROVIDER", buildConfigString("openlux"))
+            buildConfigField("String", "EDGE_AI_BASE_URL", buildConfigString("https://generativelanguage.googleapis.com/v1beta"))
+            buildConfigField("String", "EDGE_AI_API_KEY", buildConfigString(packagedGeminiApiKey))
+            buildConfigField("String", "OPENLUX_API_KEY", buildConfigString(packagedOpenLuxApiKey))
+            buildConfigField("String", "OPENLUX_BASE_URL", buildConfigString("https://api.openlux.ai/v1"))
+            buildConfigField("String", "OPENLUX_MODELS", buildConfigString("gemini-3.5-flash-lite"))
+            buildConfigField("String", "EDGE_AI_MODELS", buildConfigString(packagedGeminiModels))
+            buildConfigField("String", "EDGE_AI_REASONING_EFFORT", buildConfigString(""))
+            buildConfigField("String", "EDGE_AI_THINKING_MODE", buildConfigString("THINKING_LEVEL"))
+            buildConfigField("String", "EDGE_AI_THINKING_LEVEL", buildConfigString(packagedGeminiThinkingLevel))
+            buildConfigField("String", "EDGE_AI_PROXY_URL", buildConfigString(packagedGeminiProxyUrl))
+            buildConfigField("String", "DEMO_SERVER_BASE_URL", buildConfigString(configuredDemoServerBaseUrl))
         }
     }
 
@@ -79,6 +120,11 @@ android {
 
     kotlinOptions {
         jvmTarget = "17"
+    }
+
+    lint {
+        // androidx.lifecycle's detector is binary-incompatible with this AGP/Kotlin lint runtime.
+        disable += "NullSafeMutableLiveData"
     }
 
     packaging {
@@ -113,7 +159,8 @@ val buildEmbeddedTranslationEdge by tasks.registering(Exec::class) {
         fileTree(rootProject.file("ocr-translation-core/src")),
         fileTree(rootProject.file("ocr-translation-edge/src")),
         rootProject.file("ocr-translation-core/Cargo.toml"),
-        rootProject.file("ocr-translation-edge/Cargo.toml")
+        rootProject.file("ocr-translation-edge/Cargo.toml"),
+        rootProject.file("Cargo.lock")
     )
     outputs.files(
         rootProject.file("target/aarch64-linux-android/debug/libocr_translation_edge.so"),
@@ -127,11 +174,12 @@ val buildEmbeddedTranslationEdge by tasks.registering(Exec::class) {
     }
 }
 
-tasks.matching { it.name == "preDebugBuild" }.configureEach {
+tasks.matching { it.name == "preDebugBuild" || it.name == "preReleaseBuild" }.configureEach {
     dependsOn(buildEmbeddedTranslationEdge)
 }
 
 dependencies {
+    implementation("rustls:rustls-platform-verifier:0.1.1")
     implementation(files("libs/ppocr-sdk-release.aar"))
     implementation("com.microsoft.onnxruntime:onnxruntime-android:1.28.0")
     implementation(project(":smart-assist-core"))
@@ -139,7 +187,7 @@ dependencies {
     implementation("androidx.core:core-ktx") {
         version { strictly("1.16.0") }
     }
-    implementation("androidx.appcompat:appcompat:1.7.1")
+    implementation("androidx.appcompat:appcompat:1.8.0")
     implementation("com.google.android.gms:play-services-base:18.10.0")
     implementation("com.google.android.gms:play-services-mlkit-text-recognition:19.0.1")
     implementation("com.google.android.gms:play-services-mlkit-text-recognition-chinese:16.0.1")
@@ -155,7 +203,7 @@ dependencies {
     //noinspection Aligned16KB
     implementation("com.quickbirdstudios:opencv:4.5.3.0")
     testImplementation("junit:junit:4.13.2")
-    testImplementation("org.json:json:20240303")
+    testImplementation("org.json:json:20260719")
     androidTestImplementation("androidx.test:core-ktx:1.7.0")
     androidTestImplementation("androidx.test.ext:junit:1.3.0")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.7.0")

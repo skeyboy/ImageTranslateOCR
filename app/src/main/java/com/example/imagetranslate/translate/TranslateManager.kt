@@ -30,6 +30,7 @@ enum class TranslationMode {
 
 internal data class TranslationExecutionResult(
     val regionId: String,
+    val role: String? = null,
     val sourceGroupIds: List<String> = listOf(regionId),
     val memberRegionIds: List<String> = emptyList(),
     val anchorBounds: TranslationBounds? = null,
@@ -62,8 +63,12 @@ internal class TranslateManager(context: Context? = null) {
     private val selfHostedProviderLock = Any()
     private var selfHostedProviderConfiguration: Triple<String, String?, Int>? = null
     private var selfHostedProvider: SelfHostedSemanticTranslationProvider? = null
-    private var embeddedProviderConfiguration: Pair<String, String>? = null
+    private var embeddedProviderConfiguration: List<String>? = null
     private var embeddedProvider: EmbeddedSemanticTranslationProvider? = null
+    private var serverGeminiProviderConfiguration: Pair<String, String?>? = null
+    private var serverGeminiProvider: SelfHostedSemanticTranslationProvider? = null
+    private var openAiOxideProviderConfiguration: Triple<String, String, String>? = null
+    private var openAiOxideProvider: OpenAiOxideSemanticTranslationProvider? = null
     private val semanticSessionId = UUID.randomUUID().toString()
     private val semanticGeneration = AtomicLong(0L)
     private val localProvider = LocalTranslationProvider(translateOne = ::translateLocally)
@@ -218,6 +223,16 @@ internal class TranslateManager(context: Context? = null) {
             .sortedBy(SemanticTranslationSource::readingOrder)
             .map { source -> source.preparedFor(mode, viewportWidth, viewportHeight) }
         val generation = semanticGeneration.incrementAndGet()
+        val thinkingMode = appContext?.let { context ->
+            if (backend == TranslationBackend.EMBEDDED_V4) {
+                TranslationBackendSettings.effectiveEdgeThinkingControlMode(
+                    context,
+                    TranslationBackendSettings.edgeModel(context)
+                )
+            } else {
+                TranslationBackendSettings.edgeThinkingControlMode(context)
+            }
+        }
         val request = SemanticTranslationRequest(
             requestId = requestId,
             sessionId = semanticSessionId,
@@ -231,6 +246,16 @@ internal class TranslateManager(context: Context? = null) {
                 "[${source.role}] ${source.sourceText}"
             }.take(MAXIMUM_DOCUMENT_CONTEXT_CHARACTERS),
             sources = preparedSources,
+            directStructuredOutput = appContext?.let(
+                TranslationBackendSettings::isDirectStructuredOutputEnabled
+            ) ?: false,
+            compactProviderPrompt = appContext?.let(
+                TranslationBackendSettings::isCompactProviderPromptEnabled
+            ) ?: true,
+            thinkingControlMode = thinkingMode,
+            thinkingLevel = appContext?.let(
+                TranslationBackendSettings::edgeThinkingLevel
+            ),
             debugCapture = debugCapture
         )
         val semanticTrace = SemanticTranslationTrace(
@@ -303,8 +328,12 @@ internal class TranslateManager(context: Context? = null) {
             .flatMap(SemanticGroupTranslationResult::sourceGroupIds)
             .toSet()
         val fallbackSources = preparedSources.filter { it.groupId !in remotelyCoveredSourceIds }
-        val localFallbackSources = fallbackSources.filter { source ->
-            SemanticFallbackPolicy.allowsLocalFallback(source, viewportWidth, viewportHeight)
+        val localFallbackSources = if (backend == TranslationBackend.EMBEDDED_V4) {
+            emptyList()
+        } else {
+            fallbackSources.filter { source ->
+                SemanticFallbackPolicy.allowsLocalFallback(source, viewportWidth, viewportHeight)
+            }
         }
         val remoteRequiredSources = fallbackSources.filter { it !in localFallbackSources }
         if (fallbackSources.isNotEmpty()) {
@@ -327,6 +356,7 @@ internal class TranslateManager(context: Context? = null) {
             val resultSources = result.sourceGroupIds.mapNotNull(sourcesById::get)
             TranslationExecutionResult(
                 regionId = result.groupId,
+                role = result.role,
                 sourceGroupIds = result.sourceGroupIds,
                 memberRegionIds = result.memberRegionIds,
                 anchorBounds = result.anchorBounds,
@@ -341,6 +371,7 @@ internal class TranslateManager(context: Context? = null) {
         val rejectedRemoteExecutions = rejectedRemote.map { result ->
             TranslationExecutionResult(
                 regionId = result.groupId,
+                role = result.role,
                 sourceGroupIds = result.sourceGroupIds,
                 memberRegionIds = result.memberRegionIds,
                 anchorBounds = result.anchorBounds,
@@ -358,11 +389,13 @@ internal class TranslateManager(context: Context? = null) {
         }
         val fallbackExecutions = fallbackSources.map { source ->
             localFallback[source.groupId]?.copy(
+                role = source.role,
                 sourceGroupIds = listOf(source.groupId),
                 memberRegionIds = source.memberRegionIds,
                 anchorBounds = source.bounds
             ) ?: TranslationExecutionResult(
                 regionId = source.groupId,
+                role = source.role,
                 sourceGroupIds = listOf(source.groupId),
                 memberRegionIds = source.memberRegionIds,
                 anchorBounds = source.bounds,
@@ -555,7 +588,8 @@ internal class TranslateManager(context: Context? = null) {
                 selfHostedProvider = SelfHostedSemanticTranslationProvider(
                     baseUrl,
                     token,
-                    schemaVersion
+                    schemaVersion,
+                    context = context
                 )
                 selfHostedProviderConfiguration = configuration
             }
@@ -566,18 +600,77 @@ internal class TranslateManager(context: Context? = null) {
     private fun semanticProviderForCurrentSettings(backend: TranslationBackend): SemanticTranslationProvider {
         if (backend != TranslationBackend.EMBEDDED_V4) return selfHostedProviderForCurrentSettings(backend)
         val context = checkNotNull(appContext) { "Embedded translation requires an app context" }
-        val providerName = TranslationBackendSettings.edgeProvider(context)
+        if (TranslationBackendSettings.isOpenAiOxideEnabled(context)) {
+            check(TranslationBackendSettings.isOpenAiOxideConfigured(context)) {
+                "OpenAI Oxide translation is not configured"
+            }
+            val baseUrl = TranslationBackendSettings.openAiOxideBaseUrl(context)
+            val apiKey = TranslationBackendSettings.openAiOxideApiKey(context)
+            val model = TranslationBackendSettings.openAiOxideModel(context)
+            val configuration = Triple(baseUrl, apiKey, model)
+            return synchronized(selfHostedProviderLock) {
+                if (openAiOxideProvider == null ||
+                    openAiOxideProviderConfiguration != configuration
+                ) {
+                    openAiOxideProvider?.close()
+                    openAiOxideProvider = OpenAiOxideSemanticTranslationProvider(
+                        context = context,
+                        baseUrl = baseUrl,
+                        apiKey = apiKey,
+                        model = model
+                    )
+                    openAiOxideProviderConfiguration = configuration
+                }
+                checkNotNull(openAiOxideProvider)
+            }
+        }
+        if (TranslationBackendSettings.isServerGeminiEnabled(context)) {
+            val baseUrl = TranslationBackendSettings.serverGeminiBaseUrl(context)
+            val token = TranslationBackendSettings.selfHostedBearerToken(context)
+            val configuration = baseUrl to token
+            return synchronized(selfHostedProviderLock) {
+                if (serverGeminiProvider == null || serverGeminiProviderConfiguration != configuration) {
+                    serverGeminiProvider?.close()
+                    serverGeminiProvider = SelfHostedSemanticTranslationProvider(
+                        baseUrl = baseUrl,
+                        bearerToken = token,
+                        schemaVersion = 4,
+                        endpointPath = SERVER_GEMINI_REGIONS_FIRST_PATH,
+                        context = context
+                    )
+                    serverGeminiProviderConfiguration = configuration
+                }
+                checkNotNull(serverGeminiProvider)
+            }
+        }
+        check(TranslationBackendSettings.isEdgeConfigured(context)) {
+            "Direct AI translation is not configured"
+        }
+        val provider = TranslationBackendSettings.edgeProvider(context)
         val model = TranslationBackendSettings.edgeModel(context)
-        val configuration = providerName to model
+        val baseUrl = TranslationBackendSettings.edgeBaseUrl(context)
+        val apiKey = TranslationBackendSettings.edgeApiKey(context)
+        val thinkingMode = TranslationBackendSettings.effectiveEdgeThinkingControlMode(
+            context,
+            model
+        )
+        val thinkingLevel = TranslationBackendSettings.edgeThinkingLevel(context)
+        val proxyUrl = TranslationBackendSettings.edgeProxyUrl(context)
+        val configuration = listOf(
+            provider, model, baseUrl, apiKey, thinkingMode.name, thinkingLevel, proxyUrl
+        )
         return synchronized(selfHostedProviderLock) {
             if (embeddedProvider == null || embeddedProviderConfiguration != configuration) {
                 embeddedProvider?.close()
                 embeddedProvider = EmbeddedSemanticTranslationProvider(
                     context = context,
-                    provider = providerName,
+                    provider = provider,
                     model = model,
-                    baseUrl = TranslationBackendSettings.edgeBaseUrl(context),
-                    apiKey = TranslationBackendSettings.edgeApiKey(context)
+                    baseUrl = baseUrl,
+                    apiKey = apiKey,
+                    thinkingMode = thinkingMode,
+                    thinkingLevel = thinkingLevel,
+                    proxyUrl = proxyUrl
                 )
                 embeddedProviderConfiguration = configuration
             }
@@ -848,6 +941,12 @@ internal class TranslateManager(context: Context? = null) {
             embeddedProvider?.close()
             embeddedProvider = null
             embeddedProviderConfiguration = null
+            serverGeminiProvider?.close()
+            serverGeminiProvider = null
+            serverGeminiProviderConfiguration = null
+            openAiOxideProvider?.close()
+            openAiOxideProvider = null
+            openAiOxideProviderConfiguration = null
         }
     }
 }

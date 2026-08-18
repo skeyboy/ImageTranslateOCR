@@ -8,6 +8,52 @@ import org.junit.Test
 
 class SelfHostedLayoutPlanContractTest {
     @Test
+    fun serverGeminiProviderUsesDedicatedV4EndpointWithoutChangingRegularV4() {
+        val regular = SelfHostedSemanticTranslationProvider(
+            "http://127.0.0.1:8090",
+            null,
+            4
+        )
+        val serverGemini = SelfHostedSemanticTranslationProvider(
+            "http://127.0.0.1:8090",
+            null,
+            4,
+            SERVER_GEMINI_REGIONS_FIRST_PATH
+        )
+
+        assertEquals(
+            "http://127.0.0.1:8090/api/v4/translate/layout-plan",
+            regular.endpointForTest()
+        )
+        assertEquals(
+            "http://127.0.0.1:8090/api/v4/translate/gemini-native/layout-plan",
+            serverGemini.endpointForTest()
+        )
+    }
+
+    @Test
+    fun v4RequestCarriesDirectStructuredOutputPreference() {
+        val provider = SelfHostedSemanticTranslationProvider("http://127.0.0.1:8090", null, 4)
+        val request = request().copy(directStructuredOutput = true)
+
+        val translation = JSONObject(provider.requestBodyForTest(request))
+            .getJSONObject("translation")
+
+        assertEquals(true, translation.getBoolean("directStructuredOutput"))
+    }
+
+    @Test
+    fun v4RequestCarriesCompactProviderPromptPreference() {
+        val provider = SelfHostedSemanticTranslationProvider("http://127.0.0.1:8090", null, 4)
+        val request = request().copy(compactProviderPrompt = false)
+
+        val translation = JSONObject(provider.requestBodyForTest(request))
+            .getJSONObject("translation")
+
+        assertEquals(false, translation.getBoolean("compactProviderPrompt"))
+    }
+
+    @Test
     fun v4AcceptsRegionFirstAuthoritativeGroupAndUsesSchemaFour() {
         val request = request()
         val response = JSONObject(response(0.94f))

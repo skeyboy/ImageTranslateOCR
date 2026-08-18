@@ -73,6 +73,12 @@ class TranslationProviderTest {
                 "http://192.168.0.4:8090/api/v4/translate/layout-plan/"
             )
         )
+        assertEquals(
+            "http://192.168.0.4:8090",
+            normalizeNetworkBaseUrl(
+                "http://192.168.0.4:8090/api/v4/translate/gemini-native/layout-plan/"
+            )
+        )
     }
 
     @Test
@@ -82,6 +88,38 @@ class TranslationProviderTest {
         }
         assertThrows(IllegalArgumentException::class.java) {
             normalizeNetworkBaseUrl("http://user:password@192.168.0.4:8090")
+        }
+    }
+
+    @Test
+    fun openAiCompatibleBaseUrlAcceptsBaseOrChatCompletionsEndpoint() {
+        assertEquals(
+            "https://api.openlux.ai/v1",
+            normalizeOpenAiBaseUrl("https://api.openlux.ai/v1")
+        )
+        assertEquals(
+            "https://api.openlux.ai/v1",
+            normalizeOpenAiBaseUrl("https://api.openlux.ai/v1/chat/completions/")
+        )
+        assertThrows(IllegalArgumentException::class.java) {
+            normalizeOpenAiBaseUrl("http://api.openlux.ai/v1")
+        }
+    }
+
+    @Test
+    fun proxyUrlAcceptsExplicitHttpAndSocksEndpointsOrDirectMode() {
+        assertEquals("", normalizeProxyUrl("  "))
+        assertEquals("http://127.0.0.1:7897", normalizeProxyUrl(" http://127.0.0.1:7897/ "))
+        assertEquals("socks5://192.168.0.2:1080", normalizeProxyUrl("socks5://192.168.0.2:1080"))
+    }
+
+    @Test
+    fun proxyUrlRejectsMissingPortAndCredentials() {
+        assertThrows(IllegalArgumentException::class.java) {
+            normalizeProxyUrl("http://127.0.0.1")
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            normalizeProxyUrl("http://user:secret@127.0.0.1:7897")
         }
     }
 
@@ -248,6 +286,20 @@ class TranslationProviderTest {
 
         assertTrue(cancelled)
         assertEquals(0, localCalls)
+    }
+
+    @Test
+    fun openAiBaseUrlRequiresCredentialFreeHttps() {
+        assertEquals(
+            "https://api.openai.com/v1",
+            normalizeOpenAiBaseUrl(" https://api.openai.com/v1/ ")
+        )
+        assertThrows(IllegalArgumentException::class.java) {
+            normalizeOpenAiBaseUrl("http://api.openai.com/v1")
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            normalizeOpenAiBaseUrl("https://secret@api.openai.com/v1")
+        }
     }
 
     private fun requests() = listOf("first", "second").mapIndexed { index, text ->

@@ -70,8 +70,18 @@ internal data class SemanticTranslationRequest(
     val mode: TranslationMode,
     val documentText: String,
     val sources: List<SemanticTranslationSource>,
+    val directStructuredOutput: Boolean = false,
+    val compactProviderPrompt: Boolean = true,
+    val thinkingControlMode: ProviderThinkingControlMode? = null,
+    val thinkingLevel: String? = null,
     val debugCapture: SemanticDebugCapture? = null
 )
+
+internal enum class ProviderThinkingControlMode {
+    NONE,
+    REASONING_EFFORT,
+    THINKING_LEVEL
+}
 
 internal data class SemanticLayoutHint(
     val preferredMaxLines: Int,

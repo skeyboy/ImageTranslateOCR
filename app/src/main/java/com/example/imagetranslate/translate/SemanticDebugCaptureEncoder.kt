@@ -50,7 +50,7 @@ internal object SemanticDebugCaptureUploadPolicy {
         missingGroupCount: Int
     ): Boolean = isDebugBuild &&
         scene == "LIVE_SCREEN" &&
-        backend.isSelfHosted &&
+        (backend.isSelfHosted || backend == TranslationBackend.EMBEDDED_V4) &&
         uploadEnabled &&
         missingGroupCount > 0
 }

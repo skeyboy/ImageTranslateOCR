@@ -169,7 +169,8 @@ internal data class SmartAssistDisplayHints(
     val alignment: String = "START",
     val allowMore: Boolean = false,
     val sourceLineCount: Int = 1,
-    val layoutShape: String = "RECT"
+    val layoutShape: String = "RECT",
+    val role: String? = null
 )
 
 private data class BackgroundTranslationBatch(
@@ -315,6 +316,19 @@ private data class BackgroundTextStyle(
     val fontSizeMultiplier: Float,
     val lineSpacingMultiplier: Float,
     val sourceLineCount: Int
+)
+
+internal data class SourceTextStyleHint(
+    val glyphHeightPx: Float,
+    val lineHeightPx: Float,
+    val strokeWidthPx: Float,
+    val weight: Int,
+    val familyClass: String,
+    val letterSpacingPx: Float,
+    val alignment: String,
+    val foregroundColor: Int,
+    val backgroundColor: Int,
+    val confidence: Float
 )
 
 internal class BackgroundTranslatedImageProcessor(
@@ -1042,7 +1056,9 @@ internal class BackgroundTranslatedImageProcessor(
             )
         }
         val missing = prepared.filter { it.cachedTranslation == null }
-        val debugCapture = if (SemanticDebugCaptureUploadPolicy.shouldUpload(
+        val shouldArchiveRequest = missing.isNotEmpty() &&
+            TranslationBackendSettings.isRequestArchiveExportEnabled(appContext)
+        val debugCapture = if (shouldArchiveRequest || SemanticDebugCaptureUploadPolicy.shouldUpload(
                 isDebugBuild = BuildConfig.DEBUG,
                 scene = scene,
                 backend = activeBackend,
@@ -1159,7 +1175,8 @@ internal class BackgroundTranslatedImageProcessor(
                         alignment = hint.alignment,
                         allowMore = hint.allowMore,
                         sourceLineCount = hint.sourceLineCount,
-                        layoutShape = hint.layoutShape
+                        layoutShape = hint.layoutShape,
+                        role = execution.role
                     )
                 },
                 renderSlots = requestedRenderSlots,
@@ -2059,6 +2076,38 @@ private fun resolvedSourceCoverSlots(region: BackgroundImageRegion): List<Rect> 
     region.sourceCoverSlots.takeIf { it.isNotEmpty() }?.map(::Rect)
         ?: region.source.textEraseBounds().map(::Rect)
 
+internal fun denseBodyRectFallback(
+    renderSlots: List<Rect>,
+    layoutShape: String?,
+    sourceLineCount: Int,
+    role: String?
+): Rect? {
+    if (role != "BODY" || layoutShape != "FLOW_SLOTS" || renderSlots.size < 3 ||
+        sourceLineCount < 3
+    ) return null
+    val union = renderSlots.drop(1).fold(Rect(renderSlots.first())) { result, slot ->
+        result.apply { union(slot) }
+    }
+    if (union.width() <= 0) return null
+    val heights = renderSlots.map(Rect::height).filter { it > 0 }.sorted()
+    if (heights.isEmpty()) return null
+    val typicalHeight = heights[heights.size / 2].coerceAtLeast(1)
+    val maximumGap = renderSlots.zipWithNext().maxOfOrNull { (first, second) ->
+        second.top - first.bottom
+    } ?: 0
+    if (maximumGap > typicalHeight) return null
+
+    val leftRange = renderSlots.maxOf(Rect::left) - renderSlots.minOf(Rect::left)
+    val leftTolerance = maxOf(typicalHeight * 2, union.width() * 12 / 100)
+    if (leftRange > leftTolerance) return null
+    if (renderSlots.last().width() > union.width() * 20 / 100) return null
+
+    val nonFinal = renderSlots.dropLast(1)
+    val mainColumnWidth = union.width() * 72 / 100
+    val wideLineCount = nonFinal.count { it.width() >= mainColumnWidth }
+    return union.takeIf { wideLineCount * 2 >= nonFinal.size }
+}
+
 private object BackgroundTranslatedImageRenderer {
     private const val TAG = "BackgroundImageRenderer"
 
@@ -2076,14 +2125,16 @@ private object BackgroundTranslatedImageRenderer {
         val renderedRegions = mutableListOf<Rect>()
         regions.forEach { region ->
             val bounds = region.source.bounds.clampedTo(bitmap) ?: return@forEach
-            val renderSlots = resolvedRenderSlots(region, bounds).mapNotNull { it.clampedTo(bitmap) }
+            val requestedRenderSlots = resolvedRenderSlots(region, bounds)
+                .mapNotNull { it.clampedTo(bitmap) }
             val sourceCoverSlots = resolvedSourceCoverSlots(region)
                 .mapNotNull { it.clampedTo(bitmap) }
-            if (renderSlots.isEmpty()) return@forEach
+            if (requestedRenderSlots.isEmpty()) return@forEach
             val estimatedStyle = estimateTextStyle(
                 styleSourceBitmap,
                 bounds,
-                region.source.text
+                region.source.text,
+                sourceCoverSlots
             )
             val style = if (overlayBackgroundColor == null) {
                 estimatedStyle
@@ -2101,6 +2152,13 @@ private object BackgroundTranslatedImageRenderer {
                 region.source.text.filterNot(Char::isWhitespace).length <= 20
             val sourceLineCount = region.smartAssistDisplayHints?.sourceLineCount
                 ?.coerceAtLeast(1) ?: region.source.textEraseBounds().size.coerceAtLeast(1)
+            val mergedBodyRect = denseBodyRectFallback(
+                renderSlots = requestedRenderSlots,
+                layoutShape = region.smartAssistDisplayHints?.layoutShape,
+                sourceLineCount = sourceLineCount,
+                role = region.smartAssistDisplayHints?.role
+            )
+            val renderSlots = mergedBodyRect?.let(::listOf) ?: requestedRenderSlots
             val layoutMetrics = StaticImageTextLayoutPolicy.resolve(
                 groupBounds = bounds,
                 componentBounds = region.source.textEraseBounds(),
@@ -2133,6 +2191,7 @@ private object BackgroundTranslatedImageRenderer {
                 !character.isWhitespace()
             }
             val preserveFlowShape = region.smartAssistDisplayHints?.layoutShape == "FLOW_SLOTS" &&
+                mergedBodyRect == null &&
                 renderSlots.size > 1 &&
                 translatedCharacterCount >= renderSlots.size * MINIMUM_CHARACTERS_PER_FLOW_SLOT
             val isMultiLineRect = renderSlots.size == 1 &&
@@ -2338,14 +2397,7 @@ private object BackgroundTranslatedImageRenderer {
             }
             if (overlayBackgroundColor != null && drawOverlayBackground) {
                 val usedRenderSlots = shapedLayout.segments.map { segment -> segment.bounds }
-                val backgroundSlots = if (
-                    region.smartAssistDisplayHints?.layoutShape == "RECT" &&
-                    renderSlots.size == 1
-                ) {
-                    renderSlots
-                } else {
-                    (sourceCoverSlots + usedRenderSlots).distinct()
-                }
+                val backgroundSlots = (sourceCoverSlots + usedRenderSlots).distinct()
                 backgroundSlots.forEach { slot ->
                     drawCompensatedBackground(
                         canvas,
@@ -2579,10 +2631,14 @@ private object BackgroundTranslatedImageRenderer {
     private fun estimateTextStyle(
         bitmap: Bitmap,
         sourceBounds: Rect,
-        sourceText: String
+        sourceText: String,
+        textSampleBounds: List<Rect>
     ): BackgroundTextStyle {
         val bounds = sourceBounds.clampedTo(bitmap)
             ?: return defaultStyle(isDarkBackground = false, sourceText = sourceText)
+        val samples = textSampleBounds.mapNotNull { it.clampedTo(bitmap) }
+            .filter { it.width() > 0 && it.height() > 0 }
+            .ifEmpty { listOf(bounds) }
         val padding = maxOf(3, bounds.height() / 3)
         val outer = Rect(
             (bounds.left - padding).coerceAtLeast(0),
@@ -2618,13 +2674,15 @@ private object BackgroundTranslatedImageRenderer {
         val backgroundLuminance = luminance(red, green, blue)
 
         var maximumDistance = 0
-        for (y in bounds.top until bounds.bottom step styleSampleStep) {
-            for (x in bounds.left until bounds.right step styleSampleStep) {
-                val color = bitmap.getPixel(x, y)
-                maximumDistance = maxOf(
-                    maximumDistance,
-                    colorDistanceSquared(color, red, green, blue)
-                )
+        samples.forEach { sample ->
+            for (y in sample.top until sample.bottom step styleSampleStep) {
+                for (x in sample.left until sample.right step styleSampleStep) {
+                    val color = bitmap.getPixel(x, y)
+                    maximumDistance = maxOf(
+                        maximumDistance,
+                        colorDistanceSquared(color, red, green, blue)
+                    )
+                }
             }
         }
         val foregroundThreshold = maxOf(1_600, (maximumDistance * 0.45f).toInt())
@@ -2635,19 +2693,27 @@ private object BackgroundTranslatedImageRenderer {
         var foregroundSamples = 0
         var strokePixels = 0
         var sampledTextPixels = 0
-        for (y in bounds.top until bounds.bottom step styleSampleStep) {
-            for (x in bounds.left until bounds.right step styleSampleStep) {
-                val color = bitmap.getPixel(x, y)
-                val distance = colorDistanceSquared(color, red, green, blue)
-                if (distance >= strokeThreshold) strokePixels++
-                sampledTextPixels++
-                if (distance >= foregroundThreshold) {
-                    foregroundRed += Color.red(color)
-                    foregroundGreen += Color.green(color)
-                    foregroundBlue += Color.blue(color)
-                    foregroundSamples++
+        val glyphHeights = mutableListOf<Int>()
+        samples.forEach { sample ->
+            var glyphTop = sample.bottom
+            var glyphBottom = sample.top
+            for (y in sample.top until sample.bottom step styleSampleStep) {
+                for (x in sample.left until sample.right step styleSampleStep) {
+                    val color = bitmap.getPixel(x, y)
+                    val distance = colorDistanceSquared(color, red, green, blue)
+                    if (distance >= strokeThreshold) strokePixels++
+                    sampledTextPixels++
+                    if (distance >= foregroundThreshold) {
+                        foregroundRed += Color.red(color)
+                        foregroundGreen += Color.green(color)
+                        foregroundBlue += Color.blue(color)
+                        foregroundSamples++
+                        glyphTop = minOf(glyphTop, y)
+                        glyphBottom = maxOf(glyphBottom, y + styleSampleStep)
+                    }
                 }
             }
+            if (glyphBottom > glyphTop) glyphHeights += glyphBottom - glyphTop
         }
         val estimatedForeground = if (foregroundSamples == 0) {
             if (backgroundLuminance < DARK_BACKGROUND_LUMINANCE) Color.WHITE else Color.BLACK
@@ -2673,17 +2739,39 @@ private object BackgroundTranslatedImageRenderer {
         val isBold = strokePixels.toFloat() / sampledTextPixels.coerceAtLeast(1) >=
             BOLD_STROKE_COVERAGE
         val sourceLineCount = sourceText.lineSequence().count().coerceAtLeast(1)
-        val baseTypeface = if (looksLikeCode(sourceText)) {
+        val isCode = looksLikeCode(sourceText)
+        val baseTypeface = if (isCode) {
             Typeface.MONOSPACE
         } else {
             Typeface.SANS_SERIF
         }
-        return BackgroundTextStyle(
+        val lineHeights = samples.map(Rect::height).sorted()
+        val lineHeight = lineHeights[lineHeights.size / 2].toFloat()
+        val glyphHeight = glyphHeights.sorted().let { values ->
+            values.getOrNull(values.size / 2)?.toFloat() ?: lineHeight * 0.72f
+        }
+        val strokeCoverage = strokePixels.toFloat() / sampledTextPixels.coerceAtLeast(1)
+        val foregroundCoverage = foregroundSamples.toFloat() /
+            sampledTextPixels.coerceAtLeast(1)
+        val styleHint = SourceTextStyleHint(
+            glyphHeightPx = glyphHeight,
+            lineHeightPx = lineHeight,
+            strokeWidthPx = (glyphHeight * strokeCoverage * 0.25f)
+                .coerceIn(1f, maxOf(1f, glyphHeight / 4f)),
+            weight = if (isBold) 700 else 400,
+            familyClass = if (isCode) "MONO" else "SANS",
+            letterSpacingPx = 0f,
+            alignment = "START",
             foregroundColor = foreground,
+            backgroundColor = Color.rgb(red, green, blue),
+            confidence = (foregroundCoverage * 4f).coerceIn(0.2f, 1f)
+        )
+        return BackgroundTextStyle(
+            foregroundColor = styleHint.foregroundColor,
             isDarkBackground = backgroundLuminance < DARK_BACKGROUND_LUMINANCE,
             typeface = Typeface.create(
                 baseTypeface,
-                if (isBold) Typeface.BOLD else Typeface.NORMAL
+                if (styleHint.weight >= 600) Typeface.BOLD else Typeface.NORMAL
             ),
             fontSizeMultiplier = if (isBold) 1.05f else 1.12f,
             lineSpacingMultiplier = if (isBold) 1.02f else 1.08f,

@@ -319,6 +319,25 @@ pub async fn translate_regions_first_layout_plan(
     translate_request(state, headers, request, TranslationApiVersion::V4).await
 }
 
+pub async fn translate_gemini_native_layout_plan(
+    State(state): State<AppState>,
+    mut headers: HeaderMap,
+    Json(request): Json<SemanticTranslationRequest>,
+) -> Result<Json<SemanticTranslationResponse>, RequestError> {
+    headers.insert(
+        "x-translation-provider",
+        axum::http::HeaderValue::from_static("gemini-native"),
+    );
+    headers.insert(
+        "x-translation-model",
+        axum::http::HeaderValue::from_str(&state.config.gemini_model).map_err(|_| {
+            AppError::configuration("GEMINI_MODEL is not a valid HTTP header value")
+                .with_request_id(&request.request_id)
+        })?,
+    );
+    translate_request(state, headers, request, TranslationApiVersion::V4).await
+}
+
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EdgeAuditUpload {
@@ -500,6 +519,7 @@ async fn translate_request(
             actionable_groups: actionable.clone(),
             model_prompt: build_model_prompt(&request, &actionable)
                 .map_err(|error| AppError::from(error).with_request_id(&request_id))?,
+            prompt_version: crate::qwen::PROMPT_VERSION.to_owned(),
             provider: active_model.provider.as_str().to_owned(),
             model: active_model.model_name.clone(),
             execution: "self-hosted".to_owned(),
@@ -1224,6 +1244,10 @@ mod tests {
                 target_language: "zh".to_owned(),
                 preserve_identifiers: true,
                 use_document_context: true,
+                direct_structured_output: false,
+                compact_provider_prompt: true,
+                thinking_control_mode: None,
+                thinking_level: None,
             },
             document_context: crate::contract::DocumentContext {
                 text: String::new(),

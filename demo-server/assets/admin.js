@@ -1,4 +1,44 @@
 (() => {
+  const importButton = document.querySelector("#archive-import-button");
+  const importInput = document.querySelector("#archive-import-file");
+  const importStatus = document.querySelector("#archive-import-status");
+  importButton?.addEventListener("click", () => importInput?.click());
+  importInput?.addEventListener("change", async () => {
+    const file = importInput.files?.[0];
+    if (!file) return;
+    importButton.disabled = true;
+    if (importStatus) importStatus.textContent = "正在导入...";
+    try {
+      const response = await fetch("/admin/request-archives/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/zip" },
+        body: file,
+      });
+      if (!response.ok) throw new Error(await response.text() || `HTTP ${response.status}`);
+      const result = await response.json();
+      window.location.assign(result.location);
+    } catch (error) {
+      if (importStatus) importStatus.textContent = `导入失败：${error.message}`;
+      importButton.disabled = false;
+      importInput.value = "";
+    }
+  });
+
+  const padDatePart = (value) => String(value).padStart(2, "0");
+  document.querySelectorAll("time[data-format-local-time]").forEach((element) => {
+    const source = element.getAttribute("datetime") || element.textContent.trim();
+    const instant = new Date(source);
+    if (Number.isNaN(instant.getTime())) return;
+
+    const localTime = [
+      `${instant.getFullYear()}-${padDatePart(instant.getMonth() + 1)}-${padDatePart(instant.getDate())}`,
+      `${padDatePart(instant.getHours())}:${padDatePart(instant.getMinutes())}:${padDatePart(instant.getSeconds())}`,
+    ].join(" ");
+    const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    element.textContent = localTime;
+    element.title = timeZone ? `本地时区：${timeZone}\n原始时间：${source}` : `原始时间：${source}`;
+  });
+
   const root = document.querySelector("#record-detail");
   if (!root) return;
 
@@ -23,6 +63,19 @@
   };
   captureToggle?.addEventListener("change", updateCaptureView);
   updateCaptureView();
+
+  const translationBackgroundToggle = document.querySelector("#translation-background-toggle");
+  const translationBackground = document.querySelector("#translation-source-background");
+  const translationCanvas = document.querySelector("#translation-layout");
+  const updateTranslationBackground = () => {
+    const visible = Boolean(
+      translationBackground && translationBackgroundToggle?.checked && !translationBackgroundToggle.disabled
+    );
+    if (translationBackground) translationBackground.hidden = !visible;
+    translationCanvas?.classList.toggle("has-visible-background", visible);
+  };
+  translationBackgroundToggle?.addEventListener("change", updateTranslationBackground);
+  updateTranslationBackground();
 
   const fallbackCopy = (text) => {
     const input = document.createElement("textarea");
@@ -177,7 +230,6 @@
 
   const sourceCanvas = document.querySelector("#source-layout");
   const serverCanvas = document.querySelector("#server-layout");
-  const translationCanvas = document.querySelector("#translation-layout");
   const serverPlanEntries = [];
   setupCanvas(sourceCanvas);
   setupCanvas(serverCanvas);
@@ -244,11 +296,39 @@
   const activeTranslationGroups = documentPlan?.mode === "AUTHORITATIVE"
     ? documentPlan.groups
     : request.groups;
+  const denseBodyRectFallback = (group, result, slots) => {
+    const hint = result?.layoutHint;
+    if (group.role !== "BODY" || hint?.layoutShape !== "FLOW_SLOTS" || slots.length < 3 ||
+        (hint.sourceLineCount ?? 1) < 3) return null;
+    const union = slots.reduce((bounds, slot) => ({
+      left: Math.min(bounds.left, slot.left),
+      top: Math.min(bounds.top, slot.top),
+      right: Math.max(bounds.right, slot.right),
+      bottom: Math.max(bounds.bottom, slot.bottom)
+    }), { ...slots[0] });
+    const width = union.right - union.left;
+    const heights = slots.map((slot) => slot.bottom - slot.top).filter((height) => height > 0)
+      .sort((a, b) => a - b);
+    if (width <= 0 || !heights.length) return null;
+    const typicalHeight = heights[Math.floor(heights.length / 2)];
+    const maximumGap = Math.max(0, ...slots.slice(1).map((slot, index) =>
+      slot.top - slots[index].bottom));
+    const leftRange = Math.max(...slots.map((slot) => slot.left)) -
+      Math.min(...slots.map((slot) => slot.left));
+    if (maximumGap > typicalHeight ||
+        leftRange > Math.max(typicalHeight * 2, width * 0.12) ||
+        slots.at(-1).right - slots.at(-1).left > width * 0.2) return null;
+    const wideLines = slots.slice(0, -1)
+      .filter((slot) => slot.right - slot.left >= width * 0.72).length;
+    return wideLines * 2 >= slots.length - 1 ? union : null;
+  };
   const translationGroups = activeTranslationGroups.map((group) => {
     const result = responseByGroup.get(group.groupId);
-    const slots = result?.layoutHint?.renderSlots?.length
+    const requestedSlots = result?.layoutHint?.renderSlots?.length
       ? result.layoutHint.renderSlots
       : group.renderSlots?.length ? group.renderSlots : [group.bounds];
+    const mergedBodyRect = denseBodyRectFallback(group, result, requestedSlots);
+    const slots = mergedBodyRect ? [mergedBodyRect] : requestedSlots;
     const text = result?.translatedText || group.sourceText;
     const sourceCoverSlots = result?.layoutHint?.sourceCoverSlots?.length
       ? result.layoutHint.sourceCoverSlots
@@ -281,6 +361,7 @@
       slots,
       sourceCoverSlots,
       slotElements,
+      requireAllSlots: result?.layoutHint?.layoutShape === "FLOW_SLOTS" && !mergedBodyRect,
       text: text.replace(/\s+/g, " ").trim()
     };
   });
@@ -334,15 +415,16 @@
     applySize(best);
   };
 
-  const fitPrefix = (element, text) => {
-    element.textContent = text;
-    if (fits(element)) return { text, consumed: text.length };
+  const fitPrefix = (element, text, maximumCharacters = null) => {
+    const candidate = maximumCharacters == null ? text : text.slice(0, maximumCharacters);
+    element.textContent = candidate;
+    if (fits(element)) return { text: candidate, consumed: candidate.length };
     let low = 1;
-    let high = text.length - 1;
+    let high = candidate.length - 1;
     let best = 0;
     while (low <= high) {
       const midpoint = Math.floor((low + high) / 2);
-      element.textContent = text.slice(0, midpoint);
+      element.textContent = candidate.slice(0, midpoint);
       if (fits(element)) {
         best = midpoint;
         low = midpoint + 1;
@@ -351,8 +433,8 @@
       }
     }
     if (!best) return null;
-    const consumed = boundaryEnd(text, best);
-    const fittedText = text.slice(0, consumed).trimEnd();
+    const consumed = boundaryEnd(candidate, best);
+    const fittedText = candidate.slice(0, consumed).trimEnd();
     element.textContent = fittedText;
     return { text: fittedText, consumed };
   };
@@ -367,10 +449,22 @@
       element.style.fontSize = `${fontSize}px`;
       element.style.lineHeight = String(1.18 * spacing);
     });
-    for (const element of entry.slotElements) {
+    const slotWeights = entry.slots.map((slot) => Math.max(1,
+      (slot.right - slot.left) * (slot.bottom - slot.top)));
+    const totalSlotWeight = slotWeights.reduce((sum, weight) => sum + weight, 0);
+    let consumedSlotWeight = 0;
+    for (const [slotIndex, element] of entry.slotElements.entries()) {
       if (cursor >= entry.text.length) break;
       while (cursor < entry.text.length && /\s/u.test(entry.text[cursor])) cursor += 1;
-      const fitted = fitPrefix(element, entry.text.slice(cursor));
+      consumedSlotWeight += slotWeights[slotIndex];
+      const remainingSlotCount = entry.slotElements.length - slotIndex - 1;
+      const maximumCharacters = entry.requireAllSlots && remainingSlotCount > 0
+        ? Math.max(1, Math.min(
+          entry.text.length - cursor - remainingSlotCount,
+          Math.ceil(entry.text.length * consumedSlotWeight / totalSlotWeight) - cursor
+        ))
+        : null;
+      const fitted = fitPrefix(element, entry.text.slice(cursor), maximumCharacters);
       if (!fitted) break;
       texts.push(fitted.text);
       cursor += fitted.consumed;

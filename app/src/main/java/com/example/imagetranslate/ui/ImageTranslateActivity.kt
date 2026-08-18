@@ -55,6 +55,7 @@ import com.example.imagetranslate.screenshot.ScreenshotMonitorPreferences
 import com.example.imagetranslate.screenshot.ScreenshotMonitorService
 import com.example.imagetranslate.screenshot.TranslatedImageGallerySaver
 import com.example.imagetranslate.translate.TranslateManager
+import com.example.imagetranslate.translate.ProviderThinkingControlMode
 import com.example.imagetranslate.translate.SemanticLayoutHint
 import com.example.imagetranslate.translate.TranslationBackend
 import com.example.imagetranslate.translate.TranslationBackendSettings
@@ -81,6 +82,9 @@ class ImageTranslateActivity : AppCompatActivity() {
         const val MINIMUM_OVERFLOW_BODY_REGIONS = 4
         const val MINIMUM_OVERFLOW_BODY_CHARACTERS = 60
         const val MINIMUM_OVERFLOW_BODY_AREA_RATIO = 0.03
+        val THINKING_MODE_OPTIONS = linkedMapOf(
+            "thinkingLevel（Gemini）" to ProviderThinkingControlMode.THINKING_LEVEL
+        )
     }
 
     private enum class WorkflowStage {
@@ -245,26 +249,31 @@ class ImageTranslateActivity : AppCompatActivity() {
             ?.let(Uri::parse)
         binding = ActivityImageTranslateBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        TranslationBackendSettings.migratePrimaryConfiguration(this)
 
         val uiPreferences = getSharedPreferences(UI_PREFERENCES, MODE_PRIVATE)
         binding.switchReviewBeforeTranslation.isChecked = uiPreferences.getBoolean(
             PREFERENCE_REVIEW_BEFORE_TRANSLATION,
             false
         )
-        binding.switchUploadOcrDebugImage.visibility = if (BuildConfig.DEBUG) {
-            View.VISIBLE
-        } else {
-            View.GONE
-        }
+        binding.switchUploadOcrDebugImage.visibility = if (BuildConfig.DEBUG) View.VISIBLE else View.GONE
         binding.switchUploadOcrDebugImage.isChecked =
             TranslationBackendSettings.isDebugCaptureUploadEnabled(this)
-        binding.switchUploadRenderedDebugImage.visibility = if (BuildConfig.DEBUG) {
-            View.VISIBLE
-        } else {
-            View.GONE
-        }
+        binding.switchUploadRenderedDebugImage.visibility = if (BuildConfig.DEBUG) View.VISIBLE else View.GONE
         binding.switchUploadRenderedDebugImage.isChecked =
             TranslationBackendSettings.isDebugRenderedCaptureUploadEnabled(this)
+        binding.switchExportRequestArchive.isChecked =
+            TranslationBackendSettings.isRequestArchiveExportEnabled(this)
+        binding.switchDirectStructuredOutput.isChecked =
+            TranslationBackendSettings.isDirectStructuredOutputEnabled(this)
+        binding.switchCompactProviderPrompt.isChecked =
+            TranslationBackendSettings.isCompactProviderPromptEnabled(this)
+        TranslationBackendSettings.setDirectStructuredOutputEnabled(this, true)
+        TranslationBackendSettings.setCompactProviderPromptEnabled(this, true)
+        TranslationBackendSettings.setEdgeThinkingControlMode(
+            this,
+            ProviderThinkingControlMode.THINKING_LEVEL
+        )
         restoreTranslationBackendControl()
         restorePaddleNetworkControl()
         setAdvancedSettingsExpanded(
@@ -379,6 +388,15 @@ class ImageTranslateActivity : AppCompatActivity() {
         binding.switchUploadRenderedDebugImage.setOnCheckedChangeListener { _, checked ->
             TranslationBackendSettings.setDebugRenderedCaptureUploadEnabled(this, checked)
         }
+        binding.switchExportRequestArchive.setOnCheckedChangeListener { _, checked ->
+            TranslationBackendSettings.setRequestArchiveExportEnabled(this, checked)
+        }
+        binding.switchDirectStructuredOutput.setOnCheckedChangeListener { _, checked ->
+            TranslationBackendSettings.setDirectStructuredOutputEnabled(this, checked)
+        }
+        binding.switchCompactProviderPrompt.setOnCheckedChangeListener { _, checked ->
+            TranslationBackendSettings.setCompactProviderPromptEnabled(this, checked)
+        }
         binding.translationBackendGroup.addOnButtonCheckedListener { _, checkedId, isChecked ->
             if (!isChecked || updatingTranslationBackendControl) {
                 return@addOnButtonCheckedListener
@@ -402,16 +420,128 @@ class ImageTranslateActivity : AppCompatActivity() {
             TranslationBackendSettings.set(this, backend)
         }
         val edgeModels = TranslationBackendSettings.edgeModels(this)
+        binding.editEmbeddedProvider.setAdapter(
+            ArrayAdapter(
+                this,
+                android.R.layout.simple_dropdown_item_1line,
+                TranslationBackendSettings.edgeProviders
+            )
+        )
+        binding.editEmbeddedProvider.setOnItemClickListener { parent, _, position, _ ->
+            parent.getItemAtPosition(position)?.toString()?.let { provider ->
+                TranslationBackendSettings.setEdgeProvider(this, provider)
+                binding.editEmbeddedTranslationModel.setAdapter(
+                    ArrayAdapter(
+                        this,
+                        android.R.layout.simple_dropdown_item_1line,
+                        TranslationBackendSettings.edgeModels(this)
+                    )
+                )
+                updateDirectProviderFields()
+                restoreTranslationBackendControl()
+            }
+        }
         binding.editEmbeddedTranslationModel.setAdapter(
             ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, edgeModels)
         )
         binding.editEmbeddedTranslationModel.setOnItemClickListener { parent, _, position, _ ->
             parent.getItemAtPosition(position)?.toString()?.let {
                 TranslationBackendSettings.setEdgeModel(this, it)
+                restoreTranslationBackendControl()
             }
         }
+        binding.editEmbeddedThinkingMode.setAdapter(
+            ArrayAdapter(
+                this,
+                android.R.layout.simple_dropdown_item_1line,
+                THINKING_MODE_OPTIONS.keys.toList()
+            )
+        )
+        binding.editEmbeddedThinkingMode.setOnItemClickListener { _, _, position, _ ->
+            THINKING_MODE_OPTIONS.values.elementAtOrNull(position)?.let {
+                TranslationBackendSettings.setEdgeThinkingControlMode(this, it)
+                restoreTranslationBackendControl()
+            }
+        }
+        binding.editEmbeddedThinkingLevel.setAdapter(
+            ArrayAdapter(
+                this,
+                android.R.layout.simple_dropdown_item_1line,
+                TranslationBackendSettings.thinkingLevels
+            )
+        )
+        binding.editEmbeddedThinkingLevel.setOnItemClickListener { parent, _, position, _ ->
+            parent.getItemAtPosition(position)?.toString()?.let {
+                TranslationBackendSettings.setEdgeThinkingLevel(this, it)
+                restoreTranslationBackendControl()
+            }
+        }
+        binding.switchOpenAiOxideTranslation.setOnCheckedChangeListener { _, checked ->
+            setOpenAiOxideFieldsVisible(checked)
+            if (checked) {
+                binding.editEmbeddedProvider.setText(
+                    TranslationBackendSettings.OPENAI_OXIDE_EDGE_PROVIDER,
+                    false
+                )
+            } else if (TranslationBackendSettings.isOpenAiOxideEnabled(this)) {
+                TranslationBackendSettings.setOpenAiOxideConfiguration(
+                    context = this,
+                    enabled = false,
+                    baseUrl = binding.editEmbeddedBaseUrl.text?.toString().orEmpty(),
+                    apiKey = "",
+                    model = binding.editEmbeddedModels.text?.toString().orEmpty()
+                )
+                restoreTranslationBackendControl()
+            }
+        }
+        listOf(binding.editEmbeddedProxyUrl).forEach { field ->
+            field.onFocusChangeListener = View.OnFocusChangeListener { _, hasFocus ->
+                if (!hasFocus) savePrimaryTranslationConfiguration(showConfirmation = false)
+            }
+        }
+        binding.editEdgeAuditBaseUrl.setOnEditorActionListener { view, actionId, _ ->
+            if (actionId != EditorInfo.IME_ACTION_DONE) return@setOnEditorActionListener false
+            val saved = savePrimaryTranslationConfiguration(showConfirmation = true)
+            if (saved) {
+                getSystemService(InputMethodManager::class.java)
+                    ?.hideSoftInputFromWindow(view.windowToken, 0)
+                view.clearFocus()
+            }
+            saved
+        }
+        binding.editEdgeAuditBaseUrl.onFocusChangeListener =
+            View.OnFocusChangeListener { _, hasFocus ->
+                if (!hasFocus) savePrimaryTranslationConfiguration(showConfirmation = false)
+            }
+        binding.switchServerGeminiTranslation.setOnCheckedChangeListener { _, checked ->
+            if (!saveServerGeminiConfiguration(checked, showConfirmation = checked)) {
+                binding.switchServerGeminiTranslation.isChecked =
+                    TranslationBackendSettings.isServerGeminiEnabled(this)
+            }
+        }
+        binding.editServerGeminiBaseUrl.setOnEditorActionListener { view, actionId, _ ->
+            if (actionId != EditorInfo.IME_ACTION_DONE) return@setOnEditorActionListener false
+            val saved = saveServerGeminiConfiguration(
+                binding.switchServerGeminiTranslation.isChecked,
+                showConfirmation = true
+            )
+            if (saved) {
+                getSystemService(InputMethodManager::class.java)
+                    ?.hideSoftInputFromWindow(view.windowToken, 0)
+                view.clearFocus()
+            }
+            saved
+        }
+        binding.editServerGeminiBaseUrl.onFocusChangeListener =
+            View.OnFocusChangeListener { _, hasFocus ->
+                if (!hasFocus && binding.editServerGeminiBaseUrl.text?.isNotBlank() == true) {
+                    saveServerGeminiConfiguration(
+                        binding.switchServerGeminiTranslation.isChecked,
+                        showConfirmation = false
+                    )
+                }
+            }
         listOf(
-            binding.editEmbeddedProvider,
             binding.editEmbeddedBaseUrl,
             binding.editEmbeddedApiKey,
             binding.editEmbeddedModels
@@ -533,7 +663,8 @@ class ImageTranslateActivity : AppCompatActivity() {
         binding.btnBackendPnuts.isEnabled = networkConfigured
         binding.btnBackendSelfHosted.isEnabled = selfHostedConfigured
         binding.btnBackendSelfHostedV4.isEnabled = selfHostedConfigured
-        binding.btnBackendEmbeddedV4.isEnabled = TranslationBackendSettings.isEdgeConfigured(this)
+        binding.btnBackendEmbeddedV4.isEnabled =
+            TranslationBackendSettings.isConfigured(this, TranslationBackend.EMBEDDED_V4)
         updatingTranslationBackendControl = true
         binding.translationBackendGroup.check(
             when (TranslationBackendSettings.get(this)) {
@@ -549,6 +680,52 @@ class ImageTranslateActivity : AppCompatActivity() {
             TranslationBackendSettings.edgeModel(this),
             false
         )
+        val thinkingMode = TranslationBackendSettings.edgeThinkingControlMode(this)
+        binding.editEmbeddedThinkingMode.setText(
+            THINKING_MODE_OPTIONS.entries.firstOrNull { it.value == thinkingMode }?.key
+                ?: THINKING_MODE_OPTIONS.keys.first(),
+            false
+        )
+        binding.editEmbeddedThinkingLevel.setText(
+            TranslationBackendSettings.edgeThinkingLevel(this),
+            false
+        )
+        if (!binding.editEmbeddedProxyUrl.hasFocus()) {
+            binding.editEmbeddedProxyUrl.setText(TranslationBackendSettings.edgeProxyUrl(this))
+        }
+        if (!binding.editEdgeAuditBaseUrl.hasFocus()) {
+            binding.editEdgeAuditBaseUrl.setText(TranslationBackendSettings.edgeAuditBaseUrl(this))
+        }
+        val serverGeminiEnabled = TranslationBackendSettings.isServerGeminiEnabled(this)
+        if (binding.switchServerGeminiTranslation.isChecked != serverGeminiEnabled) {
+            binding.switchServerGeminiTranslation.isChecked = serverGeminiEnabled
+        }
+        binding.inputServerGeminiBaseUrl.isEnabled = true
+        if (!binding.editServerGeminiBaseUrl.hasFocus()) {
+            binding.editServerGeminiBaseUrl.setText(
+                TranslationBackendSettings.serverGeminiBaseUrl(this)
+            )
+        }
+        binding.inputServerGeminiBaseUrl.helperText =
+            TranslationBackendSettings.serverGeminiTranslationEndpoint(this)
+                .takeIf(String::isNotBlank)
+                ?.let { getString(R.string.server_gemini_translation_endpoint, it) }
+                ?: getString(R.string.network_translation_not_configured)
+        val edgeModelValue = TranslationBackendSettings.edgeModel(this)
+        val effectiveThinkingMode = TranslationBackendSettings.effectiveEdgeThinkingControlMode(
+            this,
+            edgeModelValue
+        )
+        binding.inputEmbeddedThinkingLevel.isEnabled =
+            effectiveThinkingMode != ProviderThinkingControlMode.NONE
+        val edgeModel = edgeModelValue.lowercase()
+        binding.inputEmbeddedThinkingMode.helperText = getString(
+            when {
+                edgeModel.startsWith("gpt-4.1") -> R.string.embedded_thinking_gpt_unsupported
+                edgeModel.startsWith("gemini-3") -> R.string.embedded_thinking_gemini_supported
+                else -> R.string.embedded_thinking_reasoning_only
+            }
+        )
         binding.inputEmbeddedTranslationModel.helperText = if (TranslationBackendSettings.isEdgeConfigured(this)) {
             "${TranslationBackendSettings.edgeProvider(this)} · ${TranslationBackendSettings.edgeBaseUrl(this)}"
         } else {
@@ -558,14 +735,39 @@ class ImageTranslateActivity : AppCompatActivity() {
             binding.editEmbeddedProvider.setText(TranslationBackendSettings.edgeProvider(this))
         }
         if (!binding.editEmbeddedBaseUrl.hasFocus()) {
-            binding.editEmbeddedBaseUrl.setText(TranslationBackendSettings.edgeBaseUrl(this))
-        }
-        if (!binding.editEmbeddedApiKey.hasFocus()) {
-            binding.editEmbeddedApiKey.setText(TranslationBackendSettings.edgeApiKey(this))
+            binding.editEmbeddedBaseUrl.setText(
+                if (TranslationBackendSettings.isOpenAiOxideEnabled(this)) {
+                    TranslationBackendSettings.openAiOxideBaseUrl(this)
+                } else {
+                    TranslationBackendSettings.edgeBaseUrl(this)
+                }
+            )
         }
         if (!binding.editEmbeddedModels.hasFocus()) {
-            binding.editEmbeddedModels.setText(TranslationBackendSettings.edgeModels(this).joinToString(","))
+            binding.editEmbeddedModels.setText(
+                if (TranslationBackendSettings.isOpenAiOxideEnabled(this)) {
+                    TranslationBackendSettings.openAiOxideModel(this)
+                } else {
+                    TranslationBackendSettings.edgeModels(this).joinToString(",")
+                }
+            )
         }
+        val openAiOxideEnabled = TranslationBackendSettings.isOpenAiOxideEnabled(this)
+        if (binding.switchOpenAiOxideTranslation.isChecked != openAiOxideEnabled) {
+            binding.switchOpenAiOxideTranslation.isChecked = openAiOxideEnabled
+        }
+        setOpenAiOxideFieldsVisible(openAiOxideEnabled)
+        if (!binding.editEmbeddedApiKey.hasFocus()) {
+            binding.editEmbeddedApiKey.setText(
+                TranslationBackendSettings.edgeApiKey(this)
+            )
+        }
+        binding.inputEmbeddedApiKey.helperText =
+            if (TranslationBackendSettings.edgeApiKey(this).isNotBlank()) {
+                getString(R.string.openai_oxide_api_key_saved)
+            } else {
+                null
+            }
         if (!binding.editNetworkTranslationBaseUrl.hasFocus()) {
             binding.editNetworkTranslationBaseUrl.setText(
                 TranslationBackendSettings.networkBaseUrl(this)
@@ -603,6 +805,46 @@ class ImageTranslateActivity : AppCompatActivity() {
         }
     }
 
+    private fun savePrimaryTranslationConfiguration(showConfirmation: Boolean): Boolean {
+        return runCatching {
+            TranslationBackendSettings.setEdgeProxyUrl(
+                this,
+                binding.editEmbeddedProxyUrl.text?.toString().orEmpty()
+            )
+            val auditUrl = binding.editEdgeAuditBaseUrl.text?.toString().orEmpty()
+            TranslationBackendSettings.setEdgeAuditBaseUrl(this, auditUrl)
+            TranslationBackendSettings.setEdgeThinkingControlMode(
+                this,
+                ProviderThinkingControlMode.THINKING_LEVEL
+            )
+            TranslationBackendSettings.set(this, TranslationBackend.EMBEDDED_V4)
+        }.fold(
+            onSuccess = {
+                binding.inputEmbeddedApiKey.error = null
+                binding.inputEmbeddedProxyUrl.error = null
+                binding.inputEdgeAuditBaseUrl.error = null
+                restoreTranslationBackendControl()
+                if (showConfirmation) Toast.makeText(
+                    this,
+                    R.string.embedded_translation_configuration_saved,
+                    Toast.LENGTH_SHORT
+                ).show()
+                true
+            },
+            onFailure = { error ->
+                val message = error.message.orEmpty()
+                when {
+                    message.contains("Proxy", ignoreCase = true) ->
+                        binding.inputEmbeddedProxyUrl.error = message
+                    message.contains("API key", ignoreCase = true) ->
+                        binding.inputEmbeddedApiKey.error = message
+                    else -> binding.inputEdgeAuditBaseUrl.error = message
+                }
+                false
+            }
+        )
+    }
+
     private fun saveNetworkTranslationEndpoint(showConfirmation: Boolean): Boolean {
         val endpoint = binding.editNetworkTranslationBaseUrl.text?.toString().orEmpty()
         return runCatching {
@@ -628,15 +870,54 @@ class ImageTranslateActivity : AppCompatActivity() {
         )
     }
 
+    private fun saveServerGeminiConfiguration(
+        enabled: Boolean,
+        showConfirmation: Boolean
+    ): Boolean {
+        val baseUrl = binding.editServerGeminiBaseUrl.text?.toString().orEmpty()
+        return runCatching {
+            TranslationBackendSettings.setServerGemini(this, enabled, baseUrl)
+        }.fold(
+            onSuccess = {
+                binding.inputServerGeminiBaseUrl.error = null
+                restoreTranslationBackendControl()
+                if (showConfirmation) {
+                    Toast.makeText(
+                        this,
+                        R.string.embedded_translation_configuration_saved,
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+                true
+            },
+            onFailure = {
+                binding.inputServerGeminiBaseUrl.error =
+                    getString(R.string.network_translation_endpoint_invalid)
+                false
+            }
+        )
+    }
+
     private fun saveEmbeddedTranslationConfiguration(showConfirmation: Boolean): Boolean {
         return runCatching {
-            TranslationBackendSettings.setEdgeConfiguration(
-                context = this,
-                provider = binding.editEmbeddedProvider.text?.toString().orEmpty(),
-                baseUrl = binding.editEmbeddedBaseUrl.text?.toString().orEmpty(),
-                apiKey = binding.editEmbeddedApiKey.text?.toString().orEmpty(),
-                models = binding.editEmbeddedModels.text?.toString().orEmpty()
-            )
+            if (binding.switchOpenAiOxideTranslation.isChecked) {
+                TranslationBackendSettings.setOpenAiOxideConfiguration(
+                    context = this,
+                    enabled = true,
+                    baseUrl = binding.editEmbeddedBaseUrl.text?.toString().orEmpty(),
+                    apiKey = binding.editEmbeddedApiKey.text?.toString().orEmpty(),
+                    model = binding.editEmbeddedModels.text?.toString().orEmpty()
+                )
+            } else {
+                val provider = binding.editEmbeddedProvider.text?.toString().orEmpty()
+                TranslationBackendSettings.setEdgeConfiguration(
+                    context = this,
+                    provider = provider,
+                    baseUrl = binding.editEmbeddedBaseUrl.text?.toString().orEmpty(),
+                    apiKey = binding.editEmbeddedApiKey.text?.toString().orEmpty(),
+                    models = binding.editEmbeddedModels.text?.toString().orEmpty()
+                )
+            }
         }.fold(
             onSuccess = {
                 binding.inputEmbeddedBaseUrl.error = null
@@ -659,6 +940,22 @@ class ImageTranslateActivity : AppCompatActivity() {
                 false
             }
         )
+    }
+
+    private fun setOpenAiOxideFieldsVisible(visible: Boolean) {
+        binding.inputEmbeddedBaseUrl.visibility = if (visible) View.VISIBLE else View.GONE
+        binding.inputEmbeddedModels.visibility = if (visible) View.VISIBLE else View.GONE
+        updateDirectProviderFields()
+    }
+
+    private fun updateDirectProviderFields() {
+        val provider = TranslationBackendSettings.edgeProvider(this)
+        val openAiCompatible =
+            provider == TranslationBackendSettings.OPENLUX_EDGE_PROVIDER ||
+            provider == TranslationBackendSettings.OPENAI_OXIDE_EDGE_PROVIDER
+        binding.inputEmbeddedApiKey.visibility = if (openAiCompatible) View.VISIBLE else View.GONE
+        binding.inputEmbeddedBaseUrl.visibility = if (openAiCompatible) View.VISIBLE else View.GONE
+        binding.inputEmbeddedModels.visibility = if (openAiCompatible) View.VISIBLE else View.GONE
     }
 
     private fun saveSelfHostedTranslationEndpoint(showConfirmation: Boolean): Boolean {

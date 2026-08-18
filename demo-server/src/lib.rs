@@ -1,8 +1,10 @@
 pub mod admin;
+pub mod archive_import;
 pub mod config;
 pub use ocr_translation_core::{contract, planning, planning_v4};
 pub mod database;
 pub mod error;
+pub mod gemini;
 pub mod qwen;
 pub mod routes;
 
@@ -17,16 +19,16 @@ use tower_http::trace::TraceLayer;
 
 use crate::{
     admin::{
-        admin_root, admin_script, admin_styles, rendered_request_image, request_detail,
-        request_history, request_image, select_translation_provider,
+        admin_root, admin_script, admin_styles, import_request_archive, rendered_request_image,
+        request_detail, request_history, request_image, select_translation_provider,
     },
     config::Config,
     database::Database,
     qwen::{TranslationModel, TranslationModelRegistry},
     routes::{
-        AppState, RequestCancellationRegistry, cancel_translation, health, translate_groups,
-        translate_layout_plan, translate_regions_first_layout_plan, upload_edge_audit,
-        upload_rendered_capture,
+        AppState, RequestCancellationRegistry, cancel_translation, health,
+        translate_gemini_native_layout_plan, translate_groups, translate_layout_plan,
+        translate_regions_first_layout_plan, upload_edge_audit, upload_rendered_capture,
     },
 };
 
@@ -57,6 +59,10 @@ pub fn app_with_models(
             "/api/v4/translate/layout-plan",
             post(translate_regions_first_layout_plan),
         )
+        .route(
+            "/api/v4/translate/gemini-native/layout-plan",
+            post(translate_gemini_native_layout_plan),
+        )
         .route("/api/v4/edge-audits", post(upload_edge_audit))
         .route(
             "/api/v2/translate/requests/{request_id}/cancel",
@@ -72,6 +78,10 @@ pub fn app_with_models(
         )
         .route("/admin", get(admin_root))
         .route("/admin/requests", get(request_history))
+        .route(
+            "/admin/request-archives/import",
+            post(import_request_archive),
+        )
         .route("/admin/requests/{id}", get(request_detail))
         .route(
             "/admin/translation-provider",
@@ -85,6 +95,6 @@ pub fn app_with_models(
         .route("/admin/assets/admin.css", get(admin_styles))
         .route("/admin/assets/admin.js", get(admin_script))
         .with_state(state)
-        .layer(DefaultBodyLimit::max(10 * 1024 * 1024))
+        .layer(DefaultBodyLimit::max(20 * 1024 * 1024))
         .layer(TraceLayer::new_for_http())
 }

@@ -64,6 +64,22 @@ pub struct TranslationOptions {
     pub preserve_identifiers: bool,
     #[serde(default = "default_true")]
     pub use_document_context: bool,
+    #[serde(default)]
+    pub direct_structured_output: bool,
+    #[serde(default = "default_true")]
+    pub compact_provider_prompt: bool,
+    #[serde(default)]
+    pub thinking_control_mode: Option<ThinkingControlMode>,
+    #[serde(default)]
+    pub thinking_level: Option<String>,
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum ThinkingControlMode {
+    None,
+    ReasoningEffort,
+    ThinkingLevel,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -228,6 +244,18 @@ impl SemanticTranslationRequest {
             ));
         }
         self.viewport.validate()?;
+        if let Some(level) = self.translation.thinking_level.as_deref()
+            && !matches!(level, "minimal" | "low" | "medium" | "high" | "none")
+        {
+            return Err(AppError::invalid(
+                "translation.thinkingLevel must be minimal, low, medium, or high",
+            ));
+        }
+        if self.translation.thinking_control_mode == Some(ThinkingControlMode::ThinkingLevel)
+            && self.translation.thinking_level.as_deref() == Some("none")
+        {
+            return Err(AppError::invalid("thinkingLevel does not support none"));
+        }
         if let Some(capture) = &self.debug_capture {
             if self.scene != "LIVE_SCREEN" {
                 return Err(AppError::invalid(

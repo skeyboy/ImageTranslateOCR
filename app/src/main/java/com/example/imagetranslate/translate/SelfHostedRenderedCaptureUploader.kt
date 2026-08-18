@@ -115,4 +115,17 @@ internal object SemanticRenderedCaptureUploadPolicy {
         (uploadEnabled || backend.isSemanticV4) &&
         (patchCount > 0 || failedCount > 0) &&
         traceCount > 0
+
+    fun supportsBackend(backend: TranslationBackend): Boolean =
+        backend.isSelfHosted || backend == TranslationBackend.EMBEDDED_V4
+
+    fun uploadBaseUrl(
+        backend: TranslationBackend,
+        selfHostedBaseUrl: String,
+        edgeAuditBaseUrl: String
+    ): String = when {
+        backend == TranslationBackend.EMBEDDED_V4 -> edgeAuditBaseUrl
+        backend.isSelfHosted -> selfHostedBaseUrl
+        else -> ""
+    }.trim().trimEnd('/')
 }
