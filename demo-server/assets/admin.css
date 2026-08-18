@@ -31,7 +31,9 @@ a:hover { text-decoration: underline; }
 .archive-import button { min-height: 36px; padding: 0 12px; border: 1px solid #aeb6ae; border-radius: 4px; background: #fff; color: #244840; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
 .archive-import button:hover:not(:disabled) { background: #e8efeb; }
 .archive-import button:disabled { color: #8a9089; cursor: wait; }
-.archive-import span { max-width: 240px; color: #8d2f2f; font-size: 10px; overflow-wrap: anywhere; }
+.archive-import span { max-width: 280px; color: #61675f; font-size: 10px; overflow-wrap: anywhere; }
+.archive-import span[data-state="success"] { color: #0d5c4e; }
+.archive-import span[data-state="error"] { color: #8d2f2f; }
 .provider-switch { display: flex; align-items: center; gap: 9px; }
 .provider-switch > span { color: #61675f; font-size: 11px; font-weight: 700; white-space: nowrap; }
 .provider-switch > div { display: inline-flex; min-height: 36px; padding: 3px; border: 1px solid #c7cbc4; border-radius: 4px; background: #f3f4f1; }

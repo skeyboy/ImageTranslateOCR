@@ -34,9 +34,10 @@ pub async fn import_request_archive(
         return unauthorized();
     }
     match import_archive(&state, &body).await {
-        Ok(audit_id) => Json(serde_json::json!({
-            "auditId": audit_id,
-            "location": format!("/admin/requests/{audit_id}")
+        Ok(outcome) => Json(serde_json::json!({
+            "auditId": outcome.audit_id(),
+            "location": format!("/admin/requests/{}", outcome.audit_id()),
+            "disposition": outcome.disposition(),
         }))
         .into_response(),
         Err(error) => (StatusCode::BAD_REQUEST, error.to_string()).into_response(),
@@ -308,7 +309,7 @@ fn history_page(
         &format!(
             "<header class=\"topbar\">\
                 <div><span class=\"product\">OCR Translation Trace</span><h1>请求历史</h1></div>\
-                <div class=\"topbar-actions\">{provider_controls}<div class=\"archive-import\"><input id=\"archive-import-file\" type=\"file\" accept=\".zip,application/zip\" hidden><button id=\"archive-import-button\" type=\"button\">导入请求 ZIP</button><span id=\"archive-import-status\" role=\"status\"></span></div><a class=\"health-link\" href=\"/healthz\">服务状态</a></div>\
+                <div class=\"topbar-actions\">{provider_controls}<div class=\"archive-import\"><input id=\"archive-import-file\" type=\"file\" accept=\".zip,application/zip\" multiple hidden><button id=\"archive-import-button\" type=\"button\">批量导入 ZIP</button><span id=\"archive-import-status\" role=\"status\" aria-live=\"polite\"></span></div><a class=\"health-link\" href=\"/healthz\">服务状态</a></div>\
             </header>\
             <main>\
                 <section class=\"summary-band\">\

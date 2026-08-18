@@ -92,6 +92,7 @@ async fn imports_android_request_archive_into_admin_history() {
     let imported_body: Value =
         serde_json::from_slice(&to_bytes(imported.into_body(), 1024 * 1024).await.unwrap())
             .unwrap();
+    assert_eq!(imported_body["disposition"], "IMPORTED");
     let detail = router
         .oneshot(
             Request::get(imported_body["location"].as_str().unwrap())
@@ -104,6 +105,53 @@ async fn imports_android_request_archive_into_admin_history() {
     let audits = database.list_audits(10).await.unwrap();
     assert_eq!(audits[0].request_id, request_id);
     assert!(audits[0].model.contains("openlux:gemini-test"));
+}
+
+#[tokio::test]
+async fn filters_duplicate_android_request_archives() {
+    let temporary = TempDir::new().unwrap();
+    let database_url = temporary
+        .path()
+        .join("archive-deduplication.sqlite3")
+        .to_string_lossy()
+        .into_owned();
+    let database = Database::new(database_url.clone());
+    database.migrate().await.unwrap();
+    let router = app(
+        Config::for_test(database_url),
+        database.clone(),
+        Arc::new(FakeQwen),
+    );
+    let mut request = valid_request();
+    request["schemaVersion"] = json!(4);
+    request["groups"] = json!([]);
+    let archive = request_archive(&[("request.json", request.to_string())]);
+
+    let mut responses = Vec::new();
+    for _ in 0..2 {
+        let response = router
+            .clone()
+            .oneshot(
+                Request::post("/admin/request-archives/import")
+                    .header("content-type", "application/zip")
+                    .body(Body::from(archive.clone()))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+        responses.push(
+            serde_json::from_slice::<Value>(
+                &to_bytes(response.into_body(), 1024 * 1024).await.unwrap(),
+            )
+            .unwrap(),
+        );
+    }
+
+    assert_eq!(responses[0]["disposition"], "IMPORTED");
+    assert_eq!(responses[1]["disposition"], "DUPLICATE");
+    assert_eq!(responses[0]["auditId"], responses[1]["auditId"]);
+    assert_eq!(database.list_audits(10).await.unwrap().len(), 1);
 }
 
 #[async_trait]

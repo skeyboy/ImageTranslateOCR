@@ -2,26 +2,63 @@
   const importButton = document.querySelector("#archive-import-button");
   const importInput = document.querySelector("#archive-import-file");
   const importStatus = document.querySelector("#archive-import-status");
+  const maximumBatchFiles = 100;
+  const setImportStatus = (message, state = "", detail = message) => {
+    if (!importStatus) return;
+    importStatus.textContent = message;
+    importStatus.dataset.state = state;
+    importStatus.title = detail;
+  };
   importButton?.addEventListener("click", () => importInput?.click());
   importInput?.addEventListener("change", async () => {
-    const file = importInput.files?.[0];
-    if (!file) return;
-    importButton.disabled = true;
-    if (importStatus) importStatus.textContent = "正在导入...";
-    try {
-      const response = await fetch("/admin/request-archives/import", {
-        method: "POST",
-        headers: { "Content-Type": "application/zip" },
-        body: file,
-      });
-      if (!response.ok) throw new Error(await response.text() || `HTTP ${response.status}`);
-      const result = await response.json();
-      window.location.assign(result.location);
-    } catch (error) {
-      if (importStatus) importStatus.textContent = `导入失败：${error.message}`;
-      importButton.disabled = false;
+    const selectedFiles = Array.from(importInput.files || []);
+    if (selectedFiles.length === 0) return;
+    const uniqueSelections = new Map();
+    selectedFiles.forEach((file) => {
+      const fingerprint = `${file.name.toLocaleLowerCase()}\u0000${file.size}\u0000${file.lastModified}`;
+      if (!uniqueSelections.has(fingerprint)) uniqueSelections.set(fingerprint, file);
+    });
+    const files = Array.from(uniqueSelections.values());
+    if (files.length > maximumBatchFiles) {
+      setImportStatus(`单次最多选择 ${maximumBatchFiles} 个 ZIP`, "error");
       importInput.value = "";
+      return;
     }
+    const invalidFiles = files.filter((file) => !file.name.toLocaleLowerCase().endsWith(".zip"));
+    if (invalidFiles.length > 0) {
+      setImportStatus(`已忽略 ${invalidFiles.length} 个非 ZIP 文件`, "error");
+    }
+    const archives = files.filter((file) => file.name.toLocaleLowerCase().endsWith(".zip"));
+    if (archives.length === 0) {
+      importInput.value = "";
+      return;
+    }
+    importButton.disabled = true;
+    let imported = 0;
+    let duplicates = selectedFiles.length - files.length;
+    const failures = [];
+    for (const [index, file] of archives.entries()) {
+      setImportStatus(`正在处理 ${index + 1}/${archives.length}：${file.name}`, "progress");
+      try {
+        const response = await fetch("/admin/request-archives/import", {
+          method: "POST",
+          headers: { "Content-Type": "application/zip" },
+          body: file,
+        });
+        if (!response.ok) throw new Error(await response.text() || `HTTP ${response.status}`);
+        const result = await response.json();
+        if (result.disposition === "DUPLICATE") duplicates += 1;
+        else imported += 1;
+      } catch (error) {
+        failures.push(`${file.name}：${error.message}`);
+      }
+    }
+    importButton.disabled = false;
+    importInput.value = "";
+    const ignored = invalidFiles.length;
+    const summary = `完成：新增 ${imported}，重复 ${duplicates}，失败 ${failures.length}${ignored > 0 ? `，忽略 ${ignored}` : ""}`;
+    setImportStatus(summary, failures.length > 0 ? "error" : "success", failures.length > 0 ? `${summary}\n${failures.join("\n")}` : summary);
+    if (imported > 0 && failures.length === 0) window.setTimeout(() => window.location.reload(), 1200);
   });
 
   const padDatePart = (value) => String(value).padStart(2, "0");

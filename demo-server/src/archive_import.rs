@@ -16,7 +16,30 @@ use crate::{
     routes::AppState,
 };
 
-pub async fn import_archive(state: &AppState, bytes: &[u8]) -> Result<String, AppError> {
+pub enum ArchiveImportOutcome {
+    Imported(String),
+    Duplicate(String),
+}
+
+impl ArchiveImportOutcome {
+    pub fn audit_id(&self) -> &str {
+        match self {
+            Self::Imported(audit_id) | Self::Duplicate(audit_id) => audit_id,
+        }
+    }
+
+    pub fn disposition(&self) -> &'static str {
+        match self {
+            Self::Imported(_) => "IMPORTED",
+            Self::Duplicate(_) => "DUPLICATE",
+        }
+    }
+}
+
+pub async fn import_archive(
+    state: &AppState,
+    bytes: &[u8],
+) -> Result<ArchiveImportOutcome, AppError> {
     if bytes.is_empty() || bytes.len() > MAX_ARCHIVE_BYTES {
         return Err(AppError::invalid("archive must contain at most 16 MiB"));
     }
@@ -68,6 +91,13 @@ pub async fn import_archive(state: &AppState, bytes: &[u8]) -> Result<String, Ap
                 .and_then(Value::as_str)
                 .map(str::to_owned)
         });
+    if let Some(existing) = state
+        .database
+        .matching_request_record(&request.request_id, &request.session_id, request.generation)
+        .await?
+    {
+        return Ok(ArchiveImportOutcome::Duplicate(existing.audit.id));
+    }
     let audit_id = Uuid::new_v4().to_string();
     let source_image = save_imported_image(
         state,
@@ -222,7 +252,7 @@ pub async fn import_archive(state: &AppState, bytes: &[u8]) -> Result<String, Ap
         };
         state.database.replace_rendered_image(rendered).await?;
     }
-    Ok(audit_id)
+    Ok(ArchiveImportOutcome::Imported(audit_id))
 }
 
 fn read_entries(bytes: &[u8]) -> Result<HashMap<String, Vec<u8>>, AppError> {
