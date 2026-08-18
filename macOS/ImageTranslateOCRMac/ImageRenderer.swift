@@ -68,6 +68,65 @@ enum ImageRenderer {
         return NSBitmapImageRep(cgImage: cgImage).representation(using: .png, properties: [:])
     }
 
+    static func renderOverlay(
+        image: NSImage,
+        regions: [TranslatedRegion],
+        mode: MaskMode
+    ) -> NSImage {
+        let changedRegions = regions.filter { $0.sourceText != $0.translatedText }
+        guard let source = image.cgImageForProcessing else { return NSImage(size: image.size) }
+        let width = source.width, height = source.height
+        guard let bitmap = NSBitmapImageRep(
+            bitmapDataPlanes: nil,
+            pixelsWide: width,
+            pixelsHigh: height,
+            bitsPerSample: 8,
+            samplesPerPixel: 4,
+            hasAlpha: true,
+            isPlanar: false,
+            colorSpaceName: .deviceRGB,
+            bytesPerRow: 0,
+            bitsPerPixel: 0
+        ), let context = NSGraphicsContext(bitmapImageRep: bitmap) else {
+            return NSImage(size: image.size)
+        }
+
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = context
+        NSColor.clear.setFill()
+        CGRect(x: 0, y: 0, width: width, height: height).fill()
+        let canvas = CGRect(x: 0, y: 0, width: width, height: height)
+        for region in changedRegions {
+            let sourceBounds = region.bounds.intersection(canvas)
+            guard !sourceBounds.isNull, sourceBounds.width > 1, sourceBounds.height > 1 else { continue }
+            let drawingBounds = CGRect(
+                x: sourceBounds.minX,
+                y: CGFloat(height) - sourceBounds.maxY,
+                width: sourceBounds.width,
+                height: sourceBounds.height
+            )
+            let color = backgroundColor(source: source, around: sourceBounds)
+            color.setFill()
+            let padding = mode == .precise ? max(2, drawingBounds.height * 0.08) : 4
+            let erased = drawingBounds.insetBy(dx: -padding, dy: -padding).intersection(canvas)
+            if mode == .precise {
+                NSBezierPath(
+                    roundedRect: erased,
+                    xRadius: min(8, erased.height * 0.16),
+                    yRadius: min(8, erased.height * 0.16)
+                ).fill()
+            } else {
+                erased.fill()
+            }
+            draw(region.translatedText, in: drawingBounds, background: color)
+        }
+        NSGraphicsContext.restoreGraphicsState()
+
+        let output = NSImage(size: CGSize(width: width, height: height))
+        output.addRepresentation(bitmap)
+        return output
+    }
+
     private static func backgroundColor(source: CGImage, around rect: CGRect) -> NSColor {
         guard let rep = NSBitmapImageRep(cgImage: source) as NSBitmapImageRep? else { return .white }
         let points = [CGPoint(x: rect.minX, y: rect.minY), CGPoint(x: rect.midX, y: rect.minY),

@@ -4,9 +4,10 @@ import UniformTypeIdentifiers
 
 struct ContentView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @StateObject private var model = ImageTranslateViewModel()
+    @ObservedObject var model: ImageTranslateViewModel
     @State private var isImporterPresented = false
     @State private var translationConfiguration: TranslationSession.Configuration?
+    @State private var configuredDirection: TranslationDirection?
     @State private var inspectedRegionID: UUID?
     @State private var isDropTargeted = false
     @State private var copiedField: String?
@@ -14,6 +15,8 @@ struct ContentView: View {
     var body: some View {
         VStack(spacing: 0) {
             toolbar
+            Divider()
+            screenCaptureBar
             Divider()
             HSplitView {
                 imagePanel(title: "原图", image: model.originalImage)
@@ -53,6 +56,8 @@ struct ContentView: View {
             }
         }
         .translationTask(translationConfiguration) { session in await model.process(using: session) }
+        .task { await model.loadCaptureSourcesIfAuthorized() }
+        .onChange(of: model.translationRequestVersion) { _, _ in activateTranslationSession() }
         .alert("错误", isPresented: Binding(get: { model.errorMessage != nil }, set: { if !$0 { model.errorMessage = nil } })) {
             Button("确定", role: .cancel) { model.errorMessage = nil }
         } message: { Text(model.errorMessage ?? "未知错误") }
@@ -79,14 +84,14 @@ struct ContentView: View {
             }.pickerStyle(.segmented).frame(width: 180).disabled(model.isProcessing)
             Toggle("显示标号", isOn: $model.showMarkers).toggleStyle(.checkbox)
             Spacer()
-            if model.isProcessing {
+            if model.isProcessing && !model.isLiveScreenTranslationEnabled {
                 Button { model.cancelProcessing() } label: {
                     Label("停止", systemImage: "stop.fill").frame(minWidth: 68)
                 }
                 .buttonStyle(.bordered)
                 .help("完成当前步骤后停止")
             } else {
-                Button { startTranslation() } label: {
+                Button { model.requestLoadedImageTranslation() } label: {
                     Label("翻译", systemImage: "character.book.closed").frame(minWidth: 68)
                 }
                 .buttonStyle(.borderedProminent)
@@ -97,6 +102,60 @@ struct ContentView: View {
                 .disabled(model.resultImage == nil || model.isProcessing)
                 .keyboardShortcut("s")
         }.padding(12)
+    }
+
+    private var screenCaptureBar: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "rectangle.inset.filled.and.person.filled")
+                .foregroundStyle(.secondary)
+            Text("屏幕翻译").font(.callout.weight(.medium))
+            Picker("方向", selection: $model.translationDirection) {
+                ForEach(TranslationDirection.allCases) { direction in
+                    Text(direction.title).tag(direction)
+                }
+            }
+            .pickerStyle(.segmented)
+            .frame(width: 130)
+            .disabled(model.isLiveScreenTranslationEnabled || model.isProcessing)
+            Picker("采集目标", selection: $model.selectedCaptureSourceID) {
+                if model.captureSources.isEmpty {
+                    Text("没有可用目标").tag(String?.none)
+                }
+                ForEach(model.captureSources) { source in
+                    Label(
+                        source.displayTitle,
+                        systemImage: source.kind == .display ? "display" : "macwindow"
+                    ).tag(Optional(source.id))
+                }
+            }
+            .labelsHidden()
+            .frame(minWidth: 260, idealWidth: 360, maxWidth: 460)
+            .disabled(model.isLiveScreenTranslationEnabled || model.isRefreshingCaptureSources)
+
+            Button {
+                Task { await model.requestCaptureAccessAndRefresh() }
+            } label: {
+                Image(systemName: "arrow.clockwise")
+            }
+            .help("刷新采集目标")
+            .disabled(model.isLiveScreenTranslationEnabled || model.isRefreshingCaptureSources)
+
+            if model.isRefreshingCaptureSources { ProgressView().controlSize(.small) }
+            Spacer()
+            if model.isLiveScreenTranslationEnabled {
+                Button(role: .destructive) { model.stopLiveScreenTranslation() } label: {
+                    Label("停止", systemImage: "stop.fill")
+                }
+            } else {
+                Button { model.startLiveScreenTranslation() } label: {
+                    Label("开始", systemImage: "play.fill")
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(model.selectedCaptureSourceID == nil || model.isRefreshingCaptureSources)
+            }
+        }
+        .padding(.horizontal, 12)
+        .frame(height: 48)
     }
 
     private func imagePanel(title: String, image: NSImage?) -> some View {
@@ -253,10 +312,13 @@ struct ContentView: View {
         }
     }
 
-    private func startTranslation() {
-        if translationConfiguration == nil {
-            translationConfiguration = .init(source: Locale.Language(identifier: "zh-Hans"),
-                                               target: Locale.Language(identifier: "en"))
+    private func activateTranslationSession() {
+        if translationConfiguration == nil || configuredDirection != model.translationDirection {
+            configuredDirection = model.translationDirection
+            translationConfiguration = .init(
+                source: Locale.Language(identifier: model.translationDirection.sourceLanguageIdentifier),
+                target: Locale.Language(identifier: model.translationDirection.targetLanguageIdentifier)
+            )
         } else { translationConfiguration?.invalidate() }
     }
 

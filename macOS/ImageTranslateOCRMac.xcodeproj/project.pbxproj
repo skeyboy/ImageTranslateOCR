@@ -1,45 +1,298 @@
 // !$*UTF8*$!
-{ archiveVersion = 1; classes = {}; objectVersion = 56; objects = {
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
 /* Begin PBXBuildFile section */
-	A10000000000000000000001 = {isa = PBXBuildFile; fileRef = A20000000000000000000001; };
-	A10000000000000000000002 = {isa = PBXBuildFile; fileRef = A20000000000000000000002; };
-	A10000000000000000000003 = {isa = PBXBuildFile; fileRef = A20000000000000000000003; };
-	A10000000000000000000004 = {isa = PBXBuildFile; fileRef = A20000000000000000000004; };
-	A10000000000000000000005 = {isa = PBXBuildFile; fileRef = A20000000000000000000005; };
-	A10000000000000000000006 = {isa = PBXBuildFile; fileRef = A20000000000000000000006; };
-	A10000000000000000000007 = {isa = PBXBuildFile; fileRef = A20000000000000000000009; };
+		A10000000000000000000001 /* ImageTranslateOCRMacApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000001 /* ImageTranslateOCRMacApp.swift */; };
+		A10000000000000000000002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000002 /* ContentView.swift */; };
+		A10000000000000000000003 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000003 /* Models.swift */; };
+		A10000000000000000000004 /* OCRService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000004 /* OCRService.swift */; };
+		A10000000000000000000005 /* ImageRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000005 /* ImageRenderer.swift */; };
+		A10000000000000000000006 /* ImageTranslateViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000006 /* ImageTranslateViewModel.swift */; };
+		A10000000000000000000007 /* OpenCV/OpenCVWrapper.mm in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000009 /* OpenCV/OpenCVWrapper.mm */; };
+		A10000000000000000000008 /* ScreenCaptureService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000000C /* ScreenCaptureService.swift */; };
+		A10000000000000000000009 /* ScreenTranslationOverlayController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000000D /* ScreenTranslationOverlayController.swift */; };
+		A1000000000000000000000A /* ScreenFrameChangePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000000E /* ScreenFrameChangePolicy.swift */; };
 /* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
-	A20000000000000000000001 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageTranslateOCRMacApp.swift; sourceTree = "<group>"; };
-	A20000000000000000000002 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
-	A20000000000000000000003 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
-	A20000000000000000000004 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OCRService.swift; sourceTree = "<group>"; };
-	A20000000000000000000005 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageRenderer.swift; sourceTree = "<group>"; };
-	A20000000000000000000006 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageTranslateViewModel.swift; sourceTree = "<group>"; };
-	A20000000000000000000007 = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-	A20000000000000000000008 = {isa = PBXFileReference; explicitFileType = wrapper.application; path = ImageTranslateOCRMac.app; sourceTree = BUILT_PRODUCTS_DIR; };
-	A20000000000000000000009 = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = OpenCV/OpenCVWrapper.mm; sourceTree = "<group>"; };
-	A2000000000000000000000A = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = OpenCV/OpenCVWrapper.h; sourceTree = "<group>"; };
-	A2000000000000000000000B = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "ImageTranslateOCRMac-Bridging-Header.h"; sourceTree = "<group>"; };
+		A20000000000000000000001 /* ImageTranslateOCRMacApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageTranslateOCRMacApp.swift; sourceTree = "<group>"; };
+		A20000000000000000000002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		A20000000000000000000003 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
+		A20000000000000000000004 /* OCRService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OCRService.swift; sourceTree = "<group>"; };
+		A20000000000000000000005 /* ImageRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageRenderer.swift; sourceTree = "<group>"; };
+		A20000000000000000000006 /* ImageTranslateViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageTranslateViewModel.swift; sourceTree = "<group>"; };
+		A20000000000000000000007 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		A20000000000000000000008 /* ImageTranslateOCRMac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; path = ImageTranslateOCRMac.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A20000000000000000000009 /* OpenCV/OpenCVWrapper.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = OpenCV/OpenCVWrapper.mm; sourceTree = "<group>"; };
+		A2000000000000000000000A /* OpenCV/OpenCVWrapper.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = OpenCV/OpenCVWrapper.h; sourceTree = "<group>"; };
+		A2000000000000000000000B /* ImageTranslateOCRMac-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "ImageTranslateOCRMac-Bridging-Header.h"; sourceTree = "<group>"; };
+		A2000000000000000000000C /* ScreenCaptureService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenCaptureService.swift; sourceTree = "<group>"; };
+		A2000000000000000000000D /* ScreenTranslationOverlayController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenTranslationOverlayController.swift; sourceTree = "<group>"; };
+		A2000000000000000000000E /* ScreenFrameChangePolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenFrameChangePolicy.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
-	A30000000000000000000001 = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+
+/* Begin PBXFrameworksBuildPhase section */
+		A30000000000000000000001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
 /* Begin PBXGroup section */
-	A40000000000000000000001 = {isa = PBXGroup; children = (A40000000000000000000002, A40000000000000000000003); sourceTree = "<group>"; };
-	A40000000000000000000002 = {isa = PBXGroup; path = ImageTranslateOCRMac; sourceTree = "<group>"; children = (A20000000000000000000001, A20000000000000000000002, A20000000000000000000003, A20000000000000000000004, A20000000000000000000005, A20000000000000000000006, A20000000000000000000009, A2000000000000000000000A, A2000000000000000000000B, A20000000000000000000007); };
-	A40000000000000000000003 = {isa = PBXGroup; name = Products; sourceTree = "<group>"; children = (A20000000000000000000008); };
+		A40000000000000000000001 = {
+			isa = PBXGroup;
+			children = (
+				A40000000000000000000002 /* ImageTranslateOCRMac */,
+				A40000000000000000000003 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		A40000000000000000000002 /* ImageTranslateOCRMac */ = {
+			isa = PBXGroup;
+			children = (
+				A20000000000000000000001 /* ImageTranslateOCRMacApp.swift */,
+				A20000000000000000000002 /* ContentView.swift */,
+				A20000000000000000000003 /* Models.swift */,
+				A20000000000000000000004 /* OCRService.swift */,
+				A20000000000000000000005 /* ImageRenderer.swift */,
+				A20000000000000000000006 /* ImageTranslateViewModel.swift */,
+				A2000000000000000000000C /* ScreenCaptureService.swift */,
+				A2000000000000000000000D /* ScreenTranslationOverlayController.swift */,
+				A2000000000000000000000E /* ScreenFrameChangePolicy.swift */,
+				A20000000000000000000009 /* OpenCV/OpenCVWrapper.mm */,
+				A2000000000000000000000A /* OpenCV/OpenCVWrapper.h */,
+				A2000000000000000000000B /* ImageTranslateOCRMac-Bridging-Header.h */,
+				A20000000000000000000007 /* Info.plist */,
+			);
+			path = ImageTranslateOCRMac;
+			sourceTree = "<group>";
+		};
+		A40000000000000000000003 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				A20000000000000000000008 /* ImageTranslateOCRMac.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
-	A50000000000000000000001 = {isa = PBXNativeTarget; buildConfigurationList = A90000000000000000000002; buildPhases = (A60000000000000000000001, A30000000000000000000001, A70000000000000000000001); buildRules = (); dependencies = (); name = ImageTranslateOCRMac; productName = ImageTranslateOCRMac; productReference = A20000000000000000000008; productType = "com.apple.product-type.application"; };
-	A60000000000000000000001 = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (A10000000000000000000001, A10000000000000000000002, A10000000000000000000003, A10000000000000000000004, A10000000000000000000005, A10000000000000000000006, A10000000000000000000007); runOnlyForDeploymentPostprocessing = 0; };
-	A70000000000000000000001 = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
-	A80000000000000000000001 = {isa = PBXProject; attributes = {BuildIndependentTargetsInParallel = 1; LastSwiftUpdateCheck = 2660; LastUpgradeCheck = 2660; TargetAttributes = {A50000000000000000000001 = {CreatedOnToolsVersion = 26.0; }; }; }; buildConfigurationList = A90000000000000000000001; compatibilityVersion = "Xcode 14.0"; developmentRegion = zh_CN; knownRegions = (zh_CN, Base); mainGroup = A40000000000000000000001; productRefGroup = A40000000000000000000003; projectDirPath = ""; projectRoot = ""; targets = (A50000000000000000000001); };
+
+/* Begin PBXNativeTarget section */
+		A50000000000000000000001 /* ImageTranslateOCRMac */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A90000000000000000000002 /* Build configuration list for PBXNativeTarget "ImageTranslateOCRMac" */;
+			buildPhases = (
+				A60000000000000000000001 /* Sources */,
+				A30000000000000000000001 /* Frameworks */,
+				A70000000000000000000001 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = ImageTranslateOCRMac;
+			productName = ImageTranslateOCRMac;
+			productReference = A20000000000000000000008 /* ImageTranslateOCRMac.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		A80000000000000000000001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2660;
+				LastUpgradeCheck = 2660;
+				TargetAttributes = {
+					A50000000000000000000001 = {
+						CreatedOnToolsVersion = 26.0;
+					};
+				};
+			};
+			buildConfigurationList = A90000000000000000000001 /* Build configuration list for PBXProject "ImageTranslateOCRMac" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = zh_CN;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				zh_CN,
+				Base,
+			);
+			mainGroup = A40000000000000000000001;
+			productRefGroup = A40000000000000000000003 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				A50000000000000000000001 /* ImageTranslateOCRMac */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		A70000000000000000000001 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		A60000000000000000000001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A10000000000000000000001 /* ImageTranslateOCRMacApp.swift in Sources */,
+				A10000000000000000000002 /* ContentView.swift in Sources */,
+				A10000000000000000000003 /* Models.swift in Sources */,
+				A10000000000000000000004 /* OCRService.swift in Sources */,
+				A10000000000000000000005 /* ImageRenderer.swift in Sources */,
+				A10000000000000000000006 /* ImageTranslateViewModel.swift in Sources */,
+				A10000000000000000000008 /* ScreenCaptureService.swift in Sources */,
+				A10000000000000000000009 /* ScreenTranslationOverlayController.swift in Sources */,
+				A1000000000000000000000A /* ScreenFrameChangePolicy.swift in Sources */,
+				A10000000000000000000007 /* OpenCV/OpenCVWrapper.mm in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
 /* Begin XCBuildConfiguration section */
-	B10000000000000000000001 = {isa = XCBuildConfiguration; buildSettings = {CLANG_ENABLE_MODULES = YES; MACOSX_DEPLOYMENT_TARGET = 15.0; SDKROOT = macosx; SWIFT_VERSION = 5.0; }; name = Debug; };
-	B10000000000000000000002 = {isa = XCBuildConfiguration; buildSettings = {CLANG_ENABLE_MODULES = YES; MACOSX_DEPLOYMENT_TARGET = 15.0; SDKROOT = macosx; SWIFT_VERSION = 5.0; VALIDATE_PRODUCT = YES; }; name = Release; };
-	B10000000000000000000005 = {isa = XCBuildConfiguration; buildSettings = {CLANG_ENABLE_MODULES = YES; MACOSX_DEPLOYMENT_TARGET = 15.0; SDKROOT = macosx; SWIFT_VERSION = 5.0; }; name = OpenCV; };
-	B10000000000000000000003 = {isa = XCBuildConfiguration; buildSettings = {CODE_SIGN_STYLE = Automatic; CURRENT_PROJECT_VERSION = 1; DEVELOPMENT_TEAM = ""; ENABLE_HARDENED_RUNTIME = YES; GENERATE_INFOPLIST_FILE = NO; INFOPLIST_FILE = ImageTranslateOCRMac/Info.plist; MARKETING_VERSION = 1.0; PRODUCT_BUNDLE_IDENTIFIER = com.example.imagetranslate.macos; PRODUCT_NAME = "$(TARGET_NAME)"; SWIFT_EMIT_LOC_STRINGS = YES; SWIFT_OBJC_BRIDGING_HEADER = "ImageTranslateOCRMac/ImageTranslateOCRMac-Bridging-Header.h"; }; name = Debug; };
-	B10000000000000000000004 = {isa = XCBuildConfiguration; buildSettings = {CODE_SIGN_STYLE = Automatic; CURRENT_PROJECT_VERSION = 1; DEVELOPMENT_TEAM = ""; ENABLE_HARDENED_RUNTIME = YES; GENERATE_INFOPLIST_FILE = NO; INFOPLIST_FILE = ImageTranslateOCRMac/Info.plist; MARKETING_VERSION = 1.0; PRODUCT_BUNDLE_IDENTIFIER = com.example.imagetranslate.macos; PRODUCT_NAME = "$(TARGET_NAME)"; SWIFT_EMIT_LOC_STRINGS = YES; SWIFT_OBJC_BRIDGING_HEADER = "ImageTranslateOCRMac/ImageTranslateOCRMac-Bridging-Header.h"; }; name = Release; };
-	B10000000000000000000006 = {isa = XCBuildConfiguration; buildSettings = {CODE_SIGN_STYLE = Automatic; CURRENT_PROJECT_VERSION = 1; DEVELOPMENT_TEAM = ""; ENABLE_HARDENED_RUNTIME = YES; GENERATE_INFOPLIST_FILE = NO; HEADER_SEARCH_PATHS = ("$(inherited)", /opt/homebrew/opt/opencv/include/opencv4, /usr/local/opt/opencv/include/opencv4); INFOPLIST_FILE = ImageTranslateOCRMac/Info.plist; LIBRARY_SEARCH_PATHS = ("$(inherited)", /opt/homebrew/opt/opencv/lib, /usr/local/opt/opencv/lib); MARKETING_VERSION = 1.0; OTHER_LDFLAGS = ("$(inherited)", "-lopencv_core", "-lopencv_imgproc", "-lopencv_imgcodecs", "-lopencv_photo"); PRODUCT_BUNDLE_IDENTIFIER = com.example.imagetranslate.macos; PRODUCT_NAME = "$(TARGET_NAME)"; SWIFT_EMIT_LOC_STRINGS = YES; SWIFT_OBJC_BRIDGING_HEADER = "ImageTranslateOCRMac/ImageTranslateOCRMac-Bridging-Header.h"; }; name = OpenCV; };
+		B10000000000000000000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				SDKROOT = macosx;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		B10000000000000000000002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				SDKROOT = macosx;
+				SWIFT_VERSION = 5.0;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		B10000000000000000000003 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = QX5F9XSCJJ;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = ImageTranslateOCRMac/Info.plist;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.imagetranslate.macos;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = "ImageTranslateOCRMac/ImageTranslateOCRMac-Bridging-Header.h";
+			};
+			name = Debug;
+		};
+		B10000000000000000000004 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = QX5F9XSCJJ;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = ImageTranslateOCRMac/Info.plist;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.imagetranslate.macos;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = "ImageTranslateOCRMac/ImageTranslateOCRMac-Bridging-Header.h";
+			};
+			name = Release;
+		};
+		B10000000000000000000005 /* OpenCV */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				SDKROOT = macosx;
+				SWIFT_VERSION = 5.0;
+			};
+			name = OpenCV;
+		};
+		B10000000000000000000006 /* OpenCV */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = QX5F9XSCJJ;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				HEADER_SEARCH_PATHS = (
+					"$(inherited)",
+					/opt/homebrew/opt/opencv/include/opencv4,
+					/usr/local/opt/opencv/include/opencv4,
+				);
+				INFOPLIST_FILE = ImageTranslateOCRMac/Info.plist;
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					/opt/homebrew/opt/opencv/lib,
+					/usr/local/opt/opencv/lib,
+				);
+				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-lopencv_core",
+					"-lopencv_imgproc",
+					"-lopencv_imgcodecs",
+					"-lopencv_photo",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.imagetranslate.macos;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = "ImageTranslateOCRMac/ImageTranslateOCRMac-Bridging-Header.h";
+			};
+			name = OpenCV;
+		};
 /* End XCBuildConfiguration section */
-	A90000000000000000000001 = {isa = XCConfigurationList; buildConfigurations = (B10000000000000000000001, B10000000000000000000002, B10000000000000000000005); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
-	A90000000000000000000002 = {isa = XCConfigurationList; buildConfigurations = (B10000000000000000000003, B10000000000000000000004, B10000000000000000000006); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
-}; rootObject = A80000000000000000000001; }
+
+/* Begin XCConfigurationList section */
+		A90000000000000000000001 /* Build configuration list for PBXProject "ImageTranslateOCRMac" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B10000000000000000000001 /* Debug */,
+				B10000000000000000000002 /* Release */,
+				B10000000000000000000005 /* OpenCV */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A90000000000000000000002 /* Build configuration list for PBXNativeTarget "ImageTranslateOCRMac" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B10000000000000000000003 /* Debug */,
+				B10000000000000000000004 /* Release */,
+				B10000000000000000000006 /* OpenCV */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = A80000000000000000000001 /* Project object */;
+}
