@@ -142,6 +142,10 @@ internal class ActiveScreenCaptureOverlayController(
         LayoutInflater.from(themedContext)
     )
     private val translationView = ScreenTranslationOverlayView(themedContext)
+    private val translationOverlayInstanceId =
+        "translation-${Integer.toHexString(System.identityHashCode(translationView))}"
+    @Volatile
+    private var translationLayerAttached = false
     private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
     private val edgeMargin = dp(12)
     private val expandedWidth: Int
@@ -171,6 +175,8 @@ internal class ActiveScreenCaptureOverlayController(
     private var collapsed = false
     private var translationVisible = true
     private var hasTranslationResult = false
+    private var frameHeartbeatPhase = false
+    private val presentationGenerationGate = OverlayPresentationGenerationGate()
     private var latestPerformanceSummary: String? = null
     private var latestCompactPerformance: String? = null
 
@@ -214,6 +220,20 @@ internal class ActiveScreenCaptureOverlayController(
         translationView.setPatchesVisible(false, animateChange = false)
     }
 
+    fun beginCaptureGeneration(generation: Int) = onMainThread {
+        if (!presentationGenerationGate.begin(generation)) return@onMainThread
+        hasTranslationResult = false
+        latestPerformanceSummary = null
+        latestCompactPerformance = null
+        removeTranslationLayersNow()
+        binding.root.visibility = View.INVISIBLE
+    }
+
+    fun invalidatePresentationGeneration(generation: Int) = onMainThread {
+        if (!presentationGenerationGate.begin(generation)) return@onMainThread
+        clearTranslationsNow()
+    }
+
     fun pulseTransparentCaptureSurface() = onMainThread {
         if (translationView.parent == null) return@onMainThread
         translationView.clearPatches()
@@ -224,6 +244,29 @@ internal class ActiveScreenCaptureOverlayController(
             translationView.alpha = 1f
         }
     }
+
+    fun pulseFrameHeartbeat(onPulsed: (Boolean) -> Unit) = onMainThread {
+        if (translationView.parent == null ||
+            translationView.visibility != View.VISIBLE ||
+            binding.root.parent == null ||
+            binding.root.visibility != View.VISIBLE
+        ) {
+            onPulsed(false)
+            return@onMainThread
+        }
+        frameHeartbeatPhase = !frameHeartbeatPhase
+        binding.root.alpha = if (frameHeartbeatPhase) {
+            FRAME_HEARTBEAT_CONTROL_ALPHA
+        } else {
+            1f
+        }
+        binding.root.postOnAnimation { onPulsed(true) }
+    }
+
+    fun translationOverlayInstanceId(): String = translationOverlayInstanceId
+
+    fun attachedFullscreenTranslationLayerCount(): Int =
+        if (translationLayerAttached) 1 else 0
 
     fun signatureOcclusionBounds(maskTranslationPatches: Boolean = false): List<Rect> {
         val padding = dp(SIGNATURE_OCCLUSION_PADDING_DP)
@@ -332,6 +375,7 @@ internal class ActiveScreenCaptureOverlayController(
     }
 
     fun showResult(
+        generation: Int,
         patches: List<ScreenTranslationPatch>,
         sourceWidth: Int,
         sourceHeight: Int,
@@ -343,11 +387,12 @@ internal class ActiveScreenCaptureOverlayController(
         onPresented: (OverlayPresentationResult) -> Unit,
         onPresentationFailed: (OverlayPresentationResult) -> Unit = {}
     ) = onMainThread {
-        if (!shouldPresent()) {
+        if (!presentationGenerationGate.accepts(generation) || !shouldPresent()) {
             patches.recyclePatchBitmaps()
             return@onMainThread
         }
         presentResultWithRetry(
+            generation = generation,
             patches = patches,
             sourceWidth = sourceWidth,
             sourceHeight = sourceHeight,
@@ -409,6 +454,7 @@ internal class ActiveScreenCaptureOverlayController(
     }
 
     private fun presentResultWithRetry(
+        generation: Int,
         patches: List<ScreenTranslationPatch>,
         sourceWidth: Int,
         sourceHeight: Int,
@@ -417,7 +463,7 @@ internal class ActiveScreenCaptureOverlayController(
         onPresentationFailed: (OverlayPresentationResult) -> Unit,
         attempt: Int = 1
     ) {
-        if (!shouldPresent()) {
+        if (!presentationGenerationGate.accepts(generation) || !shouldPresent()) {
             patches.recyclePatchBitmaps()
             return
         }
@@ -439,6 +485,7 @@ internal class ActiveScreenCaptureOverlayController(
             mainHandler.postDelayed(
                 {
                     presentResultWithRetry(
+                        generation = generation,
                         patches = patches,
                         sourceWidth = sourceWidth,
                         sourceHeight = sourceHeight,
@@ -489,12 +536,44 @@ internal class ActiveScreenCaptureOverlayController(
     }
 
     fun clearTranslations() = onMainThread {
+        clearTranslationsNow()
+    }
+
+    private fun clearTranslationsNow() {
         hasTranslationResult = false
         latestPerformanceSummary = null
         latestCompactPerformance = null
         binding.tvActiveOverlayPerformance.visibility = View.GONE
         binding.btnToggleActiveTranslation.isEnabled = false
         removeTranslationLayersNow()
+    }
+
+    fun showProjectionRevoked() = onMainThread {
+        if (!ensureControlAttachedNow()) return@onMainThread
+        processing = false
+        sessionActive = false
+        hasTranslationResult = false
+        latestPerformanceSummary = null
+        latestCompactPerformance = null
+        detachTranslationLayerNow()
+        binding.root.visibility = View.VISIBLE
+        binding.btnActiveOverlayCapture.visibility = View.VISIBLE
+        // These views share a FrameLayout; showing the status would cover the action that
+        // the user must tap to obtain a fresh MediaProjection token.
+        binding.activeOverlayStatusGroup.visibility = View.GONE
+        binding.activeOverlayProgress.visibility = View.GONE
+        binding.tvActiveOverlayStatus.setText(R.string.active_screenshot_projection_revoked)
+        binding.tvActiveOverlayPerformance.visibility = View.GONE
+        binding.btnCancelActivePreview.visibility = View.GONE
+        binding.btnActiveOverlayMode.isEnabled = true
+        binding.btnActiveOverlaySettings.isEnabled = true
+        binding.btnToggleActiveTranslation.isEnabled = false
+        binding.btnToggleActiveTranslation.isChecked = true
+        updateCompactStatus(
+            R.string.active_screenshot_compact_projection_revoked,
+            showProgress = false
+        )
+        expandNow()
     }
 
     fun dismiss() = onMainThread(::dismissNow)
@@ -714,9 +793,15 @@ internal class ActiveScreenCaptureOverlayController(
         translationParams = params
         return runCatching {
             windowManager.addView(translationView, params)
-            if (translationView.parent != null) attachedWindowManager = windowManager
+            if (translationView.parent != null) {
+                attachedWindowManager = windowManager
+                translationLayerAttached = true
+            }
             translationView.parent != null
-        }.onFailure { translationParams = null }.getOrDefault(false)
+        }.onFailure {
+            translationParams = null
+            translationLayerAttached = false
+        }.getOrDefault(false)
     }
 
     private fun dismissNow() {
@@ -728,6 +813,7 @@ internal class ActiveScreenCaptureOverlayController(
         if (translationView.parent != null) {
             runCatching { windowManager.removeViewImmediate(translationView) }
         }
+        translationLayerAttached = false
         controlParams = null
         translationParams = null
         attachedWindowManager = null
@@ -735,6 +821,17 @@ internal class ActiveScreenCaptureOverlayController(
 
     private fun removeTranslationLayersNow() {
         translationView.clearPatches()
+    }
+
+    private fun detachTranslationLayerNow() {
+        translationView.clearPatches()
+        val windowManager = attachedWindowManager ?: applicationWindowManager
+        if (translationView.parent != null) {
+            runCatching { windowManager.removeViewImmediate(translationView) }
+                .onFailure { Log.w(TAG, "Unable to remove stale translation surface", it) }
+        }
+        translationLayerAttached = false
+        translationParams = null
     }
 
     private fun updateModeLabel() {
@@ -1597,6 +1694,7 @@ internal class ActiveScreenCaptureOverlayController(
         (value * appContext.resources.displayMetrics.density).toInt()
 
     private companion object {
+        const val FRAME_HEARTBEAT_CONTROL_ALPHA = 0.996f
         const val TAG = "ActiveCaptureOverlay"
         const val OVERLAY_PRESENTATION_MAX_ATTEMPTS = 3
         const val OVERLAY_PRESENTATION_RETRY_DELAY_MS = 120L

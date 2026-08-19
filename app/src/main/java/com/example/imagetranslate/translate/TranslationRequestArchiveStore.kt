@@ -99,6 +99,22 @@ internal object TranslationRequestArchiveStore {
         }
     }
 
+    suspend fun recordProjectionLifecycle(
+        context: Context,
+        traces: List<SemanticTranslationTrace>,
+        diagnostics: JSONObject
+    ) = withContext(Dispatchers.IO) {
+        if (!TranslationBackendSettings.isRequestArchiveExportEnabled(context)) return@withContext
+        lock.withLock {
+            traces.distinct().forEach { trace ->
+                val stage = stagingDirectory(context, trace.requestId)
+                if (!File(stage, REQUEST_FILE).isFile) return@forEach
+                writeText(stage, PROJECTION_LIFECYCLE_FILE, diagnostics.toString(2))
+                exportZip(context, stage, trace.requestId)
+            }
+        }
+    }
+
     private fun extractSourceCapture(request: JSONObject, stage: File) {
         val capture = request.optJSONObject("debugCapture") ?: return
         val data = capture.optString("dataBase64")
@@ -214,6 +230,7 @@ internal object TranslationRequestArchiveStore {
     private const val ERROR_FILE = "error.json"
     private const val MANIFEST_FILE = "manifest.json"
     private const val RENDER_AUDIT_FILE = "render-audit.json"
+    private const val PROJECTION_LIFECYCLE_FILE = "projection-lifecycle.json"
     private const val SOURCE_CAPTURE_BASENAME = "source-capture"
     private const val RENDERED_CAPTURE_BASENAME = "rendered-capture"
     private const val ARCHIVE_NAME_FILE = ".archive-name"

@@ -121,6 +121,8 @@
     <string name="active_screenshot_recognition_succeeded_short">识别成功</string>
     <string name="active_screenshot_recognition_failed">识别失败，请重试</string>
     <string name="active_screenshot_recognition_cancelled">识别已取消</string>
+    <string name="active_screenshot_projection_revoked">屏幕采集已停止，可能正在录屏、投屏或设备已锁屏。请结束冲突功能，再点击“开始识别”重新授权</string>
+    <string name="active_screenshot_capture_interrupted_toast">屏幕采集已中断，自动识别已关闭。请结束录屏或投屏后，手动点击“开始识别”重新授权</string>
     <string name="active_screenshot_translation_timeout">识别翻译超时，已停止本次任务，请重试</string>
     <string name="active_screenshot_waiting_stable">等待画面停稳</string>
     <string name="active_screenshot_preview_result">屏幕文字翻译结果</string>
@@ -226,6 +228,7 @@
     <string name="active_screenshot_compact_processing">正在翻译</string>
     <string name="active_screenshot_compact_translated">翻译完成</string>
     <string name="active_screenshot_compact_no_text">未发现文字</string>
+    <string name="active_screenshot_compact_projection_revoked">采集已暂停</string>
     <string name="screenshot_monitor_disclosure_title">开启截图监听</string>
     <string name="screenshot_monitor_disclosure_message">开启后，应用会监听媒体库中新生成的截图。开启“检测到截图时显示悬浮窗”时，会显示左上角预览和操作；关闭时不显示悬浮窗，而是将截图直接载入主界面的原始图片并自动翻译。应用无法阻止系统生成截图，也不会处理截图以外的图片。监听期间会显示常驻通知，你可以随时停止。</string>
     <string name="screenshot_monitor_continue">了解并继续</string>
