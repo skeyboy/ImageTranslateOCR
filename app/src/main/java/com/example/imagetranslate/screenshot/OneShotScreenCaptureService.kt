@@ -70,6 +70,8 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeout
 import org.json.JSONObject
+import org.json.JSONArray
+import java.util.function.Consumer
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
@@ -92,9 +94,12 @@ class OneShotScreenCaptureService : Service() {
     private val lastFrameReceivedAtMs = AtomicLong(0L)
     private val frameHeartbeatEpoch = AtomicLong(0L)
     private val frameHeartbeatMisses = AtomicInteger(0)
+    private val scrollFrameProbeEpoch = AtomicLong(0L)
     private val translationLayerPresented = AtomicBoolean(false)
     private val projectionStopReason = AtomicReference<String?>(null)
     private val virtualDisplayState = AtomicReference("IDLE")
+    private val lastExternalDisplayAddedAtMs = AtomicLong(0L)
+    private val interruptedByExternalRecorder = AtomicBoolean(false)
     private val rotationPermissionRestart = AtomicBoolean(false)
     private val rotationCaptureRecoveryPending = AtomicBoolean(false)
     private val captureGeneration = AtomicInteger(0)
@@ -114,6 +119,8 @@ class OneShotScreenCaptureService : Service() {
     private var projection: MediaProjection? = null
     @Volatile
     private var projectionCallback: MediaProjection.Callback? = null
+    private var screenRecordingCallback: Consumer<Int>? = null
+    private val screenRecordingState = AtomicReference("UNAVAILABLE")
     private var imageReader: ImageReader? = null
     private var virtualDisplay: VirtualDisplay? = null
     private var captureThread: HandlerThread? = null
@@ -157,7 +164,6 @@ class OneShotScreenCaptureService : Service() {
     private val accessibilityScrollActive = AtomicBoolean(false)
     private val accessibilityScrollSettle = Runnable {
         if (!accessibilityScrollPending.compareAndSet(true, false) ||
-            experienceMode != LiveOverlayExperienceMode.ENHANCED ||
             !continuousTranslationEnabled.get() || projection == null
         ) {
             return@Runnable
@@ -196,9 +202,19 @@ class OneShotScreenCaptureService : Service() {
     private val displayManager by lazy { getSystemService(DisplayManager::class.java) }
 
     private val displayListener = object : DisplayManager.DisplayListener {
-        override fun onDisplayAdded(displayId: Int) = Unit
+        override fun onDisplayAdded(displayId: Int) {
+            val display = runCatching { displayManager.getDisplay(displayId) }.getOrNull()
+            if (sessionState.get() == ScreenCaptureSessionState.CAPTURING &&
+                display?.name != CAPTURE_DISPLAY_NAME
+            ) {
+                lastExternalDisplayAddedAtMs.set(SystemClock.elapsedRealtime())
+            }
+            logDisplayTopology("added", displayId)
+        }
 
-        override fun onDisplayRemoved(displayId: Int) = Unit
+        override fun onDisplayRemoved(displayId: Int) {
+            logDisplayTopology("removed", displayId)
+        }
 
         override fun onDisplayChanged(displayId: Int) {
             if (displayId != Display.DEFAULT_DISPLAY) return
@@ -340,6 +356,7 @@ class OneShotScreenCaptureService : Service() {
             }
         )
         displayManager.registerDisplayListener(displayListener, mainHandler)
+        registerScreenRecordingDiagnostics()
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -371,7 +388,10 @@ class OneShotScreenCaptureService : Service() {
                 return START_NOT_STICKY
             }
             ACTION_ACCESSIBILITY_VIEW_SCROLLED -> {
-                handleAccessibilityScroll()
+                handleAccessibilityScroll(
+                    sourcePackage = intent.getStringExtra(EXTRA_ACCESSIBILITY_SOURCE_PACKAGE),
+                    sourceWindowId = intent.getIntExtra(EXTRA_ACCESSIBILITY_WINDOW_ID, -1)
+                )
                 return START_NOT_STICKY
             }
             ACTION_START_SESSION -> Unit
@@ -421,6 +441,7 @@ class OneShotScreenCaptureService : Service() {
     override fun onDestroy() {
         isRunning = false
         sessionState.set(ScreenCaptureSessionState.STOPPING)
+        unregisterScreenRecordingDiagnostics()
         displayManager.unregisterDisplayListener(displayListener)
         val activeProcessingJob = processingJob.getAndSet(null)
         releaseCaptureResources(
@@ -437,6 +458,76 @@ class OneShotScreenCaptureService : Service() {
             }
         }
         super.onDestroy()
+    }
+
+    private fun registerScreenRecordingDiagnostics() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.VANILLA_ICE_CREAM) return
+        val windowManager = getSystemService(WindowManager::class.java)
+        val callback = Consumer<Int> { state ->
+            val label = screenRecordingStateLabel(state)
+            screenRecordingState.set(label)
+            Log.i(
+                TAG,
+                "Screen recording visibility changed: state=$label, " +
+                    "session=${projectionSessionId.get()}, generation=${captureGeneration.get()}"
+            )
+        }
+        screenRecordingCallback = callback
+        runCatching {
+            val initialState = windowManager.addScreenRecordingCallback(mainExecutor, callback)
+            val label = screenRecordingStateLabel(initialState)
+            screenRecordingState.set(label)
+            Log.i(TAG, "Screen recording visibility registered: initialState=$label")
+        }.onFailure { error ->
+            screenRecordingCallback = null
+            screenRecordingState.set("UNAVAILABLE:${error.javaClass.simpleName}")
+            Log.w(TAG, "Unable to register screen recording diagnostics", error)
+        }
+    }
+
+    private fun unregisterScreenRecordingDiagnostics() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.VANILLA_ICE_CREAM) return
+        val callback = screenRecordingCallback ?: return
+        screenRecordingCallback = null
+        runCatching {
+            getSystemService(WindowManager::class.java).removeScreenRecordingCallback(callback)
+        }.onFailure { error ->
+            Log.w(TAG, "Unable to unregister screen recording diagnostics", error)
+        }
+    }
+
+    private fun screenRecordingStateLabel(state: Int): String =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM &&
+            state == WindowManager.SCREEN_RECORDING_STATE_VISIBLE
+        ) {
+            "VISIBLE"
+        } else {
+            "NOT_VISIBLE"
+        }
+
+    private fun logDisplayTopology(change: String, displayId: Int) {
+        Log.i(
+            TAG,
+            "Display topology changed: change=$change, displayId=$displayId, " +
+                "topology=${displayTopologyDiagnostics()}"
+        )
+    }
+
+    private fun displayTopologyDiagnostics(): JSONObject {
+        val displays = runCatching { displayManager.displays.toList() }.getOrDefault(emptyList())
+        val entries = JSONArray()
+        displays.forEach { display ->
+            entries.put(
+                JSONObject()
+                    .put("id", display.displayId)
+                    .put("name", display.name)
+                    .put("flags", display.flags)
+                    .put("valid", display.isValid)
+            )
+        }
+        return JSONObject()
+            .put("accessibleDisplayCount", displays.size)
+            .put("displays", entries)
     }
 
     private fun startOverlayOnly() {
@@ -582,6 +673,8 @@ class OneShotScreenCaptureService : Service() {
         runCatching {
             projectionStopRequested.set(false)
             projectionStopReason.set(null)
+            lastExternalDisplayAddedAtMs.set(0L)
+            interruptedByExternalRecorder.set(false)
             virtualDisplayState.set("CREATING")
             frameSequence.set(0L)
             lastFrameReceivedAtMs.set(SystemClock.elapsedRealtime())
@@ -732,9 +825,29 @@ class OneShotScreenCaptureService : Service() {
         // another capture while MediaProjection teardown is crossing threads.
         continuousTranslationEnabled.set(false)
         translationLayerPresented.set(false)
+        scrollFrameProbeEpoch.incrementAndGet()
         stopFrameHeartbeat()
         projectionStopReason.set(reason)
-        val lifecycleDiagnostics = projectionLifecycleDiagnostics(reason)
+        val externalDisplayAgeMs = lastExternalDisplayAddedAtMs.get().let { addedAtMs ->
+            if (addedAtMs <= 0L) Long.MAX_VALUE else {
+                (SystemClock.elapsedRealtime() - addedAtMs).coerceAtLeast(0L)
+            }
+        }
+        val recorderInterrupted =
+            reason == "MediaProjection was revoked externally" ||
+                externalDisplayAgeMs <= EXTERNAL_DISPLAY_CONFLICT_WINDOW_MS
+        interruptedByExternalRecorder.set(recorderInterrupted)
+        val lifecycleDiagnostics = projectionLifecycleDiagnostics(reason).apply {
+            put("interruptedByExternalRecorder", recorderInterrupted)
+            put(
+                "externalDisplayAddedAgeMs",
+                if (externalDisplayAgeMs == Long.MAX_VALUE) JSONObject.NULL else externalDisplayAgeMs
+            )
+            if (error != null) {
+                put("projectionFailureType", error.javaClass.simpleName)
+                put("projectionFailureMessage", error.message ?: JSONObject.NULL)
+            }
+        }
         val presentedTraces = lastPresentedTranslationTraces.getAndSet(emptyList())
         if (presentedTraces.isNotEmpty()) {
             serviceScope.launch {
@@ -798,10 +911,17 @@ class OneShotScreenCaptureService : Service() {
             },
             replaceTypes = true
         )
-        overlayController.showProjectionRevoked()
+        val recorderInterrupted = interruptedByExternalRecorder.get()
+        overlayController.showProjectionRevoked(
+            interruptedByRecorder = recorderInterrupted
+        )
         Toast.makeText(
             applicationContext,
-            R.string.active_screenshot_capture_interrupted_toast,
+            if (recorderInterrupted) {
+                R.string.active_screenshot_capture_interrupted_by_recorder_toast
+            } else {
+                R.string.active_screenshot_capture_interrupted_toast
+            },
             Toast.LENGTH_LONG
         ).show()
     }
@@ -819,7 +939,7 @@ class OneShotScreenCaptureService : Service() {
             val mediaProjection = projection
                 ?: error("MediaProjection ended before the capture surface was created")
             virtualDisplay = mediaProjection.createVirtualDisplay(
-                "ImageTranslateScreenCaptureSession",
+                CAPTURE_DISPLAY_NAME,
                 metrics.widthPixels,
                 metrics.heightPixels,
                 metrics.densityDpi,
@@ -1017,6 +1137,26 @@ class OneShotScreenCaptureService : Service() {
                     if (!heartbeatOutcome.streamInvalid &&
                         heartbeatOutcome.missedCount > 0
                     ) {
+                        // A stale translation surface is visually harmful as soon as the page
+                        // moves. Hide it on the first miss, while still requiring the second miss
+                        // before declaring the projection unusable.
+                        if (heartbeatOutcome.missedCount == 1) {
+                            canRestoreLastResult.set(false)
+                            if (liveProcessorDelegate.isInitialized()) {
+                                liveProcessor.clearLiveOverlaySnapshot()
+                            }
+                            overlayController.clearTranslations()
+                            Log.i(
+                                METRICS_TAG,
+                                JSONObject()
+                                    .put("schema", 1)
+                                    .put("event", "heartbeat_translation_guard_cleared")
+                                    .put("session_id", sessionId)
+                                    .put("generation", captureGeneration.get())
+                                    .put("last_frame_age_ms", lastFrameAgeMs())
+                                    .toString()
+                            )
+                        }
                         Log.w(
                             TAG,
                             "Capture frame heartbeat missed ${heartbeatOutcome.missedCount}/" +
@@ -1054,7 +1194,13 @@ class OneShotScreenCaptureService : Service() {
         .put("projectionStopReason", reason ?: JSONObject.NULL)
         .put("lastFrameAgeMs", lastFrameAgeMs())
         .put("virtualDisplayState", virtualDisplayState.get())
+        .put("screenRecordingState", screenRecordingState.get())
+        .put("displayTopology", displayTopologyDiagnostics())
         .put("overlayInstanceId", overlayController.translationOverlayInstanceId())
+        .put(
+            "controlLayerAboveTranslation",
+            overlayController.isControlLayerAboveTranslation()
+        )
         .put(
             "attachedFullscreenLayerCount",
             overlayController.attachedFullscreenTranslationLayerCount()
@@ -1207,17 +1353,27 @@ class OneShotScreenCaptureService : Service() {
         handler.postDelayed(movementSettleFallback, MOVEMENT_SETTLE_FALLBACK_MS)
     }
 
-    private fun handleAccessibilityScroll() {
+    private fun handleAccessibilityScroll(sourcePackage: String?, sourceWindowId: Int) {
         val handler = captureHandler ?: return
         val eventAtMs = SystemClock.elapsedRealtime()
         handler.post {
             if (handler !== captureHandler) return@post
-            handleAccessibilityScrollOnCaptureThread(handler, eventAtMs)
+            handleAccessibilityScrollOnCaptureThread(
+                handler = handler,
+                eventAtMs = eventAtMs,
+                sourcePackage = sourcePackage,
+                sourceWindowId = sourceWindowId
+            )
         }
     }
 
-    private fun handleAccessibilityScrollOnCaptureThread(handler: Handler, eventAtMs: Long) {
-        if (experienceMode != LiveOverlayExperienceMode.ENHANCED ||
+    private fun handleAccessibilityScrollOnCaptureThread(
+        handler: Handler,
+        eventAtMs: Long,
+        sourcePackage: String?,
+        sourceWindowId: Int
+    ) {
+        if (!ProjectionScrollGuardPolicy.shouldForwardScroll(sourcePackage, packageName) ||
             !continuousTranslationEnabled.get() || projection == null
         ) {
             return
@@ -1240,9 +1396,67 @@ class OneShotScreenCaptureService : Service() {
                 }
             }
             changeDetector.reset()
+            startScrollFrameProbe(
+                handler = handler,
+                sourcePackage = sourcePackage.orEmpty(),
+                sourceWindowId = sourceWindowId
+            )
         }
         handler.removeCallbacks(accessibilityScrollSettle)
         handler.postDelayed(accessibilityScrollSettle, ACCESSIBILITY_SCROLL_SETTLE_MS)
+    }
+
+    private fun startScrollFrameProbe(
+        handler: Handler,
+        sourcePackage: String,
+        sourceWindowId: Int
+    ) {
+        val epoch = scrollFrameProbeEpoch.incrementAndGet()
+        val sessionId = projectionSessionId.get()
+        val sequenceBeforePulse = frameSequence.get()
+        overlayController.pulseFrameHeartbeat { pulsed ->
+            val activeHandler = captureHandler ?: return@pulseFrameHeartbeat
+            if (handler !== activeHandler || epoch != scrollFrameProbeEpoch.get()) {
+                return@pulseFrameHeartbeat
+            }
+            if (!pulsed) {
+                Log.w(TAG, "Unable to pulse the capture surface after accessibility scroll")
+            }
+            activeHandler.postDelayed(
+                {
+                    if (epoch != scrollFrameProbeEpoch.get() ||
+                        sessionId != projectionSessionId.get() ||
+                        sessionState.get() != ScreenCaptureSessionState.CAPTURING ||
+                        !continuousTranslationEnabled.get()
+                    ) {
+                        return@postDelayed
+                    }
+                    val frameAdvanced = frameSequence.get() > sequenceBeforePulse
+                    Log.i(
+                        METRICS_TAG,
+                        JSONObject()
+                            .put("schema", 1)
+                            .put("event", "accessibility_scroll_frame_probe")
+                            .put("session_id", sessionId)
+                            .put("generation", captureGeneration.get())
+                            .put("source_package", sourcePackage)
+                            .put("source_window_id", sourceWindowId)
+                            .put("frame_advanced", frameAdvanced)
+                            .put("last_frame_age_ms", lastFrameAgeMs())
+                            .toString()
+                    )
+                    if (!frameAdvanced) {
+                        recoverFromProjectionFailure(
+                            sessionId,
+                            CaptureFrameUnavailableException(
+                                "Capture frame stream did not respond after accessibility scroll"
+                            )
+                        )
+                    }
+                },
+                SCROLL_FRAME_PROBE_TIMEOUT_MS
+            )
+        }
     }
 
     private fun restoreUnchangedSettledViewport(trigger: String) {
@@ -1991,6 +2205,7 @@ class OneShotScreenCaptureService : Service() {
         presentationInProgress.set(false)
         canRestoreLastResult.set(false)
         translationLayerPresented.set(false)
+        scrollFrameProbeEpoch.incrementAndGet()
         stopFrameHeartbeat()
         lastAcceptedCaptureSignature = null
         latestObservedSignature = null
@@ -2025,6 +2240,7 @@ class OneShotScreenCaptureService : Service() {
         presentationInProgress.set(false)
         canRestoreLastResult.set(false)
         translationLayerPresented.set(false)
+        scrollFrameProbeEpoch.incrementAndGet()
         stopFrameHeartbeat()
         lastAcceptedCaptureSignature = null
         activeCapturePlan = null
@@ -2490,6 +2706,10 @@ class OneShotScreenCaptureService : Service() {
             "com.example.imagetranslate.screenshot.REFRESH_PIPELINE_SETTINGS"
         const val ACTION_ACCESSIBILITY_VIEW_SCROLLED =
             "com.example.imagetranslate.screenshot.ACCESSIBILITY_VIEW_SCROLLED"
+        const val EXTRA_ACCESSIBILITY_SOURCE_PACKAGE =
+            "accessibility_source_package"
+        const val EXTRA_ACCESSIBILITY_WINDOW_ID =
+            "accessibility_window_id"
         const val ACTION_CAPTURE_FAILED =
             "com.example.imagetranslate.screenshot.CAPTURE_FAILED"
         private const val EXTRA_RESULT_CODE = "result_code"
@@ -2512,9 +2732,12 @@ class OneShotScreenCaptureService : Service() {
         private const val DISPLAY_CHANGE_SETTLE_MS = 900L
         private const val MEDIA_PROJECTION_RESIZE_SETTLE_MS = 120L
         private const val CAPTURE_SURFACE_RETIRE_DELAY_MS = 500L
-        private const val FRAME_HEARTBEAT_INTERVAL_MS = 700L
-        private const val FRAME_HEARTBEAT_RESPONSE_TIMEOUT_MS = 800L
+        private const val FRAME_HEARTBEAT_INTERVAL_MS = 350L
+        private const val FRAME_HEARTBEAT_RESPONSE_TIMEOUT_MS = 300L
         private const val MAX_FRAME_HEARTBEAT_MISSES = 2
+        private const val EXTERNAL_DISPLAY_CONFLICT_WINDOW_MS = 5_000L
+        private const val CAPTURE_DISPLAY_NAME = "ImageTranslateScreenCaptureSession"
+        private const val SCROLL_FRAME_PROBE_TIMEOUT_MS = 500L
         private const val ROTATION_FRAME_RECOVERY_TIMEOUT_MS = 3_500L
         private const val INITIAL_STABILITY_MAX_WAIT_MS = 1_800L
         private const val MOVEMENT_SETTLE_FALLBACK_MS = 650L

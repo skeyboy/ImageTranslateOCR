@@ -146,6 +146,11 @@ internal class ActiveScreenCaptureOverlayController(
         "translation-${Integer.toHexString(System.identityHashCode(translationView))}"
     @Volatile
     private var translationLayerAttached = false
+    private var layerAttachSequence = 0L
+    @Volatile
+    private var controlLayerAttachOrder = 0L
+    @Volatile
+    private var translationLayerAttachOrder = 0L
     private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
     private val edgeMargin = dp(12)
     private val expandedWidth: Int
@@ -246,9 +251,7 @@ internal class ActiveScreenCaptureOverlayController(
     }
 
     fun pulseFrameHeartbeat(onPulsed: (Boolean) -> Unit) = onMainThread {
-        if (translationView.parent == null ||
-            translationView.visibility != View.VISIBLE ||
-            binding.root.parent == null ||
+        if (binding.root.parent == null ||
             binding.root.visibility != View.VISIBLE
         ) {
             onPulsed(false)
@@ -267,6 +270,11 @@ internal class ActiveScreenCaptureOverlayController(
 
     fun attachedFullscreenTranslationLayerCount(): Int =
         if (translationLayerAttached) 1 else 0
+
+    fun isControlLayerAboveTranslation(): Boolean =
+        binding.root.parent != null &&
+            (translationView.parent == null ||
+                controlLayerAttachOrder > translationLayerAttachOrder)
 
     fun signatureOcclusionBounds(maskTranslationPatches: Boolean = false): List<Rect> {
         val padding = dp(SIGNATURE_OCCLUSION_PADDING_DP)
@@ -548,7 +556,7 @@ internal class ActiveScreenCaptureOverlayController(
         removeTranslationLayersNow()
     }
 
-    fun showProjectionRevoked() = onMainThread {
+    fun showProjectionRevoked(interruptedByRecorder: Boolean) = onMainThread {
         if (!ensureControlAttachedNow()) return@onMainThread
         processing = false
         sessionActive = false
@@ -563,14 +571,25 @@ internal class ActiveScreenCaptureOverlayController(
         binding.activeOverlayStatusGroup.visibility = View.GONE
         binding.activeOverlayProgress.visibility = View.GONE
         binding.tvActiveOverlayStatus.setText(R.string.active_screenshot_projection_revoked)
-        binding.tvActiveOverlayPerformance.visibility = View.GONE
+        binding.tvActiveOverlayPerformance.setText(
+            if (interruptedByRecorder) {
+                R.string.active_screenshot_recorder_interrupted_banner
+            } else {
+                R.string.active_screenshot_capture_interrupted_banner
+            }
+        )
+        binding.tvActiveOverlayPerformance.visibility = View.VISIBLE
         binding.btnCancelActivePreview.visibility = View.GONE
         binding.btnActiveOverlayMode.isEnabled = true
         binding.btnActiveOverlaySettings.isEnabled = true
         binding.btnToggleActiveTranslation.isEnabled = false
         binding.btnToggleActiveTranslation.isChecked = true
         updateCompactStatus(
-            R.string.active_screenshot_compact_projection_revoked,
+            if (interruptedByRecorder) {
+                R.string.active_screenshot_compact_recorder_interrupted
+            } else {
+                R.string.active_screenshot_compact_projection_revoked
+            },
             showProgress = false
         )
         expandNow()
@@ -716,7 +735,10 @@ internal class ActiveScreenCaptureOverlayController(
         val windowManager = activeWindowManager() ?: return false
         runCatching { windowManager.addView(binding.root, params) }
             .onFailure { controlParams = null }
-        if (binding.root.parent != null) attachedWindowManager = windowManager
+        if (binding.root.parent != null) {
+            attachedWindowManager = windowManager
+            controlLayerAttachOrder = nextLayerAttachOrder()
+        }
         if (binding.root.parent != null) animateControlMaterialization()
         return binding.root.parent != null
     }
@@ -796,6 +818,13 @@ internal class ActiveScreenCaptureOverlayController(
             if (translationView.parent != null) {
                 attachedWindowManager = windowManager
                 translationLayerAttached = true
+                translationLayerAttachOrder = nextLayerAttachOrder()
+                if (binding.root.parent != null &&
+                    !reattachControlAboveTranslationNow(windowManager)
+                ) {
+                    detachTranslationLayerNow()
+                    return@runCatching false
+                }
             }
             translationView.parent != null
         }.onFailure {
@@ -814,6 +843,8 @@ internal class ActiveScreenCaptureOverlayController(
             runCatching { windowManager.removeViewImmediate(translationView) }
         }
         translationLayerAttached = false
+        controlLayerAttachOrder = 0L
+        translationLayerAttachOrder = 0L
         controlParams = null
         translationParams = null
         attachedWindowManager = null
@@ -831,7 +862,31 @@ internal class ActiveScreenCaptureOverlayController(
                 .onFailure { Log.w(TAG, "Unable to remove stale translation surface", it) }
         }
         translationLayerAttached = false
+        translationLayerAttachOrder = 0L
         translationParams = null
+    }
+
+    private fun reattachControlAboveTranslationNow(windowManager: WindowManager): Boolean {
+        val params = controlParams ?: return false
+        if (binding.root.parent == null) return true
+        binding.root.animate().cancel()
+        return runCatching {
+            windowManager.removeViewImmediate(binding.root)
+            windowManager.addView(binding.root, params)
+            attachedWindowManager = windowManager
+            controlLayerAttachOrder = nextLayerAttachOrder()
+            Log.i(TAG, "Reattached OCR control above the translation overlay")
+            true
+        }.onFailure { error ->
+            controlLayerAttachOrder = 0L
+            controlParams = null
+            Log.e(TAG, "Unable to keep OCR control above the translation overlay", error)
+        }.getOrDefault(false)
+    }
+
+    private fun nextLayerAttachOrder(): Long {
+        layerAttachSequence += 1L
+        return layerAttachSequence
     }
 
     private fun updateModeLabel() {

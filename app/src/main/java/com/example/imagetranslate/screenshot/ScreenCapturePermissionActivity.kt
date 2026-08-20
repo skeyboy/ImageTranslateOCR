@@ -2,7 +2,9 @@ package com.example.imagetranslate.screenshot
 
 import android.content.Context
 import android.content.Intent
+import android.media.projection.MediaProjectionConfig
 import android.media.projection.MediaProjectionManager
+import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -37,7 +39,14 @@ class ScreenCapturePermissionActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         if (savedInstanceState == null) {
             val manager = getSystemService(MediaProjectionManager::class.java)
-            requestScreenCapture.launch(manager.createScreenCaptureIntent())
+            val captureIntent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                manager.createScreenCaptureIntent(
+                    MediaProjectionConfig.createConfigForDefaultDisplay()
+                )
+            } else {
+                manager.createScreenCaptureIntent()
+            }
+            requestScreenCapture.launch(captureIntent)
         }
     }
 

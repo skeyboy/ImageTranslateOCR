@@ -13,8 +13,9 @@ class ScreenTranslationAccessibilityService : AccessibilityService() {
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
+        val sourcePackage = event?.packageName?.toString()
         if (event?.eventType != AccessibilityEvent.TYPE_VIEW_SCROLLED ||
-            event.packageName?.toString() == packageName ||
+            !ProjectionScrollGuardPolicy.shouldForwardScroll(sourcePackage, packageName) ||
             !OneShotScreenCaptureService.isRunning
         ) {
             return
@@ -23,6 +24,14 @@ class ScreenTranslationAccessibilityService : AccessibilityService() {
             this,
             android.content.Intent(this, OneShotScreenCaptureService::class.java).apply {
                 action = OneShotScreenCaptureService.ACTION_ACCESSIBILITY_VIEW_SCROLLED
+                putExtra(
+                    OneShotScreenCaptureService.EXTRA_ACCESSIBILITY_SOURCE_PACKAGE,
+                    sourcePackage
+                )
+                putExtra(
+                    OneShotScreenCaptureService.EXTRA_ACCESSIBILITY_WINDOW_ID,
+                    event.windowId
+                )
             }
         )
     }

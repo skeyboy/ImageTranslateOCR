@@ -151,7 +151,7 @@ internal data class BackgroundTranslatedOverlayResult(
     )
 }
 
-private data class BackgroundImageRegion(
+internal data class BackgroundImageRegion(
     val source: RecognizedText,
     val translation: String,
     val groupId: String? = null,
@@ -160,6 +160,33 @@ private data class BackgroundImageRegion(
     val renderSlots: List<Rect> = emptyList(),
     val sourceCoverSlots: List<Rect> = emptyList()
 )
+
+internal fun BackgroundImageRegion.shiftedToMatchedBounds(
+    matchedBounds: Rect
+): BackgroundImageRegion {
+    val offsetX = matchedBounds.left - source.bounds.left
+    val offsetY = matchedBounds.top - source.bounds.top
+    fun shifted(bounds: Rect): Rect = Rect(
+        bounds.left + offsetX,
+        bounds.top + offsetY,
+        bounds.right + offsetX,
+        bounds.bottom + offsetY
+    )
+
+    return copy(
+        source = source.copy(
+            bounds = Rect(
+                matchedBounds.left,
+                matchedBounds.top,
+                matchedBounds.right,
+                matchedBounds.bottom
+            ),
+            componentBounds = source.componentBounds.map(::shifted)
+        ),
+        renderSlots = renderSlots.map(::shifted),
+        sourceCoverSlots = sourceCoverSlots.map(::shifted)
+    )
+}
 
 internal data class SmartAssistDisplayHints(
     val preferredMaxLines: Int,
@@ -1318,9 +1345,7 @@ internal class BackgroundTranslatedImageProcessor(
                 contentTop = contentTop,
                 contentBottom = contentBottom
             ) ?: return@mapNotNull null
-            cached.region.copy(
-                source = cached.region.source.copy(bounds = matchedBounds)
-            )
+            cached.region.shiftedToMatchedBounds(matchedBounds)
         }
         if (!LiveDifferentialRecognitionPolicy.hasSufficientReuse(
                 expectedSurvivorCount = expectedSurvivors.size,

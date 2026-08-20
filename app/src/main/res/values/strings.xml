@@ -123,6 +123,10 @@
     <string name="active_screenshot_recognition_cancelled">识别已取消</string>
     <string name="active_screenshot_projection_revoked">屏幕采集已停止，可能正在录屏、投屏或设备已锁屏。请结束冲突功能，再点击“开始识别”重新授权</string>
     <string name="active_screenshot_capture_interrupted_toast">屏幕采集已中断，自动识别已关闭。请结束录屏或投屏后，手动点击“开始识别”重新授权</string>
+    <string name="active_screenshot_capture_interrupted_by_recorder_toast">屏幕采集已被另一个录屏工具打断，译文已清除，自动识别已关闭。请结束录屏后点击“开始识别”重新授权</string>
+    <string name="active_screenshot_capture_interrupted_banner">采集已中断，请结束录屏或投屏后重新授权</string>
+    <string name="active_screenshot_recorder_interrupted_banner">被另一录屏工具打断，请结束录屏后重新授权</string>
+    <string name="active_screenshot_compact_recorder_interrupted">录屏打断，请重新授权</string>
     <string name="active_screenshot_translation_timeout">识别翻译超时，已停止本次任务，请重试</string>
     <string name="active_screenshot_waiting_stable">等待画面停稳</string>
     <string name="active_screenshot_preview_result">屏幕文字翻译结果</string>
