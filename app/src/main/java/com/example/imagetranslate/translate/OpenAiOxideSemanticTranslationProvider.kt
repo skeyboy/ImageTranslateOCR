@@ -3,6 +3,7 @@ package com.example.imagetranslate.translate
 import android.content.Context
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.json.JSONObject
 
 internal class OpenAiOxideSemanticTranslationProvider(
     private val context: Context,
@@ -16,6 +17,7 @@ internal class OpenAiOxideSemanticTranslationProvider(
         request: SemanticTranslationRequest
     ): SemanticTranslationBatchResult = withContext(Dispatchers.IO) {
         val requestJson = codec.requestBodyForTest(request)
+        val started = System.nanoTime()
         val response = NativeEdgeTranslationBridge.translateOpenAi(
             context = context,
             request = requestJson,
@@ -28,7 +30,12 @@ internal class OpenAiOxideSemanticTranslationProvider(
             requestJson = requestJson,
             responseJson = response.toString(),
             provider = TranslationBackendSettings.OPENAI_OXIDE_EDGE_PROVIDER,
-            model = model
+            model = model,
+            timings = JSONObject()
+                .put("schemaVersion", 2)
+                .put("captureEncodeMs", request.debugCapture?.encodeMs ?: JSONObject.NULL)
+                .put("groupCount", request.sources.size)
+                .put("providerTotalMs", (System.nanoTime() - started) / 1_000_000)
         )
         codec.parseResponseForTest(response.toString(), request)
     }

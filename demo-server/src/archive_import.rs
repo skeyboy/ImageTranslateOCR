@@ -56,12 +56,11 @@ pub async fn import_archive(
         .transpose()
         .map_err(|error| AppError::invalid(format!("manifest.json is invalid: {error}")))?
         .unwrap_or_else(|| json!({}));
-    if manifest
+    let archive_schema_version = manifest
         .get("archiveSchemaVersion")
         .and_then(Value::as_u64)
-        .unwrap_or(1)
-        != 1
-    {
+        .unwrap_or(1);
+    if !(1..=2).contains(&archive_schema_version) {
         return Err(AppError::invalid("unsupported archiveSchemaVersion"));
     }
     let response_raw = entries
@@ -129,6 +128,7 @@ pub async fn import_archive(
     let provider_audit = json!({
         "request": optional_json(&entries, "provider-request.json")?,
         "response": optional_json(&entries, "provider-response.json")?,
+        "timings": optional_json(&entries, "timings.json")?,
         "execution": "android-archive-import",
         "archiveManifest": manifest,
     });
@@ -381,6 +381,7 @@ const ALLOWED_FILES: &[&str] = &[
     "provider-response.json",
     "error.json",
     "render-audit.json",
+    "timings.json",
     "source-capture.jpg",
     "source-capture.png",
     "source-capture.webp",
@@ -418,6 +419,17 @@ mod tests {
         ]);
         let entries = read_entries(&bytes).unwrap();
         assert!(entries.contains_key("request.json"));
+    }
+
+    #[test]
+    fn accepts_v2_archive_timings() {
+        let bytes = archive(&[
+            ("manifest.json", br#"{"archiveSchemaVersion":2}"#),
+            ("request.json", b"{}"),
+            ("timings.json", br#"{"providerTotalMs":123}"#),
+        ]);
+        let entries = read_entries(&bytes).unwrap();
+        assert!(entries.contains_key("timings.json"));
     }
 
     #[test]

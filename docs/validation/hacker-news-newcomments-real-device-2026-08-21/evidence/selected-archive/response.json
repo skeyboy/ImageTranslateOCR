@@ -1,0 +1,1147 @@
+{
+  "schemaVersion": 4,
+  "requestId": "2ca04474-954d-45b7-805e-9b7e2e0ecbd7",
+  "sessionId": "37475d36-f747-41ad-8543-82f5458c2f03",
+  "generation": 31,
+  "translationRevision": 2,
+  "provider": "embedded-openlux-v4",
+  "modelVersion": "gemini-3.5-flash-lite",
+  "promptVersion": "semantic-translation-core-v4-identifier-classification",
+  "results": [
+    {
+      "groupId": "server-v4-0-3aa2d466741ddf43",
+      "sourceGroupIds": [
+        "semantic-44fad6ca"
+      ],
+      "role": "BODY",
+      "groupingConfidence": 0.98,
+      "status": "TRANSLATED",
+      "renderMode": "GROUP",
+      "translatedText": "这与“索尼诉Betamax案”存在张力，该案判定时间转移（time shifting）属于合理使用，但那也需要格式转移（从广播媒体到录制媒体）。",
+      "memberRegionIds": [
+        "semantic-44fad6ca-region-0",
+        "semantic-44fad6ca-region-1",
+        "semantic-44fad6ca-region-2"
+      ],
+      "detectedSourceLanguage": "en",
+      "targetLanguage": "zh",
+      "anchorBounds": {
+        "left": 63,
+        "top": 311,
+        "right": 1268,
+        "bottom": 479
+      },
+      "layoutHint": {
+        "preferredMaxLines": 3,
+        "minimumTextScale": 0.86,
+        "maximumTextScale": 1,
+        "lineSpacingMultiplier": 1,
+        "alignment": "START",
+        "overflowStrategy": "REFLOW_THEN_SCALE",
+        "allowMore": false,
+        "sourceLineCount": 3,
+        "layoutShape": "RECT",
+        "renderSlots": [
+          {
+            "left": 63,
+            "top": 311,
+            "right": 1268,
+            "bottom": 479
+          }
+        ],
+        "sourceCoverSlots": [
+          {
+            "left": 64,
+            "top": 311,
+            "right": 1268,
+            "bottom": 353
+          },
+          {
+            "left": 63,
+            "top": 370,
+            "right": 1186,
+            "bottom": 417
+          },
+          {
+            "left": 73,
+            "top": 429,
+            "right": 889,
+            "bottom": 479
+          }
+        ]
+      }
+    },
+    {
+      "groupId": "server-v4-1-97bfd9e5351d574f",
+      "sourceGroupIds": [
+        "semantic-c62a04d1",
+        "semantic-8d1be015"
+      ],
+      "role": "BODY",
+      "groupingConfidence": 0.94,
+      "status": "TRANSLATED",
+      "renderMode": "GROUP",
+      "translatedText": "Ekaros 19 分钟前 | 父级 | 上下文 | 关于：著作权不保护 AI 生成内容\n在这种情况下，我很难找到准确的术语。就著作权而言，AI 生成的内容处于一种虚无的状态。它根本不像其他材料那样拥有著作权状态。因此，我能想到的最好表述或许是，你无法针对 AI 生成的内容起诉侵犯许可权，因为你并不拥有所有权。",
+      "memberRegionIds": [
+        "semantic-c62a04d1-region-0",
+        "semantic-c62a04d1-region-1",
+        "semantic-8d1be015-region-0",
+        "semantic-8d1be015-region-1",
+        "semantic-8d1be015-region-2",
+        "semantic-8d1be015-region-3",
+        "semantic-8d1be015-region-4",
+        "semantic-8d1be015-region-5",
+        "semantic-8d1be015-region-6"
+      ],
+      "detectedSourceLanguage": "en",
+      "targetLanguage": "zh",
+      "anchorBounds": {
+        "left": 63,
+        "top": 551,
+        "right": 1356,
+        "bottom": 1100
+      },
+      "layoutHint": {
+        "preferredMaxLines": 9,
+        "minimumTextScale": 0.86,
+        "maximumTextScale": 1,
+        "lineSpacingMultiplier": 0.92,
+        "alignment": "START",
+        "overflowStrategy": "REFLOW_THEN_SCALE_THEN_MORE",
+        "allowMore": true,
+        "sourceLineCount": 9,
+        "layoutShape": "RECT",
+        "renderSlots": [
+          {
+            "left": 63,
+            "top": 551,
+            "right": 1356,
+            "bottom": 1100
+          }
+        ],
+        "sourceCoverSlots": [
+          {
+            "left": 66,
+            "top": 551,
+            "right": 1356,
+            "bottom": 591
+          },
+          {
+            "left": 64,
+            "top": 601,
+            "right": 376,
+            "bottom": 640
+          },
+          {
+            "left": 82,
+            "top": 679,
+            "right": 1223,
+            "bottom": 728
+          },
+          {
+            "left": 64,
+            "top": 746,
+            "right": 1069,
+            "bottom": 790
+          },
+          {
+            "left": 67,
+            "top": 808,
+            "right": 1212,
+            "bottom": 853
+          },
+          {
+            "left": 67,
+            "top": 867,
+            "right": 1218,
+            "bottom": 911
+          },
+          {
+            "left": 63,
+            "top": 928,
+            "right": 1170,
+            "bottom": 973
+          },
+          {
+            "left": 64,
+            "top": 993,
+            "right": 1101,
+            "bottom": 1040
+          },
+          {
+            "left": 64,
+            "top": 1051,
+            "right": 290,
+            "bottom": 1100
+          }
+        ]
+      }
+    },
+    {
+      "groupId": "server-v4-2-8c55d8a523d02744",
+      "sourceGroupIds": [
+        "semantic-42ff0485"
+      ],
+      "role": "BODY",
+      "groupingConfidence": 1,
+      "status": "TRANSLATED",
+      "renderMode": "GROUP",
+      "translatedText": "因此，对于由 AI 编写的代码，任何许可协议都是无法强制执行的。",
+      "memberRegionIds": [
+        "semantic-42ff0485-region-0"
+      ],
+      "detectedSourceLanguage": "en",
+      "targetLanguage": "zh",
+      "anchorBounds": {
+        "left": 66,
+        "top": 1146,
+        "right": 1174,
+        "bottom": 1187
+      },
+      "layoutHint": {
+        "preferredMaxLines": 1,
+        "minimumTextScale": 0.86,
+        "maximumTextScale": 1,
+        "lineSpacingMultiplier": 1,
+        "alignment": "START",
+        "overflowStrategy": "REFLOW_THEN_SCALE",
+        "allowMore": false,
+        "sourceLineCount": 1,
+        "layoutShape": "RECT",
+        "renderSlots": [
+          {
+            "left": 66,
+            "top": 1146,
+            "right": 1174,
+            "bottom": 1187
+          }
+        ],
+        "sourceCoverSlots": [
+          {
+            "left": 66,
+            "top": 1146,
+            "right": 1174,
+            "bottom": 1187
+          }
+        ]
+      }
+    },
+    {
+      "groupId": "server-v4-3-0065119f58a4fed1",
+      "sourceGroupIds": [
+        "semantic-39c4ffbe"
+      ],
+      "role": "BODY",
+      "groupingConfidence": 1,
+      "status": "TRANSLATED",
+      "renderMode": "GROUP",
+      "translatedText": "ineedasername 19 | 分钟前 | 父级 | 上下文 | 关于：呕吐：清理 Claude",
+      "memberRegionIds": [
+        "semantic-39c4ffbe-region-0"
+      ],
+      "detectedSourceLanguage": "en",
+      "targetLanguage": "zh",
+      "anchorBounds": {
+        "left": 66,
+        "top": 1264,
+        "right": 1386,
+        "bottom": 1301
+      },
+      "layoutHint": {
+        "preferredMaxLines": 1,
+        "minimumTextScale": 0.86,
+        "maximumTextScale": 1,
+        "lineSpacingMultiplier": 1,
+        "alignment": "START",
+        "overflowStrategy": "REFLOW_THEN_SCALE",
+        "allowMore": false,
+        "sourceLineCount": 1,
+        "layoutShape": "RECT",
+        "renderSlots": [
+          {
+            "left": 66,
+            "top": 1264,
+            "right": 1386,
+            "bottom": 1301
+          }
+        ],
+        "sourceCoverSlots": [
+          {
+            "left": 66,
+            "top": 1264,
+            "right": 1386,
+            "bottom": 1301
+          }
+        ]
+      }
+    },
+    {
+      "groupId": "server-v4-4-1a0e55b1bc602d7c",
+      "sourceGroupIds": [
+        "semantic-402cbf7a"
+      ],
+      "role": "BODY",
+      "groupingConfidence": 1,
+      "status": "TRANSLATED",
+      "renderMode": "GROUP",
+      "translatedText": "5's 的 token 输出带分隔...",
+      "memberRegionIds": [
+        "semantic-402cbf7a-region-0"
+      ],
+      "detectedSourceLanguage": "en",
+      "targetLanguage": "zh",
+      "anchorBounds": {
+        "left": 64,
+        "top": 1310,
+        "right": 558,
+        "bottom": 1352
+      },
+      "layoutHint": {
+        "preferredMaxLines": 1,
+        "minimumTextScale": 0.86,
+        "maximumTextScale": 1,
+        "lineSpacingMultiplier": 1,
+        "alignment": "START",
+        "overflowStrategy": "REFLOW_THEN_SCALE",
+        "allowMore": false,
+        "sourceLineCount": 1,
+        "layoutShape": "RECT",
+        "renderSlots": [
+          {
+            "left": 64,
+            "top": 1310,
+            "right": 558,
+            "bottom": 1352
+          }
+        ],
+        "sourceCoverSlots": [
+          {
+            "left": 64,
+            "top": 1310,
+            "right": 558,
+            "bottom": 1352
+          }
+        ]
+      }
+    },
+    {
+      "groupId": "server-v4-5-33df6b0d99ae850b",
+      "sourceGroupIds": [
+        "semantic-b4d07bc9"
+      ],
+      "role": "BODY",
+      "groupingConfidence": 0.98,
+      "status": "TRANSLATED",
+      "renderMode": "GROUP",
+      "translatedText": "我可能需要好好道个歉，哪怕这只是很小的一部分，或者如果权重很高的话，可能会产生极大的影响（我不确定，也许早就被 mv 到 dev\/null 丢弃了）……嗯，是这样的——由于不需要对他人保持可读性（用 Claude 的话说就是易读），我自己的写作风格恐怕是有点放任文笔肆意蔓延，东拉西扯，甚至有时毫无目的，直到它渐渐飘走，就像是在一个意料之外的话题废墟里打着呼噜惊醒过来。",
+      "memberRegionIds": [
+        "semantic-b4d07bc9-region-0",
+        "semantic-b4d07bc9-region-1",
+        "semantic-b4d07bc9-region-2",
+        "semantic-b4d07bc9-region-3",
+        "semantic-b4d07bc9-region-4",
+        "semantic-b4d07bc9-region-5",
+        "semantic-b4d07bc9-region-6",
+        "semantic-b4d07bc9-region-7",
+        "semantic-b4d07bc9-region-8"
+      ],
+      "detectedSourceLanguage": "en",
+      "targetLanguage": "zh",
+      "anchorBounds": {
+        "left": 63,
+        "top": 1389,
+        "right": 1267,
+        "bottom": 1936
+      },
+      "layoutHint": {
+        "preferredMaxLines": 9,
+        "minimumTextScale": 0.86,
+        "maximumTextScale": 1,
+        "lineSpacingMultiplier": 0.92,
+        "alignment": "START",
+        "overflowStrategy": "REFLOW_THEN_SCALE_THEN_MORE",
+        "allowMore": true,
+        "sourceLineCount": 9,
+        "layoutShape": "RECT",
+        "renderSlots": [
+          {
+            "left": 63,
+            "top": 1389,
+            "right": 1267,
+            "bottom": 1936
+          }
+        ],
+        "sourceCoverSlots": [
+          {
+            "left": 67,
+            "top": 1389,
+            "right": 1250,
+            "bottom": 1440
+          },
+          {
+            "left": 67,
+            "top": 1457,
+            "right": 1131,
+            "bottom": 1500
+          },
+          {
+            "left": 63,
+            "top": 1513,
+            "right": 1184,
+            "bottom": 1562
+          },
+          {
+            "left": 66,
+            "top": 1576,
+            "right": 1227,
+            "bottom": 1627
+          },
+          {
+            "left": 66,
+            "top": 1639,
+            "right": 1211,
+            "bottom": 1686
+          },
+          {
+            "left": 66,
+            "top": 1699,
+            "right": 1181,
+            "bottom": 1750
+          },
+          {
+            "left": 67,
+            "top": 1767,
+            "right": 1267,
+            "bottom": 1812
+          },
+          {
+            "left": 66,
+            "top": 1824,
+            "right": 1190,
+            "bottom": 1871
+          },
+          {
+            "left": 67,
+            "top": 1889,
+            "right": 1194,
+            "bottom": 1936
+          }
+        ]
+      }
+    },
+    {
+      "groupId": "server-v4-6-94bf981f05aed2c6",
+      "sourceGroupIds": [
+        "semantic-e93f3aed"
+      ],
+      "role": "BODY",
+      "groupingConfidence": 0.98,
+      "status": "TRANSLATED",
+      "renderMode": "GROUP",
+      "translatedText": "在使用 LLM 时，不需要无情地删减，而我可能要花两倍的时间才能说出原本一半字数的话。",
+      "memberRegionIds": [
+        "semantic-e93f3aed-region-0",
+        "semantic-e93f3aed-region-1"
+      ],
+      "detectedSourceLanguage": "en",
+      "targetLanguage": "zh",
+      "anchorBounds": {
+        "left": 63,
+        "top": 1981,
+        "right": 1197,
+        "bottom": 2087
+      },
+      "layoutHint": {
+        "preferredMaxLines": 2,
+        "minimumTextScale": 0.86,
+        "maximumTextScale": 1,
+        "lineSpacingMultiplier": 1,
+        "alignment": "START",
+        "overflowStrategy": "REFLOW_THEN_SCALE",
+        "allowMore": false,
+        "sourceLineCount": 2,
+        "layoutShape": "RECT",
+        "renderSlots": [
+          {
+            "left": 63,
+            "top": 1981,
+            "right": 1197,
+            "bottom": 2087
+          }
+        ],
+        "sourceCoverSlots": [
+          {
+            "left": 67,
+            "top": 1981,
+            "right": 1197,
+            "bottom": 2023
+          },
+          {
+            "left": 63,
+            "top": 2042,
+            "right": 1128,
+            "bottom": 2087
+          }
+        ]
+      }
+    },
+    {
+      "groupId": "server-v4-7-154e300b4bd57271",
+      "sourceGroupIds": [
+        "semantic-2a304f33"
+      ],
+      "role": "BODY",
+      "groupingConfidence": 0.98,
+      "status": "TRANSLATED",
+      "renderMode": "GROUP",
+      "translatedText": "而且，在 GPT 时代的早期，我没有取消勾选“允许将您的聊天记录用于未来的训练等”的复选框，从定义上来说，在这些原始抓取的训练材料中，它们比其他人的提示词更长、更密集……",
+      "memberRegionIds": [
+        "semantic-2a304f33-region-0",
+        "semantic-2a304f33-region-1",
+        "semantic-2a304f33-region-2",
+        "semantic-2a304f33-region-3"
+      ],
+      "detectedSourceLanguage": "en",
+      "targetLanguage": "zh",
+      "anchorBounds": {
+        "left": 63,
+        "top": 2127,
+        "right": 1261,
+        "bottom": 2366
+      },
+      "layoutHint": {
+        "preferredMaxLines": 4,
+        "minimumTextScale": 0.86,
+        "maximumTextScale": 1,
+        "lineSpacingMultiplier": 1,
+        "alignment": "START",
+        "overflowStrategy": "REFLOW_THEN_SCALE_THEN_MORE",
+        "allowMore": true,
+        "sourceLineCount": 4,
+        "layoutShape": "RECT",
+        "renderSlots": [
+          {
+            "left": 63,
+            "top": 2127,
+            "right": 1261,
+            "bottom": 2366
+          }
+        ],
+        "sourceCoverSlots": [
+          {
+            "left": 64,
+            "top": 2127,
+            "right": 1261,
+            "bottom": 2174
+          },
+          {
+            "left": 63,
+            "top": 2191,
+            "right": 1187,
+            "bottom": 2237
+          },
+          {
+            "left": 64,
+            "top": 2251,
+            "right": 1192,
+            "bottom": 2301
+          },
+          {
+            "left": 67,
+            "top": 2312,
+            "right": 1194,
+            "bottom": 2366
+          }
+        ]
+      }
+    },
+    {
+      "groupId": "server-v4-8-068b9f7d88e19a0e",
+      "sourceGroupIds": [
+        "semantic-b7845545"
+      ],
+      "role": "BODY",
+      "groupingConfidence": 1,
+      "status": "TRANSLATED",
+      "renderMode": "GROUP",
+      "translatedText": "抱歉。",
+      "memberRegionIds": [
+        "semantic-b7845545-region-0"
+      ],
+      "detectedSourceLanguage": "en",
+      "targetLanguage": "zh",
+      "anchorBounds": {
+        "left": 63,
+        "top": 2407,
+        "right": 181,
+        "bottom": 2453
+      },
+      "layoutHint": {
+        "preferredMaxLines": 1,
+        "minimumTextScale": 0.86,
+        "maximumTextScale": 1,
+        "lineSpacingMultiplier": 1,
+        "alignment": "CENTER",
+        "overflowStrategy": "REFLOW_THEN_SCALE",
+        "allowMore": false,
+        "sourceLineCount": 1,
+        "layoutShape": "RECT",
+        "renderSlots": [
+          {
+            "left": 63,
+            "top": 2407,
+            "right": 181,
+            "bottom": 2453
+          }
+        ],
+        "sourceCoverSlots": [
+          {
+            "left": 63,
+            "top": 2407,
+            "right": 181,
+            "bottom": 2453
+          }
+        ]
+      }
+    },
+    {
+      "groupId": "server-v4-9-f088c10d50f1703b",
+      "sourceGroupIds": [
+        "semantic-5593db72",
+        "semantic-1f9faa97"
+      ],
+      "role": "BODY",
+      "groupingConfidence": 0.94,
+      "status": "TRANSLATED",
+      "renderMode": "GROUP",
+      "translatedText": "walrus01 20 分钟前 | 父级 | 上下文 | 关于：隐形模型\n例如，如果人们把受 GPL 许可的开源软件投入中国大陆（CN）运营的推理服务商中，我认为他们并没有认真考虑过这样一个事实：CN 的软件开发人员并不认为自己有义务让未来的衍生作品或基于其构建的工作也保持 GPL 许可。而且一旦发生侵权，实际上也几乎没有寻求法律救济的现实机会。",
+      "memberRegionIds": [
+        "semantic-5593db72-region-0",
+        "semantic-1f9faa97-region-0",
+        "semantic-1f9faa97-region-1",
+        "semantic-1f9faa97-region-2",
+        "semantic-1f9faa97-region-3",
+        "semantic-1f9faa97-region-4",
+        "semantic-1f9faa97-region-5",
+        "semantic-1f9faa97-region-6"
+      ],
+      "detectedSourceLanguage": "en",
+      "targetLanguage": "zh",
+      "anchorBounds": {
+        "left": 64,
+        "top": 2522,
+        "right": 1261,
+        "bottom": 3020
+      },
+      "layoutHint": {
+        "preferredMaxLines": 8,
+        "minimumTextScale": 0.86,
+        "maximumTextScale": 1,
+        "lineSpacingMultiplier": 0.92,
+        "alignment": "START",
+        "overflowStrategy": "REFLOW_THEN_SCALE_THEN_MORE",
+        "allowMore": true,
+        "sourceLineCount": 8,
+        "layoutShape": "RECT",
+        "renderSlots": [
+          {
+            "left": 64,
+            "top": 2522,
+            "right": 1261,
+            "bottom": 3020
+          }
+        ],
+        "sourceCoverSlots": [
+          {
+            "left": 91,
+            "top": 2522,
+            "right": 1116,
+            "bottom": 2562
+          },
+          {
+            "left": 67,
+            "top": 2607,
+            "right": 1196,
+            "bottom": 2652
+          },
+          {
+            "left": 64,
+            "top": 2669,
+            "right": 1083,
+            "bottom": 2704
+          },
+          {
+            "left": 67,
+            "top": 2726,
+            "right": 1196,
+            "bottom": 2778
+          },
+          {
+            "left": 67,
+            "top": 2789,
+            "right": 1261,
+            "bottom": 2834
+          },
+          {
+            "left": 64,
+            "top": 2854,
+            "right": 1183,
+            "bottom": 2896
+          },
+          {
+            "left": 67,
+            "top": 2917,
+            "right": 1149,
+            "bottom": 2962
+          },
+          {
+            "left": 67,
+            "top": 2979,
+            "right": 1221,
+            "bottom": 3020
+          }
+        ]
+      }
+    }
+  ],
+  "documentPlan": {
+    "mode": "AUTHORITATIVE",
+    "planVersion": "server-regions-first-plan-v4",
+    "groups": [
+      {
+        "groupId": "server-v4-0-3aa2d466741ddf43",
+        "sourceGroupIds": [
+          "semantic-44fad6ca"
+        ],
+        "memberRegionIds": [
+          "semantic-44fad6ca-region-0",
+          "semantic-44fad6ca-region-1",
+          "semantic-44fad6ca-region-2"
+        ],
+        "role": "BODY",
+        "translationUnit": "GROUP",
+        "sourceText": "This is in tension with Sony vs.Betamax,which held that\ntime shifting is fair use,but that also requires format\nshifting(broadcast to recorded media).",
+        "readingOrder": 0,
+        "groupingConfidence": 0.98,
+        "groupingEvidence": [
+          "SERVER_REGIONS_FIRST",
+          "ATOMIC_REGION",
+          "CLIENT_GROUP_ADVISORY",
+          "LOW_OCR_TEXT_CONFIDENCE",
+          "OCR_BLOCK_CONTINUATION",
+          "SERVER_V4_MERGE",
+          "DENSE_RECT_LAYOUT_COLLAPSED"
+        ],
+        "sourceLineCount": 3,
+        "bounds": {
+          "left": 63,
+          "top": 311,
+          "right": 1268,
+          "bottom": 479
+        },
+        "renderSlots": [
+          {
+            "left": 63,
+            "top": 311,
+            "right": 1268,
+            "bottom": 479
+          }
+        ],
+        "layoutShape": "RECT",
+        "authoritativeEligible": true
+      },
+      {
+        "groupId": "server-v4-1-97bfd9e5351d574f",
+        "sourceGroupIds": [
+          "semantic-c62a04d1",
+          "semantic-8d1be015"
+        ],
+        "memberRegionIds": [
+          "semantic-c62a04d1-region-0",
+          "semantic-c62a04d1-region-1",
+          "semantic-8d1be015-region-0",
+          "semantic-8d1be015-region-1",
+          "semantic-8d1be015-region-2",
+          "semantic-8d1be015-region-3",
+          "semantic-8d1be015-region-4",
+          "semantic-8d1be015-region-5",
+          "semantic-8d1be015-region-6"
+        ],
+        "role": "BODY",
+        "translationUnit": "GROUP",
+        "sourceText": "Ekaros 19 minutes ago I parent | context I on:Copyright does not protect Al\ngenerated content\nI find it hard to find correct terminology in this case.Al\ngenerated content is copy right wise in state of\nnothingness.It simply does not have copy right status\nlike other material can have.As such maybe best I can\nformulate is that you can't enforce license violations\nagainst ai generated material as you do not have\nownership.",
+        "readingOrder": 1000,
+        "groupingConfidence": 0.94,
+        "groupingEvidence": [
+          "SERVER_REGIONS_FIRST",
+          "ATOMIC_REGION",
+          "CLIENT_GROUP_ADVISORY",
+          "LOW_OCR_TEXT_CONFIDENCE",
+          "OCR_BLOCK_CONTINUATION",
+          "SERVER_V4_MERGE",
+          "VISUAL_LINE_CONTINUATION",
+          "DENSE_RECT_LAYOUT_COLLAPSED"
+        ],
+        "sourceLineCount": 9,
+        "bounds": {
+          "left": 63,
+          "top": 551,
+          "right": 1356,
+          "bottom": 1100
+        },
+        "renderSlots": [
+          {
+            "left": 63,
+            "top": 551,
+            "right": 1356,
+            "bottom": 1100
+          }
+        ],
+        "layoutShape": "RECT",
+        "authoritativeEligible": true
+      },
+      {
+        "groupId": "server-v4-2-8c55d8a523d02744",
+        "sourceGroupIds": [
+          "semantic-42ff0485"
+        ],
+        "memberRegionIds": [
+          "semantic-42ff0485-region-0"
+        ],
+        "role": "BODY",
+        "translationUnit": "GROUP",
+        "sourceText": "So no license is enforceable with code written by Al.",
+        "readingOrder": 3000,
+        "groupingConfidence": 1,
+        "groupingEvidence": [
+          "SERVER_REGIONS_FIRST",
+          "ATOMIC_REGION",
+          "CLIENT_GROUP_ADVISORY",
+          "LOW_OCR_TEXT_CONFIDENCE"
+        ],
+        "sourceLineCount": 1,
+        "bounds": {
+          "left": 66,
+          "top": 1146,
+          "right": 1174,
+          "bottom": 1187
+        },
+        "renderSlots": [
+          {
+            "left": 66,
+            "top": 1146,
+            "right": 1174,
+            "bottom": 1187
+          }
+        ],
+        "layoutShape": "RECT",
+        "authoritativeEligible": true
+      },
+      {
+        "groupId": "server-v4-3-0065119f58a4fed1",
+        "sourceGroupIds": [
+          "semantic-39c4ffbe"
+        ],
+        "memberRegionIds": [
+          "semantic-39c4ffbe-region-0"
+        ],
+        "role": "BODY",
+        "translationUnit": "GROUP",
+        "sourceText": "ineedasername 19 | minutes ago | parent | context | on:Vomit: | Clean | up Claude",
+        "readingOrder": 4000,
+        "groupingConfidence": 1,
+        "groupingEvidence": [
+          "SERVER_REGIONS_FIRST",
+          "ATOMIC_REGION",
+          "CLIENT_GROUP_ADVISORY",
+          "LOW_OCR_TEXT_CONFIDENCE"
+        ],
+        "sourceLineCount": 1,
+        "bounds": {
+          "left": 66,
+          "top": 1264,
+          "right": 1386,
+          "bottom": 1301
+        },
+        "renderSlots": [
+          {
+            "left": 66,
+            "top": 1264,
+            "right": 1386,
+            "bottom": 1301
+          }
+        ],
+        "layoutShape": "RECT",
+        "authoritativeEligible": true
+      },
+      {
+        "groupId": "server-v4-4-1a0e55b1bc602d7c",
+        "sourceGroupIds": [
+          "semantic-402cbf7a"
+        ],
+        "memberRegionIds": [
+          "semantic-402cbf7a-region-0"
+        ],
+        "role": "BODY",
+        "translationUnit": "PRESERVED",
+        "sourceText": "5's token output with sep...",
+        "readingOrder": 5000,
+        "groupingConfidence": 1,
+        "groupingEvidence": [
+          "SERVER_REGIONS_FIRST",
+          "ATOMIC_REGION",
+          "CLIENT_GROUP_ADVISORY",
+          "LOW_OCR_TEXT_CONFIDENCE"
+        ],
+        "sourceLineCount": 1,
+        "bounds": {
+          "left": 64,
+          "top": 1310,
+          "right": 558,
+          "bottom": 1352
+        },
+        "renderSlots": [
+          {
+            "left": 64,
+            "top": 1310,
+            "right": 558,
+            "bottom": 1352
+          }
+        ],
+        "layoutShape": "RECT",
+        "authoritativeEligible": true
+      },
+      {
+        "groupId": "server-v4-5-33df6b0d99ae850b",
+        "sourceGroupIds": [
+          "semantic-b4d07bc9"
+        ],
+        "memberRegionIds": [
+          "semantic-b4d07bc9-region-0",
+          "semantic-b4d07bc9-region-1",
+          "semantic-b4d07bc9-region-2",
+          "semantic-b4d07bc9-region-3",
+          "semantic-b4d07bc9-region-4",
+          "semantic-b4d07bc9-region-5",
+          "semantic-b4d07bc9-region-6",
+          "semantic-b4d07bc9-region-7",
+          "semantic-b4d07bc9-region-8"
+        ],
+        "role": "BODY",
+        "translationUnit": "GROUP",
+        "sourceText": "Imay have toapologize,quite a bit,for what might only\nbe small part or perhaps an outsized influence if\nweighted highly(I can't be sure,could have been mv\ndev\/null'ed)..well,it's this-my own style of \/ not-kept\nin-check by the need to be comprehensible(legible in\nClaude-speak)to others is,l'm afraid,to rather allow\nprose to sprawl and go everywhere and even sometimes\nnowhere at all until it just drifts off and sort of wakes\nitself up snoring in the weeds of an unintended topic.",
+        "readingOrder": 6000,
+        "groupingConfidence": 0.98,
+        "groupingEvidence": [
+          "SERVER_REGIONS_FIRST",
+          "ATOMIC_REGION",
+          "CLIENT_GROUP_ADVISORY",
+          "LOW_OCR_TEXT_CONFIDENCE",
+          "OCR_BLOCK_CONTINUATION",
+          "SERVER_V4_MERGE",
+          "DENSE_RECT_LAYOUT_COLLAPSED"
+        ],
+        "sourceLineCount": 9,
+        "bounds": {
+          "left": 63,
+          "top": 1389,
+          "right": 1267,
+          "bottom": 1936
+        },
+        "renderSlots": [
+          {
+            "left": 63,
+            "top": 1389,
+            "right": 1267,
+            "bottom": 1936
+          }
+        ],
+        "layoutShape": "RECT",
+        "authoritativeEligible": true
+      },
+      {
+        "groupId": "server-v4-6-94bf981f05aed2c6",
+        "sourceGroupIds": [
+          "semantic-e93f3aed"
+        ],
+        "memberRegionIds": [
+          "semantic-e93f3aed-region-0",
+          "semantic-e93f3aed-region-1"
+        ],
+        "role": "BODY",
+        "translationUnit": "GROUP",
+        "sourceText": "Ruthless pruning is unneeded with an LLM and it can\ntake me twice the time to say half as many words.",
+        "readingOrder": 7000,
+        "groupingConfidence": 0.98,
+        "groupingEvidence": [
+          "SERVER_REGIONS_FIRST",
+          "ATOMIC_REGION",
+          "CLIENT_GROUP_ADVISORY",
+          "LOW_OCR_TEXT_CONFIDENCE",
+          "OCR_BLOCK_CONTINUATION",
+          "SERVER_V4_MERGE",
+          "DENSE_RECT_LAYOUT_COLLAPSED"
+        ],
+        "sourceLineCount": 2,
+        "bounds": {
+          "left": 63,
+          "top": 1981,
+          "right": 1197,
+          "bottom": 2087
+        },
+        "renderSlots": [
+          {
+            "left": 63,
+            "top": 1981,
+            "right": 1197,
+            "bottom": 2087
+          }
+        ],
+        "layoutShape": "RECT",
+        "authoritativeEligible": true
+      },
+      {
+        "groupId": "server-v4-7-154e300b4bd57271",
+        "sourceGroupIds": [
+          "semantic-2a304f33"
+        ],
+        "memberRegionIds": [
+          "semantic-2a304f33-region-0",
+          "semantic-2a304f33-region-1",
+          "semantic-2a304f33-region-2",
+          "semantic-2a304f33-region-3"
+        ],
+        "role": "BODY",
+        "translationUnit": "GROUP",
+        "sourceText": "And,early in the GPT era,Ihadn't unchecked the\"allow\nyour chats to be used in future training etc box,and\ndefinitionally they are longer and denser than others'\nprompts in such raw scrapings of training materials..",
+        "readingOrder": 8000,
+        "groupingConfidence": 0.98,
+        "groupingEvidence": [
+          "SERVER_REGIONS_FIRST",
+          "ATOMIC_REGION",
+          "CLIENT_GROUP_ADVISORY",
+          "LOW_OCR_TEXT_CONFIDENCE",
+          "OCR_BLOCK_CONTINUATION",
+          "SERVER_V4_MERGE",
+          "DENSE_RECT_LAYOUT_COLLAPSED"
+        ],
+        "sourceLineCount": 4,
+        "bounds": {
+          "left": 63,
+          "top": 2127,
+          "right": 1261,
+          "bottom": 2366
+        },
+        "renderSlots": [
+          {
+            "left": 63,
+            "top": 2127,
+            "right": 1261,
+            "bottom": 2366
+          }
+        ],
+        "layoutShape": "RECT",
+        "authoritativeEligible": true
+      },
+      {
+        "groupId": "server-v4-8-068b9f7d88e19a0e",
+        "sourceGroupIds": [
+          "semantic-b7845545"
+        ],
+        "memberRegionIds": [
+          "semantic-b7845545-region-0"
+        ],
+        "role": "BODY",
+        "translationUnit": "GROUP",
+        "sourceText": "Sorry.",
+        "readingOrder": 9000,
+        "groupingConfidence": 1,
+        "groupingEvidence": [
+          "SERVER_REGIONS_FIRST",
+          "ATOMIC_REGION",
+          "CLIENT_GROUP_ADVISORY",
+          "LOW_OCR_TEXT_CONFIDENCE"
+        ],
+        "sourceLineCount": 1,
+        "bounds": {
+          "left": 63,
+          "top": 2407,
+          "right": 181,
+          "bottom": 2453
+        },
+        "renderSlots": [
+          {
+            "left": 63,
+            "top": 2407,
+            "right": 181,
+            "bottom": 2453
+          }
+        ],
+        "layoutShape": "RECT",
+        "authoritativeEligible": true
+      },
+      {
+        "groupId": "server-v4-9-f088c10d50f1703b",
+        "sourceGroupIds": [
+          "semantic-5593db72",
+          "semantic-1f9faa97"
+        ],
+        "memberRegionIds": [
+          "semantic-5593db72-region-0",
+          "semantic-1f9faa97-region-0",
+          "semantic-1f9faa97-region-1",
+          "semantic-1f9faa97-region-2",
+          "semantic-1f9faa97-region-3",
+          "semantic-1f9faa97-region-4",
+          "semantic-1f9faa97-region-5",
+          "semantic-1f9faa97-region-6"
+        ],
+        "role": "BODY",
+        "translationUnit": "GROUP",
+        "sourceText": "walrus01 20 minutes ago | l parent | I context | on:Stealth Model\nIf people are putting,for instance,GPL licensed open\nsource software into mainland CN run inference\nproviders Idon't think they are putting much thought\ninto the fact that CN softvware developers don't consider\nthemselves bound to keep future derivatives or work\nbuilt on it also GPL licensed.Nor is there really any\nrealistic chance for legal recourse in event of violation.",
+        "readingOrder": 10000,
+        "groupingConfidence": 0.94,
+        "groupingEvidence": [
+          "SERVER_REGIONS_FIRST",
+          "ATOMIC_REGION",
+          "CLIENT_GROUP_ADVISORY",
+          "LOW_OCR_TEXT_CONFIDENCE",
+          "WRAPPED_MEDIA_FLOW",
+          "SERVER_V4_MERGE",
+          "OCR_BLOCK_CONTINUATION",
+          "DENSE_RECT_LAYOUT_COLLAPSED"
+        ],
+        "sourceLineCount": 8,
+        "bounds": {
+          "left": 64,
+          "top": 2522,
+          "right": 1261,
+          "bottom": 3020
+        },
+        "renderSlots": [
+          {
+            "left": 64,
+            "top": 2522,
+            "right": 1261,
+            "bottom": 3020
+          }
+        ],
+        "layoutShape": "RECT",
+        "authoritativeEligible": true
+      }
+    ],
+    "metrics": {
+      "clientGroupCount": 12,
+      "plannedGroupCount": 10,
+      "mergedGroupCount": 6,
+      "authoritativeEligibleCount": 10
+    }
+  },
+  "metrics": {
+    "groupCount": 10,
+    "translatedGroupCount": 10,
+    "preservedGroupCount": 0,
+    "failedGroupCount": 0,
+    "totalMs": 5875
+  }
+}

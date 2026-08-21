@@ -32,6 +32,7 @@ internal object TranslationRequestArchiveStore {
         model: String? = null,
         providerRequestJson: String? = null,
         providerResponseJson: String? = null,
+        timings: JSONObject? = null,
         errorMessage: String? = null
     ) = withContext(Dispatchers.IO) {
         if (!TranslationBackendSettings.isRequestArchiveExportEnabled(context)) return@withContext
@@ -44,6 +45,7 @@ internal object TranslationRequestArchiveStore {
             responseJson?.let { writeJsonText(stage, RESPONSE_FILE, it) }
             providerRequestJson?.let { writeJsonText(stage, PROVIDER_REQUEST_FILE, it) }
             providerResponseJson?.let { writeJsonText(stage, PROVIDER_RESPONSE_FILE, it) }
+            timings?.let { writeText(stage, TIMINGS_FILE, it.toString(2)) }
             errorMessage?.let {
                 writeText(
                     stage,
@@ -95,6 +97,10 @@ internal object TranslationRequestArchiveStore {
                     .put("pixelHeight", capture.pixelHeight)
                     .toString(2)
             )
+            val diagnostics = audit.layoutDiagnostics?.let { JSONObject(it.toString()) }
+                ?: JSONObject()
+            diagnostics.put("renderedCaptureEncodeMs", capture.encodeMs)
+            mergeRenderedTimings(stage, diagnostics)
             exportZip(context, stage, trace.requestId)
         }
     }
@@ -198,6 +204,21 @@ internal object TranslationRequestArchiveStore {
         writeText(stage, name, pretty)
     }
 
+    private fun mergeRenderedTimings(stage: File, diagnostics: JSONObject) {
+        val timingFile = File(stage, TIMINGS_FILE)
+        val timings = runCatching {
+            if (timingFile.isFile) JSONObject(timingFile.readText()) else JSONObject()
+        }.getOrElse { JSONObject() }
+        listOf(
+            "ocrMs", "translationMs", "ocrTranslateMs", "renderMs", "presentationMs",
+            "captureToPresentationMs", "endToEndMs", "renderedCaptureEncodeMs"
+        ).forEach { key ->
+            if (diagnostics.has(key)) timings.put(key, diagnostics.opt(key))
+        }
+        timings.put("schemaVersion", ARCHIVE_SCHEMA_VERSION)
+        writeText(stage, TIMINGS_FILE, timings.toString(2))
+    }
+
     private fun writeText(stage: File, name: String, text: String) {
         File(stage, name).writeText(text, Charsets.UTF_8)
     }
@@ -220,7 +241,7 @@ internal object TranslationRequestArchiveStore {
         .apply { timeZone = TimeZone.getTimeZone("UTC") }
         .format(Date())
 
-    private const val ARCHIVE_SCHEMA_VERSION = 1
+    private const val ARCHIVE_SCHEMA_VERSION = 2
     private const val PUBLIC_DIRECTORY = "ImageTranslateOCR"
     private const val ZIP_MIME_TYPE = "application/zip"
     private const val REQUEST_FILE = "request.json"
@@ -231,6 +252,7 @@ internal object TranslationRequestArchiveStore {
     private const val MANIFEST_FILE = "manifest.json"
     private const val RENDER_AUDIT_FILE = "render-audit.json"
     private const val PROJECTION_LIFECYCLE_FILE = "projection-lifecycle.json"
+    private const val TIMINGS_FILE = "timings.json"
     private const val SOURCE_CAPTURE_BASENAME = "source-capture"
     private const val RENDERED_CAPTURE_BASENAME = "rendered-capture"
     private const val ARCHIVE_NAME_FILE = ".archive-name"

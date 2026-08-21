@@ -73,6 +73,9 @@ internal data class SemanticTextGroup(
 
 internal object SemanticTextGrouper {
     private const val MAXIMUM_GROUP_CHARACTERS = 2_000
+    private const val MULTI_LINE_BODY_MINIMUM_LINES = 3
+    private const val MULTI_LINE_BODY_MINIMUM_CHARACTERS = 24
+    private const val TITLE_MAXIMUM_LINES = 2
     private const val MINIMUM_HEIGHT_RATIO = 0.65f
     private const val MINIMUM_HORIZONTAL_OVERLAP = 0.45f
     private const val MAXIMUM_BLOCK_GAP_RATIO = 1.05f
@@ -89,7 +92,7 @@ internal object SemanticTextGrouper {
         }
         val distinct = selectDistinctLines(recognized, viewportWidth, viewportHeight)
         if (distinct.isEmpty()) return emptyList()
-        val medianHeight = distinct.map { rectHeight(it.bounds) }.sorted()
+        val medianHeight = distinct.map(::representativeLineHeight).sorted()
             .let { heights -> heights[(heights.size - 1) / 2].coerceAtLeast(1) }
         val undecoratedCandidates = distinct.map { item ->
             Candidate(item, roleFor(item, viewportWidth, medianHeight))
@@ -310,7 +313,14 @@ internal object SemanticTextGrouper {
                 rectWidth(member.source.bounds).coerceAtLeast(1)
             })
             val nextIsMetadataSized = nextWidth <= dominantWidth * METADATA_WIDTH_RATIO
-            if (compactNext && next.hasHorizontalCompanion && nextIsMetadataSized) return null
+            val unfinishedParagraphContinuation = members.size >=
+                MULTI_LINE_BODY_MINIMUM_LINES - 1 &&
+                previous.source.text.trimEnd().lastOrNull() !in SENTENCE_ENDINGS &&
+                abs(previous.source.bounds.left - next.source.bounds.left) <=
+                    maxOf(6, rectHeight(next.source.bounds))
+            if (compactNext && next.hasHorizontalCompanion && nextIsMetadataSized &&
+                !unfinishedParagraphContinuation
+            ) return null
         }
 
         return setOf(GroupingEvidence.REGION_OCCUPANCY)
@@ -354,6 +364,8 @@ internal object SemanticTextGrouper {
         val bounds = unionBounds(members.map(RecognizedText::bounds))
         val roles = candidates.map(Candidate::role).distinct()
         val role = when {
+            candidates.size >= MULTI_LINE_BODY_MINIMUM_LINES &&
+                evidence.any { it in PARAGRAPH_EVIDENCE } -> SemanticTextRole.BODY
             roles.size == 1 -> roles.single()
             SemanticTextRole.TITLE in roles && roles.all {
                 it == SemanticTextRole.TITLE || it == SemanticTextRole.BODY
@@ -393,6 +405,8 @@ internal object SemanticTextGrouper {
         medianHeight: Int
     ): SemanticTextRole {
         val text = item.text.trim()
+        val lineCount = memberLineCount(item)
+        val representativeHeight = representativeLineHeight(item)
         return when {
             SemanticContentClassifier.isStandaloneTemporalValue(text) ->
                 SemanticTextRole.TIMESTAMP
@@ -404,10 +418,28 @@ internal object SemanticTextGrouper {
                 endsWithEllipsis(text) -> SemanticTextRole.CONTROL
             looksLikeCode(text) -> SemanticTextRole.CODE
             LIST_PREFIX.containsMatchIn(text) -> SemanticTextRole.LIST_ITEM
-            rectHeight(item.bounds) >= medianHeight * 1.35f &&
+            lineCount >= MULTI_LINE_BODY_MINIMUM_LINES &&
+                compactCharacterCount(text) >= MULTI_LINE_BODY_MINIMUM_CHARACTERS ->
+                SemanticTextRole.BODY
+            lineCount <= TITLE_MAXIMUM_LINES &&
+                representativeHeight >= medianHeight * 1.35f &&
                 rectWidth(item.bounds) <= viewportWidth * 0.85f -> SemanticTextRole.TITLE
             else -> SemanticTextRole.BODY
         }
+    }
+
+    private fun memberLineCount(item: RecognizedText): Int = maxOf(
+        1,
+        item.componentBounds.size,
+        item.text.lineSequence().count { it.isNotBlank() }
+    )
+
+    private fun representativeLineHeight(item: RecognizedText): Int {
+        val componentHeights = item.componentBounds.map(::rectHeight).filter { it > 0 }.sorted()
+        if (componentHeights.isNotEmpty()) {
+            return componentHeights[(componentHeights.size - 1) / 2]
+        }
+        return (rectHeight(item.bounds) / memberLineCount(item)).coerceAtLeast(1)
     }
 
     private fun sameVisualLine(first: RecognizedText, second: RecognizedText): Boolean {
@@ -472,6 +504,12 @@ internal object SemanticTextGrouper {
             "\\d+\\s*[A-Z]{1,3})$"
     )
     private val SENTENCE_ENDINGS = setOf('.', '!', '?', '。', '！', '？')
+    private val PARAGRAPH_EVIDENCE = setOf(
+        GroupingEvidence.OCR_BLOCK,
+        GroupingEvidence.GEOMETRY_INFERRED,
+        GroupingEvidence.WRAPPED_FLOW,
+        GroupingEvidence.PUNCTUATION_CONTINUATION
+    )
 
     private const val MINIMUM_ROW_OVERLAP_RATIO = 0.55f
     private const val MINIMUM_COMPANION_GAP_PX = 8

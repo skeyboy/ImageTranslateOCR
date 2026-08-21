@@ -50,9 +50,12 @@ internal class EmbeddedSemanticTranslationProvider(
     override suspend fun translate(request: SemanticTranslationRequest): SemanticTranslationBatchResult {
         val requestJson = codec.requestBodyForTest(request)
         return try {
+            val overallStarted = System.nanoTime()
+            val prepareStarted = System.nanoTime()
             val prepared = NativeEdgeTranslationBridge.prepare(requestJson, provider, model)
             val aiBody = providerRequestBody(prepared)
-            val started = System.nanoTime()
+            val prepareMs = (System.nanoTime() - prepareStarted) / 1_000_000
+            val providerStarted = System.nanoTime()
             val cachedCompletion = if (cacheEnabled) {
                 completionFromCache(prepared, request.directStructuredOutput)
             } else {
@@ -67,13 +70,17 @@ internal class EmbeddedSemanticTranslationProvider(
             if (cacheEnabled && cachedCompletion == null) {
                 cacheCompletion(prepared, completion, request.directStructuredOutput)
             }
-            val providerMs = (System.nanoTime() - started) / 1_000_000
+            val providerMs = (System.nanoTime() - providerStarted) / 1_000_000
             val rustStarted = System.nanoTime()
             val response = NativeEdgeTranslationBridge.complete(prepared.toString(), completion, providerMs)
             val rustCompleteMs = (System.nanoTime() - rustStarted) / 1_000_000
-            val totalMs = (System.nanoTime() - started) / 1_000_000
+            val totalMs = (System.nanoTime() - overallStarted) / 1_000_000
             val usage = providerUsage(completion)
             val timings = JSONObject()
+            .put("schemaVersion", 2)
+            .put("captureEncodeMs", request.debugCapture?.encodeMs ?: JSONObject.NULL)
+            .put("prepareMs", prepareMs)
+            .put("groupCount", request.sources.size)
             .put("cacheHit", cachedCompletion != null)
             .put("dnsMs", JSONObject.NULL)
             .put("tlsMs", JSONObject.NULL)
@@ -106,7 +113,8 @@ internal class EmbeddedSemanticTranslationProvider(
                 provider = provider,
                 model = model,
                 providerRequestJson = aiBody.toString(),
-                providerResponseJson = completion
+                providerResponseJson = completion,
+                timings = timings
             )
             codec.parseResponseForTest(response.toString(), request)
         } catch (error: Exception) {

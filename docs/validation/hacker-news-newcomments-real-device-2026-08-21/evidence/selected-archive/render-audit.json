@@ -1,0 +1,64 @@
+{
+  "outcome": "PRESENTED",
+  "stage": null,
+  "failureCode": null,
+  "failureMessage": null,
+  "layoutDiagnostics": {
+    "schemaVersion": 1,
+    "recognizedCount": 42,
+    "translatedRegionCount": 10,
+    "renderedPatchCount": 10,
+    "failedRegionCount": 0,
+    "sourceRegionCount": 10,
+    "sourceCoverageRatio": 0.6761741638183594,
+    "patchRegionCount": 10,
+    "patchCoverageRatio": 0.7191832661628723,
+    "renderingMode": "PARALLEL",
+    "backgroundMode": "STANDARD",
+    "controlAttached": true,
+    "translationLayerAttached": true,
+    "translationVisible": true,
+    "acceptedPatchCount": 10,
+    "visiblePatchCount": 10,
+    "presentationAttemptCount": 1,
+    "presentationOutcome": "PRESENTED",
+    "renderedCaptureMode": "PRESENTED_SCREEN_FRAME",
+    "ocrMs": 385,
+    "translationMs": 6006,
+    "ocrTranslateMs": 6396,
+    "renderMs": 99,
+    "presentationMs": 7,
+    "captureToPresentationMs": 6691,
+    "endToEndMs": 6698,
+    "projectionStopReason": null,
+    "lastFrameAgeMs": 7,
+    "virtualDisplayState": "ACTIVE",
+    "screenRecordingState": "NOT_VISIBLE",
+    "displayTopology": {
+      "accessibleDisplayCount": 2,
+      "displays": [
+        {
+          "id": 0,
+          "name": "内置屏幕",
+          "flags": 16515,
+          "valid": true
+        },
+        {
+          "id": 132,
+          "name": "ImageTranslateScreenCaptureSession",
+          "flags": 12,
+          "valid": true
+        }
+      ]
+    },
+    "overlayInstanceId": "translation-31da547",
+    "controlLayerAboveTranslation": true,
+    "attachedFullscreenLayerCount": 1,
+    "sessionId": 1,
+    "generation": 51,
+    "recordedAtElapsedRealtimeMs": 342560716
+  },
+  "mimeType": "image\/jpeg",
+  "pixelWidth": 486,
+  "pixelHeight": 1080
+}

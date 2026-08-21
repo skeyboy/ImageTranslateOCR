@@ -292,6 +292,82 @@ class SemanticTextGrouperTest {
         assertEquals(SemanticTextRole.METADATA, groups[1].role)
     }
 
+    @Test
+    fun keepsTallChatParagraphAndItsShortFinalLineInOneBodyGroup() {
+        val textLines = listOf(
+            "Guys you will be surprise that most",
+            "of the website and chatting on",
+            "whatsapp is handled by chatbot Al",
+            "nowadays. what if the scammer use",
+            "Al chatbot to scam you?",
+            "you dont know? cos the Al cannot",
+            "differentiate what is real and fact,",
+            "or not. they only answer what the",
+            "owner feed them.",
+            "they do not know how to lie, they",
+            "speak about facts that is feed by",
+            "the owners."
+        )
+        val bounds = listOf(
+            intArrayOf(148, 1419, 879, 1470), intArrayOf(145, 1476, 794, 1527),
+            intArrayOf(146, 1537, 865, 1583), intArrayOf(148, 1595, 908, 1641),
+            intArrayOf(147, 1651, 659, 1701), intArrayOf(143, 1708, 877, 1761),
+            intArrayOf(149, 1767, 854, 1816), intArrayOf(148, 1828, 861, 1874),
+            intArrayOf(150, 1884, 520, 1930), intArrayOf(147, 1941, 850, 1991),
+            intArrayOf(144, 1999, 834, 2049), intArrayOf(145, 2057, 395, 2108)
+        )
+        val recognized = textLines.mapIndexed { index, text ->
+            val item = bounds[index]
+            line(text, item[0], item[1], item[2], item[3], null, index)
+        } + line("15:14", 827, 2078, 924, 2126, null, 0)
+
+        val groups = SemanticTextGrouper.group(recognized, 1080, 2400)
+        val paragraph = groups.first { it.sourceText.startsWith(textLines.first()) }
+
+        assertEquals(SemanticTextRole.BODY, paragraph.role)
+        assertEquals(12, paragraph.members.size)
+        assertTrue(paragraph.sourceText.endsWith("the owners."))
+        assertEquals(SemanticTextRole.TIMESTAMP, groups.first { it.sourceText == "15:14" }.role)
+    }
+
+    @Test
+    fun classifiesTallMultiLineOcrBlockByMemberLineHeightAsBody() {
+        val memberBounds = listOf(
+            Rect(148, 1419, 879, 1470), Rect(145, 1476, 794, 1527),
+            Rect(146, 1537, 865, 1583), Rect(148, 1595, 908, 1641),
+            Rect(147, 1651, 659, 1701), Rect(143, 1708, 877, 1761),
+            Rect(149, 1767, 854, 1816), Rect(148, 1828, 861, 1874),
+            Rect(150, 1884, 520, 1930), Rect(147, 1941, 850, 1991),
+            Rect(144, 1999, 834, 2049), Rect(145, 2057, 395, 2108)
+        )
+        val paragraph = line(
+            listOf(
+                "Guys you will be surprise that most", "of the website and chatting on",
+                "whatsapp is handled by chatbot Al", "nowadays. what if the scammer use",
+                "Al chatbot to scam you?", "you dont know? cos the Al cannot",
+                "differentiate what is real and fact,", "or not. they only answer what the",
+                "owner feed them.", "they do not know how to lie, they",
+                "speak about facts that is feed by", "the owners."
+            ).joinToString("\n"),
+            143,
+            1419,
+            908,
+            2108,
+            "chat-paragraph",
+            0
+        ).copy(componentBounds = memberBounds)
+
+        val groups = SemanticTextGrouper.group(
+            listOf(paragraph, line("15:14", 827, 2180, 924, 2228, null, 0)),
+            1080,
+            2400
+        )
+
+        assertEquals(SemanticTextRole.BODY, groups.first().role)
+        assertEquals(12, groups.first().members.single().text.lineSequence().count())
+        assertEquals(SemanticTextRole.TIMESTAMP, groups.last().role)
+    }
+
     private fun line(
         text: String,
         left: Int,

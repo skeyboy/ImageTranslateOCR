@@ -49,14 +49,22 @@ internal class SelfHostedSemanticTranslationProvider(
         val requestBody = buildRequestBody(request)
         var responseText: String? = null
         return try {
+            val started = System.nanoTime()
             responseText = executeRequest(requestBody, request.requestId)
             val parsed = parseResponse(JSONObject(responseText), request)
+            val totalMs = (System.nanoTime() - started) / 1_000_000
             context?.let {
                 TranslationRequestArchiveStore.recordExchange(
                     context = it,
                     requestJson = requestBody,
                     responseJson = responseText,
-                    provider = "local-server"
+                    provider = "local-server",
+                    timings = JSONObject()
+                        .put("schemaVersion", 2)
+                        .put("captureEncodeMs", request.debugCapture?.encodeMs ?: JSONObject.NULL)
+                        .put("groupCount", request.sources.size)
+                        .put("providerTotalMs", totalMs)
+                        .put("totalBeforeRenderMs", totalMs)
                 )
             }
             parsed

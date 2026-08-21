@@ -35,7 +35,10 @@ class TranslationRequestArchiveInstrumentedTest {
                     .put("requestId", requestId)
                     .toString(),
                 provider = "openlux",
-                model = "gemini-test"
+                model = "gemini-test",
+                timings = JSONObject()
+                    .put("schemaVersion", 2)
+                    .put("providerTotalMs", 123)
             )
             val stage = File(context.cacheDir, "translation-request-archives/$requestId")
             val displayName = File(stage, ".archive-name").readText().trim()
@@ -59,7 +62,11 @@ class TranslationRequestArchiveInstrumentedTest {
                     }
                 }
             }
-            assertTrue(names.containsAll(setOf("manifest.json", "request.json", "response.json")))
+            assertTrue(
+                names.containsAll(
+                    setOf("manifest.json", "request.json", "response.json", "timings.json")
+                )
+            )
             context.contentResolver.delete(uri, null, null)
         } finally {
             TranslationBackendSettings.setRequestArchiveExportEnabled(context, false)

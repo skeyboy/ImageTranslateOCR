@@ -72,11 +72,16 @@ async fn imports_android_request_archive_into_admin_history() {
     let archive = request_archive(&[
         (
             "manifest.json",
-            json!({"archiveSchemaVersion":1,"provider":"openlux","model":"gemini-test"})
+            json!({"archiveSchemaVersion":2,"provider":"openlux","model":"gemini-test"})
                 .to_string(),
         ),
         ("request.json", request.to_string()),
         ("response.json", response.to_string()),
+        (
+            "timings.json",
+            json!({"schemaVersion":2,"providerTotalMs":31,"renderMs":4,"endToEndMs":42})
+                .to_string(),
+        ),
     ]);
     let imported = router
         .clone()
@@ -102,6 +107,15 @@ async fn imports_android_request_archive_into_admin_history() {
         .await
         .unwrap();
     assert_eq!(detail.status(), StatusCode::OK);
+    let detail_body = String::from_utf8(
+        to_bytes(detail.into_body(), 1024 * 1024)
+            .await
+            .unwrap()
+            .to_vec(),
+    )
+    .unwrap();
+    assert!(detail_body.contains("providerTotalMs"));
+    assert!(detail_body.contains("endToEndMs"));
     let audits = database.list_audits(10).await.unwrap();
     assert_eq!(audits[0].request_id, request_id);
     assert!(audits[0].model.contains("openlux:gemini-test"));

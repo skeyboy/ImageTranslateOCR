@@ -6,6 +6,7 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Rect
+import android.text.TextPaint
 import android.view.ContextThemeWrapper
 import android.view.LayoutInflater
 import android.view.View
@@ -25,6 +26,138 @@ import kotlinx.coroutines.runBlocking
 
 @RunWith(AndroidJUnit4::class)
 class ScreenshotOverlayLayoutTest {
+    @Test
+    fun compressedTitleLikeParagraphUsesOneContinuousRect() {
+        val slots = listOf(
+            Rect(148, 1419, 879, 1470), Rect(145, 1476, 794, 1527),
+            Rect(146, 1537, 865, 1583), Rect(148, 1595, 908, 1641),
+            Rect(147, 1651, 659, 1701), Rect(143, 1708, 877, 1761),
+            Rect(149, 1767, 854, 1816), Rect(148, 1828, 861, 1874),
+            Rect(150, 1884, 520, 1930), Rect(147, 1941, 850, 1991),
+            Rect(144, 1999, 834, 2049), Rect(145, 2057, 395, 2108)
+        )
+        val merged = denseBodyRectFallback(
+            renderSlots = slots,
+            layoutShape = "FLOW_SLOTS",
+            sourceLineCount = slots.size,
+            role = "UNKNOWN",
+            sourceText = "Guys you will be surprise that most of the website and chatting on " +
+                "whatsapp is handled by chatbot AI nowadays. what if the scammer use AI chatbot " +
+                "to scam you? you dont know? because the AI cannot differentiate what is real " +
+                "and fact, or not. they only answer what the owner feeds them. they do not know " +
+                "how to lie, they speak about facts that are fed by the owners.",
+            translatedText = "大家会感到惊讶的是，如今大多数网站和 WhatsApp 上的聊天都是由 AI 聊天机器人处理的。" +
+                "如果骗子使用 AI 聊天机器人来诈骗你怎么办？因为 AI 无法区分事实，他们只回答所有者提供的内容。"
+        )
+
+        assertEquals(Rect(143, 1419, 908, 2108), merged)
+    }
+
+    @Test
+    fun targetInkHeightIsCappedByTheMeasuredSourceGlyph() {
+        val paint = TextPaint(Paint.ANTI_ALIAS_FLAG)
+        val size = targetTextSizeForSourceGlyph(
+            paint = paint,
+            text = "大家会感到惊讶的是",
+            preferredTextSizePx = 56f,
+            sourceGlyphHeightPx = 32f
+        )
+        paint.textSize = size
+        val ink = Rect()
+        val sample = "大家会感到惊讶的是"
+        paint.getTextBounds(sample, 0, sample.length, ink)
+
+        assertTrue(ink.height() <= 33)
+        assertTrue(size < 56f)
+    }
+
+    @Test
+    fun realChatGeometryRendersWithoutCrowdedPixelRows() = runBlocking {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val bitmap = Bitmap.createBitmap(1080, 2400, Bitmap.Config.ARGB_8888)
+        val sourceLines = listOf(
+            "Guys you will be surprise that most", "of the website and chatting on",
+            "whatsapp is handled by chatbot AI", "nowadays. what if the scammer use",
+            "AI chatbot to scam you?", "you dont know? cos the AI cannot",
+            "differentiate what is real and fact,", "or not. they only answer what the",
+            "owner feed them.", "they do not know how to lie, they",
+            "speak about facts that is feed by", "the owners."
+        )
+        val slots = listOf(
+            Rect(148, 1419, 879, 1470), Rect(145, 1476, 794, 1527),
+            Rect(146, 1537, 865, 1583), Rect(148, 1595, 908, 1641),
+            Rect(147, 1651, 659, 1701), Rect(143, 1708, 877, 1761),
+            Rect(149, 1767, 854, 1816), Rect(148, 1828, 861, 1874),
+            Rect(150, 1884, 520, 1930), Rect(147, 1941, 850, 1991),
+            Rect(144, 1999, 834, 2049), Rect(145, 2057, 395, 2108)
+        )
+        Canvas(bitmap).apply {
+            drawColor(Color.rgb(190, 190, 190))
+            val sourcePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = Color.rgb(35, 35, 35)
+                textSize = 43f
+            }
+            sourceLines.zip(slots).forEach { (text, slot) ->
+                drawText(text, slot.left.toFloat(), slot.bottom - 5f, sourcePaint)
+            }
+        }
+        val translation = "大家会感到惊讶的是，如今大多数网站和 WhatsApp 上的聊天都是由 AI " +
+            "聊天机器人处理的。如果骗子使用 AI 聊天机器人来诈骗你怎么办？你不知道吗？" +
+            "因为 AI 无法区分什么是真实和事实，他们只回答所有者提供给他们的内容。" +
+            "他们不知道如何撒谎，只会复述所有者提供的信息。"
+        val processor = BackgroundTranslatedImageProcessor(context)
+        try {
+            val result = processor.renderDeterministicOverlay(
+                bitmap = bitmap,
+                regions = listOf(
+                    LiveDeterministicTranslationRegion(
+                        sourceText = sourceLines.joinToString("\n"),
+                        translation = translation,
+                        bounds = Rect(143, 1419, 908, 2108),
+                        sourceLineBounds = slots,
+                        renderSlots = slots,
+                        displayHints = SmartAssistDisplayHints(
+                            preferredMaxLines = 12,
+                            minimumTextScale = 0.86f,
+                            lineSpacingMultiplier = 0.92f,
+                            allowMore = false,
+                            sourceLineCount = 12,
+                            layoutShape = "FLOW_SLOTS",
+                            role = "TITLE"
+                        )
+                    )
+                )
+            )
+
+            val evidence = result.renderedText.single()
+            assertTrue(evidence.lineCount < slots.size)
+            assertTrue(evidence.textScale <= 1f)
+            assertTrue(evidence.layoutHeightPx <= evidence.availableHeightPx)
+            val patchBitmap = result.patches.single().bitmap
+            val inkRows = (0 until patchBitmap.height).filter { y ->
+                (0 until patchBitmap.width step 3).count { x ->
+                    val pixel = patchBitmap.getPixel(x, y)
+                    Color.alpha(pixel) >= 128 &&
+                        Color.red(pixel) + Color.green(pixel) + Color.blue(pixel) < 300
+                } >= 3
+            }
+            val inkRuns = inkRows.fold(mutableListOf<IntRange>()) { runs, row ->
+                val previous = runs.lastOrNull()
+                if (previous != null && row == previous.last + 1) {
+                    runs[runs.lastIndex] = previous.first..row
+                } else {
+                    runs += row..row
+                }
+                runs
+            }
+            assertTrue("Expected multiple separated ink rows, found $inkRuns", inkRuns.size >= 2)
+            assertTrue(inkRuns.zipWithNext().all { (first, second) -> second.first - first.last >= 2 })
+        } finally {
+            processor.close()
+            bitmap.recycle()
+        }
+    }
+
     @Test
     fun imageWrappedFlowDoesNotUseBodyRectFallback() {
         val slots = listOf(

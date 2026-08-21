@@ -1,12 +1,14 @@
 package com.example.imagetranslate.translate
 
 import android.graphics.Bitmap
+import android.os.SystemClock
 import android.util.Base64
 import java.io.ByteArrayOutputStream
 import kotlin.math.roundToInt
 
 internal object SemanticDebugCaptureEncoder {
     fun encode(bitmap: Bitmap): SemanticDebugCapture {
+        val startedAtMs = SystemClock.elapsedRealtime()
         val scale = (MAXIMUM_EDGE_PX / maxOf(bitmap.width, bitmap.height).toFloat())
             .coerceAtMost(1f)
         val encodedBitmap = if (scale < 1f) {
@@ -30,7 +32,8 @@ internal object SemanticDebugCaptureEncoder {
                 mimeType = "image/jpeg",
                 dataBase64 = Base64.encodeToString(bytes, Base64.NO_WRAP),
                 pixelWidth = encodedBitmap.width,
-                pixelHeight = encodedBitmap.height
+                pixelHeight = encodedBitmap.height,
+                encodeMs = SystemClock.elapsedRealtime() - startedAtMs
             )
         } finally {
             if (encodedBitmap !== bitmap && !encodedBitmap.isRecycled) encodedBitmap.recycle()

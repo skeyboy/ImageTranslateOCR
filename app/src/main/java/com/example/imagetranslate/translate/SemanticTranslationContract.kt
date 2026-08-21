@@ -48,7 +48,8 @@ internal data class SemanticDebugCapture(
     val mimeType: String,
     val dataBase64: String,
     val pixelWidth: Int,
-    val pixelHeight: Int
+    val pixelHeight: Int,
+    val encodeMs: Long = 0L
 )
 
 internal data class SemanticTranslationTrace(

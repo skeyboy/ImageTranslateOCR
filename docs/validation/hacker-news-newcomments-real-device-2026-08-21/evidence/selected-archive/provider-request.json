@@ -1,0 +1,66 @@
+{
+  "model": "gemini-3.5-flash-lite",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a professional screen OCR translation engine.\nThe input is one visible screen reconstructed from OCR geometry. Translate each translateGroups item independently and completely, while using documentOutline and neighboring geometry only to disambiguate meaning.\nTreat newline-separated OCR lines inside sourceText as one semantic block. Never imitate OCR line breaks, split a block back into lines, merge keys, borrow text from another key, summarize, or add notes.\nPreserve URLs, identifiers, names, brands, numbers, dates, units, and currencies. Every requiredLiteralIdentifiers item must remain visible verbatim and in the same semantic role.\nFor AUTO_BIDIRECTIONAL translate Chinese natural language to English and non-Chinese natural language to Chinese.\nReturn only the strict JSON object requested by response_format. Return translations as an array. Every input groupId must occur exactly once and every translatedText must be non-empty.\nSkip analysis, reasoning exposition, and preamble. Execute the JSON instructions directly and return only the requested structured translation result."
+    },
+    {
+      "role": "user",
+      "content": "{\"documentOutline\":[{\"groupId\":\"server-v4-0-3aa2d466741ddf43\",\"readingOrder\":0,\"role\":\"BODY\",\"sourcePreview\":\"This is in tension with Sony vs.Betamax,which held that time shifting is...\"},{\"groupId\":\"server-v4-1-97bfd9e5351d574f\",\"readingOrder\":1000,\"role\":\"BODY\",\"sourcePreview\":\"Ekaros 19 minutes ago I parent | context I on:Copyright does not protect...\"},{\"groupId\":\"server-v4-2-8c55d8a523d02744\",\"readingOrder\":3000,\"role\":\"BODY\",\"sourcePreview\":\"So no license is enforceable with code written by Al.\"},{\"groupId\":\"server-v4-3-0065119f58a4fed1\",\"readingOrder\":4000,\"role\":\"BODY\",\"sourcePreview\":\"ineedasername 19 | minutes ago | parent | context | on:Vomit: | Clean | ...\"},{\"groupId\":\"server-v4-4-1a0e55b1bc602d7c\",\"readingOrder\":5000,\"role\":\"BODY\",\"sourcePreview\":\"5's token output with sep...\"},{\"groupId\":\"server-v4-5-33df6b0d99ae850b\",\"readingOrder\":6000,\"role\":\"BODY\",\"sourcePreview\":\"Imay have toapologize,quite a bit,for what might only be small part or p...\"},{\"groupId\":\"server-v4-6-94bf981f05aed2c6\",\"readingOrder\":7000,\"role\":\"BODY\",\"sourcePreview\":\"Ruthless pruning is unneeded with an LLM and it can take me twice the ti...\"},{\"groupId\":\"server-v4-7-154e300b4bd57271\",\"readingOrder\":8000,\"role\":\"BODY\",\"sourcePreview\":\"And,early in the GPT era,Ihadn't unchecked the\\\"allow your chats to be us...\"},{\"groupId\":\"server-v4-8-068b9f7d88e19a0e\",\"readingOrder\":9000,\"role\":\"BODY\",\"sourcePreview\":\"Sorry.\"},{\"groupId\":\"server-v4-9-f088c10d50f1703b\",\"readingOrder\":10000,\"role\":\"BODY\",\"sourcePreview\":\"walrus01 20 minutes ago | l parent | I context | on:Stealth Model If peo...\"}],\"promptProfile\":\"COMPACT\",\"scene\":\"LIVE_SCREEN\",\"task\":\"Translate every translateGroups entry as one complete semantic unit. Geometry is context; the caller creates layout.\",\"translateGroups\":[{\"groupId\":\"server-v4-0-3aa2d466741ddf43\",\"normalizedBounds\":[0.044,0.097,0.881,0.15],\"readingOrder\":0,\"requiredLiteralIdentifiers\":[],\"role\":\"BODY\",\"sourceLanguage\":\"en\",\"sourceText\":\"This is in tension with Sony vs.Betamax,which held that\\ntime shifting is fair use,but that also requires format\\nshifting(broadcast to recorded media).\",\"targetLanguage\":\"zh\"},{\"groupId\":\"server-v4-1-97bfd9e5351d574f\",\"normalizedBounds\":[0.044,0.172,0.942,0.344],\"readingOrder\":1000,\"requiredLiteralIdentifiers\":[\"19\"],\"role\":\"BODY\",\"sourceLanguage\":\"en\",\"sourceText\":\"Ekaros 19 minutes ago I parent | context I on:Copyright does not protect Al\\ngenerated content\\nI find it hard to find correct terminology in this case.Al\\ngenerated content is copy right wise in state of\\nnothingness.It simply does not have copy right status\\nlike other material can have.As such maybe best I can\\nformulate is that you can't enforce license violations\\nagainst ai generated material as you do not have\\nownership.\",\"targetLanguage\":\"zh\"},{\"groupId\":\"server-v4-2-8c55d8a523d02744\",\"normalizedBounds\":[0.046,0.358,0.815,0.371],\"readingOrder\":3000,\"requiredLiteralIdentifiers\":[],\"role\":\"BODY\",\"sourceLanguage\":\"en\",\"sourceText\":\"So no license is enforceable with code written by Al.\",\"targetLanguage\":\"zh\"},{\"groupId\":\"server-v4-3-0065119f58a4fed1\",\"normalizedBounds\":[0.046,0.395,0.963,0.407],\"readingOrder\":4000,\"requiredLiteralIdentifiers\":[\"19\"],\"role\":\"BODY\",\"sourceLanguage\":\"en\",\"sourceText\":\"ineedasername 19 | minutes ago | parent | context | on:Vomit: | Clean | up Claude\",\"targetLanguage\":\"zh\"},{\"groupId\":\"server-v4-4-1a0e55b1bc602d7c\",\"normalizedBounds\":[0.044,0.409,0.388,0.423],\"readingOrder\":5000,\"requiredLiteralIdentifiers\":[\"5's\"],\"role\":\"BODY\",\"sourceLanguage\":\"en\",\"sourceText\":\"5's token output with sep...\",\"targetLanguage\":\"zh\"},{\"groupId\":\"server-v4-5-33df6b0d99ae850b\",\"normalizedBounds\":[0.044,0.434,0.88,0.605],\"readingOrder\":6000,\"requiredLiteralIdentifiers\":[],\"role\":\"BODY\",\"sourceLanguage\":\"en\",\"sourceText\":\"Imay have toapologize,quite a bit,for what might only\\nbe small part or perhaps an outsized influence if\\nweighted highly(I can't be sure,could have been mv\\ndev\/null'ed)..well,it's this-my own style of \/ not-kept\\nin-check by the need to be comprehensible(legible in\\nClaude-speak)to others is,l'm afraid,to rather allow\\nprose to sprawl and go everywhere and even sometimes\\nnowhere at all until it just drifts off and sort of wakes\\nitself up snoring in the weeds of an unintended topic.\",\"targetLanguage\":\"zh\"},{\"groupId\":\"server-v4-6-94bf981f05aed2c6\",\"normalizedBounds\":[0.044,0.619,0.831,0.652],\"readingOrder\":7000,\"requiredLiteralIdentifiers\":[\"LLM\"],\"role\":\"BODY\",\"sourceLanguage\":\"en\",\"sourceText\":\"Ruthless pruning is unneeded with an LLM and it can\\ntake me twice the time to say half as many words.\",\"targetLanguage\":\"zh\"},{\"groupId\":\"server-v4-7-154e300b4bd57271\",\"normalizedBounds\":[0.044,0.665,0.876,0.739],\"readingOrder\":8000,\"requiredLiteralIdentifiers\":[\"GPT\"],\"role\":\"BODY\",\"sourceLanguage\":\"en\",\"sourceText\":\"And,early in the GPT era,Ihadn't unchecked the\\\"allow\\nyour chats to be used in future training etc box,and\\ndefinitionally they are longer and denser than others'\\nprompts in such raw scrapings of training materials..\",\"targetLanguage\":\"zh\"},{\"groupId\":\"server-v4-8-068b9f7d88e19a0e\",\"normalizedBounds\":[0.044,0.752,0.126,0.767],\"readingOrder\":9000,\"requiredLiteralIdentifiers\":[],\"role\":\"BODY\",\"sourceLanguage\":\"en\",\"sourceText\":\"Sorry.\",\"targetLanguage\":\"zh\"},{\"groupId\":\"server-v4-9-f088c10d50f1703b\",\"normalizedBounds\":[0.044,0.788,0.876,0.944],\"readingOrder\":10000,\"requiredLiteralIdentifiers\":[\"20\",\"CN\",\"GPL\",\"walrus01\"],\"role\":\"BODY\",\"sourceLanguage\":\"en\",\"sourceText\":\"walrus01 20 minutes ago | l parent | I context | on:Stealth Model\\nIf people are putting,for instance,GPL licensed open\\nsource software into mainland CN run inference\\nproviders Idon't think they are putting much thought\\ninto the fact that CN softvware developers don't consider\\nthemselves bound to keep future derivatives or work\\nbuilt on it also GPL licensed.Nor is there really any\\nrealistic chance for legal recourse in event of violation.\",\"targetLanguage\":\"zh\"}],\"translationMode\":\"AUTO_BIDIRECTIONAL\"}"
+    }
+  ],
+  "max_tokens": 3324,
+  "response_format": {
+    "json_schema": {
+      "name": "semantic_translation",
+      "schema": {
+        "additionalProperties": false,
+        "properties": {
+          "translations": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "detectedSourceLanguage": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "groupId": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "targetLanguage": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "translatedText": {
+                  "minLength": 1,
+                  "type": "string"
+                }
+              },
+              "required": [
+                "groupId",
+                "translatedText",
+                "detectedSourceLanguage",
+                "targetLanguage"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "translations"
+        ],
+        "type": "object"
+      },
+      "strict": true
+    },
+    "type": "json_schema"
+  },
+  "google": {
+    "thinking_config": {
+      "thinking_level": "MEDIUM"
+    }
+  }
+}

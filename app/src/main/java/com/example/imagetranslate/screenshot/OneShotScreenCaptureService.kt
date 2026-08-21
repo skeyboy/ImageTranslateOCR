@@ -1905,6 +1905,10 @@ class OneShotScreenCaptureService : Service() {
         captureInProgress.set(false)
         processingFrameCaptured.set(false)
         activeCapturePlan = null
+        val captureToPresentationStartMs = elapsedSince(
+            captureTriggeredAtMs.get(),
+            SystemClock.elapsedRealtime()
+        )
         resetInteractionTiming()
         if (result.patches.isNotEmpty()) {
             rotationCaptureRecoveryPending.set(false)
@@ -1948,6 +1952,9 @@ class OneShotScreenCaptureService : Service() {
                 shouldPresent
             },
             onPresented = { presentation ->
+                val presentationMs = (
+                    SystemClock.elapsedRealtime() - presentationStartedAtMs
+                    ).coerceAtLeast(0L)
                 captureHandler?.removeCallbacks(accessibilityScrollSettle)
                 accessibilityScrollPending.set(false)
                 accessibilityScrollActive.set(false)
@@ -1956,12 +1963,16 @@ class OneShotScreenCaptureService : Service() {
                     LiveRecognitionTelemetry.presented(
                         generation = generation,
                         patchCount = result.patches.size,
-                        presentationMs = (
-                            SystemClock.elapsedRealtime() - presentationStartedAtMs
-                            ).coerceAtLeast(0L)
+                        presentationMs = presentationMs
                     )
                 )
-                scheduleRenderedCaptureUpload(result, generation, presentation)
+                scheduleRenderedCaptureUpload(
+                    result,
+                    generation,
+                    presentation,
+                    presentationMs,
+                    captureToPresentationStartMs
+                )
                 lastPresentedTranslationTraces.set(result.translationTraces.distinct())
                 translationLayerPresented.set(
                     presentation.presented && result.patches.isNotEmpty()
@@ -1970,6 +1981,9 @@ class OneShotScreenCaptureService : Service() {
                 resumeFrameObservation(generation)
             },
             onPresentationFailed = { presentation ->
+                val presentationMs = (
+                    SystemClock.elapsedRealtime() - presentationStartedAtMs
+                    ).coerceAtLeast(0L)
                 captureHandler?.removeCallbacks(accessibilityScrollSettle)
                 accessibilityScrollPending.set(false)
                 accessibilityScrollActive.set(false)
@@ -1980,7 +1994,13 @@ class OneShotScreenCaptureService : Service() {
                     TAG,
                     "Translation overlay was not presented: $presentation"
                 )
-                scheduleRenderedCaptureUpload(result, generation, presentation)
+                scheduleRenderedCaptureUpload(
+                    result,
+                    generation,
+                    presentation,
+                    presentationMs,
+                    captureToPresentationStartMs
+                )
                 resumeFrameObservation(generation)
             }
         )
@@ -1989,7 +2009,9 @@ class OneShotScreenCaptureService : Service() {
     private fun scheduleRenderedCaptureUpload(
         result: BackgroundTranslatedOverlayResult,
         generation: Int,
-        presentation: OverlayPresentationResult
+        presentation: OverlayPresentationResult,
+        presentationMs: Long,
+        captureToPresentationStartMs: Long
     ) {
         val shouldUpload = SemanticRenderedCaptureUploadPolicy.shouldUpload(
                 isDebugBuild = BuildConfig.DEBUG,
@@ -2025,6 +2047,13 @@ class OneShotScreenCaptureService : Service() {
             .put("presentationAttemptCount", presentation.attemptCount)
             .put("presentationOutcome", presentation.failure?.name ?: "PRESENTED")
             .put("renderedCaptureMode", "PRESENTED_SCREEN_FRAME")
+            .put("ocrMs", result.ocrMs)
+            .put("translationMs", result.translationMs)
+            .put("ocrTranslateMs", result.recognitionAndTranslationMs)
+            .put("renderMs", result.renderingMs)
+            .put("presentationMs", presentationMs)
+            .put("captureToPresentationMs", captureToPresentationStartMs)
+            .put("endToEndMs", captureToPresentationStartMs + presentationMs)
         val projectionDiagnostics = projectionLifecycleDiagnostics(projectionStopReason.get())
         projectionDiagnostics.keys().forEach { key ->
             diagnostics.put(key, projectionDiagnostics.get(key))

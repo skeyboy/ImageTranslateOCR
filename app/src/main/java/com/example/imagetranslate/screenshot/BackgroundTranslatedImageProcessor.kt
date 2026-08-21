@@ -342,7 +342,8 @@ private data class BackgroundTextStyle(
     val typeface: Typeface,
     val fontSizeMultiplier: Float,
     val lineSpacingMultiplier: Float,
-    val sourceLineCount: Int
+    val sourceLineCount: Int,
+    val sourceGlyphHeightPx: Float
 )
 
 internal data class SourceTextStyleHint(
@@ -2101,13 +2102,23 @@ private fun resolvedSourceCoverSlots(region: BackgroundImageRegion): List<Rect> 
     region.sourceCoverSlots.takeIf { it.isNotEmpty() }?.map(::Rect)
         ?: region.source.textEraseBounds().map(::Rect)
 
+private const val PARAGRAPH_COMPRESSION_RATIO = 0.75f
+private const val TARGET_GLYPH_SAMPLE_CHARACTERS = 64
+
 internal fun denseBodyRectFallback(
     renderSlots: List<Rect>,
     layoutShape: String?,
     sourceLineCount: Int,
-    role: String?
+    role: String?,
+    sourceText: String = "",
+    translatedText: String = ""
 ): Rect? {
-    if (role != "BODY" || layoutShape != "FLOW_SLOTS" || renderSlots.size < 3 ||
+    val sourceCharacters = sourceText.count { !it.isWhitespace() }.coerceAtLeast(1)
+    val translatedCharacters = translatedText.count { !it.isWhitespace() }
+    val translationIsCompressed = translatedCharacters > 0 &&
+        translatedCharacters.toFloat() / sourceCharacters <= PARAGRAPH_COMPRESSION_RATIO
+    if ((role != "BODY" && !translationIsCompressed) ||
+        layoutShape != "FLOW_SLOTS" || renderSlots.size < 3 ||
         sourceLineCount < 3
     ) return null
     val union = renderSlots.drop(1).fold(Rect(renderSlots.first())) { result, slot ->
@@ -2125,12 +2136,34 @@ internal fun denseBodyRectFallback(
     val leftRange = renderSlots.maxOf(Rect::left) - renderSlots.minOf(Rect::left)
     val leftTolerance = maxOf(typicalHeight * 2, union.width() * 12 / 100)
     if (leftRange > leftTolerance) return null
-    if (renderSlots.last().width() > union.width() * 20 / 100) return null
+    val hasNarrowFinalLine = renderSlots.last().width() <= union.width() * 20 / 100
+    if (!hasNarrowFinalLine && !translationIsCompressed) return null
 
     val nonFinal = renderSlots.dropLast(1)
     val mainColumnWidth = union.width() * 72 / 100
     val wideLineCount = nonFinal.count { it.width() >= mainColumnWidth }
     return union.takeIf { wideLineCount * 2 >= nonFinal.size }
+}
+
+internal fun targetTextSizeForSourceGlyph(
+    paint: TextPaint,
+    text: String,
+    preferredTextSizePx: Float,
+    sourceGlyphHeightPx: Float
+): Float {
+    if (text.isBlank() || preferredTextSizePx <= 0f || sourceGlyphHeightPx <= 0f) {
+        return preferredTextSizePx
+    }
+    paint.textSize = preferredTextSizePx
+    val sample = text.filterNot(Char::isWhitespace).take(TARGET_GLYPH_SAMPLE_CHARACTERS)
+    if (sample.isEmpty()) return preferredTextSizePx
+    val inkBounds = Rect()
+    paint.getTextBounds(sample, 0, sample.length, inkBounds)
+    val targetInkHeight = inkBounds.height().toFloat().coerceAtLeast(1f)
+    return minOf(
+        preferredTextSizePx,
+        preferredTextSizePx * sourceGlyphHeightPx / targetInkHeight
+    )
 }
 
 private object BackgroundTranslatedImageRenderer {
@@ -2181,7 +2214,9 @@ private object BackgroundTranslatedImageRenderer {
                 renderSlots = requestedRenderSlots,
                 layoutShape = region.smartAssistDisplayHints?.layoutShape,
                 sourceLineCount = sourceLineCount,
-                role = region.smartAssistDisplayHints?.role
+                role = region.smartAssistDisplayHints?.role,
+                sourceText = region.source.text,
+                translatedText = region.translation
             )
             val renderSlots = mergedBodyRect?.let(::listOf) ?: requestedRenderSlots
             val layoutMetrics = StaticImageTextLayoutPolicy.resolve(
@@ -2209,8 +2244,15 @@ private object BackgroundTranslatedImageRenderer {
                 color = style.foregroundColor
                 typeface = style.typeface
             }
-            val preferredSize = layoutMetrics.preferredTextSizePx *
+            val requestedPreferredSize = layoutMetrics.preferredTextSizePx *
                 (region.smartAssistDisplayHints?.maximumTextScale ?: 1f)
+            val preferredSize = targetTextSizeForSourceGlyph(
+                paint = paint,
+                text = region.translation,
+                preferredTextSizePx = requestedPreferredSize,
+                sourceGlyphHeightPx = style.sourceGlyphHeightPx
+            )
+            val minimumSize = minOf(layoutMetrics.minimumTextSizePx, preferredSize)
             val maximumLines = layoutMetrics.maximumLines
             val translatedCharacterCount = region.translation.count { character ->
                 !character.isWhitespace()
@@ -2229,7 +2271,7 @@ private object BackgroundTranslatedImageRenderer {
                 paint = paint,
                 renderSlots = renderSlots,
                 preferredTextSizePx = preferredSize,
-                minimumTextSizePx = layoutMetrics.minimumTextSizePx,
+                minimumTextSizePx = minimumSize,
                 maximumLines = maximumLines,
                 alignment = alignment,
                 horizontalPadding = horizontalPadding,
@@ -2251,7 +2293,7 @@ private object BackgroundTranslatedImageRenderer {
                     preferredTextSizePx = preferredSize,
                     minimumTextSizePx = maxOf(
                         MINIMUM_TEXT_SIZE_PX,
-                        layoutMetrics.minimumTextSizePx * DECLARATIVE_LAYOUT_RETRY_SCALE
+                        minimumSize * DECLARATIVE_LAYOUT_RETRY_SCALE
                     ),
                     maximumLines = maximumLines,
                     alignment = alignment,
@@ -2274,7 +2316,7 @@ private object BackgroundTranslatedImageRenderer {
                         preferredTextSizePx = preferredSize,
                         minimumTextSizePx = maxOf(
                             MINIMUM_TEXT_SIZE_PX,
-                            layoutMetrics.minimumTextSizePx * DECLARATIVE_LAYOUT_RETRY_SCALE
+                            minimumSize * DECLARATIVE_LAYOUT_RETRY_SCALE
                         ),
                         maximumLines = if (hints.allowMore) {
                             maxOf(maximumLines, hints.sourceLineCount + 2)
@@ -2798,9 +2840,10 @@ private object BackgroundTranslatedImageRenderer {
                 baseTypeface,
                 if (styleHint.weight >= 600) Typeface.BOLD else Typeface.NORMAL
             ),
-            fontSizeMultiplier = if (isBold) 1.05f else 1.12f,
+            fontSizeMultiplier = 1f,
             lineSpacingMultiplier = if (isBold) 1.02f else 1.08f,
-            sourceLineCount = sourceLineCount
+            sourceLineCount = sourceLineCount,
+            sourceGlyphHeightPx = glyphHeight
         )
     }
 
@@ -2811,9 +2854,10 @@ private object BackgroundTranslatedImageRenderer {
         foregroundColor = if (isDarkBackground) Color.WHITE else Color.BLACK,
         isDarkBackground = isDarkBackground,
         typeface = if (looksLikeCode(sourceText)) Typeface.MONOSPACE else Typeface.SANS_SERIF,
-        fontSizeMultiplier = 1.1f,
+        fontSizeMultiplier = 1f,
         lineSpacingMultiplier = 1.06f,
-        sourceLineCount = sourceText.lineSequence().count().coerceAtLeast(1)
+        sourceLineCount = sourceText.lineSequence().count().coerceAtLeast(1),
+        sourceGlyphHeightPx = 0f
     )
 
     private fun looksLikeCode(text: String): Boolean {
