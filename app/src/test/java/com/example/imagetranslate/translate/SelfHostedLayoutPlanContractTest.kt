@@ -329,6 +329,33 @@ class SelfHostedLayoutPlanContractTest {
         assertEquals(listOf("a", "b"), result.results.single().sourceGroupIds)
     }
 
+    @Test
+    fun rejectsAuthoritativeMergeAcrossExplicitlyDifferentFontScales() {
+        val base = request()
+        val sizedRequest = base.copy(
+            sources = base.sources.mapIndexed { index, source ->
+                source.copy(
+                    regions = source.regions.map { region ->
+                        region.copy(
+                            estimatedTextHeightPx = if (index == 0) 30f else 14f,
+                            typographyConfidence = 0.9f
+                        )
+                    }
+                )
+            }
+        )
+
+        try {
+            provider().parseResponseForTest(response(0.94f), sizedRequest)
+            fail("Expected the cross-font-scale merge to be rejected")
+        } catch (expected: IllegalArgumentException) {
+            assertEquals(
+                "Self-hosted merged group crosses a protected semantic role without continuous OCR block evidence",
+                expected.message
+            )
+        }
+    }
+
     private fun provider() = SelfHostedSemanticTranslationProvider("http://127.0.0.1:8090", null)
 
     private fun boundsJson(left: Int, top: Int, right: Int, bottom: Int) = JSONObject()

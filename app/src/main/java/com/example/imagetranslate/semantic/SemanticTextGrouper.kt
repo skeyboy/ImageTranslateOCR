@@ -25,7 +25,9 @@ internal enum class GroupingEvidence {
     PUNCTUATION_CONTINUATION,
     WRAPPED_FLOW,
     GEOMETRY_INFERRED,
-    REGION_OCCUPANCY
+    REGION_OCCUPANCY,
+    FONT_SCALE_COMPATIBLE,
+    FONT_SCALE_RELAXED_SAME_BLOCK
 }
 
 internal data class SemanticTextGroup(
@@ -66,7 +68,11 @@ internal data class SemanticTextGroup(
             recognizerScript = scripts.singleOrNull() ?: RecognizerScript.FUSED,
             sourceBlockId = blockIds.singleOrNull(),
             sourceLineIndex = members.mapNotNull(RecognizedText::sourceLineIndex).minOrNull(),
-            componentBounds = memberBounds
+            componentBounds = memberBounds,
+            estimatedTextHeightPx = medianFloatOrNull(
+                members.mapNotNull(RecognizedText::estimatedTextHeightPx)
+            ),
+            typographyConfidence = members.minOf(RecognizedText::typographyConfidence)
         )
     }
 }
@@ -218,9 +224,13 @@ internal object SemanticTextGrouper {
 
         val firstBounds = first.source.bounds
         val secondBounds = second.source.bounds
+        val fontCompatibility = fontCompatibility(first.source, second.source)
+        if (fontCompatibility == FontCompatibility.INCOMPATIBLE) return null
+        if (fontCompatibility == FontCompatibility.RELAXED &&
+            (!sameBlock || first.role != second.role)
+        ) return null
         val minimumHeight = minOf(rectHeight(firstBounds), rectHeight(secondBounds)).coerceAtLeast(1)
         val maximumHeight = maxOf(rectHeight(firstBounds), rectHeight(secondBounds)).coerceAtLeast(1)
-        if (minimumHeight.toFloat() / maximumHeight < MINIMUM_HEIGHT_RATIO) return null
 
         val verticalGap = secondBounds.top - firstBounds.bottom
         val maximumGapRatio = if (sameBlock) {
@@ -270,6 +280,13 @@ internal object SemanticTextGrouper {
             }
             add(GroupingEvidence.LINE_GAP)
             if (!sentenceBoundary) add(GroupingEvidence.PUNCTUATION_CONTINUATION)
+            add(
+                if (fontCompatibility == FontCompatibility.RELAXED) {
+                    GroupingEvidence.FONT_SCALE_RELAXED_SAME_BLOCK
+                } else {
+                    GroupingEvidence.FONT_SCALE_COMPATIBLE
+                }
+            )
         }
     }
 
@@ -290,6 +307,20 @@ internal object SemanticTextGrouper {
             MAXIMUM_COMPACT_METADATA_CHARACTERS
         val compactNext = compactCharacterCount(next.source.text) <=
             MAXIMUM_COMPACT_METADATA_CHARACTERS
+        val memberTextHeights = members.mapNotNull { it.source.estimatedTextHeightPx }
+            .filter { it > 0f }
+        val nextTextHeight = next.source.estimatedTextHeightPx?.takeIf { it > 0f }
+        val groupFontCompatibility = if (memberTextHeights.isEmpty() || nextTextHeight == null) {
+            FontCompatibility.STRONG
+        } else {
+            fontCompatibility(medianFloat(memberTextHeights), nextTextHeight)
+        }
+        if (groupFontCompatibility == FontCompatibility.INCOMPATIBLE) return null
+        if (groupFontCompatibility == FontCompatibility.RELAXED &&
+            (previous.source.sourceBlockId == null ||
+                previous.source.sourceBlockId != next.source.sourceBlockId ||
+                previous.role != next.role)
+        ) return null
 
         if (members.size == 1) {
             val previousIsNarrow = previousWidth <= viewportWidth * NARROW_REGION_WIDTH_RATIO
@@ -353,6 +384,24 @@ internal object SemanticTextGrouper {
     }
 
     private fun median(values: List<Int>): Int = values.sorted()[values.size / 2]
+
+    private fun fontCompatibility(first: RecognizedText, second: RecognizedText): FontCompatibility {
+        val firstHeight = first.estimatedTextHeightPx?.takeIf { it > 0f }
+        val secondHeight = second.estimatedTextHeightPx?.takeIf { it > 0f }
+        if (firstHeight == null || secondHeight == null) return FontCompatibility.STRONG
+        return fontCompatibility(firstHeight, secondHeight)
+    }
+
+    private fun fontCompatibility(first: Float, second: Float): FontCompatibility {
+        val minimum = minOf(first, second).coerceAtLeast(1f)
+        val maximum = maxOf(first, second).coerceAtLeast(1f)
+        val ratio = minimum / maximum
+        return when {
+            ratio >= STRONG_FONT_SCALE_RATIO -> FontCompatibility.STRONG
+            ratio >= MINIMUM_HEIGHT_RATIO -> FontCompatibility.RELAXED
+            else -> FontCompatibility.INCOMPATIBLE
+        }
+    }
 
     private fun createGroup(
         readingOrder: Int,
@@ -489,6 +538,12 @@ internal object SemanticTextGrouper {
         val evidence: Set<GroupingEvidence>
     )
 
+    private enum class FontCompatibility {
+        STRONG,
+        RELAXED,
+        INCOMPATIBLE
+    }
+
     private val URL_OR_EMAIL = Regex(
         "(?i)(?:https?://|www\\.|[\\w.+-]+@[\\w.-]+\\.|" +
             "(?:[\\p{L}\\p{N}-]+\\.)+(?:com|org|net|io|ai|cn)\\b)"
@@ -512,6 +567,7 @@ internal object SemanticTextGrouper {
     )
 
     private const val MINIMUM_ROW_OVERLAP_RATIO = 0.55f
+    private const val STRONG_FONT_SCALE_RATIO = 0.78f
     private const val MINIMUM_COMPANION_GAP_PX = 8
     private const val MAXIMUM_COMPACT_METADATA_CHARACTERS = 18
     private const val NARROW_REGION_WIDTH_RATIO = 0.35f
@@ -526,6 +582,11 @@ private fun copyRect(bounds: Rect): Rect = rect(
     bounds.right,
     bounds.bottom
 )
+
+private fun medianFloat(values: List<Float>): Float = values.sorted().let { it[it.size / 2] }
+
+private fun medianFloatOrNull(values: List<Float>): Float? =
+    values.takeIf { it.isNotEmpty() }?.let(::medianFloat)
 
 private fun rect(left: Int, top: Int, right: Int, bottom: Int): Rect = Rect().apply {
     this.left = left

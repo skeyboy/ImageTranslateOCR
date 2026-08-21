@@ -1255,6 +1255,7 @@ fn provider_request_error(
 const SYSTEM_PROMPT: &str = r#"You are a professional screen OCR translation engine.
 The user supplies a JSON document containing the complete visible context and translateGroups.
 Use documentContext, reading order, roles, and normalized bounds only to disambiguate meaning.
+Typography tier and relative scale describe visual hierarchy only. Never use them to split, merge, omit, or rename a groupId.
 The output is a translations object keyed by groupId. Treat every key as an isolated translation cell and bind it strictly to the sourceText with the identical groupId. Neighboring groups and documentContext are context only.
 Never borrow, copy, move, duplicate, or continue text from another group into the current group.
 Use each group's regionLines and renderSlots to understand wrapped text and reading order, not to produce visual line breaks.
@@ -1613,6 +1614,8 @@ mod tests {
                     bottom: 80,
                 },
                 component_bounds: vec![],
+                estimated_text_height_px: Some(60.0),
+                typography_confidence: 0.8,
             }],
             debug_capture: None,
         }

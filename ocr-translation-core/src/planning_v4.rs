@@ -226,6 +226,13 @@ fn merge_decision(
         return None;
     }
     let same_block = same_block_continuation(first, second);
+    let font_compatibility = font_compatibility(first, second);
+    if font_compatibility == FontCompatibility::Incompatible
+        || (font_compatibility == FontCompatibility::Relaxed
+            && (!same_block || previous.role != next.role))
+    {
+        return None;
+    }
     let same_advisory_group = previous
         .source_group_ids
         .iter()
@@ -267,7 +274,11 @@ fn merge_decision(
     (confidence >= AUTHORITATIVE_CONFIDENCE).then_some(MergeDecision {
         confidence,
         evidence: if same_block {
-            "OCR_BLOCK_CONTINUATION"
+            if font_compatibility == FontCompatibility::Relaxed {
+                "FONT_SCALE_RELAXED_SAME_BLOCK"
+            } else {
+                "OCR_BLOCK_CONTINUATION"
+            }
         } else if same_advisory_group {
             "CLIENT_GROUP_GEOMETRY_CONFIRMED"
         } else if wrapped_step {
@@ -276,6 +287,33 @@ fn merge_decision(
             "VISUAL_LINE_CONTINUATION"
         },
     })
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum FontCompatibility {
+    Strong,
+    Relaxed,
+    Incompatible,
+}
+
+fn font_compatibility(first: &OcrRegion, second: &OcrRegion) -> FontCompatibility {
+    let first_height = region_text_height(first);
+    let second_height = region_text_height(second);
+    let ratio = first_height.min(second_height) / first_height.max(second_height).max(1.0);
+    if ratio >= 0.78 {
+        FontCompatibility::Strong
+    } else if ratio >= 0.65 {
+        FontCompatibility::Relaxed
+    } else {
+        FontCompatibility::Incompatible
+    }
+}
+
+fn region_text_height(region: &OcrRegion) -> f32 {
+    region
+        .estimated_text_height_px
+        .filter(|height| height.is_finite() && *height > 0.0)
+        .unwrap_or_else(|| region.bounds.height().max(1) as f32)
 }
 
 fn layout_slots(
@@ -580,6 +618,31 @@ mod tests {
 
         assert_eq!(plan.groups.len(), 2);
         assert_eq!(plan.groups[1].role, "TIMESTAMP");
+    }
+
+    #[test]
+    fn keeps_explicitly_different_font_scales_in_separate_groups() {
+        let mut request = request();
+        let mut first = request.regions[0].clone();
+        first.text = "The first paragraph line continues".to_owned();
+        first.group_id.clear();
+        first.block_id = Some("body".to_owned());
+        first.line_index = Some(0);
+        first.estimated_text_height_px = Some(30.0);
+        let mut second = first.clone();
+        second.region_id = "small-line".to_owned();
+        second.text = "with visibly smaller text".to_owned();
+        second.reading_order += 1;
+        second.line_index = Some(1);
+        second.estimated_text_height_px = Some(14.0);
+        second.bounds.top = first.bounds.bottom + 4;
+        second.bounds.bottom = second.bounds.top + first.bounds.height();
+        request.groups.clear();
+        request.regions = vec![first, second];
+
+        let plan = build_regions_first_plan(&request);
+
+        assert_eq!(plan.groups.len(), 2);
     }
 
     #[test]

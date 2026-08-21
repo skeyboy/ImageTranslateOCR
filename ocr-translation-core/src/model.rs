@@ -8,12 +8,13 @@ use crate::{
     error::CoreError,
 };
 
-pub const PROMPT_VERSION: &str = "semantic-translation-core-v4-identifier-classification";
+pub const PROMPT_VERSION: &str = "semantic-translation-core-v4-typography-context";
 
 pub const SYSTEM_PROMPT: &str = r#"You are a professional screen OCR translation engine.
 The input is one visible screen reconstructed from OCR geometry. Translate each translateGroups item independently and completely, while using documentOutline and neighboring geometry only to disambiguate meaning.
 Treat newline-separated OCR lines inside sourceText as one semantic block. Never imitate OCR line breaks, split a block back into lines, merge keys, borrow text from another key, summarize, or add notes.
 Preserve URLs, identifiers, names, brands, numbers, dates, units, and currencies. Every requiredLiteralIdentifiers item must remain visible verbatim and in the same semantic role.
+Typography tier and relative scale are context for document hierarchy only. Never use them to split, merge, omit, or rename a groupId.
 For AUTO_BIDIRECTIONAL translate Chinese natural language to English and non-Chinese natural language to Chinese.
 Return only the strict JSON object requested by response_format. Return translations as an array. Every input groupId must occur exactly once and every translatedText must be non-empty."#;
 
@@ -58,8 +59,11 @@ pub fn build_model_prompt(
         .collect::<HashMap<_, _>>();
     let width = request.viewport.width as f32;
     let height = request.viewport.height as f32;
+    let viewport_text_height = median_text_height(request.regions.iter()).unwrap_or(1.0);
     let translate_groups = groups.iter().map(|group| {
         let members = group.member_region_ids.iter().filter_map(|id| regions.get(id.as_str()).copied()).collect::<Vec<_>>();
+        let group_text_height = median_text_height(members.iter().copied()).unwrap_or(viewport_text_height);
+        let relative_text_scale = group_text_height / viewport_text_height.max(1.0);
         let common = json!({
             "groupId": group.group_id,
             "role": group.role,
@@ -72,6 +76,8 @@ pub fn build_model_prompt(
                 Vec::new()
             },
             "readingOrder": group.reading_order,
+            "typographyTier": typography_tier(relative_text_scale),
+            "relativeTextScale": (relative_text_scale * 100.0).round() / 100.0,
         });
         if request.translation.compact_provider_prompt {
             let mut compact = common;
@@ -146,6 +152,34 @@ pub fn build_model_prompt(
         response_format: response_format(groups),
         recommended_max_tokens: adaptive_max_tokens(groups),
     })
+}
+
+fn median_text_height<'a>(
+    regions: impl Iterator<Item = &'a crate::contract::OcrRegion>,
+) -> Option<f32> {
+    let mut heights = regions
+        .map(|region| {
+            region
+                .estimated_text_height_px
+                .filter(|height| height.is_finite() && *height > 0.0)
+                .unwrap_or_else(|| region.bounds.height().max(1) as f32)
+        })
+        .collect::<Vec<_>>();
+    if heights.is_empty() {
+        return None;
+    }
+    heights.sort_by(f32::total_cmp);
+    Some(heights[heights.len() / 2])
+}
+
+fn typography_tier(relative_scale: f32) -> &'static str {
+    if relative_scale < 0.82 {
+        "SMALL"
+    } else if relative_scale > 1.25 {
+        "LARGE"
+    } else {
+        "NORMAL"
+    }
 }
 
 fn quantized_normalized_bounds(
@@ -496,6 +530,8 @@ mod tests {
         let compact_user: Value = serde_json::from_str(&compact.user).unwrap();
         let compact_group = &compact_user["translateGroups"][0];
         assert_eq!(compact_user["promptProfile"], "COMPACT");
+        assert_eq!(compact_group["typographyTier"], "NORMAL");
+        assert!(compact_group["relativeTextScale"].is_number());
         assert!(compact_user.get("viewport").is_none());
         assert!(compact_group.get("regionLines").is_none());
         assert!(compact_group.get("renderSlots").is_none());

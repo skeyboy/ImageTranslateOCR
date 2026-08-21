@@ -46,6 +46,39 @@ class SemanticTextGrouperTest {
     }
 
     @Test
+    fun doesNotMergeAdjacentTextWhenEstimatedFontScalesAreClearlyDifferent() {
+        val groups = SemanticTextGrouper.group(
+            listOf(
+                line("Large introductory copy", 80, 100, 620, 130, null, 0)
+                    .copy(estimatedTextHeightPx = 30f, typographyConfidence = 0.9f),
+                line("smaller continuation copy", 80, 136, 620, 166, null, 1)
+                    .copy(estimatedTextHeightPx = 14f, typographyConfidence = 0.9f)
+            ),
+            1080,
+            1920
+        )
+
+        assertEquals(2, groups.size)
+    }
+
+    @Test
+    fun allowsSlightFontScaleVariationInsideTheSameOcrBlock() {
+        val groups = SemanticTextGrouper.group(
+            listOf(
+                line("A paragraph can contain", 80, 100, 620, 126, "body", 0)
+                    .copy(estimatedTextHeightPx = 20f, typographyConfidence = 0.8f),
+                line("minor OCR height variation", 80, 132, 620, 158, "body", 1)
+                    .copy(estimatedTextHeightPx = 14f, typographyConfidence = 0.8f)
+            ),
+            1080,
+            1920
+        )
+
+        assertEquals(1, groups.size)
+        assertTrue(GroupingEvidence.FONT_SCALE_RELAXED_SAME_BLOCK in groups.single().evidence)
+    }
+
+    @Test
     fun keepsTimestampOutsideAdjacentChatMessages() {
         val groups = SemanticTextGrouper.group(
             listOf(

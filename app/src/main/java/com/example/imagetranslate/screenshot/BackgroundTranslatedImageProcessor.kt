@@ -197,7 +197,8 @@ internal data class SmartAssistDisplayHints(
     val allowMore: Boolean = false,
     val sourceLineCount: Int = 1,
     val layoutShape: String = "RECT",
-    val role: String? = null
+    val role: String? = null,
+    val verticalAlignment: String = "AUTO"
 )
 
 private data class BackgroundTranslationBatch(
@@ -1204,7 +1205,8 @@ internal class BackgroundTranslatedImageProcessor(
                         allowMore = hint.allowMore,
                         sourceLineCount = hint.sourceLineCount,
                         layoutShape = hint.layoutShape,
-                        role = execution.role
+                        role = execution.role,
+                        verticalAlignment = hint.verticalAlignment
                     )
                 },
                 renderSlots = requestedRenderSlots,
@@ -2104,6 +2106,7 @@ private fun resolvedSourceCoverSlots(region: BackgroundImageRegion): List<Rect> 
 
 private const val PARAGRAPH_COMPRESSION_RATIO = 0.75f
 private const val TARGET_GLYPH_SAMPLE_CHARACTERS = 64
+private const val MINIMUM_MERGED_FONT_SCALE_RATIO = 0.65f
 
 internal fun denseBodyRectFallback(
     renderSlots: List<Rect>,
@@ -2128,6 +2131,8 @@ internal fun denseBodyRectFallback(
     val heights = renderSlots.map(Rect::height).filter { it > 0 }.sorted()
     if (heights.isEmpty()) return null
     val typicalHeight = heights[heights.size / 2].coerceAtLeast(1)
+    val heightRatio = heights.first().toFloat() / heights.last().coerceAtLeast(1)
+    if (heightRatio < MINIMUM_MERGED_FONT_SCALE_RATIO) return null
     val maximumGap = renderSlots.zipWithNext().maxOfOrNull { (first, second) ->
         second.top - first.bottom
     } ?: 0
@@ -2164,6 +2169,31 @@ internal fun targetTextSizeForSourceGlyph(
         preferredTextSizePx,
         preferredTextSizePx * sourceGlyphHeightPx / targetInkHeight
     )
+}
+
+internal fun resolvedVerticalTextOffset(
+    availableHeightPx: Int,
+    layoutHeightPx: Int,
+    verticalAlignment: String,
+    role: String?,
+    sourceLineCount: Int,
+    sourceLineHeightPx: Float,
+    sourceGlyphHeightPx: Float
+): Float {
+    val centered = ((availableHeightPx - layoutHeightPx) / 2f).coerceAtLeast(0f)
+    val resolved = when (verticalAlignment.uppercase()) {
+        "TOP" -> "TOP"
+        "CENTER" -> "CENTER"
+        else -> if (sourceLineCount >= 3 && role in setOf("CODE", "LIST_ITEM")) {
+            "TOP"
+        } else {
+            "CENTER"
+        }
+    }
+    if (resolved == "CENTER") return centered
+    val sourceLeading = ((sourceLineHeightPx - sourceGlyphHeightPx.coerceAtLeast(0f)) / 2f)
+        .coerceIn(0f, sourceLineHeightPx.coerceAtLeast(0f) / 3f)
+    return minOf(centered, sourceLeading)
 }
 
 private object BackgroundTranslatedImageRenderer {
@@ -2501,9 +2531,16 @@ private object BackgroundTranslatedImageRenderer {
                 canvas.clipRect(segment.bounds)
                 canvas.translate(
                     segment.bounds.left + segment.horizontalPadding.toFloat(),
-                    segment.bounds.top +
-                        ((segment.bounds.height() - segment.layout.height) / 2f)
-                            .coerceAtLeast(0f)
+                    segment.bounds.top + resolvedVerticalTextOffset(
+                        availableHeightPx = segment.bounds.height(),
+                        layoutHeightPx = segment.layout.height,
+                        verticalAlignment = region.smartAssistDisplayHints?.verticalAlignment
+                            ?: "AUTO",
+                        role = region.smartAssistDisplayHints?.role,
+                        sourceLineCount = sourceLineCount,
+                        sourceLineHeightPx = sourceLineHeight,
+                        sourceGlyphHeightPx = style.sourceGlyphHeightPx
+                    )
                 )
                 segment.layout.draw(canvas)
                 canvas.restore()

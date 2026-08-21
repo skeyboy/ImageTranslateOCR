@@ -25,7 +25,9 @@ internal data class SemanticTranslationRegion(
     val bounds: TranslationBounds,
     val componentBounds: List<TranslationBounds> = emptyList(),
     val rawText: String = text,
-    val corrections: List<OcrTextCorrection> = emptyList()
+    val corrections: List<OcrTextCorrection> = emptyList(),
+    val estimatedTextHeightPx: Float? = null,
+    val typographyConfidence: Float = 0f
 )
 
 internal data class SemanticTranslationSource(
@@ -95,7 +97,8 @@ internal data class SemanticLayoutHint(
     val sourceLineCount: Int = 1,
     val layoutShape: String = "RECT",
     val renderSlots: List<TranslationBounds> = emptyList(),
-    val sourceCoverSlots: List<TranslationBounds> = emptyList()
+    val sourceCoverSlots: List<TranslationBounds> = emptyList(),
+    val verticalAlignment: String = "AUTO"
 )
 
 internal data class SemanticGroupTranslationResult(

@@ -135,6 +135,10 @@ pub struct OcrRegion {
     pub bounds: Bounds,
     #[serde(default)]
     pub component_bounds: Vec<Bounds>,
+    #[serde(default)]
+    pub estimated_text_height_px: Option<f32>,
+    #[serde(default)]
+    pub typography_confidence: f32,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -204,6 +208,7 @@ pub struct LayoutHint {
     pub layout_shape: String,
     pub render_slots: Vec<Bounds>,
     pub source_cover_slots: Vec<Bounds>,
+    pub vertical_alignment: String,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -562,6 +567,12 @@ pub fn layout_hint(
         },
         render_slots,
         source_cover_slots,
+        vertical_alignment: if group.role == "BODY" && source_lines >= 3 {
+            "CENTER"
+        } else {
+            "AUTO"
+        }
+        .to_owned(),
     }
 }
 
@@ -731,6 +742,40 @@ mod tests {
         );
         assert!(hint.preferred_max_lines > 1);
         assert!(hint.minimum_text_scale < 0.8);
+        assert_eq!(hint.vertical_alignment, "AUTO");
+    }
+
+    #[test]
+    fn multi_line_body_defaults_to_center_alignment() {
+        let bounds = Bounds {
+            left: 0,
+            top: 0,
+            right: 400,
+            bottom: 180,
+        };
+        let group = TranslationGroup {
+            group_id: "body".to_owned(),
+            role: "BODY".to_owned(),
+            translation_unit: "GROUP".to_owned(),
+            source_text: "line one\nline two\nline three".to_owned(),
+            member_region_ids: vec!["r1".to_owned(), "r2".to_owned(), "r3".to_owned()],
+            reading_order: 0,
+            grouping_confidence: 1.0,
+            grouping_evidence: vec![],
+            source_line_count: Some(3),
+            bounds: bounds.clone(),
+            render_slots: vec![bounds.clone()],
+            layout_shape: "RECT".to_owned(),
+        };
+
+        let hint = layout_hint(
+            &group,
+            "第一行\n第二行\n第三行",
+            vec![bounds.clone()],
+            vec![bounds],
+        );
+
+        assert_eq!(hint.vertical_alignment, "CENTER");
     }
 
     #[test]
@@ -842,6 +887,8 @@ mod tests {
                 bottom,
             },
             component_bounds: vec![],
+            estimated_text_height_px: Some((bottom - top) as f32),
+            typography_confidence: 0.8,
         }
     }
 }

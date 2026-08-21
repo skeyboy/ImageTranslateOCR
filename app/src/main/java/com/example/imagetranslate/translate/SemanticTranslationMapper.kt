@@ -28,7 +28,9 @@ internal fun SemanticTextGroup.toSemanticTranslationSource(): SemanticTranslatio
             bounds = member.bounds.toTranslationBounds(),
             componentBounds = member.componentBounds.map { it.toTranslationBounds() },
             rawText = member.text,
-            corrections = normalized.corrections
+            corrections = normalized.corrections,
+            estimatedTextHeightPx = member.estimatedTextHeightPx,
+            typographyConfidence = member.typographyConfidence
         )
     }
     val normalizedSourceText = normalizedMembers.joinToString("\n") { it.text }
@@ -63,7 +65,9 @@ private data class AtomicTranslationMember(
     val componentBounds: List<android.graphics.Rect>,
     val sourceBlockId: String?,
     val sourceLineIndex: Int?,
-    val modelConfidence: Float
+    val modelConfidence: Float,
+    val estimatedTextHeightPx: Float?,
+    val typographyConfidence: Float
 )
 
 private fun com.example.imagetranslate.ocr.RecognizedText.toAtomicTranslationMembers(
@@ -81,7 +85,9 @@ private fun com.example.imagetranslate.ocr.RecognizedText.toAtomicTranslationMem
                 componentBounds = emptyList(),
                 sourceBlockId = sourceBlockId,
                 sourceLineIndex = sourceLineIndex?.plus(lineOffset) ?: lineOffset,
-                modelConfidence = modelConfidence
+                modelConfidence = modelConfidence,
+                estimatedTextHeightPx = estimatedTextHeightPx,
+                typographyConfidence = typographyConfidence
             )
         }
     }
@@ -92,7 +98,9 @@ private fun com.example.imagetranslate.ocr.RecognizedText.toAtomicTranslationMem
             componentBounds = components.map(::copyRect),
             sourceBlockId = sourceBlockId,
             sourceLineIndex = sourceLineIndex ?: memberIndex,
-            modelConfidence = modelConfidence
+            modelConfidence = modelConfidence,
+            estimatedTextHeightPx = estimatedTextHeightPx,
+            typographyConfidence = typographyConfidence
         )
     )
 }

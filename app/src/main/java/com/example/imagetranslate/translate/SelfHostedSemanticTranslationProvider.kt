@@ -576,9 +576,33 @@ internal class SelfHostedSemanticTranslationProvider(
     ): Boolean {
         if (sources.any { it.role !in AUTHORITATIVE_MERGE_ROLES }) return false
         return sources.zipWithNext().all { (first, second) ->
-            first.role == second.role ||
-                hasContinuousOcrBoundary(first, second) ||
-                hasVisualContinuationBoundary(first, second)
+            val fontCompatibility = fontCompatibility(first, second)
+            fontCompatibility != FontCompatibility.INCOMPATIBLE &&
+                (fontCompatibility != FontCompatibility.RELAXED ||
+                    first.role == second.role && hasContinuousOcrBoundary(first, second)) &&
+                (first.role == second.role ||
+                    hasContinuousOcrBoundary(first, second) ||
+                    hasVisualContinuationBoundary(first, second))
+        }
+    }
+
+    private fun fontCompatibility(
+        first: SemanticTranslationSource,
+        second: SemanticTranslationSource
+    ): FontCompatibility {
+        fun representative(source: SemanticTranslationSource): Float? {
+            val values = source.regions.mapNotNull { region ->
+                region.estimatedTextHeightPx?.takeIf { it > 0f }
+            }.sorted()
+            return values.takeIf { it.isNotEmpty() }?.let { it[it.size / 2] }
+        }
+        val firstHeight = representative(first) ?: return FontCompatibility.STRONG
+        val secondHeight = representative(second) ?: return FontCompatibility.STRONG
+        val ratio = minOf(firstHeight, secondHeight) / maxOf(firstHeight, secondHeight)
+        return when {
+            ratio >= STRONG_FONT_SCALE_RATIO -> FontCompatibility.STRONG
+            ratio >= MINIMUM_FONT_SCALE_RATIO -> FontCompatibility.RELAXED
+            else -> FontCompatibility.INCOMPATIBLE
         }
     }
 
@@ -673,7 +697,12 @@ internal class SelfHostedSemanticTranslationProvider(
             sourceLineCount = optInt("sourceLineCount", source.regions.size).coerceAtLeast(1),
             layoutShape = optString("layoutShape", source.layoutShape),
             renderSlots = returnedSlots,
-            sourceCoverSlots = returnedCoverSlots
+            sourceCoverSlots = returnedCoverSlots,
+            verticalAlignment = optString("verticalAlignment", "AUTO").also { alignment ->
+                require(alignment in VERTICAL_ALIGNMENTS) {
+                    "Self-hosted result verticalAlignment is invalid"
+                }
+            }
         )
     }
 
@@ -722,7 +751,16 @@ internal class SelfHostedSemanticTranslationProvider(
         const val CANCEL_TIMEOUT_MS = 3_000
         const val AUTHORITATIVE_GROUPING_CONFIDENCE = 0.90f
         const val MAXIMUM_CONCURRENT_REQUESTS = 2
+        const val STRONG_FONT_SCALE_RATIO = 0.78f
+        const val MINIMUM_FONT_SCALE_RATIO = 0.65f
         val AUTHORITATIVE_MERGE_ROLES = setOf("BODY", "LIST_ITEM", "TITLE")
+        val VERTICAL_ALIGNMENTS = setOf("AUTO", "TOP", "CENTER")
+    }
+
+    private enum class FontCompatibility {
+        STRONG,
+        RELAXED,
+        INCOMPATIBLE
     }
 }
 
@@ -755,6 +793,8 @@ private fun SemanticTranslationRegion.toJson() = JSONObject()
     .put("lineIndex", lineIndex ?: JSONObject.NULL)
     .put("confidence", confidence.toDouble())
     .put("bounds", bounds.toJson())
+    .put("estimatedTextHeightPx", estimatedTextHeightPx ?: JSONObject.NULL)
+    .put("typographyConfidence", typographyConfidence.toDouble())
     .put(
         "componentBounds",
         JSONArray().apply { componentBounds.forEach { put(it.toJson()) } }

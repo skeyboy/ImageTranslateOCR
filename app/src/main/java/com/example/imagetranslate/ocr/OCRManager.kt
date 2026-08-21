@@ -50,7 +50,9 @@ data class RecognizedText(
     val recognizerScript: RecognizerScript = RecognizerScript.CHINESE,
     val sourceBlockId: String? = null,
     val sourceLineIndex: Int? = null,
-    val componentBounds: List<Rect> = emptyList()
+    val componentBounds: List<Rect> = emptyList(),
+    val estimatedTextHeightPx: Float? = null,
+    val typographyConfidence: Float = 0f
 ) {
     fun textEraseBounds(): List<Rect> = componentBounds.ifEmpty { listOf(bounds) }
 }
@@ -682,7 +684,9 @@ internal class MlKitOcrEngine(context: Context) : OcrEngine {
             consensusScore = item.consensusScore,
             passCount = item.passCount,
             modelConfidence = item.modelConfidence,
-            recognizerScript = item.recognizerScript
+            recognizerScript = item.recognizerScript,
+            estimatedTextHeightPx = item.estimatedTextHeightPx,
+            typographyConfidence = item.typographyConfidence
         )
     }
 
@@ -836,13 +840,20 @@ internal class MlKitOcrEngine(context: Context) : OcrEngine {
         sourceLineIndex: Int
     ): RecognizedText? {
         val lineBounds = line.boundingBox ?: return null
-        fun result(text: String, bounds: Rect) = RecognizedText(
+        fun result(
+            text: String,
+            bounds: Rect,
+            estimatedTextHeightPx: Float = bounds.height().toFloat(),
+            typographyConfidence: Float = 0.45f
+        ) = RecognizedText(
             text = text,
             bounds = bounds,
             modelConfidence = line.confidence.coerceIn(0f, 1f),
             recognizerScript = script,
             sourceBlockId = sourceBlockId,
-            sourceLineIndex = sourceLineIndex
+            sourceLineIndex = sourceLineIndex,
+            estimatedTextHeightPx = estimatedTextHeightPx,
+            typographyConfidence = typographyConfidence
         )
         val elements = line.elements.mapNotNull { element ->
             val bounds = element.boundingBox ?: return@mapNotNull null
@@ -913,7 +924,16 @@ internal class MlKitOcrEngine(context: Context) : OcrEngine {
                 }
             }
         }
-        return result(text, bounds)
+        val elementHeights = selectedElements.map { it.bounds.height() }
+            .filter { it > 0 }
+            .sorted()
+        return result(
+            text = text,
+            bounds = bounds,
+            estimatedTextHeightPx = elementHeights.getOrNull(elementHeights.size / 2)
+                ?.toFloat() ?: bounds.height().toFloat(),
+            typographyConfidence = if (elementHeights.size >= 2) 0.82f else 0.58f
+        )
     }
 
     private fun trimDetachedEdgeGlyphs(
@@ -1087,7 +1107,12 @@ internal class MlKitOcrEngine(context: Context) : OcrEngine {
             sourceLineIndex = listOfNotNull(left.sourceLineIndex, right.sourceLineIndex)
                 .distinct()
                 .singleOrNull(),
-            componentBounds = (left.componentBounds + right.componentBounds).map(::Rect)
+            componentBounds = (left.componentBounds + right.componentBounds).map(::Rect),
+            estimatedTextHeightPx = listOfNotNull(
+                left.estimatedTextHeightPx,
+                right.estimatedTextHeightPx
+            ).sorted().let { values -> values.getOrNull(values.size / 2) },
+            typographyConfidence = minOf(left.typographyConfidence, right.typographyConfidence)
         )
     }
 

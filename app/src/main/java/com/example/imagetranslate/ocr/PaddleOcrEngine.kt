@@ -52,12 +52,15 @@ internal class PaddleOcrEngine(context: Context) : OcrEngine {
             .asSequence()
             .filter { it.text.isNotBlank() }
             .map { result ->
+                val bounds = result.box.toRect(bitmap.width, bitmap.height)
                 RecognizedText(
                     text = result.text.trim(),
-                    bounds = result.box.toRect(bitmap.width, bitmap.height),
+                    bounds = bounds,
                     consensusScore = result.confidence.coerceIn(0f, 1f),
                     modelConfidence = result.confidence.coerceIn(0f, 1f),
-                    recognizerScript = recognitionMode.recognizerScript
+                    recognizerScript = recognitionMode.recognizerScript,
+                    estimatedTextHeightPx = bounds.height().toFloat(),
+                    typographyConfidence = 0.35f
                 )
             }
             .sortedWith(compareBy({ it.bounds.top }, { it.bounds.left }))

@@ -5,6 +5,30 @@ import org.junit.Test
 
 class LiveOverlayLayoutPolicyTest {
     @Test
+    fun resolvesExplicitAndAutomaticVerticalAlignment() {
+        assertEquals(
+            40f,
+            resolvedVerticalTextOffset(120, 40, "CENTER", "BODY", 6, 20f, 14f),
+            0.01f
+        )
+        assertEquals(
+            3f,
+            resolvedVerticalTextOffset(120, 40, "TOP", "BODY", 6, 20f, 14f),
+            0.01f
+        )
+        assertEquals(
+            40f,
+            resolvedVerticalTextOffset(120, 40, "AUTO", "BODY", 6, 20f, 14f),
+            0.01f
+        )
+        assertEquals(
+            3f,
+            resolvedVerticalTextOffset(120, 40, "AUTO", "CODE", 6, 20f, 14f),
+            0.01f
+        )
+    }
+
+    @Test
     fun groupsAlignedBodyLinesIntoOneTranslationBlock() {
         val groups = LiveOverlayLayoutPolicy.groupTextLines(
             listOf(

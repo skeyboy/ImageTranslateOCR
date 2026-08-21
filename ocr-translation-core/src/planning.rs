@@ -206,6 +206,7 @@ fn merge_confidence(
     regions: &HashMap<&str, &OcrRegion>,
 ) -> Option<MergeDecision> {
     let same_ocr_block = is_same_ocr_block_continuation(first, second, regions);
+    let font_compatibility = group_font_compatibility(first, second, regions);
     let same_visible_text = first
         .source_text
         .split_whitespace()
@@ -217,6 +218,12 @@ fn merge_confidence(
         || !matches!(first.role.as_str(), "BODY" | "LIST_ITEM" | "TITLE")
         || !matches!(second.role.as_str(), "BODY" | "LIST_ITEM" | "TITLE")
         || looks_like_section_label(&first.source_text)
+    {
+        return None;
+    }
+    if font_compatibility == FontCompatibility::Incompatible
+        || (font_compatibility == FontCompatibility::Relaxed
+            && (!same_ocr_block || first.role != second.role))
     {
         return None;
     }
@@ -268,13 +275,62 @@ fn merge_confidence(
     (source_confidence >= AUTHORITATIVE_CONFIDENCE).then_some(MergeDecision {
         confidence: source_confidence.min(0.96),
         evidence: if same_ocr_block {
-            "OCR_BLOCK_CONTINUATION"
+            if font_compatibility == FontCompatibility::Relaxed {
+                "FONT_SCALE_RELAXED_SAME_BLOCK"
+            } else {
+                "OCR_BLOCK_CONTINUATION"
+            }
         } else if expands_around_media || returns_below_wrapped_media {
             "WRAPPED_MEDIA_FLOW"
         } else {
             "VISUAL_LINE_CONTINUATION"
         },
     })
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum FontCompatibility {
+    Strong,
+    Relaxed,
+    Incompatible,
+}
+
+fn group_font_compatibility(
+    first: &TranslationGroup,
+    second: &TranslationGroup,
+    regions: &HashMap<&str, &OcrRegion>,
+) -> FontCompatibility {
+    fn representative(
+        group: &TranslationGroup,
+        regions: &HashMap<&str, &OcrRegion>,
+    ) -> Option<f32> {
+        let mut heights = group
+            .member_region_ids
+            .iter()
+            .filter_map(|id| regions.get(id.as_str()))
+            .filter_map(|region| region.estimated_text_height_px)
+            .filter(|height| height.is_finite() && *height > 0.0)
+            .collect::<Vec<_>>();
+        if heights.is_empty() {
+            return None;
+        }
+        heights.sort_by(f32::total_cmp);
+        Some(heights[heights.len() / 2])
+    }
+    let (Some(first_height), Some(second_height)) = (
+        representative(first, regions),
+        representative(second, regions),
+    ) else {
+        return FontCompatibility::Strong;
+    };
+    let ratio = first_height.min(second_height) / first_height.max(second_height).max(1.0);
+    if ratio >= 0.78 {
+        FontCompatibility::Strong
+    } else if ratio >= 0.65 {
+        FontCompatibility::Relaxed
+    } else {
+        FontCompatibility::Incompatible
+    }
 }
 
 fn is_same_ocr_block_continuation(
