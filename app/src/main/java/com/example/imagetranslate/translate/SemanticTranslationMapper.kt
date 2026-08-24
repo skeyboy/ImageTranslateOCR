@@ -86,7 +86,8 @@ private fun com.example.imagetranslate.ocr.RecognizedText.toAtomicTranslationMem
                 sourceBlockId = sourceBlockId,
                 sourceLineIndex = sourceLineIndex?.plus(lineOffset) ?: lineOffset,
                 modelConfidence = modelConfidence,
-                estimatedTextHeightPx = estimatedTextHeightPx,
+                estimatedTextHeightPx = componentTextHeightsPx.getOrNull(lineOffset)
+                    ?: estimatedTextHeightPx,
                 typographyConfidence = typographyConfidence
             )
         }

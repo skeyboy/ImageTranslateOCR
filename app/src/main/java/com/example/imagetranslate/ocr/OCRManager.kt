@@ -51,8 +51,11 @@ data class RecognizedText(
     val sourceBlockId: String? = null,
     val sourceLineIndex: Int? = null,
     val componentBounds: List<Rect> = emptyList(),
+    val componentTextHeightsPx: List<Float> = emptyList(),
     val estimatedTextHeightPx: Float? = null,
-    val typographyConfidence: Float = 0f
+    val typographyConfidence: Float = 0f,
+    val continuationAtTop: Boolean = false,
+    val continuationAtBottom: Boolean = false
 ) {
     fun textEraseBounds(): List<Rect> = componentBounds.ifEmpty { listOf(bounds) }
 }
@@ -1108,6 +1111,7 @@ internal class MlKitOcrEngine(context: Context) : OcrEngine {
                 .distinct()
                 .singleOrNull(),
             componentBounds = (left.componentBounds + right.componentBounds).map(::Rect),
+            componentTextHeightsPx = left.componentTextHeightsPx + right.componentTextHeightsPx,
             estimatedTextHeightPx = listOfNotNull(
                 left.estimatedTextHeightPx,
                 right.estimatedTextHeightPx

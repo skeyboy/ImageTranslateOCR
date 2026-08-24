@@ -568,7 +568,7 @@ pub fn layout_hint(
         render_slots,
         source_cover_slots,
         vertical_alignment: if group.role == "BODY" && source_lines >= 3 {
-            "CENTER"
+            "TOP"
         } else {
             "AUTO"
         }
@@ -746,7 +746,7 @@ mod tests {
     }
 
     #[test]
-    fn multi_line_body_defaults_to_center_alignment() {
+    fn multi_line_body_defaults_to_top_alignment() {
         let bounds = Bounds {
             left: 0,
             top: 0,
@@ -775,7 +775,7 @@ mod tests {
             vec![bounds],
         );
 
-        assert_eq!(hint.vertical_alignment, "CENTER");
+        assert_eq!(hint.vertical_alignment, "TOP");
     }
 
     #[test]

@@ -40,6 +40,16 @@ class SemanticContentClassifierTest {
     }
 
     @Test
+    fun translatesDiscussionMetadataButKeepsItsMetadataRole() {
+        val text = "CrzyLngPwd 3 minutes ago | parent | context | " +
+            "on: Why aren't smart people happier? (2022)"
+
+        assertTrue(SemanticContentClassifier.isStandaloneMetadata(text))
+        assertTrue(SemanticContentClassifier.isDiscussionThreadMetadata(text))
+        assertFalse(SemanticContentClassifier.shouldPreserve("METADATA", text))
+    }
+
+    @Test
     fun distinguishesNumericIdentifiersFromTranslatableNumericText() {
         assertTrue(SemanticContentClassifier.shouldPreserve("BODY", "M26-061"))
         assertTrue(SemanticContentClassifier.shouldPreserve("BODY", "W3000 t5"))

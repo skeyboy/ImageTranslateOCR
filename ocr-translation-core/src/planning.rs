@@ -221,10 +221,7 @@ fn merge_confidence(
     {
         return None;
     }
-    if font_compatibility == FontCompatibility::Incompatible
-        || (font_compatibility == FontCompatibility::Relaxed
-            && (!same_ocr_block || first.role != second.role))
-    {
+    if font_compatibility != FontCompatibility::Strong {
         return None;
     }
     let height = first
@@ -275,11 +272,7 @@ fn merge_confidence(
     (source_confidence >= AUTHORITATIVE_CONFIDENCE).then_some(MergeDecision {
         confidence: source_confidence.min(0.96),
         evidence: if same_ocr_block {
-            if font_compatibility == FontCompatibility::Relaxed {
-                "FONT_SCALE_RELAXED_SAME_BLOCK"
-            } else {
-                "OCR_BLOCK_CONTINUATION"
-            }
+            "OCR_BLOCK_CONTINUATION"
         } else if expands_around_media || returns_below_wrapped_media {
             "WRAPPED_MEDIA_FLOW"
         } else {

@@ -44,7 +44,9 @@ internal object ShapeAwareTextLayout {
         if (text.isBlank() || slots.isEmpty()) return null
         val preferred = maxOf(preferredTextSizePx, minimumTextSizePx)
         val minimum = minOf(preferred, minimumTextSizePx)
-        val lineSpacings = lineSpacingMultipliers ?: LINE_SPACING_STEPS.toList()
+        val lineSpacings = (lineSpacingMultipliers ?: LINE_SPACING_STEPS.toList())
+            .map { it.coerceAtLeast(MINIMUM_SAFE_LINE_SPACING_MULTIPLIER) }
+            .distinct()
 
         lineSpacings.forEach { lineSpacing ->
             var low = minimum
@@ -317,9 +319,10 @@ internal object ShapeAwareTextLayout {
         val layout: StaticLayout
     )
 
-    private val LINE_SPACING_STEPS = floatArrayOf(1f, 0.92f, 0.86f)
+    private val LINE_SPACING_STEPS = floatArrayOf(1f)
     private const val LAYOUT_SEARCH_STEPS = 8
     private const val OVERFLOW_SEARCH_STEPS = 12
+    internal const val MINIMUM_SAFE_LINE_SPACING_MULTIPLIER = 1f
     private const val WORD_BOUNDARY_SEARCH = 24
     private const val OVERFLOW_SUFFIX = "… 更多"
     private val WORD_BOUNDARY_PUNCTUATION = setOf(',', '.', ';', ':', '，', '。', '；', '：')

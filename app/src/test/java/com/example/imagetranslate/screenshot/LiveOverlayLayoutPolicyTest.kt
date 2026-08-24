@@ -17,7 +17,7 @@ class LiveOverlayLayoutPolicyTest {
             0.01f
         )
         assertEquals(
-            40f,
+            3f,
             resolvedVerticalTextOffset(120, 40, "AUTO", "BODY", 6, 20f, 14f),
             0.01f
         )

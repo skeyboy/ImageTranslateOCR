@@ -27,7 +27,9 @@ internal enum class GroupingEvidence {
     GEOMETRY_INFERRED,
     REGION_OCCUPANCY,
     FONT_SCALE_COMPATIBLE,
-    FONT_SCALE_RELAXED_SAME_BLOCK
+    FONT_SCALE_RELAXED_SAME_BLOCK,
+    TOP_CLIPPED_CONTINUATION,
+    BOTTOM_CLIPPED_CONTINUATION
 }
 
 internal data class SemanticTextGroup(
@@ -48,12 +50,19 @@ internal data class SemanticTextGroup(
         val totalWeight = weights.sum().coerceAtLeast(1)
         val blockIds = members.mapNotNull(RecognizedText::sourceBlockId).distinct()
         val scripts = members.map(RecognizedText::recognizerScript).distinct()
-        val memberBounds = members
-            .flatMap(RecognizedText::textEraseBounds)
-            .distinctBy { bounds ->
-                listOf(bounds.left, bounds.top, bounds.right, bounds.bottom)
-            }
-            .map(::copyRect)
+        val memberGeometry = members.flatMap { member ->
+            val bounds = member.textEraseBounds()
+            val textHeights = member.componentTextHeightsPx.takeIf { it.size == bounds.size }
+                ?: List(bounds.size) {
+                    member.estimatedTextHeightPx
+                        ?: (member.bounds.bottom - member.bounds.top).toFloat()
+                }
+            bounds.zip(textHeights)
+        }.distinctBy { (bounds, _) ->
+            listOf(bounds.left, bounds.top, bounds.right, bounds.bottom)
+        }
+        val memberBounds = memberGeometry.map { (bounds, _) -> copyRect(bounds) }
+        val memberTextHeights = memberGeometry.map { (_, textHeight) -> textHeight }
         return RecognizedText(
             text = sourceText,
             bounds = copyRect(unionBounds),
@@ -69,10 +78,13 @@ internal data class SemanticTextGroup(
             sourceBlockId = blockIds.singleOrNull(),
             sourceLineIndex = members.mapNotNull(RecognizedText::sourceLineIndex).minOrNull(),
             componentBounds = memberBounds,
+            componentTextHeightsPx = memberTextHeights,
             estimatedTextHeightPx = medianFloatOrNull(
                 members.mapNotNull(RecognizedText::estimatedTextHeightPx)
             ),
-            typographyConfidence = members.minOf(RecognizedText::typographyConfidence)
+            typographyConfidence = members.minOf(RecognizedText::typographyConfidence),
+            continuationAtTop = members.any(RecognizedText::continuationAtTop),
+            continuationAtBottom = members.any(RecognizedText::continuationAtBottom)
         )
     }
 }
@@ -167,6 +179,12 @@ internal object SemanticTextGrouper {
                 members += remaining.removeAt(next.index)
                 evidence += next.evidence
             }
+            if (members.any { it.source.continuationAtTop }) {
+                evidence += GroupingEvidence.TOP_CLIPPED_CONTINUATION
+            }
+            if (members.any { it.source.continuationAtBottom }) {
+                evidence += GroupingEvidence.BOTTOM_CLIPPED_CONTINUATION
+            }
             groups += createGroup(groups.size, members, evidence)
         }
         return groups
@@ -225,10 +243,7 @@ internal object SemanticTextGrouper {
         val firstBounds = first.source.bounds
         val secondBounds = second.source.bounds
         val fontCompatibility = fontCompatibility(first.source, second.source)
-        if (fontCompatibility == FontCompatibility.INCOMPATIBLE) return null
-        if (fontCompatibility == FontCompatibility.RELAXED &&
-            (!sameBlock || first.role != second.role)
-        ) return null
+        if (fontCompatibility != FontCompatibility.STRONG) return null
         val minimumHeight = minOf(rectHeight(firstBounds), rectHeight(secondBounds)).coerceAtLeast(1)
         val maximumHeight = maxOf(rectHeight(firstBounds), rectHeight(secondBounds)).coerceAtLeast(1)
 
@@ -315,12 +330,7 @@ internal object SemanticTextGrouper {
         } else {
             fontCompatibility(medianFloat(memberTextHeights), nextTextHeight)
         }
-        if (groupFontCompatibility == FontCompatibility.INCOMPATIBLE) return null
-        if (groupFontCompatibility == FontCompatibility.RELAXED &&
-            (previous.source.sourceBlockId == null ||
-                previous.source.sourceBlockId != next.source.sourceBlockId ||
-                previous.role != next.role)
-        ) return null
+        if (groupFontCompatibility != FontCompatibility.STRONG) return null
 
         if (members.size == 1) {
             val previousIsNarrow = previousWidth <= viewportWidth * NARROW_REGION_WIDTH_RATIO
@@ -484,6 +494,7 @@ internal object SemanticTextGrouper {
     )
 
     private fun representativeLineHeight(item: RecognizedText): Int {
+        item.estimatedTextHeightPx?.takeIf { it > 0f }?.let { return it.toInt().coerceAtLeast(1) }
         val componentHeights = item.componentBounds.map(::rectHeight).filter { it > 0 }.sorted()
         if (componentHeights.isNotEmpty()) {
             return componentHeights[(componentHeights.size - 1) / 2]

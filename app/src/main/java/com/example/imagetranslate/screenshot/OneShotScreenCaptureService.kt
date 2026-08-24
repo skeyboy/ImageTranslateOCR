@@ -1189,6 +1189,49 @@ class OneShotScreenCaptureService : Service() {
         }
     }
 
+    private fun renderFailuresJson(
+        failures: List<LiveRenderFailureDiagnostic>
+    ) = JSONArray().apply {
+        failures.forEach { failure ->
+            put(
+                JSONObject()
+                    .put("groupId", failure.groupId ?: JSONObject.NULL)
+                    .put("reason", failure.reason)
+                    .put("layoutShape", failure.layoutShape ?: JSONObject.NULL)
+                    .put("sourceLineHeightPx", failure.sourceLineHeightPx.toDouble())
+                    .put("preferredTextSizePx", failure.preferredTextSizePx.toDouble())
+                    .put(
+                        "minimumAttemptedTextSizePx",
+                        failure.minimumAttemptedTextSizePx.toDouble()
+                    )
+                    .put("lastAttemptedTextSizePx", failure.lastAttemptedTextSizePx.toDouble())
+                    .put("maximumLines", failure.maximumLines)
+                    .put("requireAllSlots", failure.requireAllSlots)
+                    .put("allowMore", failure.allowMore)
+                    .put(
+                        "attemptedLineSpacingMultipliers",
+                        JSONArray().apply {
+                            failure.attemptedLineSpacingMultipliers.forEach { put(it.toDouble()) }
+                        }
+                    )
+                    .put("renderSlots", layoutBoundsJson(failure.renderSlots))
+                    .put("sourceCoverSlots", layoutBoundsJson(failure.sourceCoverSlots))
+            )
+        }
+    }
+
+    private fun layoutBoundsJson(bounds: List<android.graphics.Rect>) = JSONArray().apply {
+        bounds.forEach { item ->
+            put(
+                JSONObject()
+                    .put("left", item.left)
+                    .put("top", item.top)
+                    .put("right", item.right)
+                    .put("bottom", item.bottom)
+            )
+        }
+    }
+
     private fun projectionLifecycleDiagnostics(reason: String?): JSONObject = JSONObject()
         .put("schemaVersion", 1)
         .put("projectionStopReason", reason ?: JSONObject.NULL)
@@ -1551,6 +1594,9 @@ class OneShotScreenCaptureService : Service() {
                     releaseImage()
                 }
                 val bitmap = sourceBitmap
+                val obscuredBoundsAtCapture =
+                    overlayController.visibleOcrOcclusionBounds() +
+                        ScreenTranslationAccessibilityService.visibleBrowserToolbarBounds()
                 if (!hasVisiblePixels(bitmap)) {
                     bitmap.recycle()
                     sourceBitmap = null
@@ -1626,6 +1672,7 @@ class OneShotScreenCaptureService : Service() {
                                     activeBackgroundExperienceMode
                                 ),
                             smartAssistEnabled = activeSmartAssistEnabled,
+                            obscuredBoundsAtCapture = obscuredBoundsAtCapture,
                             onRecognitionSucceeded = { recognizedCount ->
                                 if (generation == captureGeneration.get()) {
                                     recognitionSucceededGeneration.set(generation)
@@ -1675,7 +1722,12 @@ class OneShotScreenCaptureService : Service() {
                             "differential=${result.differentialApplied}, " +
                             "shiftY=${capturePlan?.contentShiftY ?: 0}, " +
                             "reused=${result.reusedRegionCount}, " +
-                            "recognized=${result.recognizedCount}, patches=${result.patches.size}, " +
+                            "recognized=${result.recognizedCount}, " +
+                            "rawRecognized=${result.rawRecognizedCount}, " +
+                            "edgeFiltered=${result.edgeFilteredCount}, " +
+                            "edgeRecovered=${result.edgeRecoveredCount}, " +
+                            "continuations=${result.continuationCount}, " +
+                            "patches=${result.patches.size}, " +
                             "ocrTranslateMs=${result.recognitionAndTranslationMs}, " +
                             "renderMs=${result.renderingMs}, " +
                             "smartAssist=${result.smartAssistApplied}, " +
@@ -2030,9 +2082,14 @@ class OneShotScreenCaptureService : Service() {
         val diagnostics = JSONObject()
             .put("schemaVersion", 1)
             .put("recognizedCount", result.recognizedCount)
+            .put("rawRecognizedCount", result.rawRecognizedCount)
+            .put("edgeFilteredCount", result.edgeFilteredCount)
+            .put("edgeRecoveredCount", result.edgeRecoveredCount)
+            .put("continuationCount", result.continuationCount)
             .put("translatedRegionCount", result.translatedRegionCount)
             .put("renderedPatchCount", result.patches.size)
             .put("failedRegionCount", result.failedCount)
+            .put("renderFailures", renderFailuresJson(result.renderFailures))
             .put("sourceRegionCount", result.sourceCoverage.regionCount)
             .put("sourceCoverageRatio", result.sourceCoverage.coverageRatio.toDouble())
             .put("patchRegionCount", result.patchCoverage.regionCount)

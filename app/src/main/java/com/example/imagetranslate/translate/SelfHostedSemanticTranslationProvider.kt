@@ -577,9 +577,7 @@ internal class SelfHostedSemanticTranslationProvider(
         if (sources.any { it.role !in AUTHORITATIVE_MERGE_ROLES }) return false
         return sources.zipWithNext().all { (first, second) ->
             val fontCompatibility = fontCompatibility(first, second)
-            fontCompatibility != FontCompatibility.INCOMPATIBLE &&
-                (fontCompatibility != FontCompatibility.RELAXED ||
-                    first.role == second.role && hasContinuousOcrBoundary(first, second)) &&
+            fontCompatibility == FontCompatibility.STRONG &&
                 (first.role == second.role ||
                     hasContinuousOcrBoundary(first, second) ||
                     hasVisualContinuationBoundary(first, second))

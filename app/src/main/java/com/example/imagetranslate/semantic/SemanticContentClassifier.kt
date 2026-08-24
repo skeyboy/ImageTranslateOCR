@@ -7,7 +7,16 @@ internal object SemanticContentClassifier {
     fun isStandaloneMetadata(text: String): Boolean {
         val normalized = normalize(text)
         return isStandaloneTemporalValue(normalized) ||
-            SENDER_METADATA.matches(normalized) || looksLikeAuthorDateMetadata(normalized)
+            SENDER_METADATA.matches(normalized) || looksLikeAuthorDateMetadata(normalized) ||
+            isDiscussionThreadMetadata(normalized)
+    }
+
+    fun isDiscussionThreadMetadata(text: String): Boolean {
+        val normalized = normalize(text).lowercase()
+        val hasAge = "minute ago" in normalized || "minutes ago" in normalized
+        val hasNavigation = "parent" in normalized && "context" in normalized
+        val hasSubject = "on:" in normalized || "on：" in normalized
+        return hasAge && hasNavigation && hasSubject
     }
 
     fun shouldPreserve(role: String, text: String): Boolean {
@@ -18,7 +27,7 @@ internal object SemanticContentClassifier {
         return when (role) {
             "CODE", "IDENTIFIER", "CONTROL" -> true
             "TIMESTAMP" -> isStandaloneTemporalValue(text)
-            "METADATA" -> isStandaloneMetadata(text)
+            "METADATA" -> isStandaloneMetadata(text) && !isDiscussionThreadMetadata(text)
             else -> isStandaloneNumericIdentifier(visible)
         }
     }

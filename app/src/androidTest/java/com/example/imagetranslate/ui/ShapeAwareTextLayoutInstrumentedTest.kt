@@ -115,8 +115,9 @@ class ShapeAwareTextLayoutInstrumentedTest {
         )
 
         assertNotNull(result)
-        assertEquals(ShapeAwareTextOutcome.COMPACT, result!!.outcome)
+        assertTrue(result!!.outcome != ShapeAwareTextOutcome.OVERFLOW_MORE)
         assertEquals(translation, result.displayedText)
+        assertEquals(1f, result.lineSpacingMultiplier)
     }
 
     @Test
@@ -153,7 +154,7 @@ class ShapeAwareTextLayoutInstrumentedTest {
     }
 
     @Test
-    fun keepsActualPageFlowInTheLeadingSlotByCompactingBeforeSkippingIt() {
+    fun skipsLeadingSlotThatCannotFitAtSafeLineSpacing() {
         val leading = Rect(34, 2041, 1008, 2109)
         val result = ShapeAwareTextLayout.layout(
             text = "与此同时，老挝农业与环境部下属的气象与水文局于周三发出警告称，" +
@@ -171,8 +172,8 @@ class ShapeAwareTextLayoutInstrumentedTest {
         )
 
         assertNotNull(result)
-        assertEquals(leading, result!!.segments.first().bounds)
-        assertTrue(result.segments.size >= 2)
+        assertEquals(Rect(27, 2154, 1402, 2986), result!!.segments.first().bounds)
+        assertEquals(1f, result.lineSpacingMultiplier)
         assertTrue(result.outcome != ShapeAwareTextOutcome.OVERFLOW_MORE)
         assertEquals(
             "与此同时，老挝农业与环境部下属的气象与水文局于周三发出警告称，" +
@@ -183,7 +184,7 @@ class ShapeAwareTextLayoutInstrumentedTest {
     }
 
     @Test
-    fun distributesImageWrappedTranslationAcrossEveryDeclaredFlowSlot() {
+    fun rejectsImageWrappedFlowThatRequiresUnsafeLineSpacing() {
         val slots = listOf(
             Rect(727, 1596, 1311, 1644),
             Rect(674, 1661, 1410, 1992),
@@ -203,14 +204,7 @@ class ShapeAwareTextLayoutInstrumentedTest {
             requireAllSlots = true
         )
 
-        assertNotNull(result)
-        assertEquals(slots, result!!.segments.map { segment -> segment.bounds })
-        assertEquals(ShapeAwareTextOutcome.COMPACT, result.outcome)
-        assertEquals(
-            "一场无声的斗争正在我们的大学中激烈进行，这并非关于金钱或权力的争端。" +
-                "这是关于认可的问题，具体而言是关于哪些学术工作被认为是有价值的。",
-            result.displayedText
-        )
+        assertEquals(null, result)
     }
 
     private data class LayoutArguments(val text: String) {

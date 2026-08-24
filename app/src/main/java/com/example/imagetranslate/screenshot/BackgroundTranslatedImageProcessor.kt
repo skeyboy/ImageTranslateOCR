@@ -74,6 +74,10 @@ internal data class BackgroundTranslatedOverlayResult(
     val sourceWidth: Int,
     val sourceHeight: Int,
     val recognizedCount: Int,
+    val rawRecognizedCount: Int = recognizedCount,
+    val edgeFilteredCount: Int = 0,
+    val edgeRecoveredCount: Int = 0,
+    val continuationCount: Int = 0,
     val translatedRegionCount: Int,
     val failedCount: Int,
     val requestedSegmentation: LiveRecognitionSegmentation,
@@ -113,12 +117,17 @@ internal data class BackgroundTranslatedOverlayResult(
     val retainedLatinRatio: Float = 0f,
     val suspiciousJoinCount: Int = 0,
     val largestPatchAreaRatio: Float = 0f,
+    val renderFailures: List<LiveRenderFailureDiagnostic> = emptyList(),
     val translationTraces: List<SemanticTranslationTrace> = emptyList()
 ) {
     fun metrics(): LiveRecognitionRunMetrics = LiveRecognitionRunMetrics(
         requestedSegmentation = requestedSegmentation,
         appliedStrategy = appliedStrategy,
         recognizedCount = recognizedCount,
+        rawRecognizedCount = rawRecognizedCount,
+        edgeFilteredCount = edgeFilteredCount,
+        edgeRecoveredCount = edgeRecoveredCount,
+        continuationCount = continuationCount,
         translatedRegionCount = translatedRegionCount,
         patchCount = patches.size,
         failedCount = failedCount,
@@ -203,6 +212,10 @@ internal data class SmartAssistDisplayHints(
 
 private data class BackgroundTranslationBatch(
     val recognizedCount: Int,
+    val rawRecognizedCount: Int = recognizedCount,
+    val edgeFilteredCount: Int = 0,
+    val edgeRecoveredCount: Int = 0,
+    val continuationCount: Int = 0,
     val regions: List<BackgroundImageRegion>,
     val failedCount: Int,
     val ocrMs: Long = 0L,
@@ -213,6 +226,12 @@ private data class BackgroundTranslationBatch(
     val smartAssistProtectedCount: Int = 0,
     val smartAssistMs: Long = 0L,
     val translationTraces: List<SemanticTranslationTrace> = emptyList()
+)
+
+private data class SemanticGroupingResult(
+    val groups: List<SemanticTextGroup>,
+    val edgeFilteredCount: Int = 0,
+    val continuationCount: Int = 0
 )
 
 private data class SmartAssistApplication(
@@ -274,8 +293,11 @@ internal data class LiveDeterministicTranslationRegion(
     val translation: String,
     val bounds: Rect,
     val sourceLineBounds: List<Rect> = emptyList(),
+    val sourceTextHeightsPx: List<Float> = emptyList(),
     val renderSlots: List<Rect> = emptyList(),
-    val displayHints: SmartAssistDisplayHints? = null
+    val sourceCoverSlots: List<Rect> = emptyList(),
+    val displayHints: SmartAssistDisplayHints? = null,
+    val groupId: String? = null
 )
 
 internal data class LiveRenderedTextEvidence(
@@ -283,11 +305,29 @@ internal data class LiveRenderedTextEvidence(
     val textSizePx: Float,
     val sourceLineHeightPx: Float,
     val textScale: Float,
+    val lineSpacingMultiplier: Float,
     val lineCount: Int,
+    val usedRenderSlotCount: Int,
     val layoutHeightPx: Int,
     val availableHeightPx: Int,
     val clipped: Boolean,
     val contrastRatio: Float
+)
+
+internal data class LiveRenderFailureDiagnostic(
+    val groupId: String?,
+    val reason: String,
+    val layoutShape: String?,
+    val renderSlots: List<Rect>,
+    val sourceCoverSlots: List<Rect>,
+    val sourceLineHeightPx: Float,
+    val preferredTextSizePx: Float,
+    val minimumAttemptedTextSizePx: Float,
+    val lastAttemptedTextSizePx: Float,
+    val maximumLines: Int,
+    val requireAllSlots: Boolean,
+    val allowMore: Boolean,
+    val attemptedLineSpacingMultipliers: List<Float>
 )
 
 internal data class LiveDeterministicOverlayResult(
@@ -296,6 +336,7 @@ internal data class LiveDeterministicOverlayResult(
     val expectedRegionCount: Int,
     val renderedRegionCount: Int,
     val failedRegionCount: Int,
+    val renderFailures: List<LiveRenderFailureDiagnostic>,
     val renderingMs: Long
 )
 
@@ -392,6 +433,7 @@ internal class BackgroundTranslatedImageProcessor(
     private var liveOverlaySnapshot: LiveOverlaySnapshot? = null
     private var nextTrackId = 1L
     private var lastDifferentialFallbackReason: String? = null
+    private var liveOcrObscuredBounds: List<Rect> = emptyList()
     private val liveNetworkSessionId = UUID.randomUUID().toString()
     private val integratedEngineRegistry = LiveOcrTranslationEngineRegistry(appContext)
     @Volatile
@@ -504,10 +546,12 @@ internal class BackgroundTranslatedImageProcessor(
         executionProfile: LiveRecognitionExecutionProfile = LiveRecognitionExecutionProfile.CURRENT,
         drawPatchBackgrounds: Boolean = true,
         smartAssistEnabled: Boolean = false,
+        obscuredBoundsAtCapture: List<Rect> = emptyList(),
         onRecognitionSucceeded: (Int) -> Unit = {}
     ): BackgroundTranslatedOverlayResult {
         check(!closed) { "Image processor is closed" }
         return try {
+            liveOcrObscuredBounds = obscuredBoundsAtCapture.map(::Rect)
             lastDifferentialFallbackReason = null
             val recognitionStartedAt = SystemClock.elapsedRealtime()
             val usesIntegratedNetworkEngine =
@@ -578,6 +622,9 @@ internal class BackgroundTranslatedImageProcessor(
                 ScreenThemeColorEstimator.estimate(bitmap),
                 overlayAlpha
             )
+            val renderFailures = java.util.Collections.synchronizedList(
+                mutableListOf<LiveRenderFailureDiagnostic>()
+            )
             val renderedPatches = renderOverlayPatches(
                 bitmap = bitmap,
                 regions = displayRegions,
@@ -585,7 +632,8 @@ internal class BackgroundTranslatedImageProcessor(
                 overlayAlpha = overlayAlpha,
                 renderingMode = executionProfile.renderingMode,
                 backgroundMode = executionProfile.backgroundMode,
-                drawPatchBackgrounds = drawPatchBackgrounds
+                drawPatchBackgrounds = drawPatchBackgrounds,
+                failureSink = renderFailures::add
             )
             val patches = mergeOverlappingPatches(renderedPatches.map(RenderedOverlayPatch::patch))
             val renderedArea = renderedPatches.sumOf { rendered ->
@@ -614,6 +662,10 @@ internal class BackgroundTranslatedImageProcessor(
                 sourceWidth = bitmap.width,
                 sourceHeight = bitmap.height,
                 recognizedCount = batch.recognizedCount,
+                rawRecognizedCount = batch.rawRecognizedCount,
+                edgeFilteredCount = batch.edgeFilteredCount,
+                edgeRecoveredCount = batch.edgeRecoveredCount,
+                continuationCount = batch.continuationCount,
                 translatedRegionCount = displayRegions.size,
                 failedCount = batch.failedCount + (displayRegions.size - renderedPatches.size),
                 requestedSegmentation = segmentation,
@@ -684,6 +736,7 @@ internal class BackgroundTranslatedImageProcessor(
                 retainedLatinRatio = textQuality.retainedLatinRatio,
                 suspiciousJoinCount = textQuality.suspiciousJoinCount,
                 largestPatchAreaRatio = largestPatchAreaRatio,
+                renderFailures = renderFailures.toList(),
                 translationTraces = batch.translationTraces
             ).also { result ->
                 if (!usesIntegratedNetworkEngine &&
@@ -696,6 +749,7 @@ internal class BackgroundTranslatedImageProcessor(
                 }
             }
         } finally {
+            liveOcrObscuredBounds = emptyList()
             if (!reuseResources) close()
         }
     }
@@ -711,6 +765,9 @@ internal class BackgroundTranslatedImageProcessor(
         val renderEvidence = java.util.Collections.synchronizedList(
             mutableListOf<LiveRenderedTextEvidence>()
         )
+        val renderFailures = java.util.Collections.synchronizedList(
+            mutableListOf<LiveRenderFailureDiagnostic>()
+        )
         val displayRegions = regions.map { region ->
             BackgroundImageRegion(
                 source = RecognizedText(
@@ -720,11 +777,14 @@ internal class BackgroundTranslatedImageProcessor(
                     passCount = 2,
                     modelConfidence = 1f,
                     recognizerScript = RecognizerScript.LATIN,
-                    componentBounds = region.sourceLineBounds.map(::Rect)
+                    componentBounds = region.sourceLineBounds.map(::Rect),
+                    componentTextHeightsPx = region.sourceTextHeightsPx
                 ),
                 translation = region.translation,
+                groupId = region.groupId,
                 smartAssistDisplayHints = region.displayHints,
-                renderSlots = region.renderSlots.map(::Rect)
+                renderSlots = region.renderSlots.map(::Rect),
+                sourceCoverSlots = region.sourceCoverSlots.map(::Rect)
             )
         }
         val startedAtMs = SystemClock.elapsedRealtime()
@@ -740,7 +800,8 @@ internal class BackgroundTranslatedImageProcessor(
             renderingMode = executionProfile.renderingMode,
             backgroundMode = executionProfile.backgroundMode,
             drawPatchBackgrounds = drawPatchBackgrounds,
-            evidenceSink = renderEvidence::add
+            evidenceSink = renderEvidence::add,
+            failureSink = renderFailures::add
         )
         val patches = mergeOverlappingPatches(rendered.map(RenderedOverlayPatch::patch))
         return LiveDeterministicOverlayResult(
@@ -751,6 +812,7 @@ internal class BackgroundTranslatedImageProcessor(
             expectedRegionCount = regions.size,
             renderedRegionCount = rendered.size,
             failedRegionCount = (regions.size - rendered.size).coerceAtLeast(0),
+            renderFailures = renderFailures.toList(),
             renderingMs = SystemClock.elapsedRealtime() - startedAtMs
         )
     }
@@ -895,7 +957,7 @@ internal class BackgroundTranslatedImageProcessor(
             .forEach { group ->
                 val ids = group.regionIds.filter { it !in protectedIds && it !in consumed }
                 val sources = ids.mapNotNull(sourcesById::get)
-                if (sources.size < 2) return@forEach
+                if (sources.size < 2 || !hasCompatibleTypography(sources)) return@forEach
                 contextual += mergeLiveTextLines(sources)
                 consumed += ids
             }
@@ -909,6 +971,18 @@ internal class BackgroundTranslatedImageProcessor(
             groupCount = outcome.groupCount,
             protectedCount = protectedIds.size
         )
+    }
+
+    private fun hasCompatibleTypography(sources: List<RecognizedText>): Boolean {
+        val heights = sources.flatMap { source ->
+            source.componentTextHeightsPx.ifEmpty {
+                listOfNotNull(source.estimatedTextHeightPx)
+            }
+        }
+            .filter { it > 0f }
+        if (heights.size < 2) return true
+        return heights.min() / heights.max().coerceAtLeast(1f) >=
+            MINIMUM_CONTEXTUAL_FONT_SCALE_RATIO
     }
 
     private fun RecognizedText.toSmartAssistRegion(
@@ -955,7 +1029,7 @@ internal class BackgroundTranslatedImageProcessor(
         } else {
             croppedBitmap
         }
-        val rawRecognized = try {
+        val initialRawRecognized = try {
             val localRecognized = if (fastOcr) {
                 ocrManager.recognizeFast(ocrBitmap, preferredRecognitionMode ?: recognitionMode)
             } else {
@@ -985,12 +1059,35 @@ internal class BackgroundTranslatedImageProcessor(
             if (ocrBitmap !== croppedBitmap && !ocrBitmap.isRecycled) ocrBitmap.recycle()
             if (croppedBitmap !== bitmap && !croppedBitmap.isRecycled) croppedBitmap.recycle()
         }
+        val contentViewport = resolveLiveContentViewport(bitmap)
+        val edgeRecovered = if (fastOcr && recognitionBounds == null) {
+            recoverMissingLiveEdgeText(
+                bitmap = bitmap,
+                recognized = initialRawRecognized,
+                recognitionMode = preferredRecognitionMode ?: recognitionMode,
+                viewport = contentViewport
+            )
+        } else {
+            emptyList()
+        }
+        val rawRecognized = initialRawRecognized + edgeRecovered
         onRecognitionSucceeded(rawRecognized.size)
-        val initialGroups = groupSemanticText(
+        val initialGrouping = groupSemanticText(
             recognized = rawRecognized,
             sourceWidth = bitmap.width,
             sourceHeight = bitmap.height,
-            restrictToLiveContent = fastOcr
+            restrictToLiveContent = fastOcr,
+            contentViewport = contentViewport
+        )
+        Log.i(
+            TAG,
+            "Live OCR filtering: rawRecognized=${initialRawRecognized.size}, " +
+                "edgeRecovered=${edgeRecovered.size}, " +
+                "edgeFiltered=${initialGrouping.edgeFilteredCount}, " +
+                "continuations=${initialGrouping.continuationCount}, " +
+                "retained=${initialGrouping.groups.sumOf { it.members.size }}, " +
+                "contentBounds=${contentViewport.bounds}, " +
+                "obscuredBounds=${contentViewport.obscuredBounds}"
         )
         val ocrMs = SystemClock.elapsedRealtime() - ocrStartedAt
         val smartAssistStartedAt = SystemClock.elapsedRealtime()
@@ -998,10 +1095,12 @@ internal class BackgroundTranslatedImageProcessor(
             prepareContextualTranslationSources(
                 bitmap.width,
                 bitmap.height,
-                initialGroups.map(SemanticTextGroup::toRecognizedText)
+                initialGrouping.groups.map(SemanticTextGroup::toRecognizedText)
             )
         } else {
-            ContextualTranslationSources(initialGroups.map(SemanticTextGroup::toRecognizedText))
+            ContextualTranslationSources(
+                initialGrouping.groups.map(SemanticTextGroup::toRecognizedText)
+            )
         }
         val smartAssistMs = if (smartAssistEnabled) {
             SystemClock.elapsedRealtime() - smartAssistStartedAt
@@ -1030,6 +1129,10 @@ internal class BackgroundTranslatedImageProcessor(
         val translationMs = SystemClock.elapsedRealtime() - translationStartedAt
         return BackgroundTranslationBatch(
             recognizedCount = rawRecognized.size,
+            rawRecognizedCount = initialRawRecognized.size,
+            edgeFilteredCount = initialGrouping.edgeFilteredCount,
+            edgeRecoveredCount = edgeRecovered.size,
+            continuationCount = initialGrouping.continuationCount,
             regions = outcomes.mapNotNull(TranslationOutcome::region),
             failedCount = outcomes.count(TranslationOutcome::failed),
             ocrMs = ocrMs,
@@ -1041,6 +1144,47 @@ internal class BackgroundTranslatedImageProcessor(
             smartAssistMs = smartAssistMs,
             translationTraces = outcomes.mapNotNull(TranslationOutcome::semanticTrace).distinct()
         )
+    }
+
+    private suspend fun recoverMissingLiveEdgeText(
+        bitmap: Bitmap,
+        recognized: List<RecognizedText>,
+        recognitionMode: OcrRecognitionMode,
+        viewport: LiveOcrContentViewport
+    ): List<RecognizedText> {
+        val recovered = mutableListOf<RecognizedText>()
+        LiveOcrContentPolicy.recoveryBands(recognized, viewport).forEach { (band, _) ->
+            val crop = Bitmap.createBitmap(
+                bitmap,
+                band.left,
+                band.top,
+                band.right - band.left,
+                band.bottom - band.top
+            )
+            val local = try {
+                ocrManager.recognize(crop, recognitionMode)
+            } finally {
+                if (!crop.isRecycled) crop.recycle()
+            }
+            local.map { item ->
+                item.copy(
+                    bounds = Rect(item.bounds).apply { offset(band.left, band.top) },
+                    componentBounds = item.componentBounds.map { component ->
+                        Rect(component).apply { offset(band.left, band.top) }
+                    },
+                    continuationAtTop = item.continuationAtTop,
+                    continuationAtBottom = item.continuationAtBottom
+                )
+            }.forEach { candidate ->
+                if ((recognized + recovered).none { existing ->
+                        LiveOcrContentPolicy.isDuplicate(candidate, existing)
+                    }
+                ) {
+                    recovered += candidate
+                }
+            }
+        }
+        return recovered
     }
 
     private suspend fun translateRegions(
@@ -1248,6 +1392,10 @@ internal class BackgroundTranslatedImageProcessor(
             }
         return BackgroundTranslationBatch(
             recognizedCount = batches.sumOf(BackgroundTranslationBatch::recognizedCount),
+            rawRecognizedCount = batches.sumOf(BackgroundTranslationBatch::rawRecognizedCount),
+            edgeFilteredCount = batches.sumOf(BackgroundTranslationBatch::edgeFilteredCount),
+            edgeRecoveredCount = batches.sumOf(BackgroundTranslationBatch::edgeRecoveredCount),
+            continuationCount = batches.sumOf(BackgroundTranslationBatch::continuationCount),
             regions = mergedRegions.take(MAX_LIVE_TRANSLATION_TEXTS),
             failedCount = batches.sumOf(BackgroundTranslationBatch::failedCount),
             ocrMs = batches.sumOf(BackgroundTranslationBatch::ocrMs),
@@ -1301,8 +1449,9 @@ internal class BackgroundTranslatedImageProcessor(
         }
 
         val shiftY = capturePlan.contentShiftY
-        val contentTop = (bitmap.height * LIVE_CONTENT_TOP_RATIO).toInt()
-        val contentBottom = (bitmap.height * LIVE_CONTENT_BOTTOM_RATIO).toInt()
+        val liveContentBounds = resolveLiveContentViewport(bitmap).bounds
+        val contentTop = liveContentBounds.top
+        val contentBottom = liveContentBounds.bottom
         val hasClippedContinuation = snapshot.regions.any { cached ->
             val shiftedBounds = Rect(cached.region.source.bounds).apply { offset(0, shiftY) }
             shiftedBounds.bottom > contentTop && shiftedBounds.top < contentBottom &&
@@ -1467,6 +1616,17 @@ internal class BackgroundTranslatedImageProcessor(
             batch = BackgroundTranslationBatch(
                 recognizedCount = reused.size + restoredBoundary.size +
                     recognitionBatches.sumOf(BackgroundTranslationBatch::recognizedCount),
+                rawRecognizedCount = reused.size + restoredBoundary.size +
+                    recognitionBatches.sumOf(BackgroundTranslationBatch::rawRecognizedCount),
+                edgeFilteredCount = recognitionBatches.sumOf(
+                    BackgroundTranslationBatch::edgeFilteredCount
+                ),
+                edgeRecoveredCount = recognitionBatches.sumOf(
+                    BackgroundTranslationBatch::edgeRecoveredCount
+                ),
+                continuationCount = recognitionBatches.sumOf(
+                    BackgroundTranslationBatch::continuationCount
+                ),
                 regions = combined.sortedWith(
                     compareBy({ it.source.bounds.top }, { it.source.bounds.left })
                 ).take(MAX_LIVE_TRANSLATION_TEXTS),
@@ -1506,6 +1666,14 @@ internal class BackgroundTranslatedImageProcessor(
         return null
     }
 
+    private fun resolveLiveContentViewport(bitmap: Bitmap): LiveOcrContentViewport =
+        LiveOcrContentViewportResolver.resolve(
+            context = appContext,
+            frameWidth = bitmap.width,
+            frameHeight = bitmap.height,
+            obscuredBounds = liveOcrObscuredBounds
+        )
+
     private suspend fun renderOverlayPatches(
         bitmap: Bitmap,
         regions: List<BackgroundImageRegion>,
@@ -1514,7 +1682,8 @@ internal class BackgroundTranslatedImageProcessor(
         renderingMode: LivePatchRenderingMode,
         backgroundMode: LivePatchBackgroundMode,
         drawPatchBackgrounds: Boolean,
-        evidenceSink: ((LiveRenderedTextEvidence) -> Unit)? = null
+        evidenceSink: ((LiveRenderedTextEvidence) -> Unit)? = null,
+        failureSink: ((LiveRenderFailureDiagnostic) -> Unit)? = null
     ): List<RenderedOverlayPatch> = when (renderingMode) {
         LivePatchRenderingMode.SEQUENTIAL -> regions.mapNotNull { region ->
             createOverlayPatch(
@@ -1524,7 +1693,8 @@ internal class BackgroundTranslatedImageProcessor(
                 overlayAlpha,
                 backgroundMode,
                 drawPatchBackgrounds,
-                evidenceSink
+                evidenceSink,
+                failureSink
             )
         }
         LivePatchRenderingMode.PARALLEL -> coroutineScope {
@@ -1537,7 +1707,8 @@ internal class BackgroundTranslatedImageProcessor(
                         overlayAlpha,
                         backgroundMode,
                         drawPatchBackgrounds,
-                        evidenceSink
+                        evidenceSink,
+                        failureSink
                     )
                 }
             }.awaitAll().filterNotNull()
@@ -1662,9 +1833,15 @@ internal class BackgroundTranslatedImageProcessor(
         overlayAlpha: Float,
         backgroundMode: LivePatchBackgroundMode,
         drawPatchBackground: Boolean,
-        evidenceSink: ((LiveRenderedTextEvidence) -> Unit)? = null
+        evidenceSink: ((LiveRenderedTextEvidence) -> Unit)? = null,
+        failureSink: ((LiveRenderFailureDiagnostic) -> Unit)? = null
     ): RenderedOverlayPatch? {
-        val sourceBounds = region.source.bounds.clampedTo(bitmap) ?: return null
+        val sourceBounds = region.source.bounds.clampedTo(bitmap) ?: run {
+            failureSink?.invoke(
+                basicRenderFailure(region, "INVALID_SOURCE_BOUNDS")
+            )
+            return null
+        }
         val material = LiveOverlayLayoutPolicy.translationMaterialBounds(
             textBounds = LivePatchBounds(
                 index = 0,
@@ -1864,6 +2041,18 @@ internal class BackgroundTranslatedImageProcessor(
                             }
                         )
                     )
+                },
+                failureSink = { failure ->
+                    failureSink?.invoke(
+                        failure.copy(
+                            renderSlots = failure.renderSlots.map { slot ->
+                                Rect(slot).apply { offset(cropBounds.left, cropBounds.top) }
+                            },
+                            sourceCoverSlots = failure.sourceCoverSlots.map { slot ->
+                                Rect(slot).apply { offset(cropBounds.left, cropBounds.top) }
+                            }
+                        )
+                    )
                 }
             )
             if (rendered.isEmpty()) {
@@ -1898,6 +2087,9 @@ internal class BackgroundTranslatedImageProcessor(
                 }
             }
         } catch (error: Exception) {
+            failureSink?.invoke(
+                basicRenderFailure(region, "RENDER_EXCEPTION")
+            )
             Log.w(
                 TAG,
                 "Unable to render translated group " +
@@ -1914,22 +2106,49 @@ internal class BackgroundTranslatedImageProcessor(
         }
     }
 
+    private fun basicRenderFailure(
+        region: BackgroundImageRegion,
+        reason: String
+    ) = LiveRenderFailureDiagnostic(
+        groupId = region.groupId,
+        reason = reason,
+        layoutShape = region.smartAssistDisplayHints?.layoutShape,
+        renderSlots = region.renderSlots.map(::Rect),
+        sourceCoverSlots = region.sourceCoverSlots.map(::Rect),
+        sourceLineHeightPx = 0f,
+        preferredTextSizePx = 0f,
+        minimumAttemptedTextSizePx = 0f,
+        lastAttemptedTextSizePx = 0f,
+        maximumLines = region.smartAssistDisplayHints?.preferredMaxLines ?: 0,
+        requireAllSlots = false,
+        allowMore = region.smartAssistDisplayHints?.allowMore == true,
+        attemptedLineSpacingMultipliers = listOf(1f)
+    )
+
     private fun groupSemanticText(
         recognized: List<RecognizedText>,
         sourceWidth: Int,
         sourceHeight: Int,
-        restrictToLiveContent: Boolean
-    ): List<SemanticTextGroup> {
-        val candidates = if (restrictToLiveContent) {
-            val contentTop = (sourceHeight * LIVE_CONTENT_TOP_RATIO).toInt()
-            val contentBottom = (sourceHeight * LIVE_CONTENT_BOTTOM_RATIO).toInt()
-            recognized.filter { item ->
-                item.bounds.centerY() in contentTop until contentBottom
-            }
+        restrictToLiveContent: Boolean,
+        contentViewport: LiveOcrContentViewport? = null
+    ): SemanticGroupingResult {
+        val filtered = if (restrictToLiveContent) {
+            LiveOcrContentPolicy.filter(
+                recognized,
+                requireNotNull(contentViewport) { "Live OCR requires a resolved content viewport" }
+            )
         } else {
-            StaticImageTextFilter.filter(recognized, sourceWidth, sourceHeight)
+            LiveOcrContentFilterResult(
+                retained = StaticImageTextFilter.filter(recognized, sourceWidth, sourceHeight),
+                edgeFilteredCount = 0,
+                continuationCount = 0
+            )
         }
-        return SemanticTextGrouper.group(candidates, sourceWidth, sourceHeight)
+        return SemanticGroupingResult(
+            groups = SemanticTextGrouper.group(filtered.retained, sourceWidth, sourceHeight),
+            edgeFilteredCount = filtered.edgeFilteredCount,
+            continuationCount = filtered.continuationCount
+        )
     }
 
     private fun mergeLiveTextLines(lines: List<RecognizedText>): RecognizedText {
@@ -1945,6 +2164,13 @@ internal class BackgroundTranslatedImageProcessor(
             .flatMap(RecognizedText::textEraseBounds)
             .distinct()
             .map(::Rect)
+        val componentTextHeights = ordered.flatMap { item ->
+            val bounds = item.textEraseBounds()
+            item.componentTextHeightsPx.takeIf { it.size == bounds.size }
+                ?: List(bounds.size) {
+                    item.estimatedTextHeightPx ?: item.bounds.height().toFloat()
+                }
+        }
         return RecognizedText(
             text = ordered.joinToString("\n") { it.text.trim() },
             bounds = bounds,
@@ -1957,7 +2183,13 @@ internal class BackgroundTranslatedImageProcessor(
                 ?: RecognizerScript.FUSED,
             sourceBlockId = sourceBlockIds.singleOrNull(),
             sourceLineIndex = ordered.mapNotNull(RecognizedText::sourceLineIndex).minOrNull(),
-            componentBounds = componentBounds
+            componentBounds = componentBounds,
+            componentTextHeightsPx = componentTextHeights,
+            estimatedTextHeightPx = ordered.mapNotNull(RecognizedText::estimatedTextHeightPx)
+                .sorted().let { values -> values.getOrNull(values.size / 2) },
+            typographyConfidence = ordered.minOf(RecognizedText::typographyConfidence),
+            continuationAtTop = ordered.any(RecognizedText::continuationAtTop),
+            continuationAtBottom = ordered.any(RecognizedText::continuationAtBottom)
         )
     }
 
@@ -2047,6 +2279,7 @@ internal class BackgroundTranslatedImageProcessor(
         const val TAG = "BackgroundImageProcessor"
         const val MAX_IMAGE_TRANSLATION_TEXTS = 24
         const val MAX_LIVE_TRANSLATION_TEXTS = 32
+        const val MINIMUM_CONTEXTUAL_FONT_SCALE_RATIO = 0.78f
         const val MAX_TRANSLATION_CACHE_ENTRIES = 256
         const val MAXIMUM_CONTEXTUAL_REGION_COUNT = 4
         const val MAXIMUM_CONTEXTUAL_TEXT_LENGTH = 512
@@ -2056,8 +2289,6 @@ internal class BackgroundTranslatedImageProcessor(
         const val LOCAL_SURFACE_MAXIMUM_PADDING_PX = 36
         const val LOCAL_SURFACE_SAMPLE_GRID = 48
         const val LOCAL_SURFACE_MINIMUM_SAMPLES = 16
-        const val LIVE_CONTENT_TOP_RATIO = 0.08f
-        const val LIVE_CONTENT_BOTTOM_RATIO = 0.94f
         const val STRONG_REUSED_REGION_RATIO = 0.72f
         const val LUMINANCE_GRID_COLUMNS = 48
         const val LUMINANCE_GRID_ROWS = 80
@@ -2104,24 +2335,17 @@ private fun resolvedSourceCoverSlots(region: BackgroundImageRegion): List<Rect> 
     region.sourceCoverSlots.takeIf { it.isNotEmpty() }?.map(::Rect)
         ?: region.source.textEraseBounds().map(::Rect)
 
-private const val PARAGRAPH_COMPRESSION_RATIO = 0.75f
 private const val TARGET_GLYPH_SAMPLE_CHARACTERS = 64
-private const val MINIMUM_MERGED_FONT_SCALE_RATIO = 0.65f
+private const val MINIMUM_MERGED_FONT_SCALE_RATIO = 0.78f
 
 internal fun denseBodyRectFallback(
     renderSlots: List<Rect>,
     layoutShape: String?,
     sourceLineCount: Int,
     role: String?,
-    sourceText: String = "",
-    translatedText: String = ""
+    sourceTextHeightsPx: List<Float> = emptyList()
 ): Rect? {
-    val sourceCharacters = sourceText.count { !it.isWhitespace() }.coerceAtLeast(1)
-    val translatedCharacters = translatedText.count { !it.isWhitespace() }
-    val translationIsCompressed = translatedCharacters > 0 &&
-        translatedCharacters.toFloat() / sourceCharacters <= PARAGRAPH_COMPRESSION_RATIO
-    if ((role != "BODY" && !translationIsCompressed) ||
-        layoutShape != "FLOW_SLOTS" || renderSlots.size < 3 ||
+    if (role != "BODY" || layoutShape != "FLOW_SLOTS" || renderSlots.size < 3 ||
         sourceLineCount < 3
     ) return null
     val union = renderSlots.drop(1).fold(Rect(renderSlots.first())) { result, slot ->
@@ -2131,7 +2355,12 @@ internal fun denseBodyRectFallback(
     val heights = renderSlots.map(Rect::height).filter { it > 0 }.sorted()
     if (heights.isEmpty()) return null
     val typicalHeight = heights[heights.size / 2].coerceAtLeast(1)
-    val heightRatio = heights.first().toFloat() / heights.last().coerceAtLeast(1)
+    val validTextHeights = sourceTextHeightsPx.filter { it > 0f }
+    val heightRatio = if (validTextHeights.size >= 2) {
+        validTextHeights.min() / validTextHeights.max().coerceAtLeast(1f)
+    } else {
+        heights.first().toFloat() / heights.last().coerceAtLeast(1)
+    }
     if (heightRatio < MINIMUM_MERGED_FONT_SCALE_RATIO) return null
     val maximumGap = renderSlots.zipWithNext().maxOfOrNull { (first, second) ->
         second.top - first.bottom
@@ -2142,7 +2371,7 @@ internal fun denseBodyRectFallback(
     val leftTolerance = maxOf(typicalHeight * 2, union.width() * 12 / 100)
     if (leftRange > leftTolerance) return null
     val hasNarrowFinalLine = renderSlots.last().width() <= union.width() * 20 / 100
-    if (!hasNarrowFinalLine && !translationIsCompressed) return null
+    if (!hasNarrowFinalLine) return null
 
     val nonFinal = renderSlots.dropLast(1)
     val mainColumnWidth = union.width() * 72 / 100
@@ -2184,7 +2413,7 @@ internal fun resolvedVerticalTextOffset(
     val resolved = when (verticalAlignment.uppercase()) {
         "TOP" -> "TOP"
         "CENTER" -> "CENTER"
-        else -> if (sourceLineCount >= 3 && role in setOf("CODE", "LIST_ITEM")) {
+        else -> if (sourceLineCount >= 3 && role in setOf("BODY", "CODE", "LIST_ITEM")) {
             "TOP"
         } else {
             "CENTER"
@@ -2207,7 +2436,8 @@ private object BackgroundTranslatedImageRenderer {
         overlayAlpha: Float = ScreenThemeColorEstimator.DEFAULT_OVERLAY_ALPHA,
         overlayMaterialBounds: Rect? = null,
         drawOverlayBackground: Boolean = true,
-        evidenceSink: ((LiveRenderedTextEvidence) -> Unit)? = null
+        evidenceSink: ((LiveRenderedTextEvidence) -> Unit)? = null,
+        failureSink: ((LiveRenderFailureDiagnostic) -> Unit)? = null
     ): List<Rect> {
         val canvas = Canvas(bitmap)
         val renderedRegions = mutableListOf<Rect>()
@@ -2245,8 +2475,9 @@ private object BackgroundTranslatedImageRenderer {
                 layoutShape = region.smartAssistDisplayHints?.layoutShape,
                 sourceLineCount = sourceLineCount,
                 role = region.smartAssistDisplayHints?.role,
-                sourceText = region.source.text,
-                translatedText = region.translation
+                sourceTextHeightsPx = region.source.componentTextHeightsPx.ifEmpty {
+                    listOfNotNull(region.source.estimatedTextHeightPx)
+                }
             )
             val renderSlots = mergedBodyRect?.let(::listOf) ?: requestedRenderSlots
             val layoutMetrics = StaticImageTextLayoutPolicy.resolve(
@@ -2305,8 +2536,7 @@ private object BackgroundTranslatedImageRenderer {
                 maximumLines = maximumLines,
                 alignment = alignment,
                 horizontalPadding = horizontalPadding,
-                allowOverflowMore = region.smartAssistDisplayHints?.allowMore == true &&
-                    !isMultiLineRect,
+                allowOverflowMore = region.smartAssistDisplayHints?.allowMore == true,
                 lineSpacingMultipliers = region.smartAssistDisplayHints?.lineSpacingMultiplier
                     ?.let { preferred -> listOf(preferred, 1f, 0.92f, 0.86f).distinct() },
                 requireAllSlots = preserveFlowShape
@@ -2329,7 +2559,7 @@ private object BackgroundTranslatedImageRenderer {
                     alignment = alignment,
                     horizontalPadding = horizontalPadding,
                     allowOverflowMore = false,
-                    lineSpacingMultipliers = listOf(0.92f, 0.86f, 0.82f),
+                    lineSpacingMultipliers = listOf(1f),
                     requireAllSlots = preserveFlowShape
                 )?.takeIf { layout -> layout.segments.firstOrNull()?.bounds == renderSlots.first() }
             }
@@ -2355,11 +2585,40 @@ private object BackgroundTranslatedImageRenderer {
                         },
                         alignment = alignment,
                         horizontalPadding = horizontalPadding,
-                        allowOverflowMore = hints.allowMore && !isMultiLineRect,
-                        lineSpacingMultipliers = listOf(0.92f, 0.86f, 0.82f),
+                        allowOverflowMore = hints.allowMore,
+                        lineSpacingMultipliers = listOf(1f),
                         requireAllSlots = preserveFlowShape
                     )
                 }
+            val flowSlotPrefixRetry = if (
+                standardRetry == null &&
+                preserveFlowShape &&
+                region.smartAssistDisplayHints?.role == "BODY"
+            ) {
+                ShapeAwareTextLayout.layout(
+                    text = region.translation,
+                    paint = paint,
+                    renderSlots = renderSlots,
+                    preferredTextSizePx = preferredSize,
+                    minimumTextSizePx = maxOf(
+                        MINIMUM_TEXT_SIZE_PX,
+                        minimumSize * DECLARATIVE_LAYOUT_RETRY_SCALE
+                    ),
+                    maximumLines = maximumLines,
+                    alignment = alignment,
+                    horizontalPadding = horizontalPadding,
+                    allowOverflowMore = false,
+                    lineSpacingMultipliers = listOf(1f),
+                    requireAllSlots = false
+                )?.takeIf { layout ->
+                    layout.displayedText == region.translation &&
+                        layout.lineSpacingMultiplier >=
+                        ShapeAwareTextLayout.MINIMUM_SAFE_LINE_SPACING_MULTIPLIER &&
+                        layout.segments.firstOrNull()?.bounds == renderSlots.first()
+                }
+            } else {
+                null
+            }
             val rectRetry = if (standardRetry == null && isMultiLineRect) {
                 val hints = checkNotNull(region.smartAssistDisplayHints)
                 ShapeAwareTextLayout.layout(
@@ -2377,7 +2636,7 @@ private object BackgroundTranslatedImageRenderer {
                     // The regions-first server has already returned the whole translation.
                     // Prefer a smaller complete block over silently replacing it with "more".
                     allowOverflowMore = false,
-                    lineSpacingMultipliers = listOf(0.86f, 0.80f, 0.74f),
+                    lineSpacingMultipliers = listOf(1f),
                     requireAllSlots = false
                 )
             } else {
@@ -2396,62 +2655,14 @@ private object BackgroundTranslatedImageRenderer {
                     alignment = alignment,
                     horizontalPadding = horizontalPadding,
                     allowOverflowMore = false,
-                    lineSpacingMultipliers = listOf(0.74f, 0.68f),
+                    lineSpacingMultipliers = listOf(1f),
                     requireAllSlots = false
                 )
             } else {
                 null
             }
-            val emergencyRectRetry = if (
-                forcedRectRetry == null && rectRetry == null && standardRetry == null &&
-                isMultiLineRect
-            ) {
-                ShapeAwareTextLayout.layout(
-                    text = region.translation,
-                    paint = paint,
-                    renderSlots = renderSlots,
-                    preferredTextSizePx = preferredSize,
-                    minimumTextSizePx = EMERGENCY_RECT_MINIMUM_TEXT_SIZE_PX,
-                    maximumLines = EMERGENCY_RECT_MAXIMUM_LINES,
-                    alignment = alignment,
-                    horizontalPadding = 0,
-                    allowOverflowMore = false,
-                    lineSpacingMultipliers = listOf(0.68f, 0.60f, 0.54f),
-                    requireAllSlots = false
-                )
-            } else {
-                null
-            }
-            val emergencyMergedSlot = if (
-                renderSlots.size > 1 && sourceLineCount >= RECT_FALLBACK_MINIMUM_SOURCE_LINES &&
-                translatedCharacterCount >= RECT_FALLBACK_MINIMUM_CHARACTERS
-            ) {
-                renderSlots.drop(1).fold(Rect(renderSlots.first())) { union, slot ->
-                    union.apply { union(slot) }
-                }
-            } else {
-                null
-            }
-            val shapedLayout = leadingSlotRetry ?: standardRetry ?: rectRetry ?:
-                forcedRectRetry ?: emergencyRectRetry ?: if (isMultiLineRect) {
-                    emergencyStaticRectLayout(
-                        text = region.translation,
-                        paint = paint,
-                        slot = renderSlots.single(),
-                        preferredTextSizePx = preferredSize,
-                        alignment = alignment
-                    )
-                } else if (emergencyMergedSlot != null) {
-                    emergencyStaticRectLayout(
-                        text = region.translation,
-                        paint = paint,
-                        slot = emergencyMergedSlot,
-                        preferredTextSizePx = preferredSize,
-                        alignment = alignment
-                    )
-                } else {
-                    null
-                }
+            val shapedLayout = leadingSlotRetry ?: standardRetry ?: flowSlotPrefixRetry ?: rectRetry ?:
+                forcedRectRetry
             if (leadingSlotRetry != null) {
                 Log.d(
                     TAG,
@@ -2459,7 +2670,16 @@ private object BackgroundTranslatedImageRenderer {
                         "id=${region.groupId ?: "unknown"}, slots=${renderSlots.size}"
                 )
             }
-            val relaxedRectLayout = rectRetry ?: forcedRectRetry ?: emergencyRectRetry
+            if (flowSlotPrefixRetry != null) {
+                Log.i(
+                    TAG,
+                    "Applied safe FLOW_SLOTS prefix fallback " +
+                        "id=${region.groupId ?: "unknown"}, " +
+                        "usedSlots=${flowSlotPrefixRetry.segments.size}/${renderSlots.size}, " +
+                        "lineSpacing=${flowSlotPrefixRetry.lineSpacingMultiplier}"
+                )
+            }
+            val relaxedRectLayout = rectRetry ?: forcedRectRetry
             if (relaxedRectLayout != null) {
                 Log.i(
                     TAG,
@@ -2468,16 +2688,31 @@ private object BackgroundTranslatedImageRenderer {
                         "${relaxedRectLayout.textSizePx / sourceLineHeight.coerceAtLeast(1f)}"
                 )
             }
-            if (shapedLayout != null && emergencyMergedSlot != null &&
-                shapedLayout.segments.singleOrNull()?.bounds == emergencyMergedSlot
-            ) {
-                Log.w(
-                    TAG,
-                    "Merged ${renderSlots.size} render slots for complete fallback " +
-                        "id=${region.groupId ?: "unknown"}, chars=${region.translation.length}"
-                )
-            }
             if (shapedLayout == null) {
+                failureSink?.invoke(
+                    LiveRenderFailureDiagnostic(
+                        groupId = region.groupId,
+                        reason = "TEXT_DOES_NOT_FIT",
+                        layoutShape = region.smartAssistDisplayHints?.layoutShape,
+                        renderSlots = renderSlots.map(::Rect),
+                        sourceCoverSlots = sourceCoverSlots.map(::Rect),
+                        sourceLineHeightPx = sourceLineHeight,
+                        preferredTextSizePx = preferredSize,
+                        minimumAttemptedTextSizePx = if (isMultiLineRect) {
+                            MINIMUM_TEXT_SIZE_PX
+                        } else {
+                            maxOf(
+                                MINIMUM_TEXT_SIZE_PX,
+                                minimumSize * DECLARATIVE_LAYOUT_RETRY_SCALE
+                            )
+                        },
+                        lastAttemptedTextSizePx = paint.textSize,
+                        maximumLines = maximumLines,
+                        requireAllSlots = preserveFlowShape,
+                        allowMore = region.smartAssistDisplayHints?.allowMore == true,
+                        attemptedLineSpacingMultipliers = listOf(1f)
+                    )
+                )
                 Log.w(
                     TAG,
                     "Restoring source because translated text does not fit " +
@@ -2518,7 +2753,9 @@ private object BackgroundTranslatedImageRenderer {
                     textSizePx = shapedLayout.textSizePx,
                     sourceLineHeightPx = sourceLineHeight,
                     textScale = shapedLayout.textSizePx / sourceLineHeight.coerceAtLeast(1f),
+                    lineSpacingMultiplier = shapedLayout.lineSpacingMultiplier,
                     lineCount = shapedLayout.segments.sumOf { it.layout.lineCount },
+                    usedRenderSlotCount = shapedLayout.segments.size,
                     layoutHeightPx = shapedLayout.segments.sumOf { it.layout.height },
                     availableHeightPx = renderSlots.sumOf { it.height() },
                     clipped = false,
@@ -2548,50 +2785,6 @@ private object BackgroundTranslatedImageRenderer {
             renderedRegions.add(Rect(bounds))
         }
             return renderedRegions
-        }
-
-        private fun emergencyStaticRectLayout(
-            text: String,
-            paint: TextPaint,
-            slot: Rect,
-            preferredTextSizePx: Float,
-            alignment: Layout.Alignment
-        ): ShapeAwareTextResult? {
-            if (text.isBlank() || slot.width() <= 0 || slot.height() <= 0) return null
-            val upper = preferredTextSizePx.coerceAtLeast(
-                EMERGENCY_RECT_ABSOLUTE_MINIMUM_TEXT_SIZE_PX
-            )
-            for (step in EMERGENCY_RECT_LAYOUT_STEPS downTo 0) {
-                val ratio = step.toFloat() / EMERGENCY_RECT_LAYOUT_STEPS
-                val textSize = EMERGENCY_RECT_ABSOLUTE_MINIMUM_TEXT_SIZE_PX +
-                    (upper - EMERGENCY_RECT_ABSOLUTE_MINIMUM_TEXT_SIZE_PX) * ratio
-                paint.textSize = textSize
-                val layout = StaticLayout.Builder.obtain(text, 0, text.length, paint, slot.width())
-                    .setAlignment(alignment)
-                    .setIncludePad(false)
-                    .setLineSpacing(0f, EMERGENCY_RECT_LINE_SPACING)
-                    .build()
-                if (layout.height <= slot.height()) {
-                    Log.w(
-                        TAG,
-                        "Forced complete RECT layout at ${textSize}px for ${text.length} chars"
-                    )
-                    return ShapeAwareTextResult(
-                        segments = listOf(
-                            ShapeAwareTextSegment(
-                                bounds = Rect(slot),
-                                layout = layout,
-                                horizontalPadding = 0
-                            )
-                        ),
-                        outcome = ShapeAwareTextOutcome.COMPACT,
-                        displayedText = text,
-                        textSizePx = textSize,
-                        lineSpacingMultiplier = EMERGENCY_RECT_LINE_SPACING
-                    )
-                }
-            }
-            return null
         }
 
     private fun drawCompensatedBackground(
@@ -2949,14 +3142,9 @@ private object BackgroundTranslatedImageRenderer {
     private const val DECLARATIVE_LAYOUT_RETRY_SCALE = 0.82f
     private const val RECT_FALLBACK_MINIMUM_SOURCE_LINES = 2
     private const val RECT_FALLBACK_MINIMUM_CHARACTERS = 24
-    private const val RECT_FALLBACK_MINIMUM_TEXT_SCALE = 0.52f
+    private const val RECT_FALLBACK_MINIMUM_TEXT_SCALE = 0.72f
     private const val RECT_FALLBACK_ADDITIONAL_LINES = 6
     private const val FORCED_RECT_MAXIMUM_LINES = 100
-    private const val EMERGENCY_RECT_MINIMUM_TEXT_SIZE_PX = 4f
-    private const val EMERGENCY_RECT_MAXIMUM_LINES = 256
-    private const val EMERGENCY_RECT_ABSOLUTE_MINIMUM_TEXT_SIZE_PX = 2f
-    private const val EMERGENCY_RECT_LAYOUT_STEPS = 32
-    private const val EMERGENCY_RECT_LINE_SPACING = 0.52f
     private const val MINIMUM_LEADING_SLOT_RATIO = 0.72f
     private const val LAYOUT_SEARCH_STEPS = 16
     private const val DARK_BACKGROUND_LUMINANCE = 145

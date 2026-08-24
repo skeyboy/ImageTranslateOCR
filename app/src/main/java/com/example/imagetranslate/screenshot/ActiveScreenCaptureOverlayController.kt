@@ -301,6 +301,13 @@ internal class ActiveScreenCaptureOverlayController(
         return regions
     }
 
+    fun visibleOcrOcclusionBounds(): List<Rect> {
+        if (binding.root.visibility == View.VISIBLE) {
+            return signatureOcclusionBounds(maskTranslationPatches = true)
+        }
+        return translationView.signatureOcclusionBounds()
+    }
+
     fun showProcessing(shouldShow: () -> Boolean = { true }) = onMainThread {
         if (!shouldShow()) return@onMainThread
         if (!ensureControlAttachedNow()) return@onMainThread

@@ -25,7 +25,8 @@ class SemanticTranslationMapperTest {
             recognizerScript = RecognizerScript.LATIN,
             sourceBlockId = "title-block",
             sourceLineIndex = 0,
-            componentBounds = components
+            componentBounds = components,
+            componentTextHeightsPx = listOf(30f, 29f, 18f, 17f)
         )
         val mapped = SemanticTextGroup(
             groupId = "title",
@@ -48,6 +49,7 @@ class SemanticTranslationMapperTest {
             }
         )
         assertEquals(listOf(0, 1, 2, 3), mapped.regions.map { it.lineIndex })
+        assertEquals(listOf(30f, 29f, 18f, 17f), mapped.regions.map { it.estimatedTextHeightPx })
         assertEquals(mapped.regions.map { it.regionId }, mapped.memberRegionIds)
     }
 

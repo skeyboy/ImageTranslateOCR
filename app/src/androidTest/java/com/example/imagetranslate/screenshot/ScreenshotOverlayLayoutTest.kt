@@ -27,7 +27,7 @@ import kotlinx.coroutines.runBlocking
 @RunWith(AndroidJUnit4::class)
 class ScreenshotOverlayLayoutTest {
     @Test
-    fun compressedTitleLikeParagraphUsesOneContinuousRect() {
+    fun titleLikeParagraphDoesNotUseBodyRectFallback() {
         val slots = listOf(
             Rect(148, 1419, 879, 1470), Rect(145, 1476, 794, 1527),
             Rect(146, 1537, 865, 1583), Rect(148, 1595, 908, 1641),
@@ -40,17 +40,11 @@ class ScreenshotOverlayLayoutTest {
             renderSlots = slots,
             layoutShape = "FLOW_SLOTS",
             sourceLineCount = slots.size,
-            role = "UNKNOWN",
-            sourceText = "Guys you will be surprise that most of the website and chatting on " +
-                "whatsapp is handled by chatbot AI nowadays. what if the scammer use AI chatbot " +
-                "to scam you? you dont know? because the AI cannot differentiate what is real " +
-                "and fact, or not. they only answer what the owner feeds them. they do not know " +
-                "how to lie, they speak about facts that are fed by the owners.",
-            translatedText = "大家会感到惊讶的是，如今大多数网站和 WhatsApp 上的聊天都是由 AI 聊天机器人处理的。" +
-                "如果骗子使用 AI 聊天机器人来诈骗你怎么办？因为 AI 无法区分事实，他们只回答所有者提供的内容。"
+            role = "TITLE",
+            sourceTextHeightsPx = List(slots.size) { 43f }
         )
 
-        assertEquals(Rect(143, 1419, 908, 2108), merged)
+        assertNull(merged)
     }
 
     @Test
@@ -72,7 +66,7 @@ class ScreenshotOverlayLayoutTest {
     }
 
     @Test
-    fun realChatGeometryRendersWithoutCrowdedPixelRows() = runBlocking {
+    fun unsafeTitleGeometryRestoresSourceInsteadOfCrowdingText() = runBlocking {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val bitmap = Bitmap.createBitmap(1080, 2400, Bitmap.Config.ARGB_8888)
         val sourceLines = listOf(
@@ -124,34 +118,24 @@ class ScreenshotOverlayLayoutTest {
                             sourceLineCount = 12,
                             layoutShape = "FLOW_SLOTS",
                             role = "TITLE"
-                        )
+                        ),
+                        groupId = "unsafe-title-regression"
                     )
                 )
             )
 
-            val evidence = result.renderedText.single()
-            assertTrue(evidence.lineCount < slots.size)
-            assertTrue(evidence.textScale <= 1f)
-            assertTrue(evidence.layoutHeightPx <= evidence.availableHeightPx)
-            val patchBitmap = result.patches.single().bitmap
-            val inkRows = (0 until patchBitmap.height).filter { y ->
-                (0 until patchBitmap.width step 3).count { x ->
-                    val pixel = patchBitmap.getPixel(x, y)
-                    Color.alpha(pixel) >= 128 &&
-                        Color.red(pixel) + Color.green(pixel) + Color.blue(pixel) < 300
-                } >= 3
-            }
-            val inkRuns = inkRows.fold(mutableListOf<IntRange>()) { runs, row ->
-                val previous = runs.lastOrNull()
-                if (previous != null && row == previous.last + 1) {
-                    runs[runs.lastIndex] = previous.first..row
-                } else {
-                    runs += row..row
-                }
-                runs
-            }
-            assertTrue("Expected multiple separated ink rows, found $inkRuns", inkRuns.size >= 2)
-            assertTrue(inkRuns.zipWithNext().all { (first, second) -> second.first - first.last >= 2 })
+            assertEquals(0, result.renderedRegionCount)
+            assertEquals(1, result.failedRegionCount)
+            assertTrue(result.renderedText.isEmpty())
+            assertTrue(result.patches.isEmpty())
+            val failure = result.renderFailures.single()
+            assertEquals("unsafe-title-regression", failure.groupId)
+            assertEquals("TEXT_DOES_NOT_FIT", failure.reason)
+            assertEquals("FLOW_SLOTS", failure.layoutShape)
+            assertEquals(slots, failure.renderSlots)
+            assertTrue(failure.preferredTextSizePx > 0f)
+            assertTrue(failure.lastAttemptedTextSizePx > 0f)
+            assertEquals(listOf(1f), failure.attemptedLineSpacingMultipliers)
         } finally {
             processor.close()
             bitmap.recycle()
@@ -169,6 +153,114 @@ class ScreenshotOverlayLayoutTest {
         assertNull(
             denseBodyRectFallback(slots, "FLOW_SLOTS", sourceLineCount = 3, role = "BODY")
         )
+    }
+
+    @Test
+    fun homogeneousBodyParagraphCanUseOneContinuousRect() {
+        val slots = listOf(
+            Rect(40, 100, 600, 140),
+            Rect(40, 148, 600, 188),
+            Rect(40, 196, 140, 236)
+        )
+
+        assertEquals(
+            Rect(40, 100, 600, 236),
+            denseBodyRectFallback(
+                slots,
+                "FLOW_SLOTS",
+                sourceLineCount = 3,
+                role = "BODY",
+                sourceTextHeightsPx = listOf(30f, 29f, 30f)
+            )
+        )
+    }
+
+    @Test
+    fun mixedTypographyBodyParagraphDoesNotUseOneContinuousRect() {
+        val slots = listOf(
+            Rect(40, 100, 600, 148),
+            Rect(40, 156, 600, 196),
+            Rect(40, 204, 260, 234)
+        )
+
+        assertNull(
+            denseBodyRectFallback(
+                slots,
+                "FLOW_SLOTS",
+                sourceLineCount = 3,
+                role = "BODY",
+                sourceTextHeightsPx = listOf(42f, 30f, 22f)
+            )
+        )
+    }
+
+    @Test
+    fun shorterTranslationUsesSafeFlowSlotPrefixWhenStrictThreeSlotLayoutFails() = runBlocking {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val bitmap = Bitmap.createBitmap(1440, 1000, Bitmap.Config.ARGB_8888)
+        val slots = listOf(
+            Rect(67, 143, 1217, 192),
+            Rect(64, 208, 1284, 251),
+            Rect(63, 270, 528, 306)
+        )
+        val sourceLines = listOf(
+            "Replacing governments,hard sanctions perhaps yes.",
+            "Throwing out an entire people?Why Why not throw out",
+            "the Palestinians then?"
+        )
+        Canvas(bitmap).apply {
+            drawColor(Color.WHITE)
+            Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = Color.BLACK
+                textSize = 43f
+            }.also { paint ->
+                sourceLines.zip(slots).forEach { (text, slot) ->
+                    drawText(text, slot.left.toFloat(), slot.bottom - 4f, paint)
+                }
+            }
+        }
+        val translation = "更替政府，实施严厉制裁，或许可以。但驱逐整个民族？为什么？" +
+            "那为什么不把巴勒斯坦人也赶走呢？"
+        val processor = BackgroundTranslatedImageProcessor(context)
+        try {
+            val result = processor.renderDeterministicOverlay(
+                bitmap = bitmap,
+                regions = listOf(
+                    LiveDeterministicTranslationRegion(
+                        sourceText = sourceLines.joinToString("\n"),
+                        translation = translation,
+                        bounds = Rect(63, 143, 1284, 306),
+                        sourceLineBounds = slots,
+                        sourceTextHeightsPx = listOf(44f, 39f, 32f),
+                        renderSlots = slots,
+                        sourceCoverSlots = slots,
+                        displayHints = SmartAssistDisplayHints(
+                            preferredMaxLines = 3,
+                            minimumTextScale = 0.86f,
+                            maximumTextScale = 1f,
+                            lineSpacingMultiplier = 1f,
+                            allowMore = false,
+                            sourceLineCount = 3,
+                            layoutShape = "FLOW_SLOTS",
+                            role = "BODY",
+                            verticalAlignment = "TOP"
+                        ),
+                        groupId = "server-v4-flow-prefix-regression"
+                    )
+                )
+            )
+
+            assertEquals(1, result.renderedRegionCount)
+            assertEquals(0, result.failedRegionCount)
+            assertTrue(result.renderFailures.isEmpty())
+            val evidence = result.renderedText.single()
+            assertEquals(1f, evidence.lineSpacingMultiplier)
+            assertTrue(evidence.usedRenderSlotCount < slots.size)
+            assertFalse(evidence.clipped)
+        } finally {
+            processor.close()
+            bitmap.recycle()
+        }
     }
 
     @Test
@@ -283,7 +375,7 @@ class ScreenshotOverlayLayoutTest {
     }
 
     @Test
-    fun degenerateBodyFlowFallsBackToOneRectBeforeOverflow() = runBlocking {
+    fun heterogeneousBodyFlowDoesNotMergeIntoOneRect() = runBlocking {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val bitmap = Bitmap.createBitmap(1440, 2600, Bitmap.Config.ARGB_8888)
         val slots = listOf(
@@ -335,13 +427,17 @@ class ScreenshotOverlayLayoutTest {
 
             assertEquals(1, result.renderedRegionCount)
             val evidence = result.renderedText.single()
-            assertEquals(516, evidence.availableHeightPx)
+            assertTrue(evidence.availableHeightPx < 516)
+            assertEquals(1f, evidence.lineSpacingMultiplier)
             val patch = result.patches.single()
             val residualPixel = patch.bitmap.getPixel(
                 1340 - patch.bounds.left,
                 2325 - patch.bounds.top
             )
-            assertTrue("The merged BODY rect must cover missed OCR glyphs", Color.red(residualPixel) > 96)
+            assertTrue(
+                "A rejected heterogeneous merge must not erase pixels outside OCR ownership",
+                Color.red(residualPixel) < 96
+            )
         } finally {
             processor.close()
             bitmap.recycle()

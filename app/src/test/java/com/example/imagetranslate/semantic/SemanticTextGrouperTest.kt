@@ -10,6 +10,73 @@ import org.junit.Test
 
 class SemanticTextGrouperTest {
     @Test
+    fun keepsDiscussionMetadataSeparateFromLargerBodyParagraph() {
+        val metadata = line(
+            text = "CrzyLngPwd 3 minutes ago parent context on:Why aren't smart people\n" +
+                "happier?(2022)",
+            left = 64,
+            top = 1497,
+            right = 1342,
+            bottom = 1588,
+            blockId = "metadata-block",
+            lineIndex = 0
+        ).copy(
+            estimatedTextHeightPx = 37f,
+            typographyConfidence = 0.82f,
+            componentBounds = listOf(
+                Rect().apply { left = 64; top = 1497; right = 1342; bottom = 1538 },
+                Rect().apply { left = 64; top = 1543; right = 324; bottom = 1588 }
+            )
+        )
+        val body = line(
+            text = "My partner describes me as a professional problem\n" +
+                "solver since I was a child and fixed things people throw away",
+            left = 67,
+            top = 1626,
+            right = 1277,
+            bottom = 1734,
+            blockId = "body-block",
+            lineIndex = 0
+        ).copy(
+            estimatedTextHeightPx = 43f,
+            typographyConfidence = 0.82f,
+            componentBounds = listOf(
+                Rect().apply { left = 67; top = 1626; right = 1154; bottom = 1677 },
+                Rect().apply { left = 64; top = 1690; right = 1232; bottom = 1734 }
+            )
+        )
+
+        val groups = SemanticTextGrouper.group(listOf(metadata, body), 1440, 3200)
+
+        assertEquals(2, groups.size)
+        assertEquals(SemanticTextRole.METADATA, groups[0].role)
+        assertEquals(SemanticTextRole.BODY, groups[1].role)
+    }
+
+    @Test
+    fun preservesClippedContinuationEvidence() {
+        val groups = SemanticTextGrouper.group(
+            listOf(
+                line(
+                    text = "visible paragraph continuation",
+                    left = 20,
+                    top = 140,
+                    right = 600,
+                    bottom = 190,
+                    blockId = "edge-paragraph",
+                    lineIndex = 0
+                ).copy(continuationAtTop = true)
+            ),
+            viewportWidth = 720,
+            viewportHeight = 1600
+        )
+
+        val group = groups.single()
+        assertTrue(GroupingEvidence.TOP_CLIPPED_CONTINUATION in group.evidence)
+        assertTrue(group.toRecognizedText().continuationAtTop)
+    }
+
+    @Test
     fun keepsACompleteFiveLineMlKitBlockAsOneTranslationUnit() {
         val lines = (0 until 5).map { index ->
             line(
@@ -62,7 +129,7 @@ class SemanticTextGrouperTest {
     }
 
     @Test
-    fun allowsSlightFontScaleVariationInsideTheSameOcrBlock() {
+    fun keepsDifferentTypographyTiersSeparateInsideTheSameOcrBlock() {
         val groups = SemanticTextGrouper.group(
             listOf(
                 line("A paragraph can contain", 80, 100, 620, 126, "body", 0)
@@ -74,8 +141,7 @@ class SemanticTextGrouperTest {
             1920
         )
 
-        assertEquals(1, groups.size)
-        assertTrue(GroupingEvidence.FONT_SCALE_RELAXED_SAME_BLOCK in groups.single().evidence)
+        assertEquals(2, groups.size)
     }
 
     @Test
@@ -111,6 +177,10 @@ class SemanticTextGrouperTest {
         assertEquals(100, translatedSource.bounds.top)
         assertEquals(650, translatedSource.bounds.right)
         assertEquals(196, translatedSource.bounds.bottom)
+        assertEquals(
+            listOf(28f, 28f, 28f),
+            translatedSource.componentTextHeightsPx
+        )
     }
 
     @Test
