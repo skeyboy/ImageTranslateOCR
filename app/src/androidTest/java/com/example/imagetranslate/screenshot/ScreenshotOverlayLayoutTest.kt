@@ -304,6 +304,148 @@ class ScreenshotOverlayLayoutTest {
     }
 
     @Test
+    fun singleLineTranslationUsesVerifiedBlankSpaceToExpandSafely() = runBlocking {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val bitmap = Bitmap.createBitmap(720, 400, Bitmap.Config.ARGB_8888)
+        val slot = Rect(32, 120, 180, 163)
+        Canvas(bitmap).apply {
+            drawColor(Color.WHITE)
+            Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = Color.BLACK
+                textSize = 34f
+            }.also { paint ->
+                save()
+                clipRect(slot)
+                drawText("is an email prov...", slot.left.toFloat(), slot.bottom - 5f, paint)
+                restore()
+            }
+        }
+        val processor = BackgroundTranslatedImageProcessor(context)
+        try {
+            val result = processor.renderDeterministicOverlay(
+                bitmap = bitmap,
+                regions = listOf(
+                    LiveDeterministicTranslationRegion(
+                        sourceText = "is an email prov...",
+                        translation = "是一个电子邮件提供商...",
+                        bounds = slot,
+                        sourceLineBounds = listOf(slot),
+                        sourceTextHeightsPx = listOf(34f),
+                        renderSlots = listOf(slot),
+                        sourceCoverSlots = listOf(slot),
+                        displayHints = SmartAssistDisplayHints(
+                            preferredMaxLines = 2,
+                            minimumTextScale = 0.86f,
+                            maximumTextScale = 1f,
+                            lineSpacingMultiplier = 1f,
+                            allowMore = false,
+                            sourceLineCount = 1,
+                            layoutShape = "RECT",
+                            role = "BODY",
+                            verticalAlignment = "CENTER"
+                        ),
+                        groupId = "single-line-safe-expansion"
+                    )
+                )
+            )
+
+            assertEquals(1, result.renderedRegionCount)
+            assertEquals(0, result.failedRegionCount)
+            assertTrue(result.renderFailures.isEmpty())
+            assertTrue(result.patches.single().bounds.right > slot.right)
+            val evidence = result.renderedText.single()
+            assertEquals(1f, evidence.lineSpacingMultiplier)
+            assertEquals(1, evidence.lineCount)
+            assertFalse(evidence.clipped)
+        } finally {
+            processor.close()
+            bitmap.recycle()
+        }
+    }
+
+    @Test
+    fun horizontalExpansionRejectsOccupiedOrExcessivelyWideSpace() {
+        val bitmap = Bitmap.createBitmap(720, 400, Bitmap.Config.ARGB_8888)
+        val slot = Rect(32, 120, 180, 163)
+        Canvas(bitmap).drawColor(Color.WHITE)
+        try {
+            assertNull(
+                safeSingleLineHorizontalExpansion(
+                    bitmap = bitmap,
+                    sourceSlot = slot,
+                    occupiedBounds = listOf(Rect(220, 115, 300, 170)),
+                    requiredWidthPx = 360,
+                    layoutShape = "RECT",
+                    sourceLineCount = 1,
+                    role = "BODY"
+                )
+            )
+            assertNull(
+                safeSingleLineHorizontalExpansion(
+                    bitmap = bitmap,
+                    sourceSlot = slot,
+                    occupiedBounds = emptyList(),
+                    requiredWidthPx = 600,
+                    layoutShape = "RECT",
+                    sourceLineCount = 1,
+                    role = "BODY"
+                )
+            )
+        } finally {
+            bitmap.recycle()
+        }
+    }
+
+    @Test
+    fun excessivelyLongSingleLineRestoresSourceWithoutEmergencyTinyText() = runBlocking {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val bitmap = Bitmap.createBitmap(720, 400, Bitmap.Config.ARGB_8888)
+        val slot = Rect(32, 120, 180, 163)
+        Canvas(bitmap).drawColor(Color.WHITE)
+        val processor = BackgroundTranslatedImageProcessor(context)
+        try {
+            val result = processor.renderDeterministicOverlay(
+                bitmap = bitmap,
+                regions = listOf(
+                    LiveDeterministicTranslationRegion(
+                        sourceText = "short source",
+                        translation = "这是一段无法安全放入单行区域的超长译文".repeat(8),
+                        bounds = slot,
+                        sourceLineBounds = listOf(slot),
+                        sourceTextHeightsPx = listOf(34f),
+                        renderSlots = listOf(slot),
+                        sourceCoverSlots = listOf(slot),
+                        displayHints = SmartAssistDisplayHints(
+                            preferredMaxLines = 2,
+                            minimumTextScale = 0.86f,
+                            maximumTextScale = 1f,
+                            lineSpacingMultiplier = 1f,
+                            allowMore = false,
+                            sourceLineCount = 1,
+                            layoutShape = "RECT",
+                            role = "BODY",
+                            verticalAlignment = "CENTER"
+                        ),
+                        groupId = "single-line-overlong"
+                    )
+                )
+            )
+
+            assertEquals(0, result.renderedRegionCount)
+            assertEquals(1, result.failedRegionCount)
+            val failure = result.renderFailures.single()
+            assertEquals("TEXT_DOES_NOT_FIT", failure.reason)
+            assertTrue(failure.minimumAttemptedTextSizePx >= 24f)
+            assertTrue(
+                failure.lastAttemptedTextSizePx >= failure.minimumAttemptedTextSizePx
+            )
+        } finally {
+            processor.close()
+            bitmap.recycle()
+        }
+    }
+
+    @Test
     fun shorterTranslationUsesSafeFlowSlotPrefixWhenStrictThreeSlotLayoutFails() = runBlocking {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val bitmap = Bitmap.createBitmap(1440, 1000, Bitmap.Config.ARGB_8888)

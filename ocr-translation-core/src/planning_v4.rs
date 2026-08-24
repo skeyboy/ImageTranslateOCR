@@ -22,6 +22,7 @@ pub fn build_regions_first_plan(request: &SemanticTranslationRequest) -> Documen
                 .map(move |region_id| (region_id.as_str(), group))
         })
         .collect::<HashMap<_, _>>();
+    let client_group_profiles = build_client_group_profiles(request);
     let mut ordered = request.regions.iter().collect::<Vec<_>>();
     ordered.sort_by_key(|region| (region.reading_order, region.bounds.top, region.bounds.left));
 
@@ -30,7 +31,12 @@ pub fn build_regions_first_plan(request: &SemanticTranslationRequest) -> Documen
         let advisory = advisory_by_region.get(region.region_id.as_str()).copied();
         let next = RegionGroup::from_region(region, advisory);
         if let Some(previous) = groups.last_mut()
-            && let Some(decision) = merge_decision(previous, &next, request.viewport.width)
+            && let Some(decision) = merge_decision(
+                previous,
+                &next,
+                request.viewport.width,
+                &client_group_profiles,
+            )
         {
             previous.merge(next, decision);
             continue;
@@ -62,6 +68,42 @@ pub fn build_regions_first_plan(request: &SemanticTranslationRequest) -> Documen
         },
         groups: planned,
     }
+}
+
+#[derive(Clone, Copy, Debug, Default)]
+struct ClientGroupProfile {
+    median_internal_gap: Option<i32>,
+}
+
+fn build_client_group_profiles(
+    request: &SemanticTranslationRequest,
+) -> HashMap<String, ClientGroupProfile> {
+    let regions_by_id = request
+        .regions
+        .iter()
+        .map(|region| (region.region_id.as_str(), region))
+        .collect::<HashMap<_, _>>();
+    request
+        .groups
+        .iter()
+        .map(|group| {
+            let mut regions = group
+                .member_region_ids
+                .iter()
+                .filter_map(|region_id| regions_by_id.get(region_id.as_str()).copied())
+                .cloned()
+                .collect::<Vec<_>>();
+            regions.sort_by_key(|region| {
+                (region.reading_order, region.bounds.top, region.bounds.left)
+            });
+            (
+                group.group_id.clone(),
+                ClientGroupProfile {
+                    median_internal_gap: median_internal_gap(&regions),
+                },
+            )
+        })
+        .collect()
 }
 
 #[derive(Clone, Debug)]
@@ -209,6 +251,7 @@ fn merge_decision(
     previous: &RegionGroup,
     next: &RegionGroup,
     viewport_width: i32,
+    client_group_profiles: &HashMap<String, ClientGroupProfile>,
 ) -> Option<MergeDecision> {
     if previous.translation_unit == "PRESERVED"
         || next.translation_unit == "PRESERVED"
@@ -249,7 +292,7 @@ fn merge_decision(
     }
     if different_client_group
         && different_ocr_block
-        && is_cross_group_visual_boundary(previous, next, gap)
+        && is_cross_group_visual_boundary(previous, next, gap, client_group_profiles)
     {
         return None;
     }
@@ -340,6 +383,7 @@ fn is_cross_group_visual_boundary(
     previous: &RegionGroup,
     next: &RegionGroup,
     boundary_gap: i32,
+    client_group_profiles: &HashMap<String, ClientGroupProfile>,
 ) -> bool {
     let first_height = region_text_height(&previous.last_region);
     let second_height = region_text_height(&next.first_region);
@@ -354,8 +398,16 @@ fn is_cross_group_visual_boundary(
         < CROSS_GROUP_FONT_RATIO
         && gap_em > CROSS_GROUP_MINIMUM_GAP_EM;
 
-    let previous_internal_gap = median_internal_gap(&previous.regions);
-    let next_internal_gap = median_internal_gap(&next.regions);
+    let previous_internal_gap = median_internal_gap(&previous.regions).or_else(|| {
+        client_group_profiles
+            .get(previous.last_region.group_id.as_str())
+            .and_then(|profile| profile.median_internal_gap)
+    });
+    let next_internal_gap = median_internal_gap(&next.regions).or_else(|| {
+        client_group_profiles
+            .get(next.first_region.group_id.as_str())
+            .and_then(|profile| profile.median_internal_gap)
+    });
     let typical_internal_gap = previous_internal_gap
         .into_iter()
         .chain(next_internal_gap)
@@ -1049,6 +1101,147 @@ mod tests {
         assert_eq!(plan.groups[0].source_group_ids, vec!["client-comment-main"]);
         assert_eq!(plan.groups[1].source_group_ids, vec!["client-comment-tail"]);
         assert_eq!(plan.groups[0].layout_shape, "RECT");
+        assert_eq!(plan.groups[1].layout_shape, "RECT");
+    }
+
+    #[test]
+    fn uses_the_complete_next_client_group_gap_profile_before_merging() {
+        let mut request = request();
+        let specs = [
+            (
+                "quote",
+                "client-quote",
+                "quote-block",
+                0,
+                1792,
+                1838,
+                41.0,
+                107,
+                586,
+                "dangerous or polluting",
+            ),
+            (
+                "body-0",
+                "client-body",
+                "body-block",
+                0,
+                1879,
+                1921,
+                38.0,
+                68,
+                1270,
+                "IIRC more than half of cars sold in China are EV or PHEV.",
+            ),
+            (
+                "body-1",
+                "client-body",
+                "body-block",
+                1,
+                1940,
+                1986,
+                41.0,
+                82,
+                1262,
+                "I am receptive to learn that there are PHEVs that are too",
+            ),
+            (
+                "body-2",
+                "client-body",
+                "body-block",
+                2,
+                2002,
+                2048,
+                41.0,
+                67,
+                1230,
+                "polluting to be sold in the west, but I would love to see",
+            ),
+            (
+                "body-3",
+                "client-body",
+                "body-block",
+                3,
+                2068,
+                2103,
+                32.0,
+                63,
+                246,
+                "the data.",
+            ),
+        ];
+        let regions = specs
+            .into_iter()
+            .enumerate()
+            .map(
+                |(
+                    index,
+                    (
+                        region_id,
+                        group_id,
+                        block_id,
+                        line_index,
+                        top,
+                        bottom,
+                        height,
+                        left,
+                        right,
+                        text,
+                    ),
+                )| {
+                    let mut region = request.regions[0].clone();
+                    region.region_id = region_id.to_owned();
+                    region.group_id = group_id.to_owned();
+                    region.block_id = Some(block_id.to_owned());
+                    region.line_index = Some(line_index);
+                    region.reading_order = index as i32;
+                    region.text = text.to_owned();
+                    region.estimated_text_height_px = Some(height);
+                    region.typography_confidence = 0.82;
+                    region.bounds = Bounds {
+                        left,
+                        top,
+                        right,
+                        bottom,
+                    };
+                    region
+                },
+            )
+            .collect::<Vec<_>>();
+        let mut quote = request.groups[0].clone();
+        quote.group_id = "client-quote".to_owned();
+        quote.role = "BODY".to_owned();
+        quote.member_region_ids = vec!["quote".to_owned()];
+        quote.source_text = regions[0].text.clone();
+        quote.bounds = regions[0].bounds.clone();
+        quote.render_slots = vec![quote.bounds.clone()];
+        let mut body = quote.clone();
+        body.group_id = "client-body".to_owned();
+        body.member_region_ids = regions[1..]
+            .iter()
+            .map(|region| region.region_id.clone())
+            .collect();
+        body.source_text = regions[1..]
+            .iter()
+            .map(|region| region.text.as_str())
+            .collect::<Vec<_>>()
+            .join("\n");
+        body.bounds = regions[1..]
+            .iter()
+            .skip(1)
+            .fold(regions[1].bounds.clone(), |bounds, region| {
+                bounds.union(&region.bounds)
+            });
+        body.render_slots = vec![body.bounds.clone()];
+        request.regions = regions;
+        request.groups = vec![quote, body];
+
+        let plan = build_regions_first_plan(&request);
+
+        assert_eq!(plan.groups.len(), 2);
+        assert_eq!(plan.groups[0].source_group_ids, vec!["client-quote"]);
+        assert_eq!(plan.groups[0].member_region_ids, vec!["quote"]);
+        assert_eq!(plan.groups[1].source_group_ids, vec!["client-body"]);
+        assert_eq!(plan.groups[1].member_region_ids.len(), 4);
         assert_eq!(plan.groups[1].layout_shape, "RECT");
     }
 

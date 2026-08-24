@@ -49,6 +49,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import java.util.UUID
+import kotlin.math.ceil
 import kotlin.math.pow
 import kotlin.math.sqrt
 
@@ -171,7 +172,8 @@ internal data class BackgroundImageRegion(
     val trackId: Long? = null,
     val smartAssistDisplayHints: SmartAssistDisplayHints? = null,
     val renderSlots: List<Rect> = emptyList(),
-    val sourceCoverSlots: List<Rect> = emptyList()
+    val sourceCoverSlots: List<Rect> = emptyList(),
+    val safeHorizontalExpansionSlot: Rect? = null
 )
 
 internal fun BackgroundImageRegion.shiftedToMatchedBounds(
@@ -197,7 +199,8 @@ internal fun BackgroundImageRegion.shiftedToMatchedBounds(
             componentBounds = source.componentBounds.map(::shifted)
         ),
         renderSlots = renderSlots.map(::shifted),
-        sourceCoverSlots = sourceCoverSlots.map(::shifted)
+        sourceCoverSlots = sourceCoverSlots.map(::shifted),
+        safeHorizontalExpansionSlot = safeHorizontalExpansionSlot?.let(::shifted)
     )
 }
 
@@ -1692,11 +1695,20 @@ internal class BackgroundTranslatedImageProcessor(
         drawPatchBackgrounds: Boolean,
         evidenceSink: ((LiveRenderedTextEvidence) -> Unit)? = null,
         failureSink: ((LiveRenderFailureDiagnostic) -> Unit)? = null
-    ): List<RenderedOverlayPatch> = when (renderingMode) {
-        LivePatchRenderingMode.SEQUENTIAL -> regions.mapNotNull { region ->
+    ): List<RenderedOverlayPatch> {
+        val occupiedBoundsByRegion = regions.indices.map { currentIndex ->
+            regions.asSequence()
+                .filterIndexed { index, _ -> index != currentIndex }
+                .flatMap { other -> resolvedSourceCoverSlots(other).asSequence() }
+                .map(::Rect)
+                .toList()
+        }
+        return when (renderingMode) {
+        LivePatchRenderingMode.SEQUENTIAL -> regions.mapIndexedNotNull { index, region ->
             createOverlayPatch(
                 bitmap,
                 region,
+                occupiedBoundsByRegion[index],
                 fallbackSurface,
                 overlayAlpha,
                 backgroundMode,
@@ -1706,11 +1718,12 @@ internal class BackgroundTranslatedImageProcessor(
             )
         }
         LivePatchRenderingMode.PARALLEL -> coroutineScope {
-            regions.map { region ->
+            regions.mapIndexed { index, region ->
                 async(Dispatchers.Default) {
                     createOverlayPatch(
                         bitmap,
                         region,
+                        occupiedBoundsByRegion[index],
                         fallbackSurface,
                         overlayAlpha,
                         backgroundMode,
@@ -1720,6 +1733,7 @@ internal class BackgroundTranslatedImageProcessor(
                     )
                 }
             }.awaitAll().filterNotNull()
+        }
         }
     }
 
@@ -1837,6 +1851,7 @@ internal class BackgroundTranslatedImageProcessor(
     private fun createOverlayPatch(
         bitmap: Bitmap,
         region: BackgroundImageRegion,
+        occupiedBounds: List<Rect>,
         fallbackSurface: Int,
         overlayAlpha: Float,
         backgroundMode: LivePatchBackgroundMode,
@@ -1850,13 +1865,22 @@ internal class BackgroundTranslatedImageProcessor(
             )
             return null
         }
+        val safeHorizontalExpansionSlot = requestedSafeHorizontalExpansion(
+            bitmap = bitmap,
+            region = region,
+            sourceBounds = sourceBounds,
+            occupiedBounds = occupiedBounds
+        )
+        val materialTextBounds = safeHorizontalExpansionSlot?.let { expansion ->
+            Rect(sourceBounds).apply { union(expansion) }
+        } ?: sourceBounds
         val material = LiveOverlayLayoutPolicy.translationMaterialBounds(
             textBounds = LivePatchBounds(
                 index = 0,
-                left = sourceBounds.left,
-                top = sourceBounds.top,
-                right = sourceBounds.right,
-                bottom = sourceBounds.bottom
+                left = materialTextBounds.left,
+                top = materialTextBounds.top,
+                right = materialTextBounds.right,
+                bottom = materialTextBounds.bottom
             ),
             sourceText = region.source.text,
             sourceWidth = bitmap.width,
@@ -2030,6 +2054,9 @@ internal class BackgroundTranslatedImageProcessor(
                     Rect(slot).apply { offset(-cropBounds.left, -cropBounds.top) }
                 },
                 sourceCoverSlots = resolvedSourceCoverSlots(region).map { slot ->
+                    Rect(slot).apply { offset(-cropBounds.left, -cropBounds.top) }
+                },
+                safeHorizontalExpansionSlot = safeHorizontalExpansionSlot?.let { slot ->
                     Rect(slot).apply { offset(-cropBounds.left, -cropBounds.top) }
                 }
             )
@@ -2428,6 +2455,177 @@ internal fun safeFlowUnionRectFallback(
     return union.takeIf { hasWideBody && hasNarrowTail }
 }
 
+private val SAFE_HORIZONTAL_EXPANSION_ROLES = setOf("BODY", "METADATA", "TITLE", "LABEL")
+private const val SAFE_HORIZONTAL_EXPANSION_VERTICAL_INSET_RATIO = 0.04f
+private const val SAFE_HORIZONTAL_EXPANSION_MINIMUM_MARGIN_PX = 8
+private const val SAFE_HORIZONTAL_EXPANSION_MINIMUM_COLLISION_PADDING_PX = 8
+private const val SAFE_HORIZONTAL_EXPANSION_MAXIMUM_VIEWPORT_PERCENT = 75
+private const val SAFE_HORIZONTAL_EXPANSION_MAXIMUM_SOURCE_MULTIPLIER = 3
+private const val SAFE_HORIZONTAL_SOURCE_DOMINANT_RATIO = 0.5f
+private const val SAFE_HORIZONTAL_EXTENSION_DOMINANT_RATIO = 0.78f
+private const val SAFE_HORIZONTAL_MAXIMUM_LUMINANCE_DEVIATION = 14f
+private const val SAFE_HORIZONTAL_MAXIMUM_EDGE_RATIO = 0.04f
+private const val SAFE_HORIZONTAL_EDGE_LUMINANCE_DELTA = 24
+private const val SAFE_HORIZONTAL_MINIMUM_TEXT_SIZE_PX = 8f
+private const val SAFE_HORIZONTAL_DECLARATIVE_RETRY_SCALE = 0.82f
+
+internal fun safeSingleLineHorizontalExpansion(
+    bitmap: Bitmap,
+    sourceSlot: Rect,
+    occupiedBounds: List<Rect>,
+    requiredWidthPx: Int,
+    layoutShape: String?,
+    sourceLineCount: Int,
+    role: String?
+): Rect? {
+    if (layoutShape != "RECT" || sourceLineCount != 1 ||
+        role !in SAFE_HORIZONTAL_EXPANSION_ROLES || requiredWidthPx <= sourceSlot.width() ||
+        sourceSlot.width() <= 0 || sourceSlot.height() <= 0
+    ) return null
+    val verticalInset = (bitmap.height * SAFE_HORIZONTAL_EXPANSION_VERTICAL_INSET_RATIO).toInt()
+    if (sourceSlot.top < verticalInset || sourceSlot.bottom > bitmap.height - verticalInset) {
+        return null
+    }
+    val horizontalMargin = maxOf(
+        SAFE_HORIZONTAL_EXPANSION_MINIMUM_MARGIN_PX,
+        sourceSlot.height() / 4
+    )
+    val maximumWidth = minOf(
+        bitmap.width * SAFE_HORIZONTAL_EXPANSION_MAXIMUM_VIEWPORT_PERCENT / 100,
+        sourceSlot.width() * SAFE_HORIZONTAL_EXPANSION_MAXIMUM_SOURCE_MULTIPLIER
+    )
+    if (requiredWidthPx > maximumWidth) return null
+    val candidateRight = sourceSlot.left + requiredWidthPx
+    if (candidateRight > bitmap.width - horizontalMargin) return null
+    val extension = Rect(sourceSlot.right, sourceSlot.top, candidateRight, sourceSlot.bottom)
+    if (extension.width() <= 0) return null
+    val collisionPadding = maxOf(
+        SAFE_HORIZONTAL_EXPANSION_MINIMUM_COLLISION_PADDING_PX,
+        sourceSlot.height() / 4
+    )
+    if (occupiedBounds.any { occupied ->
+            val protected = Rect(
+                occupied.left - collisionPadding,
+                occupied.top - collisionPadding,
+                occupied.right + collisionPadding,
+                occupied.bottom + collisionPadding
+            )
+            Rect.intersects(extension, protected)
+        }
+    ) return null
+
+    val sourceProfile = horizontalExpansionSurfaceProfile(bitmap, sourceSlot) ?: return null
+    val extensionProfile = horizontalExpansionSurfaceProfile(bitmap, extension) ?: return null
+    if (sourceProfile.dominantRatio < SAFE_HORIZONTAL_SOURCE_DOMINANT_RATIO ||
+        extensionProfile.dominantRatio < SAFE_HORIZONTAL_EXTENSION_DOMINANT_RATIO ||
+        extensionProfile.luminanceStandardDeviation > SAFE_HORIZONTAL_MAXIMUM_LUMINANCE_DEVIATION ||
+        extensionProfile.edgeRatio > SAFE_HORIZONTAL_MAXIMUM_EDGE_RATIO ||
+        !areNeighboringSurfaceBuckets(sourceProfile.dominantBucket, extensionProfile.dominantBucket)
+    ) return null
+    return Rect(sourceSlot.left, sourceSlot.top, candidateRight, sourceSlot.bottom)
+}
+
+private data class HorizontalExpansionSurfaceProfile(
+    val dominantBucket: Int,
+    val dominantRatio: Float,
+    val luminanceStandardDeviation: Float,
+    val edgeRatio: Float
+)
+
+private fun horizontalExpansionSurfaceProfile(
+    bitmap: Bitmap,
+    requestedBounds: Rect
+): HorizontalExpansionSurfaceProfile? {
+    val bounds = requestedBounds.clampedTo(bitmap) ?: return null
+    if (bounds.width() <= 0 || bounds.height() <= 0) return null
+    val step = maxOf(1, minOf(bounds.width(), bounds.height()) / 14)
+    val buckets = HashMap<Int, Int>()
+    var samples = 0
+    var luminanceTotal = 0.0
+    var luminanceSquaredTotal = 0.0
+    var edgeSamples = 0
+    var edgeCount = 0
+    for (y in bounds.top until bounds.bottom step step) {
+        var previousLuminance: Int? = null
+        for (x in bounds.left until bounds.right step step) {
+            val color = bitmap.getPixel(x, y)
+            val red = Color.red(color)
+            val green = Color.green(color)
+            val blue = Color.blue(color)
+            val bucket = (red shr 4 shl 8) or (green shr 4 shl 4) or (blue shr 4)
+            buckets[bucket] = (buckets[bucket] ?: 0) + 1
+            val value = (red * 54 + green * 183 + blue * 19) / 256
+            luminanceTotal += value
+            luminanceSquaredTotal += value.toDouble() * value
+            previousLuminance?.let { previous ->
+                if (kotlin.math.abs(value - previous) >= SAFE_HORIZONTAL_EDGE_LUMINANCE_DELTA) {
+                    edgeCount++
+                }
+                edgeSamples++
+            }
+            previousLuminance = value
+            samples++
+        }
+    }
+    if (samples == 0) return null
+    val dominant = buckets.maxByOrNull { it.value } ?: return null
+    val mean = luminanceTotal / samples
+    val variance = luminanceSquaredTotal / samples - mean * mean
+    return HorizontalExpansionSurfaceProfile(
+        dominantBucket = dominant.key,
+        dominantRatio = dominant.value.toFloat() / samples,
+        luminanceStandardDeviation = sqrt(variance.coerceAtLeast(0.0)).toFloat(),
+        edgeRatio = edgeCount.toFloat() / edgeSamples.coerceAtLeast(1)
+    )
+}
+
+private fun areNeighboringSurfaceBuckets(first: Int, second: Int): Boolean {
+    val firstRed = first shr 8 and 0xF
+    val firstGreen = first shr 4 and 0xF
+    val firstBlue = first and 0xF
+    val secondRed = second shr 8 and 0xF
+    val secondGreen = second shr 4 and 0xF
+    val secondBlue = second and 0xF
+    return kotlin.math.abs(firstRed - secondRed) <= 1 &&
+        kotlin.math.abs(firstGreen - secondGreen) <= 1 &&
+        kotlin.math.abs(firstBlue - secondBlue) <= 1
+}
+
+private fun requestedSafeHorizontalExpansion(
+    bitmap: Bitmap,
+    region: BackgroundImageRegion,
+    sourceBounds: Rect,
+    occupiedBounds: List<Rect>
+): Rect? {
+    val hints = region.smartAssistDisplayHints ?: return null
+    if (region.translation.isBlank() || '\n' in region.translation || hints.alignment != "START") {
+        return null
+    }
+    val slots = resolvedRenderSlots(region, sourceBounds).mapNotNull { it.clampedTo(bitmap) }
+    val sourceSlot = slots.singleOrNull() ?: return null
+    val horizontalPadding = maxOf(2, sourceSlot.height() / 8)
+    val minimumTextSize = maxOf(
+        SAFE_HORIZONTAL_MINIMUM_TEXT_SIZE_PX,
+        sourceSlot.height() * hints.minimumTextScale.coerceIn(0.5f, 1f) *
+            SAFE_HORIZONTAL_DECLARATIVE_RETRY_SCALE
+    )
+    val paint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
+        textSize = minimumTextSize
+        typeface = Typeface.SANS_SERIF
+    }
+    val requiredWidth = ceil(Layout.getDesiredWidth(region.translation, paint).toDouble())
+        .toInt() + horizontalPadding * 2
+    return safeSingleLineHorizontalExpansion(
+        bitmap = bitmap,
+        sourceSlot = sourceSlot,
+        occupiedBounds = occupiedBounds,
+        requiredWidthPx = requiredWidth,
+        layoutShape = hints.layoutShape,
+        sourceLineCount = hints.sourceLineCount,
+        role = hints.role
+    )
+}
+
 internal fun targetTextSizeForSourceGlyph(
     paint: TextPaint,
     text: String,
@@ -2574,8 +2772,8 @@ private object BackgroundTranslatedImageRenderer {
             val isMultiLineRect = renderSlots.size == 1 &&
                 (region.smartAssistDisplayHints?.layoutShape == null ||
                     region.smartAssistDisplayHints.layoutShape == "RECT") &&
-                (sourceLineCount >= RECT_FALLBACK_MINIMUM_SOURCE_LINES ||
-                    translatedCharacterCount >= RECT_FALLBACK_MINIMUM_CHARACTERS)
+                sourceLineCount >= RECT_FALLBACK_MINIMUM_SOURCE_LINES
+            val safeHorizontalExpansionSlot = region.safeHorizontalExpansionSlot
             val initialLayout = ShapeAwareTextLayout.layout(
                 text = region.translation,
                 paint = paint,
@@ -2614,7 +2812,8 @@ private object BackgroundTranslatedImageRenderer {
             }
             val standardRetry = initialLayout
                 ?.takeUnless { layout ->
-                    isMultiLineRect && layout.outcome == ShapeAwareTextOutcome.OVERFLOW_MORE
+                    (isMultiLineRect || safeHorizontalExpansionSlot != null) &&
+                        layout.outcome == ShapeAwareTextOutcome.OVERFLOW_MORE
                 }
                 ?: region.smartAssistDisplayHints
                 ?.let { hints ->
@@ -2634,11 +2833,62 @@ private object BackgroundTranslatedImageRenderer {
                         },
                         alignment = alignment,
                         horizontalPadding = horizontalPadding,
-                        allowOverflowMore = hints.allowMore,
+                        allowOverflowMore = hints.allowMore && safeHorizontalExpansionSlot == null,
                         lineSpacingMultipliers = listOf(1f),
                         requireAllSlots = preserveFlowShape
                     )
                 }
+            val safeHorizontalExpansionRetry = if (
+                standardRetry == null && safeHorizontalExpansionSlot != null &&
+                renderSlots.size == 1
+            ) {
+                ShapeAwareTextLayout.layout(
+                    text = region.translation,
+                    paint = paint,
+                    renderSlots = listOf(safeHorizontalExpansionSlot),
+                    preferredTextSizePx = preferredSize,
+                    minimumTextSizePx = maxOf(
+                        MINIMUM_TEXT_SIZE_PX,
+                        minimumSize * DECLARATIVE_LAYOUT_RETRY_SCALE
+                    ),
+                    maximumLines = 1,
+                    alignment = alignment,
+                    horizontalPadding = horizontalPadding,
+                    allowOverflowMore = false,
+                    lineSpacingMultipliers = listOf(1f),
+                    requireAllSlots = false
+                )?.takeIf { layout ->
+                    layout.displayedText == region.translation &&
+                        layout.lineSpacingMultiplier >=
+                        ShapeAwareTextLayout.MINIMUM_SAFE_LINE_SPACING_MULTIPLIER
+                }
+            } else {
+                null
+            }
+            val safeHorizontalOverflowRetry = if (
+                standardRetry == null && safeHorizontalExpansionRetry == null &&
+                safeHorizontalExpansionSlot != null &&
+                region.smartAssistDisplayHints?.allowMore == true
+            ) {
+                ShapeAwareTextLayout.layout(
+                    text = region.translation,
+                    paint = paint,
+                    renderSlots = renderSlots,
+                    preferredTextSizePx = preferredSize,
+                    minimumTextSizePx = maxOf(
+                        MINIMUM_TEXT_SIZE_PX,
+                        minimumSize * DECLARATIVE_LAYOUT_RETRY_SCALE
+                    ),
+                    maximumLines = maximumLines,
+                    alignment = alignment,
+                    horizontalPadding = horizontalPadding,
+                    allowOverflowMore = true,
+                    lineSpacingMultipliers = listOf(1f),
+                    requireAllSlots = false
+                )
+            } else {
+                null
+            }
             val flowSlotPrefixRetry = if (
                 standardRetry == null &&
                 preserveFlowShape &&
@@ -2750,8 +3000,9 @@ private object BackgroundTranslatedImageRenderer {
             } else {
                 null
             }
-            val shapedLayout = leadingSlotRetry ?: standardRetry ?: flowSlotPrefixRetry ?:
-                safeFlowUnionRetry ?: rectRetry ?: forcedRectRetry
+            val shapedLayout = leadingSlotRetry ?: standardRetry ?: safeHorizontalExpansionRetry ?:
+                safeHorizontalOverflowRetry ?: flowSlotPrefixRetry ?: safeFlowUnionRetry ?:
+                rectRetry ?: forcedRectRetry
             if (leadingSlotRetry != null) {
                 Log.d(
                     TAG,
@@ -2775,6 +3026,16 @@ private object BackgroundTranslatedImageRenderer {
                         "id=${region.groupId ?: "unknown"}, slots=${renderSlots.size}, " +
                         "lines=${safeFlowUnionRetry.segments.sumOf { it.layout.lineCount }}, " +
                         "lineSpacing=${safeFlowUnionRetry.lineSpacingMultiplier}"
+                )
+            }
+            if (safeHorizontalExpansionRetry != null) {
+                Log.i(
+                    TAG,
+                    "Applied safe horizontal expansion " +
+                        "id=${region.groupId ?: "unknown"}, " +
+                        "width=${renderSlots.single().width()}->" +
+                        "${safeHorizontalExpansionSlot?.width()}, " +
+                        "scale=${safeHorizontalExpansionRetry.textSizePx / sourceLineHeight}"
                 )
             }
             val relaxedRectLayout = rectRetry ?: forcedRectRetry
@@ -3239,7 +3500,6 @@ private object BackgroundTranslatedImageRenderer {
     private const val MINIMUM_FONT_HEIGHT_RATIO = 0.62f
     private const val DECLARATIVE_LAYOUT_RETRY_SCALE = 0.82f
     private const val RECT_FALLBACK_MINIMUM_SOURCE_LINES = 2
-    private const val RECT_FALLBACK_MINIMUM_CHARACTERS = 24
     private const val RECT_FALLBACK_MINIMUM_TEXT_SCALE = 0.72f
     private const val RECT_FALLBACK_ADDITIONAL_LINES = 6
     private const val FLOW_UNION_ADDITIONAL_LINES = 2
