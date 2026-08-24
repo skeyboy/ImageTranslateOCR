@@ -117,6 +117,8 @@ internal data class BackgroundTranslatedOverlayResult(
     val retainedLatinRatio: Float = 0f,
     val suspiciousJoinCount: Int = 0,
     val largestPatchAreaRatio: Float = 0f,
+    val translationFailedCount: Int = 0,
+    val renderFailedCount: Int = 0,
     val renderFailures: List<LiveRenderFailureDiagnostic> = emptyList(),
     val translationTraces: List<SemanticTranslationTrace> = emptyList()
 ) {
@@ -131,6 +133,8 @@ internal data class BackgroundTranslatedOverlayResult(
         translatedRegionCount = translatedRegionCount,
         patchCount = patches.size,
         failedCount = failedCount,
+        translationFailedCount = translationFailedCount,
+        renderFailedCount = renderFailedCount,
         reusedRegionCount = reusedRegionCount,
         recognitionRegionCount = recognitionRegionCount,
         recognitionAreaRatio = recognitionAreaRatio,
@@ -657,6 +661,8 @@ internal class BackgroundTranslatedImageProcessor(
                     patch.bounds.width().toLong() * patch.bounds.height().toLong()
                 }?.toFloat()?.div(viewportArea) ?: 0f
             }
+            val translationFailedCount = batch.failedCount
+            val renderFailedCount = (displayRegions.size - renderedPatches.size).coerceAtLeast(0)
             BackgroundTranslatedOverlayResult(
                 patches = patches,
                 sourceWidth = bitmap.width,
@@ -667,7 +673,9 @@ internal class BackgroundTranslatedImageProcessor(
                 edgeRecoveredCount = batch.edgeRecoveredCount,
                 continuationCount = batch.continuationCount,
                 translatedRegionCount = displayRegions.size,
-                failedCount = batch.failedCount + (displayRegions.size - renderedPatches.size),
+                failedCount = translationFailedCount + renderFailedCount,
+                translationFailedCount = translationFailedCount,
+                renderFailedCount = renderFailedCount,
                 requestedSegmentation = segmentation,
                 appliedStrategy = when {
                     usesIntegratedNetworkEngine -> LiveRecognitionAppliedStrategy.FULL_FRAME
@@ -2379,6 +2387,47 @@ internal fun denseBodyRectFallback(
     return union.takeIf { wideLineCount * 2 >= nonFinal.size }
 }
 
+internal fun safeFlowUnionRectFallback(
+    renderSlots: List<Rect>,
+    layoutShape: String?,
+    sourceLineCount: Int,
+    role: String?,
+    sourceTextHeightsPx: List<Float> = emptyList()
+): Rect? {
+    if (role != "BODY" || layoutShape != "FLOW_SLOTS" || renderSlots.size < 2 ||
+        sourceLineCount < 2
+    ) return null
+    val union = renderSlots.drop(1).fold(Rect(renderSlots.first())) { result, slot ->
+        result.apply { union(slot) }
+    }
+    if (union.width() <= 0 || union.height() <= 0) return null
+
+    val slotHeights = renderSlots.map(Rect::height).filter { it > 0 }.sorted()
+    if (slotHeights.size != renderSlots.size) return null
+    val typicalHeight = slotHeights[slotHeights.size / 2].coerceAtLeast(1)
+    val textHeights = sourceTextHeightsPx.filter { it > 0f }
+    val typographyRatio = if (textHeights.size >= 2) {
+        textHeights.min() / textHeights.max().coerceAtLeast(1f)
+    } else {
+        slotHeights.first().toFloat() / slotHeights.last().coerceAtLeast(1)
+    }
+    if (typographyRatio < MINIMUM_MERGED_FONT_SCALE_RATIO) return null
+
+    val maximumGap = renderSlots.zipWithNext().maxOf { (first, second) ->
+        second.top - first.bottom
+    }
+    if (maximumGap < 0 || maximumGap > typicalHeight / 2) return null
+    val leftRange = renderSlots.maxOf(Rect::left) - renderSlots.minOf(Rect::left)
+    val leftTolerance = maxOf(typicalHeight, union.width() * 8 / 100)
+    if (leftRange > leftTolerance) return null
+
+    val nonFinal = renderSlots.dropLast(1)
+    val wideLineCount = nonFinal.count { slot -> slot.width() >= union.width() * 70 / 100 }
+    val hasWideBody = wideLineCount * 2 >= nonFinal.size
+    val hasNarrowTail = renderSlots.last().width() <= union.width() * 40 / 100
+    return union.takeIf { hasWideBody && hasNarrowTail }
+}
+
 internal fun targetTextSizeForSourceGlyph(
     paint: TextPaint,
     text: String,
@@ -2619,6 +2668,46 @@ private object BackgroundTranslatedImageRenderer {
             } else {
                 null
             }
+            val safeFlowUnionRect = if (
+                standardRetry == null && flowSlotPrefixRetry == null && preserveFlowShape
+            ) {
+                safeFlowUnionRectFallback(
+                    renderSlots = renderSlots,
+                    layoutShape = region.smartAssistDisplayHints?.layoutShape,
+                    sourceLineCount = sourceLineCount,
+                    role = region.smartAssistDisplayHints?.role,
+                    sourceTextHeightsPx = region.source.componentTextHeightsPx.ifEmpty {
+                        listOfNotNull(region.source.estimatedTextHeightPx)
+                    }
+                )
+            } else {
+                null
+            }
+            val safeFlowUnionRetry = safeFlowUnionRect?.let { union ->
+                ShapeAwareTextLayout.layout(
+                    text = region.translation,
+                    paint = paint,
+                    renderSlots = listOf(union),
+                    preferredTextSizePx = preferredSize,
+                    minimumTextSizePx = maxOf(
+                        MINIMUM_TEXT_SIZE_PX,
+                        minimumSize * DECLARATIVE_LAYOUT_RETRY_SCALE
+                    ),
+                    maximumLines = maxOf(
+                        maximumLines,
+                        sourceLineCount + FLOW_UNION_ADDITIONAL_LINES
+                    ),
+                    alignment = alignment,
+                    horizontalPadding = horizontalPadding,
+                    allowOverflowMore = false,
+                    lineSpacingMultipliers = listOf(1f),
+                    requireAllSlots = false
+                )?.takeIf { layout ->
+                    layout.displayedText == region.translation &&
+                        layout.lineSpacingMultiplier >=
+                        ShapeAwareTextLayout.MINIMUM_SAFE_LINE_SPACING_MULTIPLIER
+                }
+            }
             val rectRetry = if (standardRetry == null && isMultiLineRect) {
                 val hints = checkNotNull(region.smartAssistDisplayHints)
                 ShapeAwareTextLayout.layout(
@@ -2661,8 +2750,8 @@ private object BackgroundTranslatedImageRenderer {
             } else {
                 null
             }
-            val shapedLayout = leadingSlotRetry ?: standardRetry ?: flowSlotPrefixRetry ?: rectRetry ?:
-                forcedRectRetry
+            val shapedLayout = leadingSlotRetry ?: standardRetry ?: flowSlotPrefixRetry ?:
+                safeFlowUnionRetry ?: rectRetry ?: forcedRectRetry
             if (leadingSlotRetry != null) {
                 Log.d(
                     TAG,
@@ -2677,6 +2766,15 @@ private object BackgroundTranslatedImageRenderer {
                         "id=${region.groupId ?: "unknown"}, " +
                         "usedSlots=${flowSlotPrefixRetry.segments.size}/${renderSlots.size}, " +
                         "lineSpacing=${flowSlotPrefixRetry.lineSpacingMultiplier}"
+                )
+            }
+            if (safeFlowUnionRetry != null) {
+                Log.i(
+                    TAG,
+                    "Applied safe FLOW_SLOTS union fallback " +
+                        "id=${region.groupId ?: "unknown"}, slots=${renderSlots.size}, " +
+                        "lines=${safeFlowUnionRetry.segments.sumOf { it.layout.lineCount }}, " +
+                        "lineSpacing=${safeFlowUnionRetry.lineSpacingMultiplier}"
                 )
             }
             val relaxedRectLayout = rectRetry ?: forcedRectRetry
@@ -2757,7 +2855,7 @@ private object BackgroundTranslatedImageRenderer {
                     lineCount = shapedLayout.segments.sumOf { it.layout.lineCount },
                     usedRenderSlotCount = shapedLayout.segments.size,
                     layoutHeightPx = shapedLayout.segments.sumOf { it.layout.height },
-                    availableHeightPx = renderSlots.sumOf { it.height() },
+                    availableHeightPx = shapedLayout.segments.sumOf { it.bounds.height() },
                     clipped = false,
                     contrastRatio = contrastRatio(style.foregroundColor, evidenceBackground)
                 )
@@ -3144,6 +3242,7 @@ private object BackgroundTranslatedImageRenderer {
     private const val RECT_FALLBACK_MINIMUM_CHARACTERS = 24
     private const val RECT_FALLBACK_MINIMUM_TEXT_SCALE = 0.72f
     private const val RECT_FALLBACK_ADDITIONAL_LINES = 6
+    private const val FLOW_UNION_ADDITIONAL_LINES = 2
     private const val FORCED_RECT_MAXIMUM_LINES = 100
     private const val MINIMUM_LEADING_SLOT_RATIO = 0.72f
     private const val LAYOUT_SEARCH_STEPS = 16

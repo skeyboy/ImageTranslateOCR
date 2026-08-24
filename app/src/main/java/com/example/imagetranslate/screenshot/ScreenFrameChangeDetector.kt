@@ -141,7 +141,18 @@ internal class ScreenFrameChangeDetector(
     private var pendingSettledDifferenceRatio: Float? = null
     private val stableFrames = ArrayDeque<ScreenFrameSignature>(STABLE_FRAME_BUFFER_CAPACITY)
 
-    fun onFrame(signature: ScreenFrameSignature, nowMs: Long): ScreenFrameAction {
+    fun onFrame(signature: ScreenFrameSignature, nowMs: Long): ScreenFrameAction =
+        onFrame(signature, nowMs, allowSettle = true)
+
+    fun observeExternalScrollFrame(signature: ScreenFrameSignature, nowMs: Long) {
+        onFrame(signature, nowMs, allowSettle = false)
+    }
+
+    private fun onFrame(
+        signature: ScreenFrameSignature,
+        nowMs: Long,
+        allowSettle: Boolean
+    ): ScreenFrameAction {
         val prior = previous
         previous = signature
         if (prior == null || prior.samples.size != signature.samples.size) {
@@ -181,7 +192,7 @@ internal class ScreenFrameChangeDetector(
         } else {
             minOf(stableDelayMs, slowMovementStableDelayMs)
         }
-        if (dirty &&
+        if (allowSettle && dirty &&
             nowMs - lastMovementAt >= requiredStableDelay &&
             captureIntervalSatisfied &&
             stableFrames.size >= minimumStableFrameSamples
@@ -232,6 +243,18 @@ internal class ScreenFrameChangeDetector(
         stableFrames.clear()
     }
 
+    fun beginExternalScroll(nowMs: Long) {
+        previous = null
+        dirty = true
+        movementReported = true
+        lastMovementAt = nowMs
+        peakMovementRatio = 0f
+        pendingCapturePlan = null
+        latestMotionPlan = null
+        pendingSettledDifferenceRatio = null
+        stableFrames.clear()
+    }
+
     fun consumeCapturePlan(): ScrollCapturePlan? = pendingCapturePlan.also {
         pendingCapturePlan = null
     }
@@ -242,7 +265,11 @@ internal class ScreenFrameChangeDetector(
     fun isAwaitingStableFrames(): Boolean = dirty
 
     fun forceActionAfterQuietPeriod(nowMs: Long): ScreenFrameAction =
-        if (dirty) settleMovement(nowMs, latestMotionPlan) else ScreenFrameAction.NONE
+        if (dirty) {
+            settleMovement(nowMs, bufferedCapturePlan() ?: latestMotionPlan)
+        } else {
+            ScreenFrameAction.NONE
+        }
 
     fun consumeSettledDifferenceRatio(): Float? = pendingSettledDifferenceRatio.also {
         pendingSettledDifferenceRatio = null

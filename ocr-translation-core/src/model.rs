@@ -396,6 +396,15 @@ pub fn literal_identifiers(text: &str) -> Vec<String> {
         })
         .filter(|token| !token.is_empty())
     {
+        // OCR occasionally joins words and a digit across a quote, for example
+        // `been"1found`. That is prose corruption, not a stable identifier the
+        // translation model can be required to reproduce verbatim.
+        if token
+            .chars()
+            .any(|character| matches!(character, '\'' | '"' | '‘' | '’' | '“' | '”' | '«' | '»'))
+        {
+            continue;
+        }
         if let Some(number) = compact_quantity_number(token) {
             if number.len() >= 2 {
                 identifiers.insert(number.to_owned());
@@ -620,6 +629,11 @@ mod tests {
     fn all_caps_natural_language_headings_are_not_literal_identifiers() {
         assert!(literal_identifiers("PERSONAL INFORMATION WE").is_empty());
         assert!(literal_identifiers("COLLECT").is_empty());
+    }
+
+    #[test]
+    fn quoted_ocr_word_digit_join_is_not_a_literal_identifier() {
+        assert!(literal_identifiers("It has been\"1found in the archive").is_empty());
     }
 
     #[test]

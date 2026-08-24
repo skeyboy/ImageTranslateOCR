@@ -139,7 +139,8 @@ class OneShotScreenCaptureService : Service() {
     private var lastSignatureSampleAt = Long.MIN_VALUE
     private val movementSettleFallback = Runnable {
         if (!continuousTranslationEnabled.get() || projection == null ||
-            captureInProgress.get() || initialCapturePending.get()
+            captureInProgress.get() || initialCapturePending.get() ||
+            accessibilityScrollPending.get()
         ) {
             return@Runnable
         }
@@ -168,7 +169,27 @@ class OneShotScreenCaptureService : Service() {
         ) {
             return@Runnable
         }
-        requestScreenshot()
+        when (changeDetector.forceActionAfterQuietPeriod(SystemClock.elapsedRealtime())) {
+            ScreenFrameAction.RESTORE -> restoreUnchangedSettledViewport("accessibility_scroll")
+            ScreenFrameAction.CAPTURE -> {
+                val capturePlan = changeDetector.consumeCapturePlan()
+                val differenceRatio = changeDetector.consumeSettledDifferenceRatio()
+                Log.i(
+                    TAG,
+                    "Accessibility scroll settled: " +
+                        "shiftY=${capturePlan?.contentShiftY ?: 0}, " +
+                        "confidence=${capturePlan?.confidence ?: 0f}, " +
+                        "differenceRatio=${differenceRatio ?: -1f}"
+                )
+                requestScreenshot(capturePlan)
+            }
+            ScreenFrameAction.NONE,
+            ScreenFrameAction.MOVING,
+            ScreenFrameAction.MOVING_UPDATE -> {
+                drainLatestImage()
+                scheduleMovementSettleFallback()
+            }
+        }
     }
     private val translationMutex = Mutex()
     private var foregroundServiceTypes = 0
@@ -1314,6 +1335,15 @@ class OneShotScreenCaptureService : Service() {
             return
         }
         if (accessibilityScrollPending.get()) {
+            val nowMs = SystemClock.elapsedRealtime()
+            runCatching {
+                sampleFrameSignature(image, maskTranslationPatches = false)
+            }.onSuccess { signature ->
+                latestObservedSignature = signature
+                changeDetector.observeExternalScrollFrame(signature, nowMs)
+            }.onFailure { error ->
+                Log.w(TAG, "Unable to sample accessibility scroll frame", error)
+            }
             image.close()
             return
         }
@@ -1438,7 +1468,7 @@ class OneShotScreenCaptureService : Service() {
                     )
                 }
             }
-            changeDetector.reset()
+            changeDetector.beginExternalScroll(eventAtMs)
             startScrollFrameProbe(
                 handler = handler,
                 sourcePackage = sourcePackage.orEmpty(),
@@ -2089,6 +2119,8 @@ class OneShotScreenCaptureService : Service() {
             .put("translatedRegionCount", result.translatedRegionCount)
             .put("renderedPatchCount", result.patches.size)
             .put("failedRegionCount", result.failedCount)
+            .put("translationFailedCount", result.translationFailedCount)
+            .put("renderFailedCount", result.renderFailedCount)
             .put("renderFailures", renderFailuresJson(result.renderFailures))
             .put("sourceRegionCount", result.sourceCoverage.regionCount)
             .put("sourceCoverageRatio", result.sourceCoverage.coverageRatio.toDouble())

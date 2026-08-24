@@ -47,6 +47,10 @@ class SemanticContentClassifierTest {
         assertTrue(SemanticContentClassifier.isStandaloneMetadata(text))
         assertTrue(SemanticContentClassifier.isDiscussionThreadMetadata(text))
         assertFalse(SemanticContentClassifier.shouldPreserve("METADATA", text))
+
+        val hoursOld = "logicallee 2 hours ago | parent | context | on: Human brains"
+        assertTrue(SemanticContentClassifier.isDiscussionThreadMetadata(hoursOld))
+        assertFalse(SemanticContentClassifier.shouldPreserve("METADATA", hoursOld))
     }
 
     @Test

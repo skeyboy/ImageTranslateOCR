@@ -551,7 +551,8 @@ pub fn layout_hint(
         preferred_max_lines,
         minimum_text_scale,
         maximum_text_scale: 1.0,
-        line_spacing_multiplier: if source_lines >= 8 { 0.92 } else { 1.0 },
+        // The contract must never ask a renderer to trade glyph safety for fit.
+        line_spacing_multiplier: 1.0,
         alignment: alignment.to_owned(),
         overflow_strategy: if group.role == "BODY" && source_lines >= 4 {
             "REFLOW_THEN_SCALE_THEN_MORE".to_owned()
@@ -776,6 +777,7 @@ mod tests {
         );
 
         assert_eq!(hint.vertical_alignment, "TOP");
+        assert_eq!(hint.line_spacing_multiplier, 1.0);
     }
 
     #[test]

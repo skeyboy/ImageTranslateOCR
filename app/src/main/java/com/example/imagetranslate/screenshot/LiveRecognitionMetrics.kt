@@ -72,7 +72,9 @@ internal data class LiveRecognitionRunMetrics(
     val retainedLatinTokenCount: Int = 0,
     val retainedLatinRatio: Float = 0f,
     val suspiciousJoinCount: Int = 0,
-    val largestPatchAreaRatio: Float = 0f
+    val largestPatchAreaRatio: Float = 0f,
+    val translationFailedCount: Int = 0,
+    val renderFailedCount: Int = 0
 ) {
     val totalProcessingMs: Long
         get() = recognitionAndTranslationMs + renderingMs

@@ -73,6 +73,8 @@ internal object LiveRecognitionTelemetry {
         .put("translated_regions", metrics.translatedRegionCount)
         .put("patches", metrics.patchCount)
         .put("failed", metrics.failedCount)
+        .put("translation_failed", metrics.translationFailedCount)
+        .put("render_failed", metrics.renderFailedCount)
         .put("reused", metrics.reusedRegionCount)
         .put("recognition_regions", metrics.recognitionRegionCount)
         .put("recognition_area_ratio", metrics.recognitionAreaRatio.toDouble())
@@ -147,6 +149,8 @@ internal object LiveRecognitionTelemetry {
         .put("translated_regions", metrics.translatedRegionCount)
         .put("patches", metrics.patchCount)
         .put("failed", metrics.failedCount)
+        .put("translation_failed", metrics.translationFailedCount)
+        .put("render_failed", metrics.renderFailedCount)
         .put("reused", metrics.reusedRegionCount)
         .put("recognition_regions", metrics.recognitionRegionCount)
         .put("recognition_area_ratio", metrics.recognitionAreaRatio.toDouble())
@@ -171,7 +175,7 @@ internal object LiveRecognitionTelemetry {
         .put("suspicious_joins", metrics.suspiciousJoinCount)
         .put("largest_patch_area_ratio", metrics.largestPatchAreaRatio.toDouble())
 
-    private const val SCHEMA_VERSION = 7
+    private const val SCHEMA_VERSION = 8
 }
 
 internal data class LiveInteractionTimingMetrics(

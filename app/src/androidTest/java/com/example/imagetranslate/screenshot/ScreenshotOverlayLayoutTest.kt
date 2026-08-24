@@ -195,6 +195,115 @@ class ScreenshotOverlayLayoutTest {
     }
 
     @Test
+    fun narrowTailFlowCanUseSafeUnionOnlyAfterStrictLayoutFails() = runBlocking {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val bitmap = Bitmap.createBitmap(1440, 500, Bitmap.Config.ARGB_8888)
+        val slots = listOf(
+            Rect(60, 100, 1113, 145),
+            Rect(60, 152, 258, 191)
+        )
+        assertEquals(
+            Rect(60, 100, 1113, 191),
+            safeFlowUnionRectFallback(
+                renderSlots = slots,
+                layoutShape = "FLOW_SLOTS",
+                sourceLineCount = 2,
+                role = "BODY",
+                sourceTextHeightsPx = listOf(39f, 38f)
+            )
+        )
+        Canvas(bitmap).apply {
+            drawColor(Color.WHITE)
+            Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = Color.BLACK
+                textSize = 39f
+            }.also { paint ->
+                drawText(
+                    "But the concept is employed in the Meta-Circular /",
+                    slots[0].left.toFloat(),
+                    slots[0].bottom - 4f,
+                    paint
+                )
+                drawText(
+                    "Evaluator.",
+                    slots[1].left.toFloat(),
+                    slots[1].bottom - 4f,
+                    paint
+                )
+            }
+        }
+        val processor = BackgroundTranslatedImageProcessor(context)
+        try {
+            val translation = "但这一概念应用于 Meta-Circular Evaluator（元循环求值器）中。"
+            val result = processor.renderDeterministicOverlay(
+                bitmap = bitmap,
+                regions = listOf(
+                    LiveDeterministicTranslationRegion(
+                        sourceText = "But the concept is employed in the Meta-Circular /\n" +
+                            "Evaluator.",
+                        translation = translation,
+                        bounds = Rect(60, 100, 1113, 191),
+                        sourceLineBounds = slots,
+                        sourceTextHeightsPx = listOf(39f, 38f),
+                        renderSlots = slots,
+                        sourceCoverSlots = slots,
+                        displayHints = SmartAssistDisplayHints(
+                            preferredMaxLines = 2,
+                            minimumTextScale = 0.86f,
+                            maximumTextScale = 1f,
+                            lineSpacingMultiplier = 1f,
+                            allowMore = false,
+                            sourceLineCount = 2,
+                            layoutShape = "FLOW_SLOTS",
+                            role = "BODY",
+                            verticalAlignment = "TOP"
+                        ),
+                        groupId = "server-v4-narrow-tail-regression"
+                    )
+                )
+            )
+
+            assertEquals(1, result.renderedRegionCount)
+            assertEquals(0, result.failedRegionCount)
+            assertTrue(result.renderFailures.isEmpty())
+            val evidence = result.renderedText.single()
+            assertEquals(1f, evidence.lineSpacingMultiplier)
+            assertEquals(1, evidence.usedRenderSlotCount)
+            assertFalse(evidence.clipped)
+        } finally {
+            processor.close()
+            bitmap.recycle()
+        }
+    }
+
+    @Test
+    fun wrappedOrMixedTypographyFlowCannotUseSafeUnion() {
+        val wrapped = listOf(
+            Rect(176, 461, 373, 511),
+            Rect(130, 517, 373, 569),
+            Rect(7, 573, 373, 642)
+        )
+        assertNull(
+            safeFlowUnionRectFallback(
+                wrapped,
+                "FLOW_SLOTS",
+                sourceLineCount = 3,
+                role = "BODY",
+                sourceTextHeightsPx = listOf(42f, 41f, 40f)
+            )
+        )
+        assertNull(
+            safeFlowUnionRectFallback(
+                listOf(Rect(40, 100, 600, 145), Rect(40, 152, 220, 188)),
+                "FLOW_SLOTS",
+                sourceLineCount = 2,
+                role = "BODY",
+                sourceTextHeightsPx = listOf(42f, 30f)
+            )
+        )
+    }
+
+    @Test
     fun shorterTranslationUsesSafeFlowSlotPrefixWhenStrictThreeSlotLayoutFails() = runBlocking {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val bitmap = Bitmap.createBitmap(1440, 1000, Bitmap.Config.ARGB_8888)

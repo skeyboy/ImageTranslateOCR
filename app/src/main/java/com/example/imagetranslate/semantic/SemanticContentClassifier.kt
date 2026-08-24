@@ -13,7 +13,7 @@ internal object SemanticContentClassifier {
 
     fun isDiscussionThreadMetadata(text: String): Boolean {
         val normalized = normalize(text).lowercase()
-        val hasAge = "minute ago" in normalized || "minutes ago" in normalized
+        val hasAge = DISCUSSION_AGE_MARKERS.any { marker -> marker in normalized }
         val hasNavigation = "parent" in normalized && "context" in normalized
         val hasSubject = "on:" in normalized || "on：" in normalized
         return hasAge && hasNavigation && hasSubject
@@ -93,6 +93,11 @@ internal object SemanticContentClassifier {
     private val WHITESPACE = Regex("\\s+")
     private val LOWERCASE_NAME_PARTICLES = setOf(
         "and", "bin", "da", "de", "del", "la", "van", "von"
+    )
+    private val DISCUSSION_AGE_MARKERS = listOf(
+        "second ago", "seconds ago", "minute ago", "minutes ago",
+        "hour ago", "hours ago", "day ago", "days ago",
+        "week ago", "weeks ago"
     )
     private const val MAXIMUM_AUTHOR_TOKENS = 8
 }

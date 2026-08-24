@@ -241,7 +241,10 @@ fn merge_decision(
             .as_deref()
             .is_some_and(|other| other != block_id)
     });
-    if different_client_group && crosses_typography_tier(previous, next) {
+    // Check the complete accumulated group on every streaming merge. Once the
+    // first line of a client group has merged, `different_client_group` becomes
+    // false and must not allow later lines to widen the typography envelope.
+    if crosses_typography_tier(previous, next) {
         return None;
     }
     if different_client_group
@@ -649,7 +652,20 @@ fn ends_with_sentence_terminal(text: &str) -> bool {
 
 fn looks_like_discussion_metadata(text: &str) -> bool {
     let normalized = text.to_ascii_lowercase();
-    let has_age = normalized.contains("minute ago") || normalized.contains("minutes ago");
+    let has_age = [
+        "second ago",
+        "seconds ago",
+        "minute ago",
+        "minutes ago",
+        "hour ago",
+        "hours ago",
+        "day ago",
+        "days ago",
+        "week ago",
+        "weeks ago",
+    ]
+    .iter()
+    .any(|age| normalized.contains(age));
     let has_navigation = normalized.contains("parent") && normalized.contains("context");
     let has_subject = normalized.contains("on:") || normalized.contains("on：");
     has_age && has_navigation && has_subject
@@ -1037,6 +1053,61 @@ mod tests {
     }
 
     #[test]
+    fn rejects_gradual_font_drift_across_the_accumulated_group() {
+        let mut request = request();
+        let heights = [42.0, 40.0, 32.0];
+        let texts = [
+            "This paragraph starts with the larger type and continues",
+            "through a locally compatible middle line before",
+            "a visibly smaller typography tier begins.",
+        ];
+        let mut regions = Vec::new();
+        for index in 0..3 {
+            let mut region = request.regions[0].clone();
+            region.region_id = format!("drift-{index}");
+            region.group_id = "client-drift".to_owned();
+            region.block_id = Some("same-ocr-block".to_owned());
+            region.line_index = Some(index as i32);
+            region.reading_order = index as i32;
+            region.text = texts[index].to_owned();
+            region.estimated_text_height_px = Some(heights[index]);
+            region.typography_confidence = 0.9;
+            region.bounds = Bounds {
+                left: 64,
+                top: 500 + index as i32 * 52,
+                right: 1_260,
+                bottom: 545 + index as i32 * 52,
+            };
+            regions.push(region);
+        }
+        let mut advisory = request.groups[0].clone();
+        advisory.group_id = "client-drift".to_owned();
+        advisory.role = "BODY".to_owned();
+        advisory.member_region_ids = regions
+            .iter()
+            .map(|region| region.region_id.clone())
+            .collect();
+        advisory.source_text = regions
+            .iter()
+            .map(|region| region.text.as_str())
+            .collect::<Vec<_>>()
+            .join("\n");
+        advisory.bounds = regions[0]
+            .bounds
+            .union(&regions[1].bounds)
+            .union(&regions[2].bounds);
+        advisory.render_slots = vec![advisory.bounds.clone()];
+        request.regions = regions;
+        request.groups = vec![advisory];
+
+        let plan = build_regions_first_plan(&request);
+
+        assert_eq!(plan.groups.len(), 2);
+        assert_eq!(plan.groups[0].member_region_ids.len(), 2);
+        assert_eq!(plan.groups[1].member_region_ids, vec!["drift-2"]);
+    }
+
+    #[test]
     fn keeps_same_scale_cross_block_continuation_merged() {
         let mut request = request();
         let mut first = request.regions[0].clone();
@@ -1098,7 +1169,7 @@ mod tests {
         metadata.line_index = Some(0);
         metadata.reading_order = 0;
         metadata.text =
-            "CrzyLngPwd 3 minutes ago parent context on:Why aren't smart people".to_owned();
+            "CrzyLngPwd 2 hours ago parent context on:Why aren't smart people".to_owned();
         metadata.bounds = Bounds {
             left: 64,
             top: 1497,

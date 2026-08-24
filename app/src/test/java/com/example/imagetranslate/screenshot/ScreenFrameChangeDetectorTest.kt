@@ -178,6 +178,44 @@ class ScreenFrameChangeDetectorTest {
     }
 
     @Test
+    fun accessibilityScrollPreservesBaselineAndBuildsDifferentialPlan() {
+        val scrollDetector = ScreenFrameChangeDetector(
+            stableDelayMs = 300L,
+            minimumCaptureIntervalMs = 100L,
+            changedSampleRatio = 0.05f,
+            luminanceDelta = 10
+        )
+        val reference = patternedFrame()
+        val current = shiftedFrame(reference, shiftRows = -4)
+        scrollDetector.onCaptureStarted(reference, 0L)
+
+        scrollDetector.beginExternalScroll(100L)
+        assertEquals(ScreenFrameAction.NONE, scrollDetector.onFrame(current, 200L))
+        assertEquals(ScreenFrameAction.NONE, scrollDetector.onFrame(current, 250L))
+        assertEquals(
+            ScreenFrameAction.CAPTURE,
+            scrollDetector.forceActionAfterQuietPeriod(700L)
+        )
+        assertEquals(-160, scrollDetector.consumeCapturePlan()?.contentShiftY)
+    }
+
+    @Test
+    fun falseAccessibilityScrollRestoresTheCapturedViewport() {
+        val scrollDetector = ScreenFrameChangeDetector(changedSampleRatio = 0.05f)
+        val reference = patternedFrame()
+        scrollDetector.onCaptureStarted(reference, 0L)
+
+        scrollDetector.beginExternalScroll(100L)
+        scrollDetector.onFrame(reference, 200L)
+        scrollDetector.onFrame(reference, 250L)
+
+        assertEquals(
+            ScreenFrameAction.RESTORE,
+            scrollDetector.forceActionAfterQuietPeriod(700L)
+        )
+    }
+
+    @Test
     fun transientSettledFramesDoNotStartBufferedCapture() {
         detector.onFrame(frame(10), 0L)
         assertEquals(ScreenFrameAction.MOVING, detector.onFrame(frame(90), 100L))
