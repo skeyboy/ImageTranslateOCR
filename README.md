@@ -33,6 +33,26 @@ Android 图片 OCR 文字识别 + 翻译 + 原图覆盖工具
 JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" ./gradlew :app:assembleDebug
 ```
 
+APK 输出名称包含构建日期、应用版本和构建类型，例如：
+
+```text
+app/build/outputs/apk/debug/ImageTranslateOCR-20260825-v1.0.123-debug.apk
+```
+
+默认 `versionCode` 使用 Git 提交总数并随提交递增，`versionName` 为
+`1.0.<versionCode>`。CI 或手工打包可显式覆盖版本与日期：
+
+```bash
+JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" \
+  ./gradlew :app:assembleDebug \
+  -PVERSION_CODE=124 \
+  -PVERSION_NAME=1.0.124 \
+  -PAPK_BUILD_DATE=20260825
+```
+
+对应环境变量为 `ANDROID_VERSION_CODE`、`ANDROID_VERSION_NAME` 和
+`ANDROID_APK_BUILD_DATE`。
+
 自动化测试：
 
 ```bash

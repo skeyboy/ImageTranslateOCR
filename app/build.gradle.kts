@@ -1,3 +1,6 @@
+import com.android.build.gradle.internal.api.BaseVariantOutputImpl
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 import java.util.Properties
 
 plugins {
@@ -10,6 +13,31 @@ val localProperties = Properties().apply {
 }
 
 fun localSecret(name: String): String = localProperties.getProperty(name)?.trim().orEmpty()
+
+fun configuredValue(gradleProperty: String, environmentVariable: String): String =
+    providers.gradleProperty(gradleProperty).orNull?.trim().orEmpty()
+        .ifBlank { providers.environmentVariable(environmentVariable).orNull?.trim().orEmpty() }
+
+val gitCommitCount = providers.exec {
+    commandLine("git", "rev-list", "--count", "HEAD")
+    isIgnoreExitValue = true
+}.standardOutput.asText.get().trim().toIntOrNull()?.coerceAtLeast(1) ?: 1
+val configuredVersionCode = configuredValue("VERSION_CODE", "ANDROID_VERSION_CODE")
+val androidVersionCode = configuredVersionCode.takeIf(String::isNotBlank)?.let { value ->
+    requireNotNull(value.toIntOrNull()?.takeIf { it > 0 }) {
+        "VERSION_CODE must be a positive integer"
+    }
+} ?: gitCommitCount
+val androidVersionName = configuredValue("VERSION_NAME", "ANDROID_VERSION_NAME")
+    .ifBlank { "1.0.$androidVersionCode" }
+val apkBuildDate = configuredValue("APK_BUILD_DATE", "ANDROID_APK_BUILD_DATE")
+    .ifBlank { LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE) }
+    .also { value ->
+        require(value.matches(Regex("\\d{8}"))) {
+            "APK_BUILD_DATE must use yyyyMMdd format"
+        }
+    }
+val apkSafeVersionName = androidVersionName.replace(Regex("[^A-Za-z0-9._-]"), "-")
 
 val excludeEdgeAiSecrets = providers.gradleProperty("EXCLUDE_EDGE_AI_SECRETS").orNull
     ?.toBooleanStrictOrNull()
@@ -47,8 +75,8 @@ android {
         applicationId = "com.example.imagetranslate"
         minSdk = 24
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = androidVersionCode
+        versionName = androidVersionName
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -145,6 +173,13 @@ android {
     }
 
     sourceSets.getByName("main").jniLibs.srcDir(layout.buildDirectory.dir("generated/rustJniLibs"))
+
+    applicationVariants.all {
+        outputs.all {
+            (this as BaseVariantOutputImpl).outputFileName =
+                "ImageTranslateOCR-$apkBuildDate-v$apkSafeVersionName-${buildType.name}.apk"
+        }
+    }
 }
 
 val buildEmbeddedTranslationEdge by tasks.registering(Exec::class) {
