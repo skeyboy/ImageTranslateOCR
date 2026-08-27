@@ -1,0 +1,14 @@
+--------- beginning of main
+Accessibility scroll settled: shiftY=0, confidence=0.0, differenceRatio=0.17517814
+Overlay translation started: generation=18, backend=EMBEDDED_V4, engine=LOCAL_PIPELINE, timeoutMs=35000
+OCR recognition succeeded: generation=18, recognized=42
+Overlay translation completed: totalMs=6786, differential=false, shiftY=0, reused=0, recognized=42, rawRecognized=42, edgeFiltered=0, edgeRecovered=0, continuations=3, patches=21, ocrTranslateMs=6575, renderMs=179, smartAssist=false, assistScene=null, assistGroups=0, assistProtected=0, assistLayout=0, assistMs=0, trackCacheHits=0, trackCacheMisses=21, themePatches=0, blurPatches=0
+Accessibility scroll settled: shiftY=0, confidence=0.0, differenceRatio=0.18333334
+Overlay translation started: generation=21, backend=EMBEDDED_V4, engine=LOCAL_PIPELINE, timeoutMs=35000
+OCR recognition succeeded: generation=21, recognized=38
+Overlay translation completed: totalMs=4871, differential=false, shiftY=0, reused=0, recognized=38, rawRecognized=38, edgeFiltered=0, edgeRecovered=0, continuations=1, patches=15, ocrTranslateMs=4720, renderMs=117, smartAssist=false, assistScene=null, assistGroups=0, assistProtected=0, assistLayout=0, assistMs=0, trackCacheHits=0, trackCacheMisses=15, themePatches=0, blurPatches=0
+Capture frame heartbeat missed 1/2; lastFrameAgeMs=394
+Accessibility scroll settled: shiftY=0, confidence=0.0, differenceRatio=0.1773585
+Overlay translation started: generation=24, backend=EMBEDDED_V4, engine=LOCAL_PIPELINE, timeoutMs=35000
+OCR recognition succeeded: generation=24, recognized=39
+Overlay translation completed: totalMs=6841, differential=false, shiftY=0, reused=0, recognized=39, rawRecognized=37, edgeFiltered=0, edgeRecovered=2, continuations=1, patches=12, ocrTranslateMs=6719, renderMs=88, smartAssist=false, assistScene=null, assistGroups=0, assistProtected=0, assistLayout=0, assistMs=0, trackCacheHits=0, trackCacheMisses=12, themePatches=0, blurPatches=0

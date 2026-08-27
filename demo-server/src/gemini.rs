@@ -3,7 +3,7 @@ use std::{sync::RwLock, time::Instant};
 use async_trait::async_trait;
 use ocr_translation_core::model::{
     ModelTranslationFailure, build_model_prompt, literal_identifiers, missing_literal_identifiers,
-    parse_translation_content_unvalidated,
+    parse_translation_content_for_request_unvalidated,
 };
 use reqwest::{Client, Proxy};
 use serde_json::{Value, json};
@@ -102,10 +102,10 @@ impl GeminiNativeClient {
         let mut body = self.request_body(request, groups)?;
         let requirements = groups
             .iter()
-            .map(|group| {
+            .enumerate()
+            .map(|(index, group)| {
                 format!(
-                    "- groupId {}: {}",
-                    group.group_id,
+                    "- id g{index}: {}",
                     literal_identifiers(&group.source_text).join(", ")
                 )
             })
@@ -207,7 +207,8 @@ impl TranslationModel for GeminiNativeClient {
         let envelope = self.generate(api_key, &body).await?;
         let answer = Self::answer_text(&envelope)?;
         let mut translations =
-            parse_translation_content_unvalidated(&answer, groups).map_err(AppError::from)?;
+            parse_translation_content_for_request_unvalidated(&answer, request, groups)
+                .map_err(AppError::from)?;
         let repair_groups = if request.translation.preserve_identifiers {
             groups
                 .iter()
@@ -233,9 +234,12 @@ impl TranslationModel for GeminiNativeClient {
                 .await
                 .and_then(|envelope| {
                     let repair_answer = Self::answer_text(&envelope)?;
-                    let repaired =
-                        parse_translation_content_unvalidated(&repair_answer, &repair_groups)
-                            .map_err(AppError::from)?;
+                    let repaired = parse_translation_content_for_request_unvalidated(
+                        &repair_answer,
+                        request,
+                        &repair_groups,
+                    )
+                    .map_err(AppError::from)?;
                     Ok((repaired, envelope))
                 });
             repair_timing = json!({
@@ -379,6 +383,29 @@ mod tests {
                 .is_some()
         );
         assert!(!body.to_string().contains("secret"));
+    }
+
+    #[test]
+    fn repair_prompt_uses_the_same_compact_aliases_as_the_payload() {
+        let mut config = Config::for_test(":memory:".to_owned());
+        config.gemini_api_key = Some("secret".to_owned());
+        let client = GeminiNativeClient::new(&config).unwrap();
+        let (request, groups) = fixture();
+
+        let body = client.repair_request_body(&request, &groups).unwrap();
+        let system = body
+            .pointer("/systemInstruction/parts/0/text")
+            .and_then(Value::as_str)
+            .unwrap();
+        let user: Value = serde_json::from_str(
+            body.pointer("/contents/0/parts/0/text")
+                .and_then(Value::as_str)
+                .unwrap(),
+        )
+        .unwrap();
+
+        assert!(system.contains("- id g0"));
+        assert_eq!(user["groups"][0]["id"], "g0");
     }
 
     #[test]

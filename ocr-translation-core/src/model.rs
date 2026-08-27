@@ -8,9 +8,11 @@ use crate::{
     error::CoreError,
 };
 
-pub const PROMPT_VERSION: &str = "semantic-translation-core-v4-typography-context";
+pub const PROMPT_VERSION: &str = "semantic-translation-core-v5-provider-compact";
 
-pub const SYSTEM_PROMPT: &str = r#"You are a professional screen OCR translation engine.
+pub const SYSTEM_PROMPT: &str = r#"You are a screen OCR translation engine. Input is JSON with mode and ordered groups. Each group has id, text, src, dst, role, box, scale, type, and optional keep. Translate every text independently and completely; use order, role, box, scale, and type only to resolve context. Newlines inside text are OCR lines of one semantic unit: reflow naturally, but never split, merge, omit, summarize, move, or borrow content across IDs. Preserve URLs, identifiers, names, brands, numbers, dates, units, and currencies. Copy every keep value verbatim into the same group's translated text; missing or moving one is invalid. For AUTO_BIDIRECTIONAL, translate Chinese natural language to English and other natural language to Chinese. Return strict JSON matching response_format with every input id exactly once and every translated text non-empty."#;
+
+const FULL_GEOMETRY_SYSTEM_PROMPT: &str = r#"You are a professional screen OCR translation engine.
 The input is one visible screen reconstructed from OCR geometry. Translate each translateGroups item independently and completely, while using documentOutline and neighboring geometry only to disambiguate meaning.
 Treat newline-separated OCR lines inside sourceText as one semantic block. Never imitate OCR line breaks, split a block back into lines, merge keys, borrow text from another key, summarize, or add notes.
 Preserve URLs, identifiers, names, brands, numbers, dates, units, and currencies. Every requiredLiteralIdentifiers item must remain visible verbatim and in the same semantic role.
@@ -46,6 +48,38 @@ pub struct ModelPrompt {
     pub user: String,
     pub response_format: Value,
     pub recommended_max_tokens: u32,
+    pub bindings: Vec<ModelGroupBinding>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ModelGroupBinding {
+    pub alias_id: String,
+    pub group_id: String,
+    pub source_language: String,
+    pub target_language: String,
+}
+
+#[derive(Serialize)]
+struct CompactProviderPayload<'a> {
+    mode: &'a str,
+    groups: Vec<CompactProviderGroup<'a>>,
+}
+
+#[derive(Serialize)]
+struct CompactProviderGroup<'a> {
+    id: &'a str,
+    text: &'a str,
+    src: &'a str,
+    dst: &'a str,
+    role: &'a str,
+    #[serde(rename = "box")]
+    normalized_bounds: [u16; 4],
+    scale: u16,
+    #[serde(rename = "type")]
+    typography_tier: &'static str,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    keep: Vec<String>,
 }
 
 pub fn build_model_prompt(
@@ -57,9 +91,56 @@ pub fn build_model_prompt(
         .iter()
         .map(|r| (r.region_id.as_str(), r))
         .collect::<HashMap<_, _>>();
+    let bindings = model_group_bindings(request, groups);
     let width = request.viewport.width as f32;
     let height = request.viewport.height as f32;
     let viewport_text_height = median_text_height(request.regions.iter()).unwrap_or(1.0);
+    if request.translation.compact_provider_prompt {
+        let provider_groups = groups
+            .iter()
+            .zip(&bindings)
+            .map(|(group, binding)| {
+                let members = group
+                    .member_region_ids
+                    .iter()
+                    .filter_map(|id| regions.get(id.as_str()).copied())
+                    .collect::<Vec<_>>();
+                let group_text_height =
+                    median_text_height(members.iter().copied()).unwrap_or(viewport_text_height);
+                let relative_text_scale = group_text_height / viewport_text_height.max(1.0);
+                CompactProviderGroup {
+                    id: &binding.alias_id,
+                    text: &group.source_text,
+                    src: &binding.source_language,
+                    dst: &binding.target_language,
+                    role: &group.role,
+                    normalized_bounds: quantized_provider_bounds(
+                        &group.bounds,
+                        request.viewport.width,
+                        request.viewport.height,
+                    ),
+                    scale: (relative_text_scale * 100.0).round().clamp(1.0, 1000.0) as u16,
+                    typography_tier: typography_tier(relative_text_scale),
+                    keep: if request.translation.preserve_identifiers {
+                        literal_identifiers(&group.source_text)
+                    } else {
+                        Vec::new()
+                    },
+                }
+            })
+            .collect();
+        let payload = CompactProviderPayload {
+            mode: &request.translation.mode,
+            groups: provider_groups,
+        };
+        return Ok(ModelPrompt {
+            system: prompt_system(SYSTEM_PROMPT, request.translation.direct_structured_output),
+            user: serde_json::to_string(&payload)?,
+            response_format: response_format(true),
+            recommended_max_tokens: adaptive_max_tokens(groups),
+            bindings,
+        });
+    }
     let translate_groups = groups.iter().map(|group| {
         let members = group.member_region_ids.iter().filter_map(|id| regions.get(id.as_str()).copied()).collect::<Vec<_>>();
         let group_text_height = median_text_height(members.iter().copied()).unwrap_or(viewport_text_height);
@@ -79,42 +160,32 @@ pub fn build_model_prompt(
             "typographyTier": typography_tier(relative_text_scale),
             "relativeTextScale": (relative_text_scale * 100.0).round() / 100.0,
         });
-        if request.translation.compact_provider_prompt {
-            let mut compact = common;
-            compact["normalizedBounds"] = json!(quantized_normalized_bounds(
-                &group.bounds,
-                request.viewport.width,
-                request.viewport.height,
-            ));
-            compact
-        } else {
-            let slots = resolved_render_slots(group, &members);
-            let mut full = common;
-            full["normalizedBounds"] = json!([
-                group.bounds.left as f32 / width,
-                group.bounds.top as f32 / height,
-                group.bounds.right as f32 / width,
-                group.bounds.bottom as f32 / height,
-            ]);
-            full["layoutShape"] = json!(group.layout_shape);
-            full["renderSlots"] = json!(slots.iter().map(|slot| [
-                slot.left as f32 / width,
-                slot.top as f32 / height,
-                slot.right as f32 / width,
-                slot.bottom as f32 / height,
-            ]).collect::<Vec<_>>());
-            full["regionLines"] = json!(members.iter().map(|region| json!({
-                "regionId": region.region_id,
-                "readingOrder": region.reading_order,
-                "normalizedBounds": [
-                    region.bounds.left as f32 / width,
-                    region.bounds.top as f32 / height,
-                    region.bounds.right as f32 / width,
-                    region.bounds.bottom as f32 / height,
-                ]
-            })).collect::<Vec<_>>());
-            full
-        }
+        let slots = resolved_render_slots(group, &members);
+        let mut full = common;
+        full["normalizedBounds"] = json!([
+            group.bounds.left as f32 / width,
+            group.bounds.top as f32 / height,
+            group.bounds.right as f32 / width,
+            group.bounds.bottom as f32 / height,
+        ]);
+        full["layoutShape"] = json!(group.layout_shape);
+        full["renderSlots"] = json!(slots.iter().map(|slot| [
+            slot.left as f32 / width,
+            slot.top as f32 / height,
+            slot.right as f32 / width,
+            slot.bottom as f32 / height,
+        ]).collect::<Vec<_>>());
+        full["regionLines"] = json!(members.iter().map(|region| json!({
+            "regionId": region.region_id,
+            "readingOrder": region.reading_order,
+            "normalizedBounds": [
+                region.bounds.left as f32 / width,
+                region.bounds.top as f32 / height,
+                region.bounds.right as f32 / width,
+                region.bounds.bottom as f32 / height,
+            ]
+        })).collect::<Vec<_>>());
+        full
     }).collect::<Vec<_>>();
     let document_outline = groups
         .iter()
@@ -143,15 +214,54 @@ pub fn build_model_prompt(
     }
     let user = serde_json::to_string(&payload)?;
     Ok(ModelPrompt {
-        system: if request.translation.direct_structured_output {
-            format!("{SYSTEM_PROMPT}\n{DIRECT_STRUCTURED_OUTPUT_PROMPT}")
-        } else {
-            SYSTEM_PROMPT.to_owned()
-        },
+        system: prompt_system(
+            FULL_GEOMETRY_SYSTEM_PROMPT,
+            request.translation.direct_structured_output,
+        ),
         user,
-        response_format: response_format(groups),
+        response_format: response_format(false),
         recommended_max_tokens: adaptive_max_tokens(groups),
+        bindings,
     })
+}
+
+fn prompt_system(base: &str, direct_structured_output: bool) -> String {
+    if direct_structured_output {
+        format!("{base}\n{DIRECT_STRUCTURED_OUTPUT_PROMPT}")
+    } else {
+        base.to_owned()
+    }
+}
+
+pub fn model_group_bindings(
+    request: &SemanticTranslationRequest,
+    groups: &[TranslationGroup],
+) -> Vec<ModelGroupBinding> {
+    let regions = request
+        .regions
+        .iter()
+        .map(|region| (region.region_id.as_str(), region))
+        .collect::<HashMap<_, _>>();
+    groups
+        .iter()
+        .enumerate()
+        .map(|(index, group)| {
+            let first_region = group
+                .member_region_ids
+                .iter()
+                .find_map(|id| regions.get(id.as_str()).copied());
+            ModelGroupBinding {
+                alias_id: format!("g{index}"),
+                group_id: group.group_id.clone(),
+                source_language: first_region
+                    .and_then(|region| region.source_language.clone())
+                    .unwrap_or_else(|| request.translation.source_language.clone()),
+                target_language: first_region
+                    .and_then(|region| region.target_language.clone())
+                    .unwrap_or_else(|| request.translation.target_language.clone()),
+            }
+        })
+        .collect()
 }
 
 fn median_text_height<'a>(
@@ -182,13 +292,16 @@ fn typography_tier(relative_scale: f32) -> &'static str {
     }
 }
 
-fn quantized_normalized_bounds(
+fn quantized_provider_bounds(
     bounds: &crate::contract::Bounds,
     width: i32,
     height: i32,
-) -> [f64; 4] {
-    let quantize =
-        |value: i32, extent: i32| ((value as f64 / extent as f64) * 1_000.0).round() / 1_000.0;
+) -> [u16; 4] {
+    let quantize = |value: i32, extent: i32| {
+        ((value as f64 / extent as f64) * 1_000.0)
+            .round()
+            .clamp(0.0, 1_000.0) as u16
+    };
     [
         quantize(bounds.left, width),
         quantize(bounds.top, height),
@@ -221,6 +334,19 @@ pub fn parse_completion_envelope_unvalidated(
     parse_translation_content_unvalidated(content, groups)
 }
 
+pub fn parse_completion_envelope_for_request_unvalidated(
+    raw: &str,
+    request: &SemanticTranslationRequest,
+    groups: &[TranslationGroup],
+) -> Result<Vec<ModelTranslation>, CoreError> {
+    let envelope: Value = serde_json::from_str(raw)?;
+    let content = envelope
+        .pointer("/choices/0/message/content")
+        .and_then(Value::as_str)
+        .unwrap_or(raw);
+    parse_translation_content_for_request_unvalidated(content, request, groups)
+}
+
 pub fn parse_translation_content(
     raw: &str,
     groups: &[TranslationGroup],
@@ -234,6 +360,33 @@ pub fn parse_translation_content_unvalidated(
     raw: &str,
     groups: &[TranslationGroup],
 ) -> Result<Vec<ModelTranslation>, CoreError> {
+    let bindings = groups
+        .iter()
+        .enumerate()
+        .map(|(index, group)| ModelGroupBinding {
+            alias_id: format!("g{index}"),
+            group_id: group.group_id.clone(),
+            source_language: "auto".to_owned(),
+            target_language: requested_target(group).to_owned(),
+        })
+        .collect::<Vec<_>>();
+    parse_translation_content_with_bindings(raw, groups, &bindings)
+}
+
+pub fn parse_translation_content_for_request_unvalidated(
+    raw: &str,
+    request: &SemanticTranslationRequest,
+    groups: &[TranslationGroup],
+) -> Result<Vec<ModelTranslation>, CoreError> {
+    let bindings = model_group_bindings(request, groups);
+    parse_translation_content_with_bindings(raw, groups, &bindings)
+}
+
+fn parse_translation_content_with_bindings(
+    raw: &str,
+    groups: &[TranslationGroup],
+    bindings: &[ModelGroupBinding],
+) -> Result<Vec<ModelTranslation>, CoreError> {
     let cleaned = raw
         .trim()
         .strip_prefix("```json")
@@ -246,29 +399,51 @@ pub fn parse_translation_content_unvalidated(
         .map_err(|e| CoreError::model(format!("invalid AI translation JSON: {e}")))?;
     let translations = value
         .get("translations")
+        .or_else(|| value.get("results"))
         .ok_or_else(|| CoreError::model("AI response must contain translations"))?;
-    let items = if let Some(array) = translations.as_array() {
+    if bindings.len() != groups.len() {
+        return Err(CoreError::model(
+            "model prompt bindings do not match translation groups",
+        ));
+    }
+    let bindings_by_id = bindings
+        .iter()
+        .flat_map(|binding| {
+            [
+                (binding.alias_id.as_str(), binding),
+                (binding.group_id.as_str(), binding),
+            ]
+        })
+        .collect::<HashMap<_, _>>();
+    let raw_items = if let Some(array) = translations.as_array() {
         array
             .iter()
-            .filter_map(|item| {
-                item.get("groupId")
+            .map(|item| {
+                let id = item
+                    .get("id")
+                    .or_else(|| item.get("groupId"))
                     .and_then(Value::as_str)
-                    .map(|id| (id.to_owned(), item))
+                    .ok_or_else(|| CoreError::model("AI translation is missing id"))?;
+                Ok((id, item))
             })
-            .collect::<HashMap<_, _>>()
+            .collect::<Result<Vec<_>, CoreError>>()?
     } else if let Some(map) = translations.as_object() {
-        // Backward compatibility for responses produced by the v1 keyed schema.
-        map.iter()
-            .map(|(id, item)| (id.clone(), item))
-            .collect::<HashMap<_, _>>()
+        map.iter().map(|(id, item)| (id.as_str(), item)).collect()
     } else {
         return Err(CoreError::model("translations must be an array"));
     };
-    let expected = groups
-        .iter()
-        .map(|g| g.group_id.as_str())
-        .collect::<HashSet<_>>();
-    if items.len() != expected.len() || items.keys().any(|id| !expected.contains(id.as_str())) {
+    let mut items = HashMap::with_capacity(raw_items.len());
+    for (returned_id, item) in raw_items {
+        let binding = bindings_by_id
+            .get(returned_id)
+            .ok_or_else(|| CoreError::model(format!("AI returned unknown id {returned_id}")))?;
+        if items.insert(binding.group_id.as_str(), item).is_some() {
+            return Err(CoreError::model(format!(
+                "AI returned duplicate id {returned_id}"
+            )));
+        }
+    }
+    if items.len() != groups.len() {
         return Err(CoreError::model(
             "AI response group IDs do not exactly match the request",
         ));
@@ -277,12 +452,13 @@ pub fn parse_translation_content_unvalidated(
         .iter()
         .map(|group| {
             let item = items
-                .get(&group.group_id)
+                .get(group.group_id.as_str())
                 .copied()
                 .and_then(Value::as_object)
                 .ok_or_else(|| CoreError::model(format!("AI omitted group {}", group.group_id)))?;
             let translated = item
-                .get("translatedText")
+                .get("text")
+                .or_else(|| item.get("translatedText"))
                 .and_then(Value::as_str)
                 .map(str::trim)
                 .filter(|v| !v.is_empty())
@@ -296,14 +472,28 @@ pub fn parse_translation_content_unvalidated(
                 group_id: group.group_id.clone(),
                 translated_text: translated.to_owned(),
                 detected_source_language: item
-                    .get("detectedSourceLanguage")
+                    .get("src")
+                    .or_else(|| item.get("detectedSourceLanguage"))
                     .and_then(Value::as_str)
-                    .unwrap_or("auto")
+                    .unwrap_or_else(|| {
+                        bindings
+                            .iter()
+                            .find(|binding| binding.group_id == group.group_id)
+                            .map(|binding| binding.source_language.as_str())
+                            .unwrap_or("auto")
+                    })
                     .to_owned(),
                 target_language: item
-                    .get("targetLanguage")
+                    .get("dst")
+                    .or_else(|| item.get("targetLanguage"))
                     .and_then(Value::as_str)
-                    .unwrap_or(requested_target(group))
+                    .unwrap_or_else(|| {
+                        bindings
+                            .iter()
+                            .find(|binding| binding.group_id == group.group_id)
+                            .map(|binding| binding.target_language.as_str())
+                            .unwrap_or_else(|| requested_target(group))
+                    })
                     .to_owned(),
                 failure: None,
             })
@@ -347,15 +537,24 @@ fn requested_target(_group: &TranslationGroup) -> &'static str {
     "auto"
 }
 
-fn response_format(_groups: &[TranslationGroup]) -> Value {
-    json!({"type":"json_schema","json_schema":{"name":"semantic_translation","strict":true,"schema":{
-        "type":"object","properties":{"translations":{"type":"array","items":{"type":"object","properties":{
-            "groupId":{"type":"string","minLength":1},
-            "translatedText":{"type":"string","minLength":1},
-            "detectedSourceLanguage":{"type":"string","minLength":1},
-            "targetLanguage":{"type":"string","minLength":1}
-        },"required":["groupId","translatedText","detectedSourceLanguage","targetLanguage"],"additionalProperties":false}}},"required":["translations"],"additionalProperties":false
-    }}})
+fn response_format(compact: bool) -> Value {
+    if compact {
+        json!({"type":"json_schema","json_schema":{"name":"semantic_translation","strict":true,"schema":{
+            "type":"object","properties":{"translations":{"type":"array","items":{"type":"object","properties":{
+                "id":{"type":"string","minLength":2},
+                "text":{"type":"string","minLength":1}
+            },"required":["id","text"],"additionalProperties":false}}},"required":["translations"],"additionalProperties":false
+        }}})
+    } else {
+        json!({"type":"json_schema","json_schema":{"name":"semantic_translation","strict":true,"schema":{
+            "type":"object","properties":{"translations":{"type":"array","items":{"type":"object","properties":{
+                "groupId":{"type":"string","minLength":1},
+                "translatedText":{"type":"string","minLength":1},
+                "detectedSourceLanguage":{"type":"string","minLength":1},
+                "targetLanguage":{"type":"string","minLength":1}
+            },"required":["groupId","translatedText","detectedSourceLanguage","targetLanguage"],"additionalProperties":false}}},"required":["translations"],"additionalProperties":false
+        }}})
+    }
 }
 
 pub fn adaptive_max_tokens(groups: &[TranslationGroup]) -> u32 {
@@ -468,6 +667,23 @@ fn compact_quantity_number(token: &str) -> Option<&str> {
 mod tests {
     use super::*;
 
+    fn provider_test_group(request: &mut SemanticTranslationRequest) -> TranslationGroup {
+        request.regions[0].region_id = "r1".to_owned();
+        request.regions[0].text = "Rust is a systems programming language.".to_owned();
+        request.document_context.reading_order_region_ids = vec!["r1".to_owned()];
+        serde_json::from_value(json!({
+            "groupId":"server-v4-0-c56b4a9c84e57578",
+            "role":"BODY",
+            "translationUnit":"GROUP",
+            "sourceText":"Rust is a systems programming language.",
+            "memberRegionIds":["r1"],
+            "readingOrder":0,
+            "groupingConfidence":1.0,
+            "bounds":{"left":10,"top":20,"right":500,"bottom":80}
+        }))
+        .unwrap()
+    }
+
     #[test]
     fn identifier_requirements_follow_the_request_option() {
         let mut request: SemanticTranslationRequest =
@@ -484,18 +700,13 @@ mod tests {
 
         let preserving = build_model_prompt(&request, std::slice::from_ref(&group)).unwrap();
         let preserving_user: Value = serde_json::from_str(&preserving.user).unwrap();
-        assert_eq!(
-            preserving_user["translateGroups"][0]["requiredLiteralIdentifiers"],
-            json!(["CCPA"])
-        );
+        assert_eq!(preserving_user["groups"][0]["keep"], json!(["CCPA"]));
+        assert!(preserving.system.contains("Copy every keep value verbatim"));
 
         request.translation.preserve_identifiers = false;
         let relaxed = build_model_prompt(&request, &[group]).unwrap();
         let relaxed_user: Value = serde_json::from_str(&relaxed.user).unwrap();
-        assert_eq!(
-            relaxed_user["translateGroups"][0]["requiredLiteralIdentifiers"],
-            json!([])
-        );
+        assert!(relaxed_user["groups"][0].get("keep").is_none());
     }
 
     #[test]
@@ -537,17 +748,16 @@ mod tests {
 
         let compact = build_model_prompt(&request, std::slice::from_ref(&group)).unwrap();
         let compact_user: Value = serde_json::from_str(&compact.user).unwrap();
-        let compact_group = &compact_user["translateGroups"][0];
-        assert_eq!(compact_user["promptProfile"], "COMPACT");
-        assert_eq!(compact_group["typographyTier"], "NORMAL");
-        assert!(compact_group["relativeTextScale"].is_number());
+        let compact_group = &compact_user["groups"][0];
+        assert_eq!(compact_user["mode"], "AUTO_BIDIRECTIONAL");
+        assert_eq!(compact_group["id"], "g0");
+        assert_eq!(compact_group["text"], "Hello world");
+        assert_eq!(compact_group["type"], "NORMAL");
+        assert_eq!(compact_group["scale"], 100);
         assert!(compact_user.get("viewport").is_none());
         assert!(compact_group.get("regionLines").is_none());
         assert!(compact_group.get("renderSlots").is_none());
-        assert_eq!(
-            compact_group["normalizedBounds"],
-            json!([0.012, 0.011, 0.279, 0.05])
-        );
+        assert_eq!(compact_group["box"], json!([12, 11, 279, 50]));
 
         request.translation.compact_provider_prompt = false;
         let full = build_model_prompt(&request, &[group]).unwrap();
@@ -557,6 +767,68 @@ mod tests {
         assert!(full_user["translateGroups"][0].get("regionLines").is_some());
         assert!(full_user["translateGroups"][0].get("renderSlots").is_some());
         assert!(compact.user.len() < full.user.len());
+    }
+
+    #[test]
+    fn compact_response_restores_canonical_id_and_input_languages() {
+        let mut request: SemanticTranslationRequest =
+            serde_json::from_str(include_str!("../examples/v4-minimal-request.json")).unwrap();
+        let group = provider_test_group(&mut request);
+        request.regions[0].source_language = Some("en".to_owned());
+        request.regions[0].target_language = Some("zh".to_owned());
+
+        let parsed = parse_translation_content_for_request_unvalidated(
+            r#"{"translations":[{"id":"g0","text":"Rust 是一种系统编程语言。"}]}"#,
+            &request,
+            std::slice::from_ref(&group),
+        )
+        .unwrap();
+
+        assert_eq!(parsed[0].group_id, group.group_id);
+        assert_eq!(parsed[0].detected_source_language, "en");
+        assert_eq!(parsed[0].target_language, "zh");
+    }
+
+    #[test]
+    fn compact_response_rejects_duplicate_or_unknown_aliases() {
+        let mut request: SemanticTranslationRequest =
+            serde_json::from_str(include_str!("../examples/v4-minimal-request.json")).unwrap();
+        let group = provider_test_group(&mut request);
+        let groups = std::slice::from_ref(&group);
+
+        let duplicate = parse_translation_content_for_request_unvalidated(
+            r#"{"translations":[{"id":"g0","text":"一"},{"id":"g0","text":"二"}]}"#,
+            &request,
+            groups,
+        )
+        .unwrap_err();
+        assert!(duplicate.to_string().contains("duplicate id"));
+
+        let unknown = parse_translation_content_for_request_unvalidated(
+            r#"{"translations":[{"id":"g9","text":"一"}]}"#,
+            &request,
+            groups,
+        )
+        .unwrap_err();
+        assert!(unknown.to_string().contains("unknown id"));
+    }
+
+    #[test]
+    fn full_geometry_prompt_keeps_the_legacy_schema_as_a_rollback_path() {
+        let mut request: SemanticTranslationRequest =
+            serde_json::from_str(include_str!("../examples/v4-minimal-request.json")).unwrap();
+        let group = provider_test_group(&mut request);
+        request.translation.compact_provider_prompt = false;
+
+        let prompt = build_model_prompt(&request, std::slice::from_ref(&group)).unwrap();
+        let user: Value = serde_json::from_str(&prompt.user).unwrap();
+        let properties = &prompt.response_format["json_schema"]["schema"]["properties"]["translations"]
+            ["items"]["properties"];
+
+        assert_eq!(user["promptProfile"], "FULL_GEOMETRY");
+        assert!(user["translateGroups"][0].get("regionLines").is_some());
+        assert!(properties.get("groupId").is_some());
+        assert!(properties.get("translatedText").is_some());
     }
 
     #[test]

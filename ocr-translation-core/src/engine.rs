@@ -11,7 +11,7 @@ use crate::{
     error::CoreError,
     model::{
         ModelPrompt, ModelTranslation, ModelTranslationFailure, PROMPT_VERSION, build_model_prompt,
-        missing_literal_identifiers, parse_completion_envelope_unvalidated,
+        missing_literal_identifiers, parse_completion_envelope_for_request_unvalidated,
     },
     planning::DocumentPlan,
     planning_v4::build_regions_first_plan,
@@ -74,8 +74,9 @@ pub fn complete_translation(
     total_ms: u64,
 ) -> Result<CompletedTranslation, CoreError> {
     let prepared: PreparedTranslation = serde_json::from_str(prepared_json)?;
-    let mut translations = parse_completion_envelope_unvalidated(
+    let mut translations = parse_completion_envelope_for_request_unvalidated(
         completion_envelope_json,
+        &prepared.request,
         &prepared.actionable_groups,
     )?;
     if prepared.request.translation.preserve_identifiers {
@@ -258,20 +259,18 @@ mod tests {
         assert!(!prepared.model_prompt.user.contains("documentContext"));
         assert_eq!(prepared.model_prompt.recommended_max_tokens, 1024);
         let user: serde_json::Value = serde_json::from_str(&prepared.model_prompt.user).unwrap();
-        assert_eq!(user["promptProfile"], "COMPACT");
+        assert_eq!(user["mode"], "AUTO_BIDIRECTIONAL");
+        assert_eq!(user["groups"][0]["id"], "g0");
         assert_eq!(
             prepared.model_prompt.response_format["json_schema"]["schema"]["properties"]["translations"]
                 ["type"],
             "array"
         );
         let prepared_json = serde_json::to_string(&prepared).unwrap();
-        let group_id = &prepared.actionable_groups[0].group_id;
         let completion = serde_json::json!({"choices":[{"message":{"content":serde_json::json!({
             "translations": [{
-                "groupId": group_id,
-                "translatedText":"Rust 是一种系统编程语言。",
-                "detectedSourceLanguage":"en",
-                "targetLanguage":"zh"
+                "id": "g0",
+                "text":"Rust 是一种系统编程语言。"
             }]
         }).to_string()}}]})
         .to_string();
@@ -280,6 +279,8 @@ mod tests {
             completed.response.results[0].translated_text.as_deref(),
             Some("Rust 是一种系统编程语言。")
         );
+        assert_eq!(completed.response.results[0].detected_source_language, "en");
+        assert_eq!(completed.response.results[0].target_language, "zh");
         assert_eq!(completed.response.provider, "embedded-openlux-v4");
         assert_eq!(completed.response.metrics.total_ms, 25);
     }

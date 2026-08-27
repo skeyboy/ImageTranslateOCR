@@ -1,5 +1,5 @@
 use std::{
-    collections::{HashMap, HashSet},
+    collections::HashMap,
     hash::{DefaultHasher, Hash, Hasher},
     sync::{Arc, RwLock},
 };
@@ -8,7 +8,9 @@ use async_trait::async_trait;
 pub use ocr_translation_core::model::ModelTranslation;
 use ocr_translation_core::{
     contract::ThinkingControlMode as RequestThinkingControlMode,
-    model::{adaptive_max_tokens, build_model_prompt},
+    model::{
+        adaptive_max_tokens, build_model_prompt, parse_translation_content_for_request_unvalidated,
+    },
 };
 use reqwest::{Client, StatusCode};
 use serde::{Deserialize, Serialize};
@@ -410,8 +412,11 @@ impl TranslationModel for QwenClient {
         });
         timing["cacheHitGroups"] = Value::from(groups.len() - missing_groups.len());
         timing["cacheMissGroups"] = Value::from(missing_groups.len());
-        let mut fresh =
-            parse_model_response_without_critical_validation(&completion.content, &missing_groups)?;
+        let mut fresh = parse_model_response_without_critical_validation(
+            &completion.content,
+            request,
+            &missing_groups,
+        )?;
         let repair_groups = missing_groups
             .iter()
             .filter(|group| {
@@ -432,7 +437,8 @@ impl TranslationModel for QwenClient {
                 self.chat_request_with_system_prompt(request, &repair_groups, repair_prompt)?;
             let repaired_completion = self.completion(&repair_body, repair_groups.len()).await?;
             timing["repair"] = repaired_completion.timing;
-            let repaired = parse_model_response(&repaired_completion.content, &repair_groups)?;
+            let repaired =
+                parse_model_response(&repaired_completion.content, request, &repair_groups)?;
             for repaired_translation in repaired {
                 if let Some(translation) = fresh
                     .iter_mut()
@@ -910,86 +916,26 @@ fn semantic_request_for_schema(groups: &[TranslationGroup]) -> SemanticTranslati
     request
 }
 
-#[derive(Deserialize)]
-struct ModelResponse {
-    #[serde(default)]
-    translations: TranslationCollection,
-    #[serde(default)]
-    results: Vec<ModelResult>,
-}
-
-#[derive(Deserialize, Default)]
-#[serde(untagged)]
-enum TranslationCollection {
-    Keyed(HashMap<String, KeyedModelResult>),
-    Array(Vec<ModelResult>),
-    #[default]
-    Empty,
-}
-
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-struct KeyedModelResult {
-    translated_text: String,
-    detected_source_language: String,
-    target_language: String,
-}
-
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-struct ModelResult {
-    group_id: String,
-    translated_text: String,
-    detected_source_language: String,
-    target_language: String,
-}
-
 fn parse_model_response(
     raw: &str,
+    request: &SemanticTranslationRequest,
     groups: &[TranslationGroup],
 ) -> Result<Vec<ModelTranslation>, AppError> {
-    let translations = parse_model_response_without_critical_validation(raw, groups)?;
+    let translations = parse_model_response_without_critical_validation(raw, request, groups)?;
     validate_model_translations(groups, &translations)?;
     Ok(translations)
 }
 
 fn parse_model_response_without_critical_validation(
     raw: &str,
+    request: &SemanticTranslationRequest,
     groups: &[TranslationGroup],
 ) -> Result<Vec<ModelTranslation>, AppError> {
     let json = strip_json_fence(raw);
-    let response: ModelResponse = serde_json::from_str(json)
+    let results = parse_translation_content_for_request_unvalidated(json, request, groups)
         .map_err(|error| AppError::Upstream(format!("invalid Qwen result JSON: {error}")))?;
-    let results = match response.translations {
-        TranslationCollection::Keyed(items) => items
-            .into_iter()
-            .map(|(group_id, result)| ModelResult {
-                group_id,
-                translated_text: result.translated_text,
-                detected_source_language: result.detected_source_language,
-                target_language: result.target_language,
-            })
-            .collect(),
-        TranslationCollection::Array(items) => items,
-        TranslationCollection::Empty => response.results,
-    };
-    let expected = groups
-        .iter()
-        .map(|group| group.group_id.as_str())
-        .collect::<HashSet<_>>();
-    let mut seen = HashSet::with_capacity(results.len());
     let mut by_id = HashMap::with_capacity(results.len());
-    for result in results {
-        if !expected.contains(result.group_id.as_str()) {
-            return Err(AppError::Upstream(
-                "Qwen returned an unknown groupId".to_owned(),
-            ));
-        }
-        if !seen.insert(result.group_id.clone()) {
-            return Err(AppError::Upstream(
-                "Qwen returned a duplicate groupId".to_owned(),
-            ));
-        }
+    for mut result in results {
         let translated_text = sanitize_model_translation(&result.translated_text)?;
         if translated_text.is_empty() {
             return Err(AppError::Upstream(
@@ -1004,21 +950,10 @@ fn parse_model_response_without_critical_validation(
             group,
             normalize_preserved_identifiers(group, translated_text),
         );
-        by_id.insert(
-            result.group_id.clone(),
-            ModelTranslation {
-                group_id: result.group_id,
-                translated_text,
-                detected_source_language: normalized_language(&result.detected_source_language),
-                target_language: normalized_language(&result.target_language),
-                failure: None,
-            },
-        );
-    }
-    if seen.len() != expected.len() {
-        return Err(AppError::Upstream(
-            "Qwen omitted one or more groupIds".to_owned(),
-        ));
+        result.translated_text = translated_text;
+        result.detected_source_language = normalized_language(&result.detected_source_language);
+        result.target_language = normalized_language(&result.target_language);
+        by_id.insert(result.group_id.clone(), result);
     }
     let mut ordered = groups
         .iter()
@@ -1180,14 +1115,14 @@ fn required_literal_identifiers(source: &str) -> Vec<&'static str> {
 fn critical_repair_prompt(groups: &[TranslationGroup]) -> String {
     let requirements = groups
         .iter()
-        .filter_map(|group| {
+        .enumerate()
+        .filter_map(|(index, group)| {
             let identifiers = required_literal_identifiers(&group.source_text);
             if identifiers.is_empty() {
                 None
             } else {
                 Some(format!(
-                    "- groupId {} must contain these exact literal identifiers: {}",
-                    group.group_id,
+                    "- id g{index} must contain these exact literal identifiers: {}",
                     identifiers.join(", ")
                 ))
             }
@@ -1358,13 +1293,13 @@ mod tests {
                     assert_eq!(
                         body["response_format"]["json_schema"]["schema"]["properties"]
                             ["translations"]["items"]["properties"]
-                            ["translatedText"]["minLength"],
+                            ["text"]["minLength"],
                         1
                     );
                     Json(json!({
                         "choices": [{
                             "message": {
-                                "content": "{\"translations\":{\"group-1\":{\"translatedText\":\"你好\",\"detectedSourceLanguage\":\"en\",\"targetLanguage\":\"zh\"}}}"
+                                "content": "{\"translations\":[{\"id\":\"g0\",\"text\":\"你好\"}]}"
                             }
                         }]
                     }))
@@ -1393,10 +1328,7 @@ mod tests {
         let saved_user_payload: Value =
             serde_json::from_str(saved_request["messages"][1]["content"].as_str().unwrap())
                 .unwrap();
-        assert_eq!(
-            saved_user_payload["translateGroups"][0]["groupId"],
-            "group-1"
-        );
+        assert_eq!(saved_user_payload["groups"][0]["id"], "g0");
         let translated = client.translate(&request, &request.groups).await.unwrap();
         assert_eq!(translated[0].translated_text, "你好");
         assert_eq!(translated[0].target_language, "zh");
@@ -1509,17 +1441,11 @@ mod tests {
                         let user_payload: Value =
                             serde_json::from_str(body["messages"][1]["content"].as_str().unwrap())
                                 .unwrap();
-                        assert_eq!(
-                            user_payload["translateGroups"][0]["requiredLiteralIdentifiers"],
-                            json!(["AIMS-Next"])
-                        );
+                        assert_eq!(user_payload["groups"][0]["keep"], json!(["AIMS-Next"]));
                         if attempt == 1 {
-                            assert!(
-                                body["messages"][0]["content"]
-                                    .as_str()
-                                    .unwrap()
-                                    .contains("CORRECTION RETRY")
-                            );
+                            let repair_system = body["messages"][0]["content"].as_str().unwrap();
+                            assert!(repair_system.contains("CORRECTION RETRY"));
+                            assert!(repair_system.contains("- id g0"));
                         }
                         let translated = if attempt == 0 {
                             "下一代爱因斯坦中心计划"
@@ -1530,13 +1456,7 @@ mod tests {
                             "choices": [{
                                 "message": {
                                     "content": json!({
-                                        "translations": {
-                                            "group-1": {
-                                                "translatedText": translated,
-                                                "detectedSourceLanguage": "en",
-                                                "targetLanguage": "zh"
-                                            }
-                                        }
+                                        "translations": [{"id": "g0", "text": translated}]
                                     }).to_string()
                                 }
                             }]
@@ -1625,6 +1545,7 @@ mod tests {
     fn accepts_fenced_json_and_keeps_input_order() {
         let parsed = parse_model_response(
             "```json\n{\"results\":[{\"groupId\":\"group-1\",\"translatedText\":\"你好\",\"detectedSourceLanguage\":\"en\",\"targetLanguage\":\"zh\"}]}\n```",
+            &semantic_request_for_schema(&groups()),
             &groups(),
         )
         .unwrap();
@@ -1635,6 +1556,7 @@ mod tests {
     fn accepts_group_id_keyed_json() {
         let parsed = parse_model_response(
             "{\"translations\":{\"group-1\":{\"translatedText\":\"你好\",\"detectedSourceLanguage\":\"en\",\"targetLanguage\":\"zh\"}}}",
+            &semantic_request_for_schema(&groups()),
             &groups(),
         )
         .unwrap();
@@ -1650,7 +1572,7 @@ mod tests {
             "array"
         );
         assert_eq!(
-            schema["json_schema"]["schema"]["properties"]["translations"]["items"]["properties"]["translatedText"]
+            schema["json_schema"]["schema"]["properties"]["translations"]["items"]["properties"]["text"]
                 ["minLength"],
             1
         );
@@ -1681,16 +1603,18 @@ mod tests {
     fn rejects_unknown_group_ids() {
         let error = parse_model_response(
             "{\"results\":[{\"groupId\":\"other\",\"translatedText\":\"你好\",\"detectedSourceLanguage\":\"en\",\"targetLanguage\":\"zh\"}]}",
+            &semantic_request_for_schema(&groups()),
             &groups(),
         )
         .unwrap_err();
-        assert!(error.to_string().contains("unknown groupId"));
+        assert!(error.to_string().contains("unknown id"));
     }
 
     #[test]
     fn removes_only_unambiguous_protocol_suffixes_from_translation_text() {
         let parsed = parse_model_response(
             "{\"results\":[{\"groupId\":\"group-1\",\"translatedText\":\"你好。”},{\",\"detectedSourceLanguage\":\"en\",\"targetLanguage\":\"zh\"}]}",
+            &semantic_request_for_schema(&groups()),
             &groups(),
         )
         .unwrap();
@@ -1698,6 +1622,7 @@ mod tests {
 
         let parsed = parse_model_response(
             "{\"results\":[{\"groupId\":\"group-1\",\"translatedText\":\"你好。”}]}]}`.user:{\",\"detectedSourceLanguage\":\"en\",\"targetLanguage\":\"zh\"}]}",
+            &semantic_request_for_schema(&groups()),
             &groups(),
         )
         .unwrap();

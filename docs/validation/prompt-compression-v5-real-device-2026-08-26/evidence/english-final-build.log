@@ -1,0 +1,7 @@
+--------- beginning of main
+Accessibility scroll settled: shiftY=0, confidence=0.0, differenceRatio=0.22209026
+Overlay translation started: generation=6, backend=EMBEDDED_V4, engine=LOCAL_PIPELINE, timeoutMs=35000
+Accessibility scroll settled: shiftY=0, confidence=0.0, differenceRatio=0.093230404
+Overlay translation started: generation=9, backend=EMBEDDED_V4, engine=LOCAL_PIPELINE, timeoutMs=35000
+OCR recognition succeeded: generation=9, recognized=41
+Overlay translation completed: totalMs=5279, differential=false, shiftY=0, reused=0, recognized=41, rawRecognized=41, edgeFiltered=0, edgeRecovered=0, continuations=3, patches=22, ocrTranslateMs=5051, renderMs=170, smartAssist=false, assistScene=null, assistGroups=0, assistProtected=0, assistLayout=0, assistMs=0, trackCacheHits=0, trackCacheMisses=22, themePatches=0, blurPatches=0
