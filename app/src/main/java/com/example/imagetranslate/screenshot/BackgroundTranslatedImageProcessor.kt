@@ -2773,6 +2773,10 @@ private object BackgroundTranslatedImageRenderer {
                 (region.smartAssistDisplayHints?.layoutShape == null ||
                     region.smartAssistDisplayHints.layoutShape == "RECT") &&
                 sourceLineCount >= RECT_FALLBACK_MINIMUM_SOURCE_LINES
+            val isCompactSingleLineRect = renderSlots.size == 1 &&
+                region.smartAssistDisplayHints?.layoutShape == "RECT" &&
+                sourceLineCount == 1 &&
+                translatedCharacterCount <= COMPACT_RECT_MAXIMUM_CHARACTERS
             val safeHorizontalExpansionSlot = region.safeHorizontalExpansionSlot
             val initialLayout = ShapeAwareTextLayout.layout(
                 text = region.translation,
@@ -2889,6 +2893,29 @@ private object BackgroundTranslatedImageRenderer {
             } else {
                 null
             }
+            val compactSingleLineRectRetry = if (
+                standardRetry == null && safeHorizontalExpansionRetry == null &&
+                safeHorizontalOverflowRetry == null && isCompactSingleLineRect
+            ) {
+                ShapeAwareTextLayout.layout(
+                    text = region.translation,
+                    paint = paint,
+                    renderSlots = renderSlots,
+                    preferredTextSizePx = preferredSize,
+                    minimumTextSizePx = maxOf(
+                        MINIMUM_TEXT_SIZE_PX,
+                        sourceLineHeight * COMPACT_RECT_MINIMUM_TEXT_SCALE
+                    ),
+                    maximumLines = 1,
+                    alignment = alignment,
+                    horizontalPadding = horizontalPadding,
+                    allowOverflowMore = false,
+                    lineSpacingMultipliers = listOf(1f),
+                    requireAllSlots = false
+                )?.takeIf { layout -> layout.displayedText == region.translation }
+            } else {
+                null
+            }
             val flowSlotPrefixRetry = if (
                 standardRetry == null &&
                 preserveFlowShape &&
@@ -3001,8 +3028,8 @@ private object BackgroundTranslatedImageRenderer {
                 null
             }
             val shapedLayout = leadingSlotRetry ?: standardRetry ?: safeHorizontalExpansionRetry ?:
-                safeHorizontalOverflowRetry ?: flowSlotPrefixRetry ?: safeFlowUnionRetry ?:
-                rectRetry ?: forcedRectRetry
+                safeHorizontalOverflowRetry ?: compactSingleLineRectRetry ?: flowSlotPrefixRetry ?:
+                safeFlowUnionRetry ?: rectRetry ?: forcedRectRetry
             if (leadingSlotRetry != null) {
                 Log.d(
                     TAG,
@@ -3038,6 +3065,14 @@ private object BackgroundTranslatedImageRenderer {
                         "scale=${safeHorizontalExpansionRetry.textSizePx / sourceLineHeight}"
                 )
             }
+            if (compactSingleLineRectRetry != null) {
+                Log.i(
+                    TAG,
+                    "Applied compact single-line RECT fallback " +
+                        "id=${region.groupId ?: "unknown"}, chars=$translatedCharacterCount, " +
+                        "scale=${compactSingleLineRectRetry.textSizePx / sourceLineHeight}"
+                )
+            }
             val relaxedRectLayout = rectRetry ?: forcedRectRetry
             if (relaxedRectLayout != null) {
                 Log.i(
@@ -3057,10 +3092,13 @@ private object BackgroundTranslatedImageRenderer {
                         sourceCoverSlots = sourceCoverSlots.map(::Rect),
                         sourceLineHeightPx = sourceLineHeight,
                         preferredTextSizePx = preferredSize,
-                        minimumAttemptedTextSizePx = if (isMultiLineRect) {
-                            MINIMUM_TEXT_SIZE_PX
-                        } else {
-                            maxOf(
+                        minimumAttemptedTextSizePx = when {
+                            isMultiLineRect -> MINIMUM_TEXT_SIZE_PX
+                            isCompactSingleLineRect -> maxOf(
+                                MINIMUM_TEXT_SIZE_PX,
+                                sourceLineHeight * COMPACT_RECT_MINIMUM_TEXT_SCALE
+                            )
+                            else -> maxOf(
                                 MINIMUM_TEXT_SIZE_PX,
                                 minimumSize * DECLARATIVE_LAYOUT_RETRY_SCALE
                             )
@@ -3501,6 +3539,8 @@ private object BackgroundTranslatedImageRenderer {
     private const val DECLARATIVE_LAYOUT_RETRY_SCALE = 0.82f
     private const val RECT_FALLBACK_MINIMUM_SOURCE_LINES = 2
     private const val RECT_FALLBACK_MINIMUM_TEXT_SCALE = 0.72f
+    private const val COMPACT_RECT_MINIMUM_TEXT_SCALE = 0.60f
+    private const val COMPACT_RECT_MAXIMUM_CHARACTERS = 12
     private const val RECT_FALLBACK_ADDITIONAL_LINES = 6
     private const val FLOW_UNION_ADDITIONAL_LINES = 2
     private const val FORCED_RECT_MAXIMUM_LINES = 100

@@ -27,6 +27,59 @@ import kotlinx.coroutines.runBlocking
 @RunWith(AndroidJUnit4::class)
 class ScreenshotOverlayLayoutTest {
     @Test
+    fun compactSingleLineRectUsesNarrowCompleteTextFallback() = runBlocking {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val bitmap = Bitmap.createBitmap(500, 200, Bitmap.Config.ARGB_8888)
+        val slot = Rect(87, 75, 322, 126)
+        Canvas(bitmap).apply {
+            drawColor(Color.WHITE)
+            drawText(
+                "Sure,buddy.",
+                slot.left.toFloat(),
+                slot.bottom - 6f,
+                Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    color = Color.DKGRAY
+                    textSize = 41f
+                }
+            )
+        }
+        val processor = BackgroundTranslatedImageProcessor(context)
+        try {
+            val result = processor.renderDeterministicOverlay(
+                bitmap = bitmap,
+                regions = listOf(
+                    LiveDeterministicTranslationRegion(
+                        sourceText = "Sure,buddy.",
+                        translation = "当然啦，兄弟。",
+                        bounds = slot,
+                        sourceLineBounds = listOf(slot),
+                        renderSlots = listOf(slot),
+                        displayHints = SmartAssistDisplayHints(
+                            preferredMaxLines = 2,
+                            minimumTextScale = 0.86f,
+                            lineSpacingMultiplier = 1f,
+                            allowMore = false,
+                            sourceLineCount = 1,
+                            layoutShape = "RECT",
+                            role = "BODY"
+                        ),
+                        groupId = "compact-single-line-regression"
+                    )
+                )
+            )
+
+            assertEquals(1, result.renderedRegionCount)
+            assertEquals(0, result.failedRegionCount)
+            assertEquals(1, result.renderedText.single().lineCount)
+            assertTrue(result.renderedText.single().textScale <= 0.65f)
+            assertEquals(1, result.patches.size)
+        } finally {
+            processor.close()
+            bitmap.recycle()
+        }
+    }
+
+    @Test
     fun titleLikeParagraphDoesNotUseBodyRectFallback() {
         val slots = listOf(
             Rect(148, 1419, 879, 1470), Rect(145, 1476, 794, 1527),

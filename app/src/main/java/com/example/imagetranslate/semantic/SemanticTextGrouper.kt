@@ -28,6 +28,8 @@ internal enum class GroupingEvidence {
     REGION_OCCUPANCY,
     FONT_SCALE_COMPATIBLE,
     FONT_SCALE_RELAXED_SAME_BLOCK,
+    FONT_SCALE_RELAXED_PARAGRAPH,
+    PARAGRAPH_CONTINUATION_RECOVERY,
     TOP_CLIPPED_CONTINUATION,
     BOTTOM_CLIPPED_CONTINUATION
 }
@@ -151,7 +153,7 @@ internal object SemanticTextGrouper {
                 val previous = members.last()
                 val next = remaining.indices.mapNotNull { index ->
                     val candidate = remaining[index]
-                    val pairEvidence = appendEvidence(previous, candidate)
+                    val pairEvidence = appendEvidence(members, candidate)
                         ?: return@mapNotNull null
                     val regionEvidence = regionAssociationEvidence(
                         members,
@@ -218,9 +220,10 @@ internal object SemanticTextGrouper {
     }
 
     private fun appendEvidence(
-        first: Candidate,
+        members: List<Candidate>,
         second: Candidate
     ): Set<GroupingEvidence>? {
+        val first = members.last()
         if (first.role.isStandalone || second.role.isStandalone) return null
         val titleContinuation = first.role == SemanticTextRole.TITLE &&
             second.role == SemanticTextRole.BODY &&
@@ -232,20 +235,40 @@ internal object SemanticTextGrouper {
 
         val firstBlock = first.source.sourceBlockId
         val secondBlock = second.source.sourceBlockId
-        if (firstBlock != null && secondBlock != null && firstBlock != secondBlock) return null
+        val establishedParagraphContinuation =
+            isEstablishedParagraphContinuation(members, second)
+        val differentKnownBlocks = firstBlock != null && secondBlock != null &&
+            firstBlock != secondBlock
+        if (differentKnownBlocks && !establishedParagraphContinuation) return null
         val sameBlock = firstBlock != null && firstBlock == secondBlock
         if (sameBlock) {
             val firstLine = first.source.sourceLineIndex
             val secondLine = second.source.sourceLineIndex
-            if (firstLine != null && secondLine != null && secondLine - firstLine > 1) return null
+            val firstEndLine = firstLine?.let { it + memberLineCount(first.source) - 1 }
+            if (firstEndLine != null && secondLine != null && secondLine - firstEndLine > 1) {
+                return null
+            }
         }
 
         val firstBounds = first.source.bounds
         val secondBounds = second.source.bounds
         val fontCompatibility = fontCompatibility(first.source, second.source)
-        if (fontCompatibility != FontCompatibility.STRONG) return null
-        val minimumHeight = minOf(rectHeight(firstBounds), rectHeight(secondBounds)).coerceAtLeast(1)
-        val maximumHeight = maxOf(rectHeight(firstBounds), rectHeight(secondBounds)).coerceAtLeast(1)
+        val compactSameBlockTail = isCompactSameBlockTail(
+            members,
+            second,
+            fontCompatibility
+        )
+        val relaxedSameBlockTail = fontCompatibility == FontCompatibility.RELAXED &&
+            isRelaxedSameBlockParagraphTail(members, second)
+        val relaxedParagraphContinuation = fontCompatibility == FontCompatibility.RELAXED &&
+            establishedParagraphContinuation
+        if (fontCompatibility != FontCompatibility.STRONG &&
+            !relaxedSameBlockTail && !relaxedParagraphContinuation && !compactSameBlockTail
+        ) return null
+        val firstLineHeight = representativeLineHeight(first.source)
+        val secondLineHeight = representativeLineHeight(second.source)
+        val minimumHeight = minOf(firstLineHeight, secondLineHeight).coerceAtLeast(1)
+        val maximumHeight = maxOf(firstLineHeight, secondLineHeight).coerceAtLeast(1)
 
         val verticalGap = secondBounds.top - firstBounds.bottom
         val maximumGapRatio = if (sameBlock) {
@@ -263,7 +286,10 @@ internal object SemanticTextGrouper {
             maxOf(firstBounds.left, secondBounds.left)
         val minimumWidth = minOf(rectWidth(firstBounds), rectWidth(secondBounds)).coerceAtLeast(1)
         val overlapRatio = horizontalOverlap.coerceAtLeast(0).toFloat() / minimumWidth
-        val alignmentTolerance = maxOf(6, minimumHeight)
+        val alignmentTolerance = maxOf(
+            6,
+            if (compactSameBlockTail) maximumHeight else minimumHeight
+        )
         val leftAligned = abs(firstBounds.left - secondBounds.left) <= alignmentTolerance
         val firstCenter = firstBounds.left + rectWidth(firstBounds) / 2
         val secondCenter = secondBounds.left + rectWidth(secondBounds) / 2
@@ -295,9 +321,14 @@ internal object SemanticTextGrouper {
             }
             add(GroupingEvidence.LINE_GAP)
             if (!sentenceBoundary) add(GroupingEvidence.PUNCTUATION_CONTINUATION)
+            if (differentKnownBlocks || relaxedParagraphContinuation || compactSameBlockTail) {
+                add(GroupingEvidence.PARAGRAPH_CONTINUATION_RECOVERY)
+            }
             add(
-                if (fontCompatibility == FontCompatibility.RELAXED) {
+                if (fontCompatibility == FontCompatibility.RELAXED && sameBlock) {
                     GroupingEvidence.FONT_SCALE_RELAXED_SAME_BLOCK
+                } else if (fontCompatibility == FontCompatibility.RELAXED) {
+                    GroupingEvidence.FONT_SCALE_RELAXED_PARAGRAPH
                 } else {
                     GroupingEvidence.FONT_SCALE_COMPATIBLE
                 }
@@ -330,7 +361,20 @@ internal object SemanticTextGrouper {
         } else {
             fontCompatibility(medianFloat(memberTextHeights), nextTextHeight)
         }
-        if (groupFontCompatibility != FontCompatibility.STRONG) return null
+        val relaxedSameBlockTail = groupFontCompatibility == FontCompatibility.RELAXED &&
+            isRelaxedSameBlockParagraphTail(members, next)
+        val relaxedParagraphContinuation = groupFontCompatibility == FontCompatibility.RELAXED &&
+            fontCompatibility(previous.source, next.source) == FontCompatibility.RELAXED &&
+            isEstablishedParagraphContinuation(members, next)
+        val compactSameBlockTail = groupFontCompatibility == FontCompatibility.RELAXED &&
+            isCompactSameBlockTail(
+                members,
+                next,
+                fontCompatibility(previous.source, next.source)
+            )
+        if (groupFontCompatibility != FontCompatibility.STRONG &&
+            !relaxedSameBlockTail && !relaxedParagraphContinuation && !compactSameBlockTail
+        ) return null
 
         if (members.size == 1) {
             val previousIsNarrow = previousWidth <= viewportWidth * NARROW_REGION_WIDTH_RATIO
@@ -354,11 +398,12 @@ internal object SemanticTextGrouper {
                 rectWidth(member.source.bounds).coerceAtLeast(1)
             })
             val nextIsMetadataSized = nextWidth <= dominantWidth * METADATA_WIDTH_RATIO
-            val unfinishedParagraphContinuation = members.size >=
-                MULTI_LINE_BODY_MINIMUM_LINES - 1 &&
+            val unfinishedParagraphContinuation = members.sumOf {
+                memberLineCount(it.source)
+            } >= MULTI_LINE_BODY_MINIMUM_LINES - 1 &&
                 previous.source.text.trimEnd().lastOrNull() !in SENTENCE_ENDINGS &&
                 abs(previous.source.bounds.left - next.source.bounds.left) <=
-                    maxOf(6, rectHeight(next.source.bounds))
+                    maxOf(6, representativeLineHeight(next.source))
             if (compactNext && next.hasHorizontalCompanion && nextIsMetadataSized &&
                 !unfinishedParagraphContinuation
             ) return null
@@ -412,6 +457,64 @@ internal object SemanticTextGrouper {
             else -> FontCompatibility.INCOMPATIBLE
         }
     }
+
+    private fun isRelaxedSameBlockParagraphTail(
+        members: List<Candidate>,
+        next: Candidate
+    ): Boolean {
+        if (members.sumOf { memberLineCount(it.source) } <
+            RELAXED_TAIL_MINIMUM_PREVIOUS_LINES ||
+            memberLineCount(next.source) != 1 ||
+            members.any { it.role != SemanticTextRole.BODY } ||
+            next.role != SemanticTextRole.BODY ||
+            members.last().source.text.trimEnd().lastOrNull() in SENTENCE_ENDINGS
+        ) return false
+        val blockId = members.first().source.sourceBlockId ?: return false
+        if (next.source.sourceBlockId != blockId ||
+            members.any { it.source.sourceBlockId != blockId }
+        ) return false
+        val ranges = members.mapNotNull { sourceLineRange(it.source) }
+        val nextRange = sourceLineRange(next.source) ?: return false
+        if (ranges.size != members.size ||
+            ranges.zipWithNext().any { (first, second) -> second.first != first.last + 1 } ||
+            nextRange.first != ranges.last().last + 1
+        ) return false
+        return true
+    }
+
+    private fun isEstablishedParagraphContinuation(
+        members: List<Candidate>,
+        next: Candidate
+    ): Boolean {
+        if (members.sumOf { memberLineCount(it.source) } <
+            ESTABLISHED_PARAGRAPH_MINIMUM_LINES ||
+            members.any { it.role != SemanticTextRole.BODY } ||
+            next.role != SemanticTextRole.BODY ||
+            members.last().source.text.trimEnd().lastOrNull() in SENTENCE_ENDINGS
+        ) return false
+        val previousBlock = members.last().source.sourceBlockId
+        val nextBlock = next.source.sourceBlockId
+        if (previousBlock != null && previousBlock == nextBlock) return true
+        return next.source.text.firstOrNull { it.isLetterOrDigit() }?.isLowerCase() == true
+    }
+
+    private fun isCompactSameBlockTail(
+        members: List<Candidate>,
+        next: Candidate,
+        compatibility: FontCompatibility
+    ): Boolean {
+        val previous = members.last()
+        return compatibility == FontCompatibility.RELAXED &&
+            previous.source.sourceBlockId != null &&
+            previous.source.sourceBlockId == next.source.sourceBlockId &&
+            memberLineCount(next.source) == 1 &&
+            compactCharacterCount(next.source.text) <= MAXIMUM_COMPACT_TAIL_CHARACTERS &&
+            next.source.text.firstOrNull { it.isLetterOrDigit() }?.isLowerCase() == true &&
+            previous.source.text.trimEnd().lastOrNull() !in SENTENCE_ENDINGS
+    }
+
+    private fun sourceLineRange(item: RecognizedText): IntRange? =
+        item.sourceLineIndex?.let { start -> start..(start + memberLineCount(item) - 1) }
 
     private fun createGroup(
         readingOrder: Int,
@@ -561,7 +664,9 @@ internal object SemanticTextGrouper {
     )
     private val PHONE_NUMBER = Regex("^\\+?\\d(?:[\\d ()-]{5,}\\d)$")
     private val APP_BRAND = Regex("(?i)^(?:instagram|whatsapp|facebook|telegram)$")
-    private val LIST_PREFIX = Regex("^(?:[•·‣◦*-]|\\d+[.)]|[A-Za-z][.)])\\s+")
+    private val LIST_PREFIX = Regex(
+        "^(?:>\\s*|(?:[•·‣◦*-]|\\d+[.)]|[A-Za-z][.)])\\s+)"
+    )
     private val CONTROL_LABEL = Regex(
         "(?i)^(?:(?:tweet|iweet)\\s+)?whats?app$|^privacy(?: policy)?$"
     )
@@ -574,13 +679,17 @@ internal object SemanticTextGrouper {
         GroupingEvidence.OCR_BLOCK,
         GroupingEvidence.GEOMETRY_INFERRED,
         GroupingEvidence.WRAPPED_FLOW,
-        GroupingEvidence.PUNCTUATION_CONTINUATION
+        GroupingEvidence.PUNCTUATION_CONTINUATION,
+        GroupingEvidence.PARAGRAPH_CONTINUATION_RECOVERY
     )
 
     private const val MINIMUM_ROW_OVERLAP_RATIO = 0.55f
     private const val STRONG_FONT_SCALE_RATIO = 0.78f
+    private const val RELAXED_TAIL_MINIMUM_PREVIOUS_LINES = 3
+    private const val ESTABLISHED_PARAGRAPH_MINIMUM_LINES = 2
     private const val MINIMUM_COMPANION_GAP_PX = 8
     private const val MAXIMUM_COMPACT_METADATA_CHARACTERS = 18
+    private const val MAXIMUM_COMPACT_TAIL_CHARACTERS = 20
     private const val NARROW_REGION_WIDTH_RATIO = 0.35f
     private const val MAIN_COLUMN_WIDTH_RATIO = 0.45f
     private const val OCCUPANCY_EXPANSION_RATIO = 2f

@@ -99,6 +99,237 @@ class SemanticTextGrouperTest {
     }
 
     @Test
+    fun mergesRelaxedShortFinalLineIntoSameBlockArticleParagraph() {
+        val texts = listOf(
+            "By leveraging big data and algorithms,the",
+            "system analyzes basic blood test results to",
+            "flag potential health risks,offering",
+            "diagnostic support and enabling early",
+            "medical intervention."
+        )
+        val bounds = listOf(
+            intArrayOf(34, 224, 1386, 294),
+            intArrayOf(30, 337, 1391, 402),
+            intArrayOf(28, 446, 1123, 514),
+            intArrayOf(30, 559, 1236, 631),
+            intArrayOf(33, 673, 696, 727)
+        )
+        val estimatedHeights = listOf(63f, 59f, 62f, 65f, 48f)
+        val lines = texts.indices.map { index ->
+            line(
+                text = texts[index],
+                left = bounds[index][0],
+                top = bounds[index][1],
+                right = bounds[index][2],
+                bottom = bounds[index][3],
+                blockId = "mlkit-article-body",
+                lineIndex = index
+            ).copy(
+                estimatedTextHeightPx = estimatedHeights[index],
+                typographyConfidence = 0.82f
+            )
+        }
+
+        val group = SemanticTextGrouper.group(lines, 1440, 3200).single()
+
+        assertEquals(5, group.members.size)
+        assertEquals(texts.joinToString("\n"), group.sourceText)
+        assertTrue(GroupingEvidence.FONT_SCALE_RELAXED_SAME_BLOCK in group.evidence)
+    }
+
+    @Test
+    fun mergesRelaxedTailAfterPreviouslyGroupedMultiLineCandidates() {
+        fun multiLine(
+            text: String,
+            top: Int,
+            bottom: Int,
+            lineIndex: Int,
+            estimatedHeight: Float,
+            componentBounds: List<Rect>
+        ) = line(
+            text = text,
+            left = componentBounds.minOf(Rect::left),
+            top = top,
+            right = componentBounds.maxOf(Rect::right),
+            bottom = bottom,
+            blockId = "mlkit-article-body",
+            lineIndex = lineIndex
+        ).copy(
+            componentBounds = componentBounds,
+            estimatedTextHeightPx = estimatedHeight,
+            typographyConfidence = 0.82f
+        )
+        val first = multiLine(
+            "By leveraging big data and algorithms,the\n" +
+                "system analyzes basic blood test results to",
+            152,
+            344,
+            0,
+            73f,
+            listOf(rect(33, 152, 1389, 233), rect(31, 276, 1390, 344))
+        )
+        val second = multiLine(
+            "flag potential health risks,offering\n" +
+                "diagnostic support and enabling early",
+            387,
+            569,
+            2,
+            62f,
+            listOf(rect(27, 387, 1122, 449), rect(32, 500, 1238, 569))
+        )
+        val tail = line(
+            "medical intervention.",
+            33,
+            612,
+            696,
+            666,
+            "mlkit-article-body",
+            4
+        ).copy(estimatedTextHeightPx = 48f, typographyConfidence = 0.82f)
+
+        val group = SemanticTextGrouper.group(listOf(first, second, tail), 1440, 3200).single()
+
+        assertEquals(3, group.members.size)
+        assertEquals(5, group.toRecognizedText().textEraseBounds().size)
+        assertTrue(GroupingEvidence.FONT_SCALE_RELAXED_SAME_BLOCK in group.evidence)
+    }
+
+    @Test
+    fun recoversArticleParagraphAcrossMlKitBlockFragmentsAndFontNoise() {
+        val specs = listOf(
+            arrayOf("This Al-driven transformation is taking", "block-a", 0, 31, 2156, 1248, 2218, 56f),
+            arrayOf("place across multiple sectors.In", "block-a", 1, 33, 2268, 1048, 2330, 56f),
+            arrayOf("classrooms at school affiliated with Inner", "block-b", 0, 32, 2381, 1394, 2434, 48f),
+            arrayOf("Mongolia Normal University,smart", "block-b", 1, 66, 2483, 1132, 2562, 71f),
+            arrayOf("blackboards respond to voice commands,", "block-c", 0, 33, 2604, 1350, 2671, 60f),
+            arrayOf("while Al systems analyze student", "block-c", 1, 29, 2717, 1086, 2786, 62f),
+            arrayOf("performance in real time and create", "block-c", 2, 33, 2824, 1179, 2887, 56f),
+            arrayOf("personalized learning plans.", "block-d", 0, 33, 2941, 917, 3010, 62f)
+        )
+        val lines = specs.map { spec ->
+            line(
+                text = spec[0] as String,
+                blockId = spec[1] as String,
+                lineIndex = spec[2] as Int,
+                left = spec[3] as Int,
+                top = spec[4] as Int,
+                right = spec[5] as Int,
+                bottom = spec[6] as Int
+            ).copy(
+                estimatedTextHeightPx = spec[7] as Float,
+                typographyConfidence = 0.82f
+            )
+        }
+
+        val group = SemanticTextGrouper.group(lines, 1440, 3200).single()
+
+        assertEquals(8, group.members.size)
+        assertEquals(1, group.renderSlots.size)
+        assertTrue(GroupingEvidence.PARAGRAPH_CONTINUATION_RECOVERY in group.evidence)
+        assertTrue(GroupingEvidence.FONT_SCALE_RELAXED_SAME_BLOCK in group.evidence)
+    }
+
+    @Test
+    fun keepsCompleteMultiLineParagraphCandidatesSeparatedByLineHeightGap() {
+        val firstComponents = listOf(
+            rect(31, 1099, 1236, 1161), rect(32, 1212, 1091, 1278),
+            rect(59, 1322, 1301, 1390), rect(30, 1431, 1157, 1502),
+            rect(28, 1537, 1224, 1618), rect(29, 1650, 1301, 1734),
+            rect(31, 1764, 834, 1843)
+        )
+        val secondComponents = listOf(
+            rect(30, 1952, 1248, 2018), rect(30, 2054, 1048, 2132),
+            rect(32, 2178, 1394, 2232), rect(67, 2286, 1132, 2359),
+            rect(33, 2402, 1350, 2469), rect(27, 2511, 1086, 2577),
+            rect(34, 2627, 1179, 2691), rect(33, 2733, 917, 2802)
+        )
+        val first = line(
+            "The Haidong Road Community Health\nCenter in Hohhot,capital of Inner\n" +
+                "Mongolia Autonomous Region,is one of\nthe pioneering clinics showing how\n" +
+                "technology is reshaping everyday life,\n" +
+                "thanks to the region's burgeoning green\ncomputing infrastructure.",
+            28,
+            1099,
+            1303,
+            1843,
+            "haidong-block",
+            0
+        ).copy(
+            componentBounds = firstComponents,
+            estimatedTextHeightPx = 64f,
+            typographyConfidence = 0.82f
+        )
+        val second = line(
+            "This Al-driven transformation is taking\nplace across multiple sectors.In\n" +
+                "classrooms at school affiliated with Inner\n" +
+                "Mongolia Normal University,smart\nblackboards respond to voice commands,\n" +
+                "while Al systems analyze student\nperformance in real time and create\n" +
+                "personalized learning plans.",
+            27,
+            1952,
+            1394,
+            2802,
+            null,
+            0
+        ).copy(
+            componentBounds = secondComponents,
+            estimatedTextHeightPx = 60f,
+            typographyConfidence = 0.82f
+        )
+
+        val groups = SemanticTextGrouper.group(listOf(first, second), 1440, 3200)
+
+        assertEquals(2, groups.size)
+        assertEquals(7, groups[0].toRecognizedText().textEraseBounds().size)
+        assertEquals(8, groups[1].toRecognizedText().textEraseBounds().size)
+    }
+
+    @Test
+    fun mergesIndentedSameBlockCompactQuoteTail() {
+        val first = line(
+            "Nearly a year of full time work at 40hrs/week went",
+            109,
+            2671,
+            1220,
+            2724,
+            "quote-block",
+            0
+        ).copy(estimatedTextHeightPx = 48f, typographyConfidence = 0.82f)
+        val tail = line(
+            "into this",
+            67,
+            2742,
+            233,
+            2778,
+            "quote-block",
+            1
+        ).copy(estimatedTextHeightPx = 32f, typographyConfidence = 0.82f)
+
+        val group = SemanticTextGrouper.group(listOf(first, tail), 1440, 3200).single()
+
+        assertEquals(2, group.members.size)
+        assertEquals(1, group.renderSlots.size)
+        assertTrue(GroupingEvidence.PARAGRAPH_CONTINUATION_RECOVERY in group.evidence)
+    }
+
+    @Test
+    fun keepsQuotedListItemOutsidePrecedingParagraph() {
+        val groups = SemanticTextGrouper.group(
+            listOf(
+                line("We can cross-check dictionary entries.The standard", 64, 1902, 1179, 1947, null, 0),
+                line("dictionary fully backs this up:", 64, 1964, 1053, 2008, null, 1),
+                line("> logos", 64, 2051, 227, 2100, null, 2)
+            ),
+            1440,
+            3200
+        )
+
+        assertEquals(2, groups.size)
+        assertEquals(2, groups[0].members.size)
+        assertEquals(SemanticTextRole.LIST_ITEM, groups[1].role)
+    }
+
+    @Test
     fun doesNotMergeDifferentOcrBlocksEvenWhenTheirGeometryIsClose() {
         val groups = SemanticTextGrouper.group(
             listOf(
@@ -494,4 +725,11 @@ class SemanticTextGrouperTest {
         sourceBlockId = blockId,
         sourceLineIndex = lineIndex
     )
+
+    private fun rect(left: Int, top: Int, right: Int, bottom: Int) = Rect().apply {
+        this.left = left
+        this.top = top
+        this.right = right
+        this.bottom = bottom
+    }
 }

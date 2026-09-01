@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "apk": {
+    "versionCode": 153,
+    "versionName": "1.0.153-auto-layout-validation10",
+    "path": "dist/ImageTranslateOCR-auto-layout-validation-20260901-v153-debug.apk",
+    "sha256": "1f2cfdf1153c14d0f04f5b0bf31213414b839e8070febc3d6ba5aaff99d1a7b3"
+  },
+  "device": {
+    "serial": "192.168.0.46:43139",
+    "model": "23113RKC6C"
+  },
+  "runs": {
+    "total": 5,
+    "passed": 5,
+    "failed": 0,
+    "inconclusive": 0,
+    "xinhua": 2,
+    "hackerNews": 3
+  },
+  "theoryToRenderedMerge": {
+    "consistentBlocks": 24,
+    "inconsistentBlocks": 0,
+    "minimumChangedPixelRatio": 0.9682,
+    "maximumInternalGapPx": 0,
+    "maximumHorizontalGapPx": 0
+  },
+  "pipeline": {
+    "renderedPatches": 52,
+    "translationFailures": 0,
+    "renderFailures": 0,
+    "endToEndMs": [5776, 5576, 5493, 3212, 3199],
+    "medianEndToEndMs": 5493,
+    "maximumEndToEndMs": 5776
+  },
+  "tests": {
+    "rustCore": "54 passed",
+    "androidUnit": "passed",
+    "androidInstrumentation": "1 passed",
+    "pythonOracle": "2 passed"
+  }
+}
