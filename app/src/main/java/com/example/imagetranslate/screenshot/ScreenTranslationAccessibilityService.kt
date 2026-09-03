@@ -76,18 +76,25 @@ class ScreenTranslationAccessibilityService : AccessibilityService() {
 
         fun visibleBrowserToolbarBounds(): List<Rect> {
             val service = connectedService?.get() ?: return emptyList()
-            val root = runCatching { service.rootInActiveWindow }.getOrNull()
-                ?: return emptyList()
-            val packageName = root.packageName?.toString().orEmpty()
-            val toolbarIds = BROWSER_TOOLBAR_RESOURCE_IDS[packageName] ?: return emptyList()
-            return toolbarIds.mapNotNull { resourceId ->
-                root.findAccessibilityNodeInfosByViewId(resourceId)
-                    .firstOrNull { it.isVisibleToUser }
-                    ?.let { node ->
-                        Rect().also(node::getBoundsInScreen).takeIf { bounds ->
-                            bounds.right > bounds.left && bounds.bottom > bounds.top
+            val roots = buildList {
+                runCatching { service.windows }
+                    .getOrDefault(emptyList())
+                    .mapNotNullTo(this) { window -> window.root }
+                runCatching { service.rootInActiveWindow }.getOrNull()?.let(::add)
+            }.distinctBy { root -> root.windowId }
+            return roots.flatMap { root ->
+                val packageName = root.packageName?.toString().orEmpty()
+                val toolbarIds = BROWSER_TOOLBAR_RESOURCE_IDS[packageName]
+                    ?: return@flatMap emptyList()
+                toolbarIds.mapNotNull { resourceId ->
+                    root.findAccessibilityNodeInfosByViewId(resourceId)
+                        .firstOrNull { it.isVisibleToUser }
+                        ?.let { node ->
+                            Rect().also(node::getBoundsInScreen).takeIf { bounds ->
+                                bounds.right > bounds.left && bounds.bottom > bounds.top
+                            }
                         }
-                    }
+                }
             }.distinctBy { bounds ->
                 listOf(bounds.left, bounds.top, bounds.right, bounds.bottom)
             }

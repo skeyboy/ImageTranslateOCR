@@ -7,6 +7,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -18,6 +19,11 @@ import java.net.URI
 import java.net.URL
 import java.security.MessageDigest
 import java.util.LinkedHashMap
+import kotlin.random.Random
+
+internal fun completionTranslationId(item: JSONObject): String? =
+    item.optString("groupId").trim().ifBlank { item.optString("id").trim() }
+        .takeIf(String::isNotBlank)
 
 internal class EmbeddedSemanticTranslationProvider(
     private val context: Context,
@@ -88,6 +94,8 @@ internal class EmbeddedSemanticTranslationProvider(
             .put("responseHeadersMs", network?.responseHeadersMs ?: JSONObject.NULL)
             .put("responseDownloadMs", network?.downloadMs ?: JSONObject.NULL)
             .put("providerTotalMs", providerMs)
+            .put("providerRetryCount", network?.retryCount ?: 0)
+            .put("providerRetryDelayMs", network?.retryDelayMs ?: 0)
             .put("thinkingControlMode", thinkingMode.name)
             .put("thinkingLevel", thinkingLevel)
             .put("actualThinkingParameter", actualThinkingParameter(aiBody))
@@ -194,6 +202,32 @@ internal class EmbeddedSemanticTranslationProvider(
     }
 
     private suspend fun postProviderJson(body: JSONObject): HttpResult {
+        var retryCount = 0
+        var retryDelayMs = 0L
+        while (true) {
+            try {
+                return postProviderJsonOnce(body).copy(
+                    retryCount = retryCount,
+                    retryDelayMs = retryDelayMs
+                )
+            } catch (error: ProviderHttpException) {
+                val delayMs = EmbeddedProviderRetryPolicy.delayMs(
+                    status = error.status,
+                    completedRetryCount = retryCount,
+                    jitterMs = Random.nextLong(
+                        from = 0,
+                        until = EmbeddedProviderRetryPolicy.MAXIMUM_JITTER_MS + 1
+                    )
+                ) ?: throw error
+                retryCount++
+                retryDelayMs += delayMs
+                Log.w(TAG, "Provider HTTP ${error.status}; retrying request in ${delayMs}ms")
+                delay(delayMs)
+            }
+        }
+    }
+
+    private suspend fun postProviderJsonOnce(body: JSONObject): HttpResult {
         val result = postJson(
             url = endpointForTest,
             body = body.toString(),
@@ -383,13 +417,19 @@ internal class EmbeddedSemanticTranslationProvider(
     ) = runCatching {
         val groups = prepared.getJSONArray("actionableGroups")
         val cacheNamespace = preparedCacheNamespace(prepared)
-        val byId = completionTranslations(completion).associateBy { it.getString("groupId") }
+        val byId = completionTranslations(completion).associateBy { item ->
+            completionTranslationId(item)
+                ?: error("Translation item has no groupId or compact id")
+        }
         synchronized(translationCache) {
             for (index in 0 until groups.length()) {
                 val group = groups.getJSONObject(index)
                 val item = byId[group.getString("groupId")] ?: continue
                 translationCache[semanticCacheKey(group, directStructuredOutput, cacheNamespace)] =
-                    JSONObject(item.toString()).apply { remove("groupId") }
+                    JSONObject(item.toString()).apply {
+                        remove("groupId")
+                        remove("id")
+                    }
             }
         }
     }.onFailure { Log.d(TAG, "Semantic translation cache skipped: ${it.message}") }
@@ -459,7 +499,9 @@ internal class EmbeddedSemanticTranslationProvider(
         val requestToHeadersMs: Long,
         val responseHeadersMs: Long,
         val downloadMs: Long,
-        val thinkingParameterFallback: Boolean = false
+        val thinkingParameterFallback: Boolean = false,
+        val retryCount: Int = 0,
+        val retryDelayMs: Long = 0L
     )
 
     private class ProviderHttpException(val status: Int, response: String) :

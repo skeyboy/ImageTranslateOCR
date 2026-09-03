@@ -79,9 +79,11 @@ class LiveCaptureTimingPolicyTest {
 
     @Test
     fun emptyResultRetriesOnlyOnce() {
-        assertTrue(LiveCaptureTimingPolicy.shouldRetryEmptyResult(0, 0))
-        assertFalse(LiveCaptureTimingPolicy.shouldRetryEmptyResult(0, 1))
-        assertFalse(LiveCaptureTimingPolicy.shouldRetryEmptyResult(1, 0))
+        assertTrue(LiveCaptureTimingPolicy.shouldRetryEmptyResult(0, 0, 0, 0))
+        assertFalse(LiveCaptureTimingPolicy.shouldRetryEmptyResult(0, 0, 0, 1))
+        assertFalse(LiveCaptureTimingPolicy.shouldRetryEmptyResult(1, 0, 0, 0))
+        assertFalse(LiveCaptureTimingPolicy.shouldRetryEmptyResult(0, 12, 0, 0))
+        assertFalse(LiveCaptureTimingPolicy.shouldRetryEmptyResult(0, 12, 12, 0))
     }
 
     @Test

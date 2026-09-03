@@ -2421,7 +2421,9 @@ internal fun safeFlowUnionRectFallback(
     role: String?,
     sourceTextHeightsPx: List<Float> = emptyList()
 ): Rect? {
-    if (role != "BODY" || layoutShape != "FLOW_SLOTS" || renderSlots.size < 2 ||
+    val eligibleRole = role == "BODY" ||
+        (role == "TITLE" || role == "LIST_ITEM") && renderSlots.size == 2
+    if (!eligibleRole || layoutShape != "FLOW_SLOTS" || renderSlots.size < 2 ||
         sourceLineCount < 2
     ) return null
     val union = renderSlots.drop(1).fold(Rect(renderSlots.first())) { result, slot ->
@@ -2438,12 +2440,16 @@ internal fun safeFlowUnionRectFallback(
     } else {
         slotHeights.first().toFloat() / slotHeights.last().coerceAtLeast(1)
     }
-    if (typographyRatio < MINIMUM_MERGED_FONT_SCALE_RATIO) return null
+    val unreliableTwoLineTitleTypography = role == "TITLE" && renderSlots.size == 2
+    if (typographyRatio < MINIMUM_MERGED_FONT_SCALE_RATIO &&
+        !unreliableTwoLineTitleTypography
+    ) return null
 
     val maximumGap = renderSlots.zipWithNext().maxOf { (first, second) ->
         second.top - first.bottom
     }
-    if (maximumGap < 0 || maximumGap > typicalHeight / 2) return null
+    val maximumAllowedGap = if (role == "LIST_ITEM") typicalHeight else typicalHeight / 2
+    if (maximumGap < 0 || maximumGap > maximumAllowedGap) return null
     val leftRange = renderSlots.maxOf(Rect::left) - renderSlots.minOf(Rect::left)
     val leftTolerance = maxOf(typicalHeight, union.width() * 8 / 100)
     if (leftRange > leftTolerance) return null
@@ -2451,8 +2457,10 @@ internal fun safeFlowUnionRectFallback(
     val nonFinal = renderSlots.dropLast(1)
     val wideLineCount = nonFinal.count { slot -> slot.width() >= union.width() * 70 / 100 }
     val hasWideBody = wideLineCount * 2 >= nonFinal.size
-    val hasNarrowTail = renderSlots.last().width() <= union.width() * 40 / 100
-    return union.takeIf { hasWideBody && hasNarrowTail }
+    val maximumTailPercent = if (role == "TITLE") 55 else 40
+    val tailShapeAccepted = role == "LIST_ITEM" ||
+        renderSlots.last().width() <= union.width() * maximumTailPercent / 100
+    return union.takeIf { hasWideBody && tailShapeAccepted }
 }
 
 private val SAFE_HORIZONTAL_EXPANSION_ROLES = setOf("BODY", "METADATA", "TITLE", "LABEL")

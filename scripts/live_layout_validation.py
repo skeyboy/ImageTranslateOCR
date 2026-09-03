@@ -21,6 +21,55 @@ except ImportError:  # Visual checks remain optional for structural-only environ
     Image = None
 
 
+FINDING_GUIDANCE = {
+    "EXPECTED_BLOCK_SPLIT": (
+        "GROUPING",
+        "The expected paragraph was split before rendering",
+        "Inspect client and server merge decisions at the split boundary; only relax same-block consecutive BODY lines with stable spacing.",
+    ),
+    "ACCESSIBILITY_BLOCK_SPLIT": (
+        "GROUPING",
+        "One browser DOM paragraph maps to multiple translation groups",
+        "Use splitBoundaries to identify whether the client or server rejected a same-block continuation, then add that boundary as a fixed grouping regression.",
+    ),
+    "CLIENT_ADVISORY_SPLIT": (
+        "SERVER_PLANNER",
+        "The server split one client RECT advisory",
+        "Preserve the client advisory when block identity, line order, role, alignment and gap continuity agree; retain typography guards for real boundaries.",
+    ),
+    "ACCESSIBILITY_BLOCKS_OVERMERGED": (
+        "GROUPING",
+        "Separate browser DOM paragraphs were merged",
+        "Strengthen sentence, vertical-gap, role and typography boundary checks; do not solve this by globally lowering merge thresholds.",
+    ),
+    "ACCESSIBILITY_GROUP_HAS_FOREIGN_MEMBERS": (
+        "GROUPING",
+        "A translated group owns OCR regions outside its DOM paragraph",
+        "Reject cross-block members whose geometry does not intersect the paragraph and preserve DOM-like vertical boundaries.",
+    ),
+    "THEORETICAL_ACTUAL_MERGE_MISMATCH": (
+        "RENDERER",
+        "The rendered pixels do not match the planned merged shape",
+        "Inspect accepted patches, sourceCoverSlots and clipping; render one complete RECT patch for a one-slot theoretical paragraph.",
+    ),
+    "RECT_VISUALLY_FRAGMENTED": (
+        "RENDERER",
+        "A planned RECT produced multiple visible pixel bands",
+        "Use the paragraph union rectangle and its typography anchor for one atomic patch instead of per-line pasting.",
+    ),
+    "PATCH_VISUAL_COVERAGE_LOW": (
+        "RENDERER",
+        "The real pasted pixels cover too little of the planned block",
+        "Check failed or clipped patches, overlay alpha and coordinate scaling against the archived source frame.",
+    ),
+    "PIPELINE_FAILURE": (
+        "TRANSLATION_OR_RENDERER",
+        "At least one translation unit was not pasted successfully",
+        "Inspect renderFailures and failed response groups; keep the run inconclusive until every expected paragraph has a visible patch.",
+    ),
+}
+
+
 @dataclass(frozen=True)
 class Bounds:
     left: int
@@ -93,9 +142,66 @@ def add_finding(
     message: str,
     **evidence: Any,
 ) -> None:
-    findings.append(
-        {"code": code, "severity": severity, "message": message, "evidence": evidence}
+    finding = {"code": code, "severity": severity, "message": message, "evidence": evidence}
+    guidance = FINDING_GUIDANCE.get(code)
+    if guidance:
+        owner, likely_cause, suggested_fix = guidance
+        finding["analysis"] = {
+            "owner": owner,
+            "likelyCause": likely_cause,
+            "suggestedFix": suggested_fix,
+        }
+    findings.append(finding)
+
+
+def split_boundary_diagnostics(
+    regions: list[dict[str, Any]],
+    member_to_group: dict[str, dict[str, Any]],
+) -> list[dict[str, Any]]:
+    ordered = sorted(
+        regions,
+        key=lambda region: (
+            int(region.get("readingOrder", 0)),
+            parse_bounds(region["bounds"]).top,
+        ),
     )
+    diagnostics = []
+    for first, second in zip(ordered, ordered[1:]):
+        first_group = member_to_group.get(first.get("regionId"))
+        second_group = member_to_group.get(second.get("regionId"))
+        first_group_id = first_group.get("groupId") if first_group else None
+        second_group_id = second_group.get("groupId") if second_group else None
+        if not first_group_id or not second_group_id or first_group_id == second_group_id:
+            continue
+        first_bounds = parse_bounds(first["bounds"])
+        second_bounds = parse_bounds(second["bounds"])
+        first_height = float(first.get("estimatedTextHeightPx") or first_bounds.height or 1)
+        second_height = float(second.get("estimatedTextHeightPx") or second_bounds.height or 1)
+        first_line = first.get("lineIndex")
+        second_line = second.get("lineIndex")
+        same_block = bool(first.get("blockId")) and first.get("blockId") == second.get("blockId")
+        same_client_group = bool(first.get("groupId")) and first.get("groupId") == second.get("groupId")
+        diagnostics.append(
+            {
+                "fromGroupId": first_group_id,
+                "toGroupId": second_group_id,
+                "fromRegionId": first.get("regionId"),
+                "toRegionId": second.get("regionId"),
+                "fromText": first.get("text", "")[-80:],
+                "toText": second.get("text", "")[:80],
+                "sameBlock": same_block,
+                "sameClientGroup": same_client_group,
+                "consecutiveLineIndex": same_block
+                and isinstance(first_line, int)
+                and isinstance(second_line, int)
+                and second_line == first_line + 1,
+                "fontRatio": round(min(first_height, second_height) / max(first_height, second_height), 4),
+                "gapPx": second_bounds.top - first_bounds.bottom,
+                "leftDeltaPx": abs(second_bounds.left - first_bounds.left),
+                "likelyRejectLayer": "SERVER_PLANNER" if same_client_group else "CLIENT_GROUPER",
+            }
+        )
+    return diagnostics
 
 
 def planned_groups(response: dict[str, Any]) -> list[dict[str, Any]]:
@@ -173,7 +279,8 @@ def expected_blocks_from_config(
 
 def accessibility_nodes(path: Path, minimum_characters: int) -> list[dict[str, Any]]:
     root = ET.parse(path).getroot()
-    nodes: list[dict[str, Any]] = []
+    fragments: list[dict[str, Any]] = []
+    list_markers: list[Bounds] = []
 
     def visit(node: ET.Element, in_webview: bool) -> None:
         class_name = node.attrib.get("class", "")
@@ -181,17 +288,26 @@ def accessibility_nodes(path: Path, minimum_characters: int) -> list[dict[str, A
         text = node.attrib.get("text", "").strip()
         if (
             inside
+            and class_name == "android.view.View"
+            and re.match(r"^(?:[•·‣◦*-]|\d+[.)])$", text)
+            and node.attrib.get("bounds")
+        ):
+            marker_bounds = parse_bounds(node.attrib["bounds"])
+            if marker_bounds.area > 0:
+                list_markers.append(marker_bounds)
+        if (
+            inside
             and class_name == "android.widget.TextView"
-            and len(normalized(text)) >= minimum_characters
+            and normalized(text)
             and not text.lower().startswith(("http://", "https://", "www."))
             and not text.endswith(("...", "…"))
             and node.attrib.get("bounds")
         ):
             bounds = parse_bounds(node.attrib["bounds"])
             if bounds.area > 0:
-                nodes.append(
+                fragments.append(
                     {
-                        "id": f"dom-{len(nodes)}",
+                        "id": f"fragment-{len(fragments)}",
                         "text": text,
                         "normalized": normalized(text),
                         "bounds": bounds,
@@ -201,7 +317,97 @@ def accessibility_nodes(path: Path, minimum_characters: int) -> list[dict[str, A
             visit(child, inside)
 
     visit(root, False)
-    return nodes
+    outer_fragments = []
+    for index, fragment in enumerate(fragments):
+        bounds = fragment["bounds"]
+        contained = any(
+            other_index != index
+            and other["bounds"].area > bounds.area
+            and other["bounds"].intersection(bounds) >= bounds.area * 0.95
+            for other_index, other in enumerate(fragments)
+        )
+        if not contained:
+            outer_fragments.append(fragment)
+
+    merged: list[dict[str, Any]] = []
+    for fragment in sorted(
+        outer_fragments,
+        key=lambda item: (item["bounds"].top, item["bounds"].left),
+    ):
+        if merged and accessibility_fragments_continue(
+            merged[-1], fragment, list_markers
+        ):
+            previous = merged[-1]
+            previous["text"] = f"{previous['text']} {fragment['text']}".strip()
+            previous["normalized"] = normalized(previous["text"])
+            previous["bounds"] = previous["bounds"].union(fragment["bounds"])
+            previous["fragmentCount"] += 1
+            previous["_lastBounds"] = fragment["bounds"]
+        else:
+            merged.append(
+                {**fragment, "fragmentCount": 1, "_lastBounds": fragment["bounds"]}
+            )
+    result = []
+    for node in merged:
+        if len(node["normalized"]) < minimum_characters:
+            continue
+        public_node = {key: value for key, value in node.items() if not key.startswith("_")}
+        public_node["id"] = f"dom-{len(result)}"
+        result.append(public_node)
+    return result
+
+
+def accessibility_fragments_continue(
+    previous: dict[str, Any],
+    following: dict[str, Any],
+    list_markers: list[Bounds] | None = None,
+) -> bool:
+    first: Bounds = previous.get("_lastBounds", previous["bounds"])
+    paragraph: Bounds = previous["bounds"]
+    second: Bounds = following["bounds"]
+    vertical_overlap = min(first.bottom, second.bottom) - max(first.top, second.top)
+    gap = second.top - first.bottom
+    if looks_like_accessibility_title(previous["text"]) and following["text"][:1].isupper():
+        return False
+    if any(
+        marker.left < second.left
+        and marker.top <= second.top <= marker.bottom
+        and marker.top >= first.top
+        for marker in list_markers or []
+    ):
+        return False
+    same_column = abs(paragraph.left - second.left) <= max(
+        36, min(paragraph.width, second.width) // 8
+    )
+    if vertical_overlap > 0:
+        horizontal_gap = max(second.left - first.right, first.left - second.right, 0)
+        overlap_ratio = vertical_overlap / max(1, min(first.height, second.height))
+        return same_column or overlap_ratio >= 0.45 and horizontal_gap <= 48
+    height_ratio = min(first.height, second.height) / max(1, max(first.height, second.height))
+    return (
+        0 <= gap <= 32
+        and same_column
+        and (
+            height_ratio >= 0.65
+            or first.height > second.height
+            or following["text"][:1].islower()
+        )
+        and not re.search(r"[.!?。！？][\]\)}\"']*$", previous["text"].strip())
+    )
+
+
+def looks_like_accessibility_title(text: str) -> bool:
+    trimmed = text.strip()
+    words = re.findall(r"[A-Za-z][A-Za-z']*", trimmed)
+    if not words or len(words) > 12 or len(trimmed) > 72:
+        return False
+    if re.search(r"[.!?。！？][\]\)}\"']*$", trimmed):
+        return False
+    connectors = {"a", "an", "and", "for", "in", "of", "the", "to"}
+    meaningful = [word for word in words if word.lower() not in connectors]
+    title_case = bool(meaningful) and all(word[:1].isupper() for word in meaningful)
+    compact_subject = len(words) <= 12
+    return title_case or compact_subject
 
 
 def region_matches_node(region: dict[str, Any], node: dict[str, Any]) -> bool:
@@ -235,15 +441,28 @@ def expected_blocks_from_accessibility(
     mapped_nodes = []
     for node in nodes:
         matched = [region for region in regions if region_matches_node(region, node)]
-        group_map = {
-            group.get("groupId"): group
+        eligible_matched = [
+            region
             for region in matched
             if (group := member_to_group.get(region.get("regionId"))) is not None
             and group.get("role") in {"BODY", "LIST_ITEM"}
+        ]
+        group_map = {
+            group.get("groupId"): group
+            for region in eligible_matched
+            if (group := member_to_group.get(region.get("regionId"))) is not None
         }
-        if len(matched) < 2 or not group_map:
+        if len(eligible_matched) < 2 or not group_map:
             continue
         matched_groups = list(group_map.values())
+        split_boundaries = split_boundary_diagnostics(eligible_matched, member_to_group)
+        container_boundary = bool(split_boundaries) and all(
+            boundary["gapPx"] >= 64
+            and re.search(r"[.!?。！？][\]\)}\"']*$", boundary["fromText"].strip())
+            for boundary in split_boundaries
+        )
+        if len(matched_groups) > 1 and container_boundary:
+            continue
         if len(matched_groups) > 1:
             add_finding(
                 findings,
@@ -253,7 +472,8 @@ def expected_blocks_from_accessibility(
                 domNodeId=node["id"],
                 domText=node["text"],
                 groupIds=list(group_map),
-                memberRegionIds=[region.get("regionId") for region in matched],
+                memberRegionIds=[region.get("regionId") for region in eligible_matched],
+                splitBoundaries=split_boundaries,
             )
         elif matched_groups[0].get("layoutShape") != "RECT":
             add_finding(
@@ -266,7 +486,7 @@ def expected_blocks_from_accessibility(
                 groupId=matched_groups[0].get("groupId"),
                 layoutShape=matched_groups[0].get("layoutShape"),
             )
-        matched_ids = {region.get("regionId") for region in matched}
+        matched_ids = {region.get("regionId") for region in eligible_matched}
         for group in matched_groups:
             foreign_members = []
             for region_id in group.get("memberRegionIds", []):
@@ -295,7 +515,7 @@ def expected_blocks_from_accessibility(
                     groupId=group.get("groupId"),
                     foreignMembers=foreign_members,
                 )
-        bounds = union_bounds(parse_bounds(region["bounds"]) for region in matched)
+        bounds = union_bounds(parse_bounds(region["bounds"]) for region in eligible_matched)
         if bounds:
             mapped_nodes.append(
                 {
@@ -548,6 +768,169 @@ def validate_visuals(
     return results
 
 
+def performance_analysis(archive: Path, diagnostics: dict[str, Any]) -> dict[str, Any]:
+    timings_path = archive / "timings.json"
+    timings = load_json(timings_path) if timings_path.is_file() else {}
+    end_to_end = int(timings.get("endToEndMs") or diagnostics.get("endToEndMs") or 0)
+    translation = int(timings.get("translationMs") or diagnostics.get("translationMs") or 0)
+    prepare = int(timings.get("prepareMs") or 0)
+    provider = int(timings.get("providerTotalMs") or 0)
+    complete = int(timings.get("rustCompleteMs") or 0)
+    translation_overhead = max(0, translation - prepare - provider - complete)
+    stage_values = [
+        (
+            "ocr",
+            int(timings.get("ocrMs") or diagnostics.get("ocrMs") or 0),
+            "CLIENT_OCR",
+        ),
+        ("promptAndPlanning", prepare, "EMBEDDED_RUST"),
+        ("remoteAi", provider, "REMOTE_PROVIDER"),
+        ("responseAssembly", complete, "EMBEDDED_RUST"),
+        ("translationClientOverhead", translation_overhead, "CLIENT_TRANSLATION"),
+        (
+            "render",
+            int(timings.get("renderMs") or diagnostics.get("renderMs") or 0),
+            "CLIENT_RENDERER",
+        ),
+        (
+            "presentation",
+            int(timings.get("presentationMs") or diagnostics.get("presentationMs") or 0),
+            "ANDROID_OVERLAY",
+        ),
+    ]
+    accounted = sum(milliseconds for _, milliseconds, _ in stage_values)
+    stages = [
+        {
+            "name": name,
+            "owner": owner,
+            "milliseconds": milliseconds,
+            "percentOfEndToEnd": round(milliseconds * 100 / end_to_end, 1)
+            if end_to_end
+            else None,
+        }
+        for name, milliseconds, owner in stage_values
+    ]
+    bottleneck = max(stages, key=lambda stage: stage["milliseconds"], default=None)
+    recommendations = []
+    shares = {stage["name"]: stage["percentOfEndToEnd"] or 0 for stage in stages}
+    if shares.get("remoteAi", 0) >= 45:
+        recommendations.append(
+            {
+                "priority": "P0",
+                "stage": "remoteAi",
+                "action": "Keep thinkingLevel=medium; maximize semantic translation cache and HTTP connection reuse, retry 429 responses with bounded backoff, and consider incremental batches only when atomic paragraph layout remains intact.",
+            }
+        )
+    if shares.get("ocr", 0) >= 18:
+        recommendations.append(
+            {
+                "priority": "P1",
+                "stage": "ocr",
+                "action": "Keep the OCR recognizer warm and reuse unchanged screen regions; measure a cropped/differential pass before reducing input resolution.",
+            }
+        )
+    if shares.get("translationClientOverhead", 0) >= 8:
+        recommendations.append(
+            {
+                "priority": "P1",
+                "stage": "translationClientOverhead",
+                "action": "Move request archive and debug-capture persistence off the critical path and avoid serial JSON copies.",
+            }
+        )
+    if shares.get("render", 0) >= 10:
+        recommendations.append(
+            {
+                "priority": "P2",
+                "stage": "render",
+                "action": "Reuse text layouts and background patches by stable group geometry; retain atomic RECT composition.",
+            }
+        )
+    return {
+        "available": bool(timings),
+        "endToEndMs": end_to_end,
+        "accountedMs": accounted,
+        "unaccountedMs": max(0, end_to_end - accounted),
+        "bottleneck": bottleneck,
+        "stages": stages,
+        "provider": {
+            key: timings.get(key)
+            for key in (
+                "cacheHit",
+                "thinkingControlMode",
+                "thinkingLevel",
+                "promptTokens",
+                "completionTokens",
+                "requestToHeadersMs",
+                "responseDownloadMs",
+                "proxyConfigured",
+                "providerRetryCount",
+                "providerRetryDelayMs",
+            )
+        },
+        "auxiliary": {
+            "captureEncodeMs": timings.get("captureEncodeMs"),
+            "renderedCaptureEncodeMs": timings.get("renderedCaptureEncodeMs"),
+        },
+        "recommendations": recommendations,
+    }
+
+
+def incomplete_archive_report(archive: Path, request: dict[str, Any]) -> dict[str, Any] | None:
+    response_path = archive / "response.json"
+    audit_path = archive / "render-audit.json"
+    if response_path.is_file() and audit_path.is_file():
+        return None
+    manifest = load_json(archive / "manifest.json") if (archive / "manifest.json").is_file() else {}
+    error = load_json(archive / "error.json") if (archive / "error.json").is_file() else {}
+    message = str(error.get("message") or "Translation archive is incomplete")
+    if "HTTP 429" in message:
+        code = "REMOTE_PROVIDER_RATE_LIMIT"
+        likely_cause = "The remote AI provider rejected the request because its upstream capacity was saturated"
+        suggested_fix = "Retry translation only with exponential backoff and jitter, or fail over to a configured provider; do not rerun OCR for the unchanged frame."
+    else:
+        code = "TRANSLATION_ARCHIVE_INCOMPLETE"
+        likely_cause = "Translation did not produce a response and render audit"
+        suggested_fix = "Classify the provider error, preserve the OCR request, and retry only the failed downstream stage when retryable."
+    finding = {
+        "code": code,
+        "severity": "BLOCKED",
+        "message": message,
+        "evidence": {
+            "archiveStatus": manifest.get("status"),
+            "provider": manifest.get("provider"),
+            "model": manifest.get("model"),
+            "retryable": error.get("retryable"),
+            "responsePresent": response_path.is_file(),
+            "renderAuditPresent": audit_path.is_file(),
+        },
+        "analysis": {
+            "owner": "REMOTE_PROVIDER" if code == "REMOTE_PROVIDER_RATE_LIMIT" else "TRANSLATION_PIPELINE",
+            "likelyCause": likely_cause,
+            "suggestedFix": suggested_fix,
+        },
+    }
+    return {
+        "schemaVersion": 3,
+        "event": "live_layout_validation",
+        "status": "INCONCLUSIVE",
+        "requestId": request.get("requestId"),
+        "plannedGroupCount": 0,
+        "validatedBlockCount": 0,
+        "visualValidationAvailable": False,
+        "mergeConsistency": {
+            "theoreticalMergedBlockCount": 0,
+            "actualMergedBlockCount": 0,
+            "consistentBlockCount": 0,
+            "inconsistentBlockCount": 0,
+        },
+        "performance": {"available": False},
+        "findings": [finding],
+        "errorCount": 0,
+        "blockedCount": 1,
+        "warningCount": 0,
+    }
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--archive", type=Path, required=True)
@@ -560,6 +943,14 @@ def main() -> int:
     args = parser.parse_args()
 
     request = load_json(args.archive / "request.json")
+    incomplete_report = incomplete_archive_report(args.archive, request)
+    if incomplete_report is not None:
+        rendered = json.dumps(incomplete_report, ensure_ascii=False, indent=2)
+        if args.output:
+            args.output.parent.mkdir(parents=True, exist_ok=True)
+            args.output.write_text(rendered + "\n", encoding="utf-8")
+        print(rendered)
+        return 2
     response = load_json(args.archive / "response.json")
     audit = load_json(args.archive / "render-audit.json")
     groups = planned_groups(response)
@@ -591,6 +982,7 @@ def main() -> int:
             "Translation or rendering failures were reported",
             translationFailedCount=diagnostics.get("translationFailedCount", 0),
             renderFailedCount=diagnostics.get("renderFailedCount", 0),
+            renderFailures=diagnostics.get("renderFailures", []),
         )
     if diagnostics.get("presentationOutcome") != "PRESENTED":
         add_finding(
@@ -656,14 +1048,23 @@ def main() -> int:
             result.get("mergeConsistent") is False for result in visual_results
         ),
     }
+    oracle_sources = sorted({block.get("source") for block in blocks if block.get("source")})
+    oracle_level = (
+        "BROWSER_DOM"
+        if accessibility_blocks
+        else "FIXED_EXPECTATION"
+        if args.expectation
+        else "CLIENT_ADVISORY"
+    )
     report = {
-        "schemaVersion": 2,
+        "schemaVersion": 3,
         "event": "live_layout_validation",
         "status": status,
         "requestId": request.get("requestId"),
         "plannedGroupCount": len(groups),
         "validatedBlockCount": len(blocks),
         "visualValidationAvailable": bool(visual_results),
+        "oracle": {"level": oracle_level, "sources": oracle_sources},
         "mergeConsistency": merge_consistency,
         "layoutDiagnostics": {
             key: diagnostics.get(key)
@@ -677,6 +1078,7 @@ def main() -> int:
                 "endToEndMs",
             )
         },
+        "performance": performance_analysis(args.archive, diagnostics),
         "visualBlocks": visual_results,
         "findings": findings,
         "errorCount": error_count,

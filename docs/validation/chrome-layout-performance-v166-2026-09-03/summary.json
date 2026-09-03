@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "apkVersionCode": 166,
+  "apkVersionName": "1.0.166-pipeline-validation13",
+  "thinkingLevel": "medium",
+  "sampleCount": 6,
+  "passCount": 6,
+  "validatedBlockCount": 25,
+  "inconsistentBlockCount": 0,
+  "renderedPatchCount": 61,
+  "translationFailureCount": 0,
+  "renderFailureCount": 0,
+  "endToEndMs": {
+    "minimum": 4117,
+    "maximum": 7828,
+    "average": 5837
+  },
+  "remoteAi": {
+    "averageMs": 4242,
+    "averagePercentOfEndToEnd": 72.4
+  },
+  "ocr": {
+    "averageMs": 1115,
+    "averagePercentOfEndToEnd": 19.1
+  },
+  "samples": [
+    "xinhua/run-1-dom/layout-validation.json",
+    "hacker-news/run-1-dom/layout-validation.json",
+    "hacker-news/run-2-dom/layout-validation.json",
+    "mdn/run-1-dom/layout-validation.json",
+    "rust-book/run-1-dom/layout-validation.json",
+    "wikipedia/run-1-dom-retry/layout-validation.json"
+  ]
+}

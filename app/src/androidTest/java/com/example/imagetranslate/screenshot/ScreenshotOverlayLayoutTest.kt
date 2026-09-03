@@ -330,6 +330,53 @@ class ScreenshotOverlayLayoutTest {
     }
 
     @Test
+    fun twoLineTitleCanUseSafeUnionWhenItsTypographyAndGeometryAreContinuous() {
+        val slots = listOf(
+            Rect(58, 660, 1260, 761),
+            Rect(61, 799, 597, 880)
+        )
+
+        assertEquals(
+            Rect(58, 660, 1260, 880),
+            safeFlowUnionRectFallback(
+                renderSlots = slots,
+                layoutShape = "FLOW_SLOTS",
+                sourceLineCount = 2,
+                role = "TITLE",
+                sourceTextHeightsPx = listOf(100f, 73f)
+            )
+        )
+        assertNull(
+            safeFlowUnionRectFallback(
+                renderSlots = slots + Rect(60, 930, 700, 1010),
+                layoutShape = "FLOW_SLOTS",
+                sourceLineCount = 3,
+                role = "TITLE",
+                sourceTextHeightsPx = listOf(100f, 73f, 80f)
+            )
+        )
+    }
+
+    @Test
+    fun twoLineListItemCanUseSafeUnionWithoutCrossingTheNextBullet() {
+        val slots = listOf(
+            Rect(154, 2966, 1272, 3024),
+            Rect(199, 3068, 1360, 3121)
+        )
+
+        assertEquals(
+            Rect(154, 2966, 1360, 3121),
+            safeFlowUnionRectFallback(
+                renderSlots = slots,
+                layoutShape = "FLOW_SLOTS",
+                sourceLineCount = 2,
+                role = "LIST_ITEM",
+                sourceTextHeightsPx = listOf(53f, 48f)
+            )
+        )
+    }
+
+    @Test
     fun wrappedOrMixedTypographyFlowCannotUseSafeUnion() {
         val wrapped = listOf(
             Rect(176, 461, 373, 511),

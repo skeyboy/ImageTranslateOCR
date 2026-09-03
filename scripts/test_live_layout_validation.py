@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -7,7 +8,15 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 
-from scripts.live_layout_validation import Bounds, validate_visuals
+from scripts.live_layout_validation import (
+    Bounds,
+    accessibility_nodes,
+    incomplete_archive_report,
+    looks_like_accessibility_title,
+    performance_analysis,
+    split_boundary_diagnostics,
+    validate_visuals,
+)
 
 
 class LiveLayoutValidationTest(unittest.TestCase):
@@ -72,6 +81,140 @@ class LiveLayoutValidationTest(unittest.TestCase):
         codes = {finding["code"] for finding in findings}
         self.assertIn("THEORETICAL_ACTUAL_MERGE_MISMATCH", codes)
         self.assertIn("RECT_VISUALLY_FRAGMENTED", codes)
+        mismatch = next(
+            finding
+            for finding in findings
+            if finding["code"] == "THEORETICAL_ACTUAL_MERGE_MISMATCH"
+        )
+        self.assertEqual("RENDERER", mismatch["analysis"]["owner"])
+
+    def test_performance_analysis_identifies_remote_provider_bottleneck(self) -> None:
+        (self.directory / "timings.json").write_text(
+            json.dumps(
+                {
+                    "endToEndMs": 4000,
+                    "ocrMs": 800,
+                    "translationMs": 2900,
+                    "prepareMs": 20,
+                    "providerTotalMs": 2600,
+                    "rustCompleteMs": 10,
+                    "renderMs": 250,
+                    "presentationMs": 10,
+                    "thinkingLevel": "medium",
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        result = performance_analysis(self.directory, {})
+
+        self.assertEqual("remoteAi", result["bottleneck"]["name"])
+        self.assertEqual(65.0, result["bottleneck"]["percentOfEndToEnd"])
+        self.assertEqual("remoteAi", result["recommendations"][0]["stage"])
+
+    def test_split_boundary_attributes_same_client_group_to_server(self) -> None:
+        regions = [
+            {
+                "regionId": "line-0",
+                "groupId": "client-paragraph",
+                "blockId": "ocr-block",
+                "lineIndex": 0,
+                "readingOrder": 0,
+                "text": "A paragraph continues",
+                "estimatedTextHeightPx": 42,
+                "bounds": {"left": 10, "top": 10, "right": 90, "bottom": 30},
+            },
+            {
+                "regionId": "line-1",
+                "groupId": "client-paragraph",
+                "blockId": "ocr-block",
+                "lineIndex": 1,
+                "readingOrder": 1,
+                "text": "on the next line.",
+                "estimatedTextHeightPx": 36,
+                "bounds": {"left": 11, "top": 36, "right": 85, "bottom": 56},
+            },
+        ]
+        member_to_group = {
+            "line-0": {"groupId": "server-0"},
+            "line-1": {"groupId": "server-1"},
+        }
+
+        boundaries = split_boundary_diagnostics(regions, member_to_group)
+        self.assertEqual(1, len(boundaries))
+        boundary = boundaries[0]
+
+        self.assertTrue(boundary["sameBlock"])
+        self.assertTrue(boundary["sameClientGroup"])
+        self.assertTrue(boundary["consecutiveLineIndex"])
+        self.assertEqual("SERVER_PLANNER", boundary["likelyRejectLayer"])
+
+    def test_incomplete_rate_limited_archive_recommends_translation_only_retry(self) -> None:
+        (self.directory / "manifest.json").write_text(
+            json.dumps({"status": "FAILED", "provider": "openlux", "model": "gemini"}),
+            encoding="utf-8",
+        )
+        (self.directory / "error.json").write_text(
+            json.dumps({"message": "AI provider returned HTTP 429", "retryable": True}),
+            encoding="utf-8",
+        )
+
+        report = incomplete_archive_report(self.directory, {"requestId": "request-1"})
+
+        self.assertIsNotNone(report)
+        finding = report["findings"][0]
+        self.assertEqual("REMOTE_PROVIDER_RATE_LIMIT", finding["code"])
+        self.assertIn("do not rerun OCR", finding["analysis"]["suggestedFix"])
+
+    def test_accessibility_inline_fragments_are_reconstructed_before_mapping(self) -> None:
+        xml_path = self.directory / "ui.xml"
+        xml_path.write_text(
+            """<hierarchy><node class="android.webkit.WebView" bounds="[0,0][100,200]">
+            <node class="android.widget.TextView" text="Paragraph starts" bounds="[10,10][90,40]">
+              <node class="android.widget.TextView" text="inline link" bounds="[40,10][70,40]" />
+            </node>
+            <node class="android.widget.TextView" text="and continues" bounds="[10,30][90,60]" />
+            <node class="android.widget.TextView" text="onto the next line" bounds="[10,65][90,85]" />
+            <node class="android.widget.TextView" text="A separate paragraph." bounds="[10,130][90,160]" />
+            </node></hierarchy>""",
+            encoding="utf-8",
+        )
+
+        nodes = accessibility_nodes(xml_path, minimum_characters=5)
+
+        self.assertEqual(2, len(nodes))
+        self.assertEqual(3, nodes[0]["fragmentCount"])
+        self.assertNotIn("inline link", nodes[0]["text"])
+        self.assertEqual(Bounds(10, 10, 90, 85), nodes[0]["bounds"])
+
+    def test_accessibility_list_markers_keep_adjacent_items_separate(self) -> None:
+        xml_path = self.directory / "list-ui.xml"
+        xml_path.write_text(
+            """<hierarchy><node class="android.webkit.WebView" bounds="[0,0][200,200]">
+            <node class="android.view.View" text="•" bounds="[10,10][20,50]" />
+            <node class="android.widget.TextView" text="First unfinished item (" bounds="[30,10][190,50]" />
+            <node class="android.view.View" text="•" bounds="[10,55][20,95]" />
+            <node class="android.widget.TextView" text="Second list item" bounds="[30,55][190,95]" />
+            </node></hierarchy>""",
+            encoding="utf-8",
+        )
+
+        nodes = accessibility_nodes(xml_path, minimum_characters=5)
+
+        self.assertEqual(2, len(nodes))
+
+    def test_accessibility_title_case_subject_is_not_joined_to_comment(self) -> None:
+        self.assertTrue(
+            looks_like_accessibility_title("The Browser's Main Thread Is Expensive")
+        )
+        self.assertTrue(
+            looks_like_accessibility_title("Paint.net 5.2 alpha now runs on Linux")
+        )
+        self.assertFalse(
+            looks_like_accessibility_title(
+                "Such an excellently written article with really nice visualizations!"
+            )
+        )
 
 
 if __name__ == "__main__":

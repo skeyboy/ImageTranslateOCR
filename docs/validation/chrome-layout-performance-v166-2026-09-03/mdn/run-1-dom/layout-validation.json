@@ -1,0 +1,218 @@
+{
+  "schemaVersion": 3,
+  "event": "live_layout_validation",
+  "status": "PASS",
+  "requestId": "9a89870f-a9f7-4eeb-bba4-34aa7a33ded3",
+  "plannedGroupCount": 17,
+  "validatedBlockCount": 2,
+  "visualValidationAvailable": true,
+  "oracle": {
+    "level": "BROWSER_DOM",
+    "sources": [
+      "ACCESSIBILITY"
+    ]
+  },
+  "mergeConsistency": {
+    "theoreticalMergedBlockCount": 2,
+    "actualMergedBlockCount": 2,
+    "consistentBlockCount": 2,
+    "inconsistentBlockCount": 0
+  },
+  "layoutDiagnostics": {
+    "translatedRegionCount": 15,
+    "renderedPatchCount": 15,
+    "translationFailedCount": 0,
+    "renderFailedCount": 0,
+    "translationVisible": true,
+    "presentationOutcome": "PRESENTED",
+    "endToEndMs": 4423
+  },
+  "performance": {
+    "available": true,
+    "endToEndMs": 4423,
+    "accountedMs": 4346,
+    "unaccountedMs": 77,
+    "bottleneck": {
+      "name": "remoteAi",
+      "owner": "REMOTE_PROVIDER",
+      "milliseconds": 2945,
+      "percentOfEndToEnd": 66.6
+    },
+    "stages": [
+      {
+        "name": "ocr",
+        "owner": "CLIENT_OCR",
+        "milliseconds": 978,
+        "percentOfEndToEnd": 22.1
+      },
+      {
+        "name": "promptAndPlanning",
+        "owner": "EMBEDDED_RUST",
+        "milliseconds": 14,
+        "percentOfEndToEnd": 0.3
+      },
+      {
+        "name": "remoteAi",
+        "owner": "REMOTE_PROVIDER",
+        "milliseconds": 2945,
+        "percentOfEndToEnd": 66.6
+      },
+      {
+        "name": "responseAssembly",
+        "owner": "EMBEDDED_RUST",
+        "milliseconds": 12,
+        "percentOfEndToEnd": 0.3
+      },
+      {
+        "name": "translationClientOverhead",
+        "owner": "CLIENT_TRANSLATION",
+        "milliseconds": 113,
+        "percentOfEndToEnd": 2.6
+      },
+      {
+        "name": "render",
+        "owner": "CLIENT_RENDERER",
+        "milliseconds": 273,
+        "percentOfEndToEnd": 6.2
+      },
+      {
+        "name": "presentation",
+        "owner": "ANDROID_OVERLAY",
+        "milliseconds": 11,
+        "percentOfEndToEnd": 0.2
+      }
+    ],
+    "provider": {
+      "cacheHit": false,
+      "thinkingControlMode": "THINKING_LEVEL",
+      "thinkingLevel": "medium",
+      "promptTokens": 1102,
+      "completionTokens": 709,
+      "requestToHeadersMs": 2941,
+      "responseDownloadMs": 1,
+      "proxyConfigured": true,
+      "providerRetryCount": 0,
+      "providerRetryDelayMs": 0
+    },
+    "auxiliary": {
+      "captureEncodeMs": 12,
+      "renderedCaptureEncodeMs": 9
+    },
+    "recommendations": [
+      {
+        "priority": "P0",
+        "stage": "remoteAi",
+        "action": "Keep thinkingLevel=medium; maximize semantic translation cache and HTTP connection reuse, retry 429 responses with bounded backoff, and consider incremental batches only when atomic paragraph layout remains intact."
+      },
+      {
+        "priority": "P1",
+        "stage": "ocr",
+        "action": "Keep the OCR recognizer warm and reuse unchanged screen regions; measure a cropped/differential pass before reducing input resolution."
+      }
+    ]
+  },
+  "visualBlocks": [
+    {
+      "bounds": {
+        "left": 59,
+        "top": 1190,
+        "right": 1356,
+        "bottom": 1342
+      },
+      "pixelBounds": {
+        "left": 20,
+        "top": 402,
+        "right": 458,
+        "bottom": 453
+      },
+      "changedPixelRatio": 0.9837,
+      "visualBandCount": 1,
+      "visualBands": [
+        {
+          "top": 0,
+          "bottom": 51
+        }
+      ],
+      "maximumInternalGapPx": 0,
+      "horizontalBandCount": 1,
+      "horizontalBands": [
+        {
+          "left": 0,
+          "right": 438
+        }
+      ],
+      "maximumHorizontalGapPx": 0,
+      "glyphRowBandCount": 0,
+      "glyphHeightRatio": null,
+      "id": "dom-0",
+      "source": "ACCESSIBILITY",
+      "theoretical": {
+        "groupCount": 1,
+        "groupIds": [
+          "server-v4-6-51f79c3f2307b62c"
+        ],
+        "memberRegionCount": 2,
+        "layoutShapes": [
+          "RECT"
+        ],
+        "renderSlotCount": 1,
+        "merged": true
+      },
+      "actualMerged": true,
+      "mergeConsistent": true
+    },
+    {
+      "bounds": {
+        "left": 59,
+        "top": 2958,
+        "right": 1337,
+        "bottom": 3106
+      },
+      "pixelBounds": {
+        "left": 20,
+        "top": 998,
+        "right": 451,
+        "bottom": 1048
+      },
+      "changedPixelRatio": 0.9526,
+      "visualBandCount": 1,
+      "visualBands": [
+        {
+          "top": 0,
+          "bottom": 50
+        }
+      ],
+      "maximumInternalGapPx": 0,
+      "horizontalBandCount": 1,
+      "horizontalBands": [
+        {
+          "left": 0,
+          "right": 431
+        }
+      ],
+      "maximumHorizontalGapPx": 0,
+      "glyphRowBandCount": 1,
+      "glyphHeightRatio": null,
+      "id": "dom-6",
+      "source": "ACCESSIBILITY",
+      "theoretical": {
+        "groupCount": 1,
+        "groupIds": [
+          "server-v4-16-3732b71221e5713c"
+        ],
+        "memberRegionCount": 2,
+        "layoutShapes": [
+          "RECT"
+        ],
+        "renderSlotCount": 1,
+        "merged": true
+      },
+      "actualMerged": true,
+      "mergeConsistent": true
+    }
+  ],
+  "findings": [],
+  "errorCount": 0,
+  "blockedCount": 0,
+  "warningCount": 0
+}

@@ -29,8 +29,12 @@ internal object LiveCaptureTimingPolicy {
         captureInProgress && !captureRequested && !processingFrameCaptured
     )
 
-    fun shouldRetryEmptyResult(patchCount: Int, retryCount: Int): Boolean =
-        patchCount == 0 && retryCount == 0
+    fun shouldRetryEmptyResult(
+        patchCount: Int,
+        recognizedCount: Int,
+        failedCount: Int,
+        retryCount: Int
+    ): Boolean = patchCount == 0 && recognizedCount == 0 && failedCount == 0 && retryCount == 0
 
     fun shouldUpdateLiveSnapshot(patchCount: Int, translatedRegionCount: Int): Boolean =
         patchCount > 0 && translatedRegionCount > 0

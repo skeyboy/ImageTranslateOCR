@@ -239,8 +239,11 @@ internal object SemanticTextGrouper {
             isEstablishedParagraphContinuation(members, second)
         val differentKnownBlocks = firstBlock != null && secondBlock != null &&
             firstBlock != secondBlock
-        if (differentKnownBlocks && !establishedParagraphContinuation) return null
         val sameBlock = firstBlock != null && firstBlock == secondBlock
+        val compactCrossBlockTail = isCompactCrossBlockTail(members, second)
+        if (differentKnownBlocks && !establishedParagraphContinuation && !compactCrossBlockTail) {
+            return null
+        }
         if (sameBlock) {
             val firstLine = first.source.sourceLineIndex
             val secondLine = second.source.sourceLineIndex
@@ -260,10 +263,13 @@ internal object SemanticTextGrouper {
         )
         val relaxedSameBlockTail = fontCompatibility == FontCompatibility.RELAXED &&
             isRelaxedSameBlockParagraphTail(members, second)
+        val relaxedSameBlockContinuation = fontCompatibility == FontCompatibility.RELAXED &&
+            isRelaxedSameBlockWideContinuation(members, second)
         val relaxedParagraphContinuation = fontCompatibility == FontCompatibility.RELAXED &&
             establishedParagraphContinuation
         if (fontCompatibility != FontCompatibility.STRONG &&
-            !relaxedSameBlockTail && !relaxedParagraphContinuation && !compactSameBlockTail
+            !relaxedSameBlockTail && !relaxedSameBlockContinuation &&
+            !relaxedParagraphContinuation && !compactSameBlockTail && !compactCrossBlockTail
         ) return null
         val firstLineHeight = representativeLineHeight(first.source)
         val secondLineHeight = representativeLineHeight(second.source)
@@ -321,7 +327,9 @@ internal object SemanticTextGrouper {
             }
             add(GroupingEvidence.LINE_GAP)
             if (!sentenceBoundary) add(GroupingEvidence.PUNCTUATION_CONTINUATION)
-            if (differentKnownBlocks || relaxedParagraphContinuation || compactSameBlockTail) {
+            if (differentKnownBlocks || relaxedParagraphContinuation || compactSameBlockTail ||
+                compactCrossBlockTail
+            ) {
                 add(GroupingEvidence.PARAGRAPH_CONTINUATION_RECOVERY)
             }
             add(
@@ -363,6 +371,8 @@ internal object SemanticTextGrouper {
         }
         val relaxedSameBlockTail = groupFontCompatibility == FontCompatibility.RELAXED &&
             isRelaxedSameBlockParagraphTail(members, next)
+        val relaxedSameBlockContinuation = groupFontCompatibility == FontCompatibility.RELAXED &&
+            isRelaxedSameBlockWideContinuation(members, next)
         val relaxedParagraphContinuation = groupFontCompatibility == FontCompatibility.RELAXED &&
             fontCompatibility(previous.source, next.source) == FontCompatibility.RELAXED &&
             isEstablishedParagraphContinuation(members, next)
@@ -372,8 +382,11 @@ internal object SemanticTextGrouper {
                 next,
                 fontCompatibility(previous.source, next.source)
             )
+        val compactCrossBlockTail = groupFontCompatibility == FontCompatibility.RELAXED &&
+            isCompactCrossBlockTail(members, next)
         if (groupFontCompatibility != FontCompatibility.STRONG &&
-            !relaxedSameBlockTail && !relaxedParagraphContinuation && !compactSameBlockTail
+            !relaxedSameBlockTail && !relaxedSameBlockContinuation &&
+            !relaxedParagraphContinuation && !compactSameBlockTail && !compactCrossBlockTail
         ) return null
 
         if (members.size == 1) {
@@ -482,6 +495,26 @@ internal object SemanticTextGrouper {
         return true
     }
 
+    private fun isRelaxedSameBlockWideContinuation(
+        members: List<Candidate>,
+        next: Candidate
+    ): Boolean {
+        val previous = members.last()
+        val previousBlock = previous.source.sourceBlockId ?: return false
+        val previousLine = previous.source.sourceLineIndex ?: return false
+        val nextLine = next.source.sourceLineIndex ?: return false
+        val previousWidth = rectWidth(previous.source.bounds).coerceAtLeast(1)
+        val nextWidth = rectWidth(next.source.bounds).coerceAtLeast(1)
+        return previous.role == SemanticTextRole.BODY &&
+            next.role == SemanticTextRole.BODY &&
+            next.source.sourceBlockId == previousBlock &&
+            nextLine == previousLine + memberLineCount(previous.source) &&
+            next.source.text.firstOrNull { it.isLetterOrDigit() }?.isLowerCase() == true &&
+            previous.source.text.trimEnd().lastOrNull() !in SENTENCE_ENDINGS &&
+            minOf(previousWidth, nextWidth).toFloat() /
+            maxOf(previousWidth, nextWidth).toFloat() >= WIDE_CONTINUATION_WIDTH_RATIO
+    }
+
     private fun isEstablishedParagraphContinuation(
         members: List<Candidate>,
         next: Candidate
@@ -509,8 +542,44 @@ internal object SemanticTextGrouper {
             previous.source.sourceBlockId == next.source.sourceBlockId &&
             memberLineCount(next.source) == 1 &&
             compactCharacterCount(next.source.text) <= MAXIMUM_COMPACT_TAIL_CHARACTERS &&
-            next.source.text.firstOrNull { it.isLetterOrDigit() }?.isLowerCase() == true &&
+            isTextualOrAcronymNumberContinuation(previous.source.text, next.source.text) &&
             previous.source.text.trimEnd().lastOrNull() !in SENTENCE_ENDINGS
+    }
+
+    private fun isCompactCrossBlockTail(
+        members: List<Candidate>,
+        next: Candidate
+    ): Boolean {
+        val previous = members.last()
+        val previousBlock = previous.source.sourceBlockId
+        val nextBlock = next.source.sourceBlockId
+        val previousHeight = representativeLineHeight(previous.source)
+        val nextHeight = representativeLineHeight(next.source)
+        val gap = next.source.bounds.top - previous.source.bounds.bottom
+        val previousWidth = rectWidth(previous.source.bounds).coerceAtLeast(1)
+        val nextWidth = rectWidth(next.source.bounds).coerceAtLeast(1)
+        return members.isNotEmpty() &&
+            previous.role == SemanticTextRole.BODY &&
+            next.role == SemanticTextRole.BODY &&
+            previousBlock != null && nextBlock != null && previousBlock != nextBlock &&
+            fontCompatibility(previous.source, next.source) == FontCompatibility.RELAXED &&
+            compactCharacterCount(next.source.text) <= MAXIMUM_COMPACT_TAIL_CHARACTERS &&
+            isTextualOrAcronymNumberContinuation(previous.source.text, next.source.text) &&
+            previous.source.text.trimEnd().lastOrNull() !in SENTENCE_ENDINGS &&
+            previousWidth >= nextWidth * COMPACT_CROSS_BLOCK_MINIMUM_WIDTH_RATIO &&
+            abs(previous.source.bounds.left - next.source.bounds.left) <= nextHeight &&
+            gap >= 0 && gap <= maxOf(6, maxOf(previousHeight, nextHeight) / 2)
+    }
+
+    private fun isTextualOrAcronymNumberContinuation(previous: String, next: String): Boolean {
+        if (next.firstOrNull { it.isLetterOrDigit() }?.isLowerCase() == true) return true
+        val compactNext = next.filter(Char::isLetterOrDigit)
+        val previousToken = previous.trimEnd().takeLastWhile(Char::isLetterOrDigit)
+        return compactNext.isNotEmpty() && compactNext.length <= MAXIMUM_ACRONYM_NUMBER_CHARACTERS &&
+            compactNext.all(Char::isDigit) && previousToken.length in 2..8 &&
+            previousToken.any(Char::isLetter) && previousToken.all { character ->
+                !character.isLetter() || character.isUpperCase()
+            }
     }
 
     private fun sourceLineRange(item: RecognizedText): IntRange? =
@@ -570,6 +639,8 @@ internal object SemanticTextGrouper {
         val lineCount = memberLineCount(item)
         val representativeHeight = representativeLineHeight(item)
         return when {
+            looksLikeLowConfidenceIconGlyph(item, text) -> SemanticTextRole.CONTROL
+            looksLikeLowConfidenceImageTextArtifact(item, text) -> SemanticTextRole.CONTROL
             SemanticContentClassifier.isStandaloneTemporalValue(text) ->
                 SemanticTextRole.TIMESTAMP
             URL_OR_EMAIL.containsMatchIn(text) || PHONE_NUMBER.matches(text) ||
@@ -584,10 +655,50 @@ internal object SemanticTextGrouper {
                 compactCharacterCount(text) >= MULTI_LINE_BODY_MINIMUM_CHARACTERS ->
                 SemanticTextRole.BODY
             lineCount <= TITLE_MAXIMUM_LINES &&
+                looksLikeTitleText(text) &&
                 representativeHeight >= medianHeight * 1.35f &&
                 rectWidth(item.bounds) <= viewportWidth * 0.85f -> SemanticTextRole.TITLE
             else -> SemanticTextRole.BODY
         }
+    }
+
+    private fun looksLikeLowConfidenceIconGlyph(item: RecognizedText, text: String): Boolean {
+        val visible = text.filterNot(Char::isWhitespace)
+        val width = rectWidth(item.bounds).coerceAtLeast(1)
+        val height = rectHeight(item.bounds).coerceAtLeast(1)
+        val aspectRatio = width.toFloat() / height.toFloat()
+        return visible.codePointCount(0, visible.length) in 1..ICON_GLYPH_MAXIMUM_CHARACTERS &&
+            item.modelConfidence < ICON_GLYPH_MAXIMUM_MODEL_CONFIDENCE &&
+            item.typographyConfidence < ICON_GLYPH_MAXIMUM_TYPOGRAPHY_CONFIDENCE &&
+            aspectRatio in ICON_GLYPH_MINIMUM_ASPECT_RATIO..ICON_GLYPH_MAXIMUM_ASPECT_RATIO
+    }
+
+    private fun looksLikeLowConfidenceImageTextArtifact(
+        item: RecognizedText,
+        text: String
+    ): Boolean {
+        val visible = text.filterNot(Char::isWhitespace)
+        val estimatedHeight = item.estimatedTextHeightPx?.takeIf { it > 0f } ?: return false
+        val tokens = text.split(Regex("\\s+")).filter(String::isNotBlank)
+        return visible.length >= IMAGE_TEXT_ARTIFACT_MINIMUM_CHARACTERS &&
+            tokens.size <= IMAGE_TEXT_ARTIFACT_MAXIMUM_TOKEN_COUNT &&
+            (tokens.maxOfOrNull(String::length) ?: 0) >=
+            IMAGE_TEXT_ARTIFACT_MINIMUM_CONTIGUOUS_CHARACTERS &&
+            visible.all { character ->
+                character.isLetterOrDigit() || character in "._-:/?=&%"
+            } &&
+            item.modelConfidence < IMAGE_TEXT_ARTIFACT_MAXIMUM_MODEL_CONFIDENCE &&
+            rectHeight(item.bounds) >= estimatedHeight * IMAGE_TEXT_ARTIFACT_MINIMUM_HEIGHT_RATIO &&
+            item.componentBounds.size <= 1
+    }
+
+    private fun looksLikeTitleText(text: String): Boolean {
+        val trimmed = text.trim()
+        val interior = trimmed.dropLastWhile { character ->
+            character.isWhitespace() || character in SENTENCE_ENDINGS
+        }
+        return compactCharacterCount(trimmed) <= TITLE_MAXIMUM_CHARACTERS &&
+            interior.none { it in SENTENCE_ENDINGS }
     }
 
     private fun memberLineCount(item: RecognizedText): Int = maxOf(
@@ -665,7 +776,7 @@ internal object SemanticTextGrouper {
     private val PHONE_NUMBER = Regex("^\\+?\\d(?:[\\d ()-]{5,}\\d)$")
     private val APP_BRAND = Regex("(?i)^(?:instagram|whatsapp|facebook|telegram)$")
     private val LIST_PREFIX = Regex(
-        "^(?:>\\s*|(?:[•·‣◦*-]|\\d+[.)]|[A-Za-z][.)])\\s+)"
+        "^(?:>\\s*|[•·‣◦*-]\\s*|(?:\\d+[.)]|[A-Za-z][.)])\\s+)"
     )
     private val CONTROL_LABEL = Regex(
         "(?i)^(?:(?:tweet|iweet)\\s+)?whats?app$|^privacy(?: policy)?$"
@@ -690,6 +801,21 @@ internal object SemanticTextGrouper {
     private const val MINIMUM_COMPANION_GAP_PX = 8
     private const val MAXIMUM_COMPACT_METADATA_CHARACTERS = 18
     private const val MAXIMUM_COMPACT_TAIL_CHARACTERS = 20
+    private const val COMPACT_CROSS_BLOCK_MINIMUM_WIDTH_RATIO = 3
+    private const val MAXIMUM_ACRONYM_NUMBER_CHARACTERS = 6
+    private const val WIDE_CONTINUATION_WIDTH_RATIO = 0.70f
+    private const val TITLE_MAXIMUM_CHARACTERS = 64
+    private const val ICON_GLYPH_MAXIMUM_CHARACTERS = 3
+    private const val ICON_GLYPH_MAXIMUM_MODEL_CONFIDENCE = 0.70f
+    private const val ICON_GLYPH_MAXIMUM_TYPOGRAPHY_CONFIDENCE = 0.70f
+    private const val ICON_GLYPH_MINIMUM_ASPECT_RATIO = 0.40f
+    private const val ICON_GLYPH_MAXIMUM_ASPECT_RATIO = 1.60f
+    private const val IMAGE_TEXT_ARTIFACT_MINIMUM_CHARACTERS = 32
+    private const val IMAGE_TEXT_ARTIFACT_MINIMUM_CONTIGUOUS_CHARACTERS = 32
+    private const val IMAGE_TEXT_ARTIFACT_MAXIMUM_TOKEN_COUNT = 4
+    private const val IMAGE_TEXT_ARTIFACT_MAXIMUM_MODEL_CONFIDENCE = 0.80f
+    private const val IMAGE_TEXT_ARTIFACT_MINIMUM_HEIGHT_RATIO = 3f
+
     private const val NARROW_REGION_WIDTH_RATIO = 0.35f
     private const val MAIN_COLUMN_WIDTH_RATIO = 0.45f
     private const val OCCUPANCY_EXPANSION_RATIO = 2f

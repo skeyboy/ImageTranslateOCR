@@ -218,6 +218,8 @@ impl RegionGroup {
                 evidence.as_str(),
                 "ESTABLISHED_PARAGRAPH_CONTINUATION"
                     | "COMPACT_PARAGRAPH_TAIL_RECOVERY"
+                    | "COMPACT_CROSS_BLOCK_TAIL"
+                    | "RELAXED_SAME_BLOCK_WIDE_CONTINUATION"
                     | "COMPACT_SAME_ADVISORY_TAIL"
                     | "RELAXED_SAME_ADVISORY_PARAGRAPH"
                     | "TIGHT_CROSS_BLOCK_CONTINUATION"
@@ -233,13 +235,20 @@ impl RegionGroup {
             self.evidence.iter().any(|evidence| {
                 matches!(
                     evidence.as_str(),
-                    "VISUAL_LINE_CONTINUATION" | "TIGHT_CROSS_BLOCK_CONTINUATION"
+                    "VISUAL_LINE_CONTINUATION"
+                        | "TIGHT_CROSS_BLOCK_CONTINUATION"
+                        | "RELAXED_SAME_BLOCK_WIDE_CONTINUATION"
                 )
             }) && is_tight_two_line_wrap(&self.render_slots, &self.bounds);
         let compact_tail_rect = self
             .evidence
             .iter()
-            .any(|evidence| evidence == "COMPACT_PARAGRAPH_TAIL_RECOVERY")
+            .any(|evidence| {
+                matches!(
+                    evidence.as_str(),
+                    "COMPACT_PARAGRAPH_TAIL_RECOVERY" | "COMPACT_CROSS_BLOCK_TAIL"
+                )
+            })
             && (is_natural_wrapped_rect_flow(&self.render_slots, &self.bounds)
                 || is_compact_two_line_rect(&self.render_slots, &self.bounds));
         let collapsible_cross_group_rect = recovered_main_column
@@ -319,6 +328,8 @@ fn merge_decision(
     let same_block = same_block_continuation(first, second);
     let relaxed_same_block_tail = is_relaxed_same_block_paragraph_tail(previous, next);
     let compact_same_block_tail = is_compact_same_block_tail(previous, next, gap);
+    let relaxed_same_block_wide_continuation =
+        is_relaxed_same_block_wide_continuation(previous, next, viewport_width);
     let different_client_group = previous
         .source_group_ids
         .iter()
@@ -336,8 +347,12 @@ fn merge_decision(
     let tight_cross_block_continuation = different_client_group
         && different_ocr_block
         && is_tight_cross_block_continuation(first, second, gap);
+    let compact_cross_block_tail = different_client_group
+        && different_ocr_block
+        && is_compact_cross_block_tail(previous, next, gap, viewport_width);
     if is_strong_text_boundary(&previous.source_text, &next.source_text)
         && !(same_block && same_advisory_group)
+        && !compact_cross_block_tail
     {
         return None;
     }
@@ -356,6 +371,7 @@ fn merge_decision(
         client_group_profiles,
         same_block,
         same_advisory_group,
+        viewport_width,
     );
     let compact_same_advisory_tail = same_block
         && same_advisory_group
@@ -383,8 +399,10 @@ fn merge_decision(
     // false and must not allow later lines to widen the typography envelope.
     if crosses_typography_tier(previous, next)
         && !relaxed_same_block_tail
+        && !relaxed_same_block_wide_continuation
         && !established_paragraph_continuation
         && !compact_same_block_tail
+        && !compact_cross_block_tail
         && !compact_same_advisory_tail
         && !relaxed_same_advisory_paragraph
     {
@@ -395,6 +413,7 @@ fn merge_decision(
         && is_cross_group_visual_boundary(previous, next, gap, client_group_profiles)
         && !established_paragraph_continuation
         && !tight_cross_block_continuation
+        && !compact_cross_block_tail
     {
         return None;
     }
@@ -404,6 +423,7 @@ fn merge_decision(
             .max(region_text_height(second))
             .max(1.0);
     let compact_tail_font_recovery = compact_same_block_tail
+        || compact_cross_block_tail
         || (established_paragraph_continuation
             && font_compatibility == FontCompatibility::Incompatible
             && next.regions.len() == 1
@@ -417,6 +437,7 @@ fn merge_decision(
     if font_compatibility != FontCompatibility::Strong
         && !(font_compatibility == FontCompatibility::Relaxed
             && (relaxed_same_block_tail
+                || relaxed_same_block_wide_continuation
                 || established_paragraph_continuation
                 || relaxed_same_advisory_paragraph))
         && !compact_tail_font_recovery
@@ -443,13 +464,17 @@ fn merge_decision(
         .chars()
         .find(|character| character.is_alphanumeric())
         .is_some_and(char::is_lowercase);
+    let next_continues_text = is_textual_or_acronym_number_continuation(
+        &previous.source_text,
+        &next.source_text,
+    );
     let cross_block_requires_lowercase = different_client_group
         && different_ocr_block
         && !same_advisory_group
         && !established_paragraph_continuation
         && !tight_cross_block_continuation;
     let continuation = if cross_block_requires_lowercase {
-        next_starts_lowercase
+        next_continues_text
     } else {
         !ends_sentence(&previous.source_text) || next_starts_lowercase || same_block
     };
@@ -468,13 +493,19 @@ fn merge_decision(
     (confidence >= AUTHORITATIVE_CONFIDENCE).then_some(MergeDecision {
         confidence,
         evidence: if compact_tail_font_recovery {
-            "COMPACT_PARAGRAPH_TAIL_RECOVERY"
+            if compact_cross_block_tail {
+                "COMPACT_CROSS_BLOCK_TAIL"
+            } else {
+                "COMPACT_PARAGRAPH_TAIL_RECOVERY"
+            }
         } else if relaxed_same_block_tail {
             "RELAXED_SAME_BLOCK_PARAGRAPH_TAIL"
         } else if compact_same_advisory_tail {
             "COMPACT_SAME_ADVISORY_TAIL"
         } else if relaxed_same_advisory_paragraph {
             "RELAXED_SAME_ADVISORY_PARAGRAPH"
+        } else if relaxed_same_block_wide_continuation {
+            "RELAXED_SAME_BLOCK_WIDE_CONTINUATION"
         } else if tight_cross_block_continuation {
             "TIGHT_CROSS_BLOCK_CONTINUATION"
         } else if established_paragraph_continuation {
@@ -572,6 +603,90 @@ fn is_compact_same_block_tail(
         && boundary_gap <= bounds_height / 2
 }
 
+fn is_relaxed_same_block_wide_continuation(
+    previous: &RegionGroup,
+    next: &RegionGroup,
+    viewport_width: i32,
+) -> bool {
+    let first = &previous.last_region;
+    let second = &next.first_region;
+    let minimum_width = first.bounds.width().min(second.bounds.width()).max(1);
+    let maximum_width = first.bounds.width().max(second.bounds.width()).max(1);
+    previous.role == "BODY"
+        && next.role == "BODY"
+        && same_block_continuation(first, second)
+        && !ends_sentence(&previous.source_text)
+        && second
+            .text
+            .chars()
+            .find(|character| character.is_alphanumeric())
+            .is_some_and(char::is_lowercase)
+        && font_compatibility(first, second) == FontCompatibility::Relaxed
+        && minimum_width >= viewport_width * 2 / 5
+        && minimum_width as f32 / maximum_width as f32 >= 0.70
+}
+
+fn is_compact_cross_block_tail(
+    previous: &RegionGroup,
+    next: &RegionGroup,
+    boundary_gap: i32,
+    viewport_width: i32,
+) -> bool {
+    let first = &previous.last_region;
+    let second = &next.first_region;
+    let first_height = region_text_height(first);
+    let second_height = region_text_height(second);
+    let font_ratio = first_height.min(second_height) / first_height.max(second_height).max(1.0);
+    let bounds_height = first.bounds.height().max(second.bounds.height()).max(1);
+    !previous.regions.is_empty()
+        && next.regions.len() == 1
+        && previous.role == "BODY"
+        && next.role == "BODY"
+        && !ends_sentence(&previous.source_text)
+        && is_textual_or_acronym_number_continuation(&previous.source_text, &second.text)
+        && second
+            .text
+            .chars()
+            .filter(|character| character.is_alphanumeric())
+            .count()
+            <= 20
+        && font_compatibility(first, second) == FontCompatibility::Relaxed
+        && font_ratio >= COMPACT_TAIL_MINIMUM_TYPOGRAPHY_RATIO
+        && first.bounds.width() >= viewport_width * 2 / 5
+        && first.bounds.width() >= second.bounds.width() * 3
+        && (first.bounds.left - second.bounds.left).abs() <= second.bounds.height().max(1)
+        && boundary_gap >= 0
+        && boundary_gap <= bounds_height / 2
+}
+
+fn is_textual_or_acronym_number_continuation(previous: &str, next: &str) -> bool {
+    if next
+        .chars()
+        .find(|character| character.is_alphanumeric())
+        .is_some_and(char::is_lowercase)
+    {
+        return true;
+    }
+    let compact_next = next
+        .chars()
+        .filter(|character| character.is_alphanumeric())
+        .collect::<String>();
+    let previous_token = previous
+        .trim_end()
+        .chars()
+        .rev()
+        .take_while(|character| character.is_alphanumeric())
+        .collect::<String>();
+    !compact_next.is_empty()
+        && compact_next.len() <= 6
+        && compact_next.chars().all(|character| character.is_ascii_digit())
+        && (2..=8).contains(&previous_token.len())
+        && previous_token.chars().any(|character| character.is_alphabetic())
+        && previous_token
+            .chars()
+            .all(|character| !character.is_alphabetic() || character.is_uppercase())
+}
+
 fn is_established_paragraph_continuation(
     previous: &RegionGroup,
     next: &RegionGroup,
@@ -601,6 +716,10 @@ fn is_established_paragraph_continuation(
         .chars()
         .find(|character| character.is_alphanumeric())
         .is_some_and(char::is_lowercase);
+    let next_continues_text = is_textual_or_acronym_number_continuation(
+        &previous.source_text,
+        &next.source_text,
+    );
     let mature_same_advisory_continuation =
         previous.regions.len() >= 3 && same_block && same_advisory_group && next_starts_lowercase;
     let continues_recovered_paragraph = previous.evidence.iter().any(|evidence| {
@@ -608,6 +727,7 @@ fn is_established_paragraph_continuation(
             evidence.as_str(),
             "ESTABLISHED_PARAGRAPH_CONTINUATION"
                 | "RELAXED_SAME_BLOCK_PARAGRAPH_TAIL"
+                | "RELAXED_SAME_BLOCK_WIDE_CONTINUATION"
                 | "RELAXED_SAME_ADVISORY_PARAGRAPH"
         )
     });
@@ -620,7 +740,7 @@ fn is_established_paragraph_continuation(
     {
         return false;
     }
-    let textual_continuation = same_block || same_advisory_group || next_starts_lowercase;
+    let textual_continuation = same_block || same_advisory_group || next_continues_text;
     if !textual_continuation {
         return false;
     }
@@ -648,9 +768,9 @@ fn is_relaxed_same_advisory_paragraph(
     client_group_profiles: &HashMap<String, ClientGroupProfile>,
     same_block: bool,
     same_advisory_group: bool,
+    viewport_width: i32,
 ) -> bool {
-    if !same_block
-        || !same_advisory_group
+    if !same_advisory_group
         || previous.role != "BODY"
         || next.role != "BODY"
     {
@@ -670,7 +790,23 @@ fn is_relaxed_same_advisory_paragraph(
     let boundary_compatibility =
         font_compatibility(&previous.last_region, &next.first_region);
     if boundary_compatibility == FontCompatibility::Relaxed {
-        return true;
+        if same_block {
+            return true;
+        }
+        let first = &previous.last_region;
+        let second = &next.first_region;
+        let height = first.bounds.height().max(second.bounds.height()).max(1);
+        return !ends_sentence(&previous.source_text)
+            && second
+                .text
+                .chars()
+                .find(|character| character.is_alphanumeric())
+                .is_some_and(char::is_lowercase)
+            && first.bounds.width() >= viewport_width * 2 / 5
+            && second.bounds.width() >= viewport_width * 2 / 5
+            && (first.bounds.left - second.bounds.left).abs() <= height
+            && boundary_gap >= 0
+            && boundary_gap <= height;
     }
     if boundary_compatibility != FontCompatibility::Strong
         || previous.regions.len() < 2
@@ -1010,7 +1146,7 @@ fn is_tight_two_line_wrap(source_slots: &[Bounds], group_bounds: &Bounds) -> boo
     let gap = second.top - first.bottom;
     (first.left - second.left).abs() <= (typical_height / 2).max(6)
         && gap >= 0
-        && gap <= typical_height / 2
+        && gap <= typical_height
         && first.width() >= group_bounds.width() * 70 / 100
 }
 
@@ -1052,6 +1188,13 @@ fn inferred_role(
     if looks_like_identifier(text) {
         return "IDENTIFIER".to_owned();
     }
+    if let Some(protected_role) = advisory.and_then(|group| {
+        (group.translation_unit == "PRESERVED"
+            && matches!(group.role.as_str(), "CONTROL" | "IDENTIFIER"))
+        .then(|| group.role.clone())
+    }) {
+        return protected_role;
+    }
     if looks_like_discussion_metadata(
         advisory
             .map(|group| group.source_text.as_str())
@@ -1081,12 +1224,27 @@ fn same_block_continuation(first: &OcrRegion, second: &OcrRegion) -> bool {
 
 fn is_strong_text_boundary(previous: &str, next: &str) -> bool {
     next.trim_start().starts_with('>')
+        || starts_list_item(next)
         || looks_like_short_label(previous)
         || looks_like_title_label(previous)
         || (looks_like_short_label(next) && ends_sentence(previous))
         || (looks_like_title_label(next) && ends_sentence(previous))
         || is_standalone_timestamp(previous)
         || is_standalone_timestamp(next)
+}
+
+fn starts_list_item(text: &str) -> bool {
+    let trimmed = text.trim_start();
+    if trimmed.starts_with(['•', '·', '‣', '◦', '*', '-']) {
+        return true;
+    }
+    let prefix = trimmed.split_whitespace().next().unwrap_or_default();
+    let marker = prefix.trim_end_matches(['.', ')']);
+    prefix.len() > marker.len()
+        && !marker.is_empty()
+        && (marker.chars().all(|character| character.is_ascii_digit())
+            || marker.len() == 1
+                && marker.chars().all(|character| character.is_ascii_alphabetic()))
 }
 
 fn looks_like_title_label(text: &str) -> bool {
@@ -1139,6 +1297,13 @@ fn looks_like_short_label(text: &str) -> bool {
 fn is_standalone_timestamp(text: &str) -> bool {
     let trimmed = text.trim();
     if trimmed.len() > 32 || !trimmed.chars().any(|character| character.is_ascii_digit()) {
+        return false;
+    }
+    if trimmed.ends_with('.')
+        && trimmed[..trimmed.len() - 1]
+            .chars()
+            .all(|character| character.is_ascii_digit())
+    {
         return false;
     }
     trimmed.chars().all(|character| {
@@ -2435,7 +2600,7 @@ mod tests {
             left: 64,
             top: 500,
             right: 1_200,
-            bottom: 545,
+            bottom: 550,
         };
         let mut second = first.clone();
         second.region_id = "paragraph-b".to_owned();
@@ -2445,9 +2610,9 @@ mod tests {
         second.text = "block when typography and spacing remain continuous.".to_owned();
         second.bounds = Bounds {
             left: 64,
-            top: 559,
+            top: 594,
             right: 414,
-            bottom: 604,
+            bottom: 639,
         };
         let mut first_group = request.groups[0].clone();
         first_group.group_id = first.group_id.clone();
@@ -2785,6 +2950,92 @@ mod tests {
     }
 
     #[test]
+    fn recovers_relaxed_same_block_and_acronym_number_tail_into_rect() {
+        let mut request = request();
+        let mut first = request.regions[0].clone();
+        first.region_id = "comment-main".to_owned();
+        first.group_id = "client-main".to_owned();
+        first.block_id = Some("block-main".to_owned());
+        first.line_index = Some(1);
+        first.reading_order = 0;
+        first.text = "I assume you linked to this because a new result was".to_owned();
+        first.estimated_text_height_px = Some(36.0);
+        first.typography_confidence = 0.82;
+        first.bounds = Bounds {
+            left: 67,
+            top: 1_496,
+            right: 1_192,
+            bottom: 1_536,
+        };
+        let mut second = first.clone();
+        second.region_id = "comment-middle".to_owned();
+        second.group_id = "client-middle".to_owned();
+        second.line_index = Some(2);
+        second.reading_order = 1;
+        second.text = "apparently just found(today?!),a factorization of RSA".to_owned();
+        second.estimated_text_height_px = Some(49.0);
+        second.bounds = Bounds {
+            left: 64,
+            top: 1_551,
+            right: 1_219,
+            bottom: 1_606,
+        };
+        let mut tail = second.clone();
+        tail.region_id = "comment-tail".to_owned();
+        tail.group_id = "client-tail".to_owned();
+        tail.block_id = Some("block-tail".to_owned());
+        tail.line_index = Some(0);
+        tail.reading_order = 2;
+        tail.text = "260.".to_owned();
+        tail.estimated_text_height_px = Some(32.0);
+        tail.typography_confidence = 0.45;
+        tail.bounds = Bounds {
+            left: 66,
+            top: 1_620,
+            right: 149,
+            bottom: 1_656,
+        };
+        let mut first_group = request.groups[0].clone();
+        first_group.group_id = first.group_id.clone();
+        first_group.role = "BODY".to_owned();
+        first_group.member_region_ids = vec![first.region_id.clone()];
+        first_group.source_text = first.text.clone();
+        first_group.bounds = first.bounds.clone();
+        first_group.render_slots = vec![first.bounds.clone()];
+        let mut second_group = first_group.clone();
+        second_group.group_id = second.group_id.clone();
+        second_group.member_region_ids = vec![second.region_id.clone()];
+        second_group.source_text = second.text.clone();
+        second_group.bounds = second.bounds.clone();
+        second_group.render_slots = vec![second.bounds.clone()];
+        let mut tail_group = second_group.clone();
+        tail_group.group_id = tail.group_id.clone();
+        tail_group.member_region_ids = vec![tail.region_id.clone()];
+        tail_group.source_text = tail.text.clone();
+        tail_group.bounds = tail.bounds.clone();
+        tail_group.render_slots = vec![tail.bounds.clone()];
+        request.regions = vec![first, second, tail];
+        request.groups = vec![first_group, second_group, tail_group];
+
+        let plan = build_regions_first_plan(&request);
+
+        assert_eq!(1, plan.groups.len());
+        assert_eq!(3, plan.groups[0].member_region_ids.len());
+        assert_eq!("RECT", plan.groups[0].layout_shape);
+        assert_eq!(1, plan.groups[0].render_slots.len());
+        assert!(
+            plan.groups[0]
+                .grouping_evidence
+                .contains(&"COMPACT_CROSS_BLOCK_TAIL".to_owned())
+        );
+        assert!(
+            plan.groups[0]
+                .grouping_evidence
+                .contains(&"RELAXED_SAME_BLOCK_WIDE_CONTINUATION".to_owned())
+        );
+    }
+
+    #[test]
     fn recognizes_hacker_news_discussion_metadata_as_a_separate_role() {
         let mut request = request();
         let mut metadata = request.regions[0].clone();
@@ -2853,11 +3104,60 @@ mod tests {
     }
 
     #[test]
+    fn preserves_explicit_truncated_control_instead_of_translating_it_as_body() {
+        let mut request = request();
+        let mut region = request.regions[0].clone();
+        region.region_id = "truncated-control".to_owned();
+        region.group_id = "client-control".to_owned();
+        region.text = "diversity in...".to_owned();
+        let mut advisory = request.groups[0].clone();
+        advisory.group_id = region.group_id.clone();
+        advisory.role = "CONTROL".to_owned();
+        advisory.translation_unit = "PRESERVED".to_owned();
+        advisory.source_text = region.text.clone();
+        advisory.member_region_ids = vec![region.region_id.clone()];
+        advisory.bounds = region.bounds.clone();
+        advisory.render_slots = vec![region.bounds.clone()];
+        request.regions = vec![region];
+        request.groups = vec![advisory];
+        request.document_context.reading_order_region_ids =
+            vec!["truncated-control".to_owned()];
+
+        let prepared = crate::engine::prepare_translation(
+            &serde_json::to_string(&request).unwrap(),
+            "openlux",
+            "gemini-test",
+        )
+        .unwrap();
+
+        assert_eq!(1, prepared.execution_groups.len());
+        assert_eq!("CONTROL", prepared.execution_groups[0].role);
+        assert!(prepared.actionable_groups.is_empty());
+
+        request.regions[0].text = "23 / en.wikipedia.org/wiki/Op".to_owned();
+        request.groups[0].role = "IDENTIFIER".to_owned();
+        request.groups[0].source_text = request.regions[0].text.clone();
+        let identifier_prepared = crate::engine::prepare_translation(
+            &serde_json::to_string(&request).unwrap(),
+            "openlux",
+            "gemini-test",
+        )
+        .unwrap();
+
+        assert_eq!("IDENTIFIER", identifier_prepared.execution_groups[0].role);
+        assert!(identifier_prepared.actionable_groups.is_empty());
+    }
+
+    #[test]
     fn recognizes_sentence_ending_before_a_parenthetical_suffix() {
         assert!(ends_sentence("happier?(2022)"));
         assert!(is_strong_text_boundary(
             "The standard dictionary fully backs this up:",
             "> logos"
+        ));
+        assert!(is_strong_text_boundary(
+            "programming and the Internet.",
+            "•JavaScript Guide(this guide)provides an"
         ));
     }
 

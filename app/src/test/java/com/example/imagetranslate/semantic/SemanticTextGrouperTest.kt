@@ -313,6 +313,199 @@ class SemanticTextGrouperTest {
     }
 
     @Test
+    fun mergesCompactCrossBlockTailWhenTheMainLineIsUnfinished() {
+        val first = line(
+            "Do you actually read that LLM crap?I don't.You don't",
+            67,
+            1042,
+            1201,
+            1097,
+            "mlkit-main",
+            0
+        ).copy(estimatedTextHeightPx = 49f, typographyConfidence = 0.82f)
+        val tail = line(
+            "have to.",
+            67,
+            1112,
+            228,
+            1148,
+            "mlkit-tail",
+            0
+        ).copy(estimatedTextHeightPx = 32f, typographyConfidence = 0.82f)
+
+        val group = SemanticTextGrouper.group(listOf(first, tail), 1440, 3200).single()
+
+        assertEquals(2, group.members.size)
+        assertEquals(SemanticTextRole.BODY, group.role)
+        assertEquals(1, group.renderSlots.size)
+        assertTrue(GroupingEvidence.PARAGRAPH_CONTINUATION_RECOVERY in group.evidence)
+        assertTrue(GroupingEvidence.FONT_SCALE_RELAXED_PARAGRAPH in group.evidence)
+    }
+
+    @Test
+    fun mergesRelaxedWideLineAndAcronymNumberTailAcrossBlocks() {
+        val first = line(
+            "I assume you linked to this because a new result was",
+            67,
+            1496,
+            1192,
+            1536,
+            "mlkit-main",
+            1
+        ).copy(estimatedTextHeightPx = 36f, typographyConfidence = 0.82f)
+        val second = line(
+            "apparently just found(today?!),a factorization of RSA",
+            64,
+            1551,
+            1219,
+            1606,
+            "mlkit-main",
+            2
+        ).copy(estimatedTextHeightPx = 49f, typographyConfidence = 0.82f)
+        val tail = line(
+            "260.",
+            66,
+            1620,
+            149,
+            1656,
+            "mlkit-tail",
+            0
+        ).copy(estimatedTextHeightPx = 32f, typographyConfidence = 0.45f)
+
+        val group = SemanticTextGrouper.group(listOf(first, second, tail), 1440, 3200).single()
+
+        assertEquals(3, group.members.size)
+        assertEquals(SemanticTextRole.BODY, group.role)
+        assertEquals(1, group.renderSlots.size)
+        assertTrue(GroupingEvidence.FONT_SCALE_RELAXED_SAME_BLOCK in group.evidence)
+        assertTrue(GroupingEvidence.PARAGRAPH_CONTINUATION_RECOVERY in group.evidence)
+    }
+
+    @Test
+    fun doesNotMergeStandaloneNumberWithoutAnAcronymPrefix() {
+        val first = line(
+            "This paragraph contains a normal lowercase ending",
+            67,
+            1496,
+            1192,
+            1536,
+            "mlkit-main",
+            0
+        ).copy(estimatedTextHeightPx = 49f, typographyConfidence = 0.82f)
+        val number = line(
+            "260.",
+            67,
+            1551,
+            149,
+            1587,
+            "mlkit-number",
+            0
+        ).copy(estimatedTextHeightPx = 32f, typographyConfidence = 0.45f)
+
+        val groups = SemanticTextGrouper.group(listOf(first, number), 1440, 3200)
+
+        assertEquals(2, groups.size)
+    }
+
+    @Test
+    fun keepsCompactCrossBlockTextSeparateAfterCompletedSentence() {
+        val first = line(
+            "This is a complete main-column paragraph.",
+            67,
+            1042,
+            1201,
+            1097,
+            "mlkit-main",
+            0
+        ).copy(estimatedTextHeightPx = 49f, typographyConfidence = 0.82f)
+        val next = line(
+            "metadata",
+            67,
+            1112,
+            228,
+            1148,
+            "mlkit-next",
+            0
+        ).copy(estimatedTextHeightPx = 32f, typographyConfidence = 0.82f)
+
+        val groups = SemanticTextGrouper.group(listOf(first, next), 1440, 3200)
+
+        assertEquals(2, groups.size)
+    }
+
+    @Test
+    fun classifiesSentenceLikeLargeTextAsBodyInsteadOfTitle() {
+        val item = line(
+            "Really wish they'd get rid of this.It must be in the system\n" +
+                "prompt as it always flags'2 things",
+            67,
+            1597,
+            1278,
+            1716,
+            "comment",
+            0
+        ).copy(
+            componentBounds = listOf(
+                rect(67, 1597, 1278, 1648),
+                rect(67, 1659, 794, 1716)
+            ),
+            estimatedTextHeightPx = 51f,
+            typographyConfidence = 0.82f
+        )
+
+        val group = SemanticTextGrouper.group(
+            listOf(item, line("small", 20, 2000, 120, 2032, "other", 0)),
+            1440,
+            3200
+        ).first()
+
+        assertEquals(SemanticTextRole.BODY, group.role)
+    }
+
+    @Test
+    fun preservesLowConfidenceSingleGlyphDetectedFromNavigationIcon() {
+        val icon = line(
+            "人",
+            188,
+            2830,
+            264,
+            2940,
+            "mlkit-icon",
+            0
+        ).copy(
+            modelConfidence = 0.46484375f,
+            typographyConfidence = 0.45f,
+            estimatedTextHeightPx = 110f
+        )
+
+        val group = SemanticTextGrouper.group(listOf(icon), 1440, 3200).single()
+
+        assertEquals(SemanticTextRole.CONTROL, group.role)
+    }
+
+    @Test
+    fun preservesLowConfidenceDenseTextDetectedInsideAnImage() {
+        val artifact = line(
+            "supportforavarietyofdigitalimagefileforatinputs Sa",
+            394,
+            331,
+            1094,
+            592,
+            null,
+            0
+        ).copy(
+            modelConfidence = 0.7518f,
+            typographyConfidence = 0.82f,
+            estimatedTextHeightPx = 53f,
+            componentBounds = listOf(rect(394, 331, 1094, 592))
+        )
+
+        val group = SemanticTextGrouper.group(listOf(artifact), 1440, 3200).single()
+
+        assertEquals(SemanticTextRole.CONTROL, group.role)
+    }
+
+    @Test
     fun keepsQuotedListItemOutsidePrecedingParagraph() {
         val groups = SemanticTextGrouper.group(
             listOf(
@@ -327,6 +520,27 @@ class SemanticTextGrouperTest {
         assertEquals(2, groups.size)
         assertEquals(2, groups[0].members.size)
         assertEquals(SemanticTextRole.LIST_ITEM, groups[1].role)
+    }
+
+    @Test
+    fun recognizesBulletWithoutOcrWhitespaceAsListItem() {
+        val group = SemanticTextGrouper.group(
+            listOf(
+                line(
+                    "•JavaScript Guide(this guide)provides an",
+                    149,
+                    2967,
+                    1272,
+                    3032,
+                    "list-item",
+                    0
+                )
+            ),
+            1440,
+            3200
+        ).single()
+
+        assertEquals(SemanticTextRole.LIST_ITEM, group.role)
     }
 
     @Test
