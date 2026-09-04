@@ -1,0 +1,40 @@
+{
+  "expectedBlocks": [
+    {
+      "id": "mind-deserves-festival",
+      "sourceContains": [
+        "Your mind deserves",
+        "festival too"
+      ],
+      "minimumMemberCount": 2,
+      "layoutShape": "RECT"
+    },
+    {
+      "id": "festival-introduction",
+      "sourceContains": [
+        "Introducing the inaugural SIM",
+        "genuine connection"
+      ],
+      "minimumMemberCount": 5,
+      "layoutShape": "RECT"
+    },
+    {
+      "id": "mind-care-paragraph",
+      "sourceContains": [
+        "Because taking care of your mind",
+        "now thing"
+      ],
+      "minimumMemberCount": 3,
+      "layoutShape": "RECT"
+    },
+    {
+      "id": "date-and-location",
+      "sourceContains": [
+        "24 10 September",
+        "updated via email"
+      ],
+      "minimumMemberCount": 3,
+      "layoutShape": "FLOW_SLOTS"
+    }
+  ]
+}

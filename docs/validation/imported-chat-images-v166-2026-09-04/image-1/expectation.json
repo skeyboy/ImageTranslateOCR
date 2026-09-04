@@ -1,0 +1,49 @@
+{
+  "expectedBlocks": [
+    {
+      "id": "sense-check-paragraph",
+      "sourceContains": [
+        "Aquick sense-check",
+        "please?."
+      ],
+      "minimumMemberCount": 3,
+      "layoutShape": "RECT"
+    },
+    {
+      "id": "workshop-paragraph",
+      "sourceContains": [
+        "I'm running workshop",
+        "humans appearing only later"
+      ],
+      "minimumMemberCount": 6,
+      "layoutShape": "RECT"
+    },
+    {
+      "id": "oecd-quote",
+      "sourceContains": [
+        "An Al system is a machine-based",
+        "recommendations or decisions"
+      ],
+      "minimumMemberCount": 6,
+      "layoutShape": "RECT"
+    },
+    {
+      "id": "human-lens-paragraph",
+      "sourceContains": [
+        "Given the work we do",
+        "human lens"
+      ],
+      "minimumMemberCount": 4,
+      "layoutShape": "RECT"
+    },
+    {
+      "id": "human-definition-quote",
+      "sourceContains": [
+        "Humans use Al systems",
+        "support their objectives"
+      ],
+      "minimumMemberCount": 5,
+      "layoutShape": "RECT"
+    }
+  ]
+}

@@ -1,0 +1,751 @@
+{
+  "schemaVersion": 3,
+  "event": "live_layout_validation",
+  "status": "FAIL",
+  "requestId": "1d694d0a-0381-436e-ab1a-9e4a6464c03e",
+  "plannedGroupCount": 29,
+  "validatedBlockCount": 10,
+  "visualValidationAvailable": true,
+  "oracle": {
+    "level": "FIXED_EXPECTATION",
+    "sources": [
+      "CLIENT_ADVISORY",
+      "EXPECTATION"
+    ]
+  },
+  "mergeConsistency": {
+    "theoreticalMergedBlockCount": 6,
+    "actualMergedBlockCount": 6,
+    "consistentBlockCount": 8,
+    "inconsistentBlockCount": 0
+  },
+  "layoutDiagnostics": {
+    "translatedRegionCount": 22,
+    "renderedPatchCount": 21,
+    "translationFailedCount": 0,
+    "renderFailedCount": 1,
+    "translationVisible": true,
+    "presentationOutcome": "PRESENTED",
+    "endToEndMs": 6806
+  },
+  "performance": {
+    "available": true,
+    "endToEndMs": 6806,
+    "accountedMs": 6731,
+    "unaccountedMs": 75,
+    "bottleneck": {
+      "name": "remoteAi",
+      "owner": "REMOTE_PROVIDER",
+      "milliseconds": 5492,
+      "percentOfEndToEnd": 80.7
+    },
+    "stages": [
+      {
+        "name": "ocr",
+        "owner": "CLIENT_OCR",
+        "milliseconds": 734,
+        "percentOfEndToEnd": 10.8
+      },
+      {
+        "name": "promptAndPlanning",
+        "owner": "EMBEDDED_RUST",
+        "milliseconds": 24,
+        "percentOfEndToEnd": 0.4
+      },
+      {
+        "name": "remoteAi",
+        "owner": "REMOTE_PROVIDER",
+        "milliseconds": 5492,
+        "percentOfEndToEnd": 80.7
+      },
+      {
+        "name": "responseAssembly",
+        "owner": "EMBEDDED_RUST",
+        "milliseconds": 20,
+        "percentOfEndToEnd": 0.3
+      },
+      {
+        "name": "translationClientOverhead",
+        "owner": "CLIENT_TRANSLATION",
+        "milliseconds": 191,
+        "percentOfEndToEnd": 2.8
+      },
+      {
+        "name": "render",
+        "owner": "CLIENT_RENDERER",
+        "milliseconds": 260,
+        "percentOfEndToEnd": 3.8
+      },
+      {
+        "name": "presentation",
+        "owner": "ANDROID_OVERLAY",
+        "milliseconds": 10,
+        "percentOfEndToEnd": 0.1
+      }
+    ],
+    "provider": {
+      "cacheHit": false,
+      "thinkingControlMode": "THINKING_LEVEL",
+      "thinkingLevel": "medium",
+      "promptTokens": 1832,
+      "completionTokens": 806,
+      "requestToHeadersMs": 5486,
+      "responseDownloadMs": 3,
+      "proxyConfigured": true,
+      "providerRetryCount": 0,
+      "providerRetryDelayMs": 0
+    },
+    "auxiliary": {
+      "captureEncodeMs": 11,
+      "renderedCaptureEncodeMs": 10
+    },
+    "recommendations": [
+      {
+        "priority": "P0",
+        "stage": "remoteAi",
+        "action": "Keep thinkingLevel=medium; maximize semantic translation cache and HTTP connection reuse, retry 429 responses with bounded backoff, and consider incremental batches only when atomic paragraph layout remains intact."
+      }
+    ]
+  },
+  "visualBlocks": [
+    {
+      "bounds": {
+        "left": 204,
+        "top": 1183,
+        "right": 933,
+        "bottom": 1322
+      },
+      "pixelBounds": {
+        "left": 204,
+        "top": 1183,
+        "right": 933,
+        "bottom": 1322
+      },
+      "changedPixelRatio": 0.4306,
+      "visualBandCount": 2,
+      "visualBands": [
+        {
+          "top": 0,
+          "bottom": 57
+        },
+        {
+          "top": 93,
+          "bottom": 139
+        }
+      ],
+      "maximumInternalGapPx": 36,
+      "horizontalBandCount": 6,
+      "horizontalBands": [
+        {
+          "left": 0,
+          "right": 6
+        },
+        {
+          "left": 7,
+          "right": 90
+        },
+        {
+          "left": 91,
+          "right": 391
+        },
+        {
+          "left": 392,
+          "right": 462
+        },
+        {
+          "left": 463,
+          "right": 466
+        },
+        {
+          "left": 467,
+          "right": 729
+        }
+      ],
+      "maximumHorizontalGapPx": 1,
+      "glyphRowBandCount": 2,
+      "glyphHeightRatio": 0.8421,
+      "id": "mind-deserves-festival",
+      "source": "EXPECTATION",
+      "theoretical": {
+        "groupCount": 2,
+        "groupIds": [
+          "server-v4-23-d105172409b82d30",
+          "server-v4-24-ea4806f85c1360ad"
+        ],
+        "memberRegionCount": 2,
+        "layoutShapes": [
+          "RECT"
+        ],
+        "renderSlotCount": 2,
+        "merged": false
+      },
+      "actualMerged": false,
+      "mergeConsistent": true
+    },
+    {
+      "bounds": {
+        "left": 207,
+        "top": 1914,
+        "right": 1124,
+        "bottom": 2128
+      },
+      "pixelBounds": {
+        "left": 207,
+        "top": 1914,
+        "right": 1124,
+        "bottom": 2128
+      },
+      "changedPixelRatio": 0.9778,
+      "visualBandCount": 1,
+      "visualBands": [
+        {
+          "top": 0,
+          "bottom": 214
+        }
+      ],
+      "maximumInternalGapPx": 0,
+      "horizontalBandCount": 1,
+      "horizontalBands": [
+        {
+          "left": 0,
+          "right": 917
+        }
+      ],
+      "maximumHorizontalGapPx": 0,
+      "glyphRowBandCount": 3,
+      "glyphHeightRatio": 1.0,
+      "id": "mind-care-paragraph",
+      "source": "EXPECTATION",
+      "theoretical": {
+        "groupCount": 1,
+        "groupIds": [
+          "server-v4-27-eb862e76f4256bcb"
+        ],
+        "memberRegionCount": 3,
+        "layoutShapes": [
+          "RECT"
+        ],
+        "renderSlotCount": 1,
+        "merged": true
+      },
+      "actualMerged": true,
+      "mergeConsistent": true
+    },
+    {
+      "bounds": {
+        "left": 206,
+        "top": 2222,
+        "right": 1153,
+        "bottom": 2463
+      },
+      "pixelBounds": {
+        "left": 206,
+        "top": 2222,
+        "right": 1153,
+        "bottom": 2463
+      },
+      "changedPixelRatio": 0.5627,
+      "visualBandCount": 3,
+      "visualBands": [
+        {
+          "top": 0,
+          "bottom": 69
+        },
+        {
+          "top": 98,
+          "bottom": 157
+        },
+        {
+          "top": 182,
+          "bottom": 241
+        }
+      ],
+      "maximumInternalGapPx": 29,
+      "horizontalBandCount": 4,
+      "horizontalBands": [
+        {
+          "left": 0,
+          "right": 799
+        },
+        {
+          "left": 800,
+          "right": 871
+        },
+        {
+          "left": 872,
+          "right": 900
+        },
+        {
+          "left": 901,
+          "right": 947
+        }
+      ],
+      "maximumHorizontalGapPx": 1,
+      "glyphRowBandCount": 3,
+      "glyphHeightRatio": 0.9756,
+      "id": "date-and-location",
+      "source": "EXPECTATION",
+      "theoretical": {
+        "groupCount": 1,
+        "groupIds": [
+          "server-v4-28-08d265e5a0b83ec4"
+        ],
+        "memberRegionCount": 3,
+        "layoutShapes": [
+          "FLOW_SLOTS"
+        ],
+        "renderSlotCount": 3,
+        "merged": false
+      },
+      "actualMerged": false,
+      "mergeConsistent": true
+    },
+    {
+      "bounds": {
+        "left": 783,
+        "top": 871,
+        "right": 982,
+        "bottom": 911
+      },
+      "pixelBounds": {
+        "left": 783,
+        "top": 871,
+        "right": 982,
+        "bottom": 911
+      },
+      "changedPixelRatio": 0.9569,
+      "visualBandCount": 1,
+      "visualBands": [
+        {
+          "top": 0,
+          "bottom": 40
+        }
+      ],
+      "maximumInternalGapPx": 0,
+      "horizontalBandCount": 1,
+      "horizontalBands": [
+        {
+          "left": 0,
+          "right": 199
+        }
+      ],
+      "maximumHorizontalGapPx": 0,
+      "glyphRowBandCount": 2,
+      "glyphHeightRatio": 0.8182,
+      "id": "client-semantic-1bd95f01",
+      "source": "CLIENT_ADVISORY",
+      "theoretical": {
+        "groupCount": 1,
+        "groupIds": [
+          "server-v4-10-2d04238c5fdeeb5b"
+        ],
+        "memberRegionCount": 2,
+        "layoutShapes": [
+          "RECT"
+        ],
+        "renderSlotCount": 1,
+        "merged": true
+      },
+      "actualMerged": true,
+      "mergeConsistent": true
+    },
+    {
+      "bounds": {
+        "left": 544,
+        "top": 916,
+        "right": 747,
+        "bottom": 969
+      },
+      "pixelBounds": {
+        "left": 544,
+        "top": 916,
+        "right": 747,
+        "bottom": 969
+      },
+      "changedPixelRatio": 0.9744,
+      "visualBandCount": 1,
+      "visualBands": [
+        {
+          "top": 0,
+          "bottom": 53
+        }
+      ],
+      "maximumInternalGapPx": 0,
+      "horizontalBandCount": 1,
+      "horizontalBands": [
+        {
+          "left": 0,
+          "right": 203
+        }
+      ],
+      "maximumHorizontalGapPx": 0,
+      "glyphRowBandCount": 2,
+      "glyphHeightRatio": 1.0,
+      "id": "client-semantic-3701f861",
+      "source": "CLIENT_ADVISORY",
+      "theoretical": {
+        "groupCount": 1,
+        "groupIds": [
+          "server-v4-13-2bed7fe4c0a36f98"
+        ],
+        "memberRegionCount": 3,
+        "layoutShapes": [
+          "RECT"
+        ],
+        "renderSlotCount": 1,
+        "merged": true
+      },
+      "actualMerged": true,
+      "mergeConsistent": true
+    },
+    {
+      "bounds": {
+        "left": 292,
+        "top": 1066,
+        "right": 503,
+        "bottom": 1113
+      },
+      "pixelBounds": {
+        "left": 292,
+        "top": 1066,
+        "right": 503,
+        "bottom": 1113
+      },
+      "changedPixelRatio": 0.9245,
+      "visualBandCount": 1,
+      "visualBands": [
+        {
+          "top": 0,
+          "bottom": 47
+        }
+      ],
+      "maximumInternalGapPx": 0,
+      "horizontalBandCount": 1,
+      "horizontalBands": [
+        {
+          "left": 0,
+          "right": 211
+        }
+      ],
+      "maximumHorizontalGapPx": 0,
+      "glyphRowBandCount": 2,
+      "glyphHeightRatio": 1.0,
+      "id": "client-semantic-4d8b19f",
+      "source": "CLIENT_ADVISORY",
+      "theoretical": {
+        "groupCount": 1,
+        "groupIds": [
+          "server-v4-20-5b8e37e670ec0cfd"
+        ],
+        "memberRegionCount": 3,
+        "layoutShapes": [
+          "RECT"
+        ],
+        "renderSlotCount": 1,
+        "merged": true
+      },
+      "actualMerged": true,
+      "mergeConsistent": true
+    },
+    {
+      "bounds": {
+        "left": 610,
+        "top": 1068,
+        "right": 753,
+        "bottom": 1106
+      },
+      "pixelBounds": {
+        "left": 610,
+        "top": 1068,
+        "right": 753,
+        "bottom": 1106
+      },
+      "changedPixelRatio": 0.9676,
+      "visualBandCount": 1,
+      "visualBands": [
+        {
+          "top": 0,
+          "bottom": 38
+        }
+      ],
+      "maximumInternalGapPx": 0,
+      "horizontalBandCount": 1,
+      "horizontalBands": [
+        {
+          "left": 0,
+          "right": 143
+        }
+      ],
+      "maximumHorizontalGapPx": 0,
+      "glyphRowBandCount": 2,
+      "glyphHeightRatio": 1.0,
+      "id": "client-semantic-629e4564",
+      "source": "CLIENT_ADVISORY",
+      "theoretical": {
+        "groupCount": 1,
+        "groupIds": [
+          "server-v4-21-fa95e617ec667623"
+        ],
+        "memberRegionCount": 2,
+        "layoutShapes": [
+          "RECT"
+        ],
+        "renderSlotCount": 1,
+        "merged": true
+      },
+      "actualMerged": true,
+      "mergeConsistent": true
+    },
+    {
+      "bounds": {
+        "left": 221,
+        "top": 1437,
+        "right": 1009,
+        "bottom": 1571
+      },
+      "pixelBounds": {
+        "left": 221,
+        "top": 1437,
+        "right": 1009,
+        "bottom": 1571
+      },
+      "changedPixelRatio": 0.9649,
+      "visualBandCount": 1,
+      "visualBands": [
+        {
+          "top": 0,
+          "bottom": 134
+        }
+      ],
+      "maximumInternalGapPx": 0,
+      "horizontalBandCount": 1,
+      "horizontalBands": [
+        {
+          "left": 0,
+          "right": 788
+        }
+      ],
+      "maximumHorizontalGapPx": 0,
+      "glyphRowBandCount": 2,
+      "glyphHeightRatio": 1.0,
+      "id": "client-semantic-e41b11c4",
+      "source": "CLIENT_ADVISORY",
+      "theoretical": {
+        "groupCount": 1,
+        "groupIds": [
+          "server-v4-25-ebb1ccc720b1febc"
+        ],
+        "memberRegionCount": 2,
+        "layoutShapes": [
+          "RECT"
+        ],
+        "renderSlotCount": 1,
+        "merged": true
+      },
+      "actualMerged": true,
+      "mergeConsistent": true
+    }
+  ],
+  "findings": [
+    {
+      "code": "EXPECTED_BLOCK_SPLIT",
+      "severity": "ERROR",
+      "message": "Expected block mind-deserves-festival resolved to 0 complete groups",
+      "evidence": {
+        "expectedBlockId": "mind-deserves-festival",
+        "matchingGroupIds": [
+          "server-v4-23-d105172409b82d30",
+          "server-v4-24-ea4806f85c1360ad"
+        ],
+        "matchingSourceTexts": [
+          "Your mind deserves",
+          "festival too."
+        ]
+      },
+      "analysis": {
+        "owner": "GROUPING",
+        "likelyCause": "The expected paragraph was split before rendering",
+        "suggestedFix": "Inspect client and server merge decisions at the split boundary; only relax same-block consecutive BODY lines with stable spacing."
+      }
+    },
+    {
+      "code": "EXPECTED_BLOCK_SPLIT",
+      "severity": "ERROR",
+      "message": "Expected block festival-introduction resolved to 0 complete groups",
+      "evidence": {
+        "expectedBlockId": "festival-introduction",
+        "matchingGroupIds": [
+          "server-v4-25-ebb1ccc720b1febc",
+          "server-v4-26-b43d526cde94e395"
+        ],
+        "matchingSourceTexts": [
+          "Introducing the inaugural SIM\nOTR Wellbeing Festival",
+          "2026 night of meaningful\nconversations,shared moments,\nand genuine connection!"
+        ]
+      },
+      "analysis": {
+        "owner": "GROUPING",
+        "likelyCause": "The expected paragraph was split before rendering",
+        "suggestedFix": "Inspect client and server merge decisions at the split boundary; only relax same-block consecutive BODY lines with stable spacing."
+      }
+    },
+    {
+      "code": "PIPELINE_FAILURE",
+      "severity": "BLOCKED",
+      "message": "Translation or rendering failures were reported",
+      "evidence": {
+        "translationFailedCount": 0,
+        "renderFailedCount": 1,
+        "renderFailures": [
+          {
+            "groupId": "server-v4-26-b43d526cde94e395",
+            "reason": "TEXT_DOES_NOT_FIT",
+            "layoutShape": "FLOW_SLOTS",
+            "sourceLineHeightPx": 63,
+            "preferredTextSizePx": 63,
+            "minimumAttemptedTextSizePx": 44.4276008605957,
+            "lastAttemptedTextSizePx": 44.500152587890625,
+            "maximumLines": 3,
+            "requireAllSlots": true,
+            "allowMore": false,
+            "attemptedLineSpacingMultipliers": [
+              1
+            ],
+            "renderSlots": [
+              {
+                "left": 228,
+                "top": 1587,
+                "right": 1030,
+                "bottom": 1650
+              },
+              {
+                "left": 228,
+                "top": 1666,
+                "right": 1094,
+                "bottom": 1724
+              },
+              {
+                "left": 219,
+                "top": 1739,
+                "right": 879,
+                "bottom": 1814
+              }
+            ],
+            "sourceCoverSlots": [
+              {
+                "left": 228,
+                "top": 1587,
+                "right": 1030,
+                "bottom": 1650
+              },
+              {
+                "left": 228,
+                "top": 1666,
+                "right": 1094,
+                "bottom": 1724
+              },
+              {
+                "left": 219,
+                "top": 1739,
+                "right": 879,
+                "bottom": 1814
+              }
+            ]
+          }
+        ]
+      },
+      "analysis": {
+        "owner": "TRANSLATION_OR_RENDERER",
+        "likelyCause": "At least one translation unit was not pasted successfully",
+        "suggestedFix": "Inspect renderFailures and failed response groups; keep the run inconclusive until every expected paragraph has a visible patch."
+      }
+    },
+    {
+      "code": "RECT_VISUALLY_FRAGMENTED",
+      "severity": "ERROR",
+      "message": "Expected RECT block mind-deserves-festival contains multiple changed-pixel bands",
+      "evidence": {
+        "bounds": {
+          "left": 204,
+          "top": 1183,
+          "right": 933,
+          "bottom": 1322
+        },
+        "pixelBounds": {
+          "left": 204,
+          "top": 1183,
+          "right": 933,
+          "bottom": 1322
+        },
+        "changedPixelRatio": 0.4306,
+        "visualBandCount": 2,
+        "visualBands": [
+          {
+            "top": 0,
+            "bottom": 57
+          },
+          {
+            "top": 93,
+            "bottom": 139
+          }
+        ],
+        "maximumInternalGapPx": 36,
+        "horizontalBandCount": 6,
+        "horizontalBands": [
+          {
+            "left": 0,
+            "right": 6
+          },
+          {
+            "left": 7,
+            "right": 90
+          },
+          {
+            "left": 91,
+            "right": 391
+          },
+          {
+            "left": 392,
+            "right": 462
+          },
+          {
+            "left": 463,
+            "right": 466
+          },
+          {
+            "left": 467,
+            "right": 729
+          }
+        ],
+        "maximumHorizontalGapPx": 1,
+        "glyphRowBandCount": 2,
+        "glyphHeightRatio": 0.8421,
+        "id": "mind-deserves-festival",
+        "source": "EXPECTATION",
+        "theoretical": {
+          "groupCount": 2,
+          "groupIds": [
+            "server-v4-23-d105172409b82d30",
+            "server-v4-24-ea4806f85c1360ad"
+          ],
+          "memberRegionCount": 2,
+          "layoutShapes": [
+            "RECT"
+          ],
+          "renderSlotCount": 2,
+          "merged": false
+        },
+        "actualMerged": false,
+        "mergeConsistent": true
+      },
+      "analysis": {
+        "owner": "RENDERER",
+        "likelyCause": "A planned RECT produced multiple visible pixel bands",
+        "suggestedFix": "Use the paragraph union rectangle and its typography anchor for one atomic patch instead of per-line pasting."
+      }
+    }
+  ],
+  "errorCount": 3,
+  "blockedCount": 1,
+  "warningCount": 0
+}
