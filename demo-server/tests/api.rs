@@ -578,7 +578,7 @@ async fn translates_semantic_group_and_echoes_generation() {
                         "outcome": "RENDER_FAILED",
                         "stage": "OVERLAY_PARTIAL_DRAW",
                         "failureCode": "PARTIAL_RENDER",
-                        "failureMessage": "one translated region was not pasted back",
+                        "failureMessage": "1 translated region(s) were not pasted back",
                         "layoutDiagnostics": {
                             "schemaVersion": 1,
                             "renderedPatchCount": 1,
@@ -664,6 +664,28 @@ async fn translates_semantic_group_and_echoes_generation() {
     .unwrap();
     assert!(!failed_history_body.contains("request-1"));
 
+    let paste_back_missing_history = router
+        .clone()
+        .oneshot(
+            Request::get("/admin/requests?status=PASTE_BACK_MISSING_ONE")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let paste_back_missing_history_body = String::from_utf8(
+        to_bytes(paste_back_missing_history.into_body(), 1024 * 1024)
+            .await
+            .unwrap()
+            .to_vec(),
+    )
+    .unwrap();
+    assert!(paste_back_missing_history_body.contains("request-1"));
+    assert!(
+        paste_back_missing_history_body
+            .contains("value=\"PASTE_BACK_MISSING_ONE\" selected>回贴缺失（1 个区域）")
+    );
+
     let detail = router
         .clone()
         .oneshot(
@@ -688,6 +710,8 @@ async fn translates_semantic_group_and_echoes_generation() {
     assert!(detail_body.contains("RENDER_FAILED"));
     assert!(detail_body.contains("查看端侧布局诊断"));
     assert!(detail_body.contains("loading=\"lazy\""));
+    assert_eq!(detail_body.matches("data-fullscreen-image").count(), 2);
+    assert!(detail_body.contains("id=\"image-lightbox\" class=\"image-lightbox\""));
     assert!(detail_body.contains("id=\"rendered-capture-toggle\" type=\"checkbox\""));
     assert!(detail_body.contains("id=\"source-capture-view\" class=\"capture-view\""));
     assert!(detail_body.contains("id=\"rendered-capture-view\" class=\"capture-view\" hidden"));
@@ -737,6 +761,9 @@ async fn translates_semantic_group_and_echoes_generation() {
     assert!(admin_script_body.contains("lines.join(\"\\n\")"));
     assert!(admin_script_body.contains("rendered-capture-toggle"));
     assert!(admin_script_body.contains("captureToggle?.addEventListener(\"change\""));
+    assert!(admin_script_body.contains("imageLightbox.showModal()"));
+    assert!(admin_script_body.contains("event.target === imageLightbox"));
+    assert!(admin_script_body.contains("event.key === \"Escape\""));
     assert!(admin_script_body.contains("translation-background-toggle"));
     assert!(admin_script_body.contains("has-visible-background"));
     assert!(admin_script_body.contains("data-copy-provider-request"));
@@ -769,9 +796,8 @@ async fn translates_semantic_group_and_echoes_generation() {
     assert!(admin_styles_body.contains(
         ".capture-stage { position: relative; width: 100%; height: clamp(300px, 58vh, 460px)"
     ));
-    assert!(admin_styles_body.contains(
-        ".capture-view img { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: contain; }"
-    ));
+    assert!(admin_styles_body.contains(".fullscreen-image-button { position: absolute; inset: 0"));
+    assert!(admin_styles_body.contains(".image-lightbox { width: 100vw; max-width: none"));
     assert!(admin_styles_body.contains(
         ".layout-background { position: absolute; inset: 0; z-index: 0; display: block; width: 100%; height: 100%; object-fit: contain; object-position: center;"
     ));

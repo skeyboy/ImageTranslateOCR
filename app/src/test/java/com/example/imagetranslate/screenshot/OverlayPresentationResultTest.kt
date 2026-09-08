@@ -27,8 +27,8 @@ class OverlayPresentationResultTest {
     }
 
     @Test
-    fun userHiddenTranslationIsAcceptedWithoutVisiblePatches() {
-        assertTrue(
+    fun hiddenTranslationCannotBeReportedAsPresented() {
+        assertFalse(
             presentation(
                 translationVisible = false,
                 acceptedPatchCount = 30,

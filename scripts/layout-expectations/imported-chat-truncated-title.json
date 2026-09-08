@@ -1,0 +1,16 @@
+{
+  "expectedBlocks": [
+    {
+      "id": "chat-truncated-title",
+      "sourceContains": [
+        "Humanity",
+        "Com..."
+      ],
+      "minimumMemberCount": 1,
+      "layoutShape": "RECT",
+      "role": "TITLE",
+      "status": "TRANSLATED",
+      "renderMode": "GROUP"
+    }
+  ]
+}

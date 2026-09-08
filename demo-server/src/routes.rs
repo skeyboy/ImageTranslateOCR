@@ -722,11 +722,52 @@ fn should_preserve(group: &TranslationGroup) -> bool {
     }
 }
 
+fn looks_like_truncated_natural_language_title(text: &str) -> bool {
+    let trimmed = text.trim_end();
+    let prefix = trimmed
+        .strip_suffix("...")
+        .or_else(|| trimmed.strip_suffix('…'))
+        .map(str::trim_end);
+    let Some(prefix) = prefix else {
+        return false;
+    };
+    let words = prefix
+        .split(|character: char| !character.is_ascii_alphabetic())
+        .filter(|word| !word.is_empty())
+        .collect::<Vec<_>>();
+    let title_like_words = words
+        .iter()
+        .filter(|word| {
+            word.len() >= 2
+                && (word.chars().all(|character| character.is_ascii_uppercase())
+                    || word
+                        .chars()
+                        .next()
+                        .is_some_and(|character| character.is_ascii_uppercase()))
+        })
+        .count();
+    words.len() >= 3
+        && prefix
+            .chars()
+            .filter(|character| character.is_alphabetic())
+            .count()
+            >= 12
+        && title_like_words >= 2
+}
+
 fn normalized_request_for_translation(
     request: &SemanticTranslationRequest,
 ) -> SemanticTranslationRequest {
     let mut normalized = request.clone();
     for group in &mut normalized.groups {
+        if group.role == "CONTROL"
+            && looks_like_truncated_natural_language_title(&group.source_text)
+        {
+            group.role = "TITLE".to_owned();
+            group
+                .grouping_evidence
+                .push("SERVER_TRUNCATED_TITLE_OVERRIDE".to_owned());
+        }
         let preserve = should_preserve(group);
         group.translation_unit = if preserve { "PRESERVED" } else { "GROUP" }.to_owned();
         if !preserve && matches!(group.role.as_str(), "TIMESTAMP" | "METADATA") {
@@ -1225,6 +1266,26 @@ mod tests {
     }
 
     #[test]
+    fn restores_truncated_natural_language_title_from_legacy_control_role() {
+        let mut request = request_with_group(group("CONTROL", "Al for Humanity Com..."));
+
+        let normalized = super::normalized_request_for_translation(&request);
+
+        assert_eq!(normalized.groups[0].role, "TITLE");
+        assert_eq!(normalized.groups[0].translation_unit, "GROUP");
+        assert!(
+            normalized.groups[0]
+                .grouping_evidence
+                .contains(&"SERVER_TRUNCATED_TITLE_OVERRIDE".to_owned())
+        );
+
+        request.groups[0].source_text = "diversity in...".to_owned();
+        let control = super::normalized_request_for_translation(&request);
+        assert_eq!(control.groups[0].role, "CONTROL");
+        assert_eq!(control.groups[0].translation_unit, "PRESERVED");
+    }
+
+    #[test]
     fn normalizes_legacy_mixed_time_roles_before_building_the_document_plan() {
         let mut request = crate::contract::SemanticTranslationRequest {
             schema_version: crate::contract::LAYOUT_PLAN_SCHEMA_VERSION,
@@ -1293,6 +1354,41 @@ mod tests {
             },
             render_slots: Vec::new(),
             layout_shape: "RECT".to_owned(),
+        }
+    }
+
+    fn request_with_group(group: TranslationGroup) -> crate::contract::SemanticTranslationRequest {
+        crate::contract::SemanticTranslationRequest {
+            schema_version: crate::contract::LAYOUT_PLAN_SCHEMA_VERSION,
+            request_id: "request".to_owned(),
+            session_id: "session".to_owned(),
+            generation: 1,
+            translation_revision: 1,
+            scene: "LIVE_SCREEN".to_owned(),
+            viewport: crate::contract::Viewport {
+                width: 1080,
+                height: 2400,
+                rotation_degrees: 0,
+            },
+            translation: crate::contract::TranslationOptions {
+                mode: "AUTO_BIDIRECTIONAL".to_owned(),
+                source_language: "auto".to_owned(),
+                target_language: "zh".to_owned(),
+                preserve_identifiers: true,
+                use_document_context: true,
+                direct_structured_output: false,
+                compact_provider_prompt: true,
+                thinking_control_mode: None,
+                thinking_level: None,
+            },
+            document_context: crate::contract::DocumentContext {
+                text: String::new(),
+                source_language: "auto".to_owned(),
+                reading_order_region_ids: Vec::new(),
+            },
+            groups: vec![group],
+            regions: Vec::new(),
+            debug_capture: None,
         }
     }
 }

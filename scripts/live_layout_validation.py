@@ -154,6 +154,25 @@ def add_finding(
     findings.append(finding)
 
 
+def add_pipeline_failure_finding(
+    diagnostics: dict[str, Any],
+    findings: list[dict[str, Any]],
+) -> None:
+    if not diagnostics.get("translationFailedCount", 0) and not diagnostics.get(
+        "renderFailedCount", 0
+    ):
+        return
+    add_finding(
+        findings,
+        "PIPELINE_FAILURE",
+        "ERROR",
+        "Translation or rendering failures were reported",
+        translationFailedCount=diagnostics.get("translationFailedCount", 0),
+        renderFailedCount=diagnostics.get("renderFailedCount", 0),
+        renderFailures=diagnostics.get("renderFailures", []),
+    )
+
+
 def split_boundary_diagnostics(
     regions: list[dict[str, Any]],
     member_to_group: dict[str, dict[str, Any]],
@@ -211,6 +230,7 @@ def planned_groups(response: dict[str, Any]) -> list[dict[str, Any]]:
 def expected_blocks_from_config(
     expectation: dict[str, Any],
     groups: list[dict[str, Any]],
+    results_by_group_id: dict[str, dict[str, Any]],
     findings: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
     blocks = []
@@ -261,6 +281,31 @@ def expected_blocks_from_config(
                 actualLayoutShape=group.get("layoutShape"),
                 renderSlots=group.get("renderSlots", []),
             )
+        expected_role = expected.get("role")
+        if group and expected_role and group.get("role") != expected_role:
+            add_finding(
+                findings,
+                "EXPECTED_ROLE_MISMATCH",
+                "ERROR",
+                f"Expected block {expected_id} should have role {expected_role}",
+                expectedBlockId=expected_id,
+                actualRole=group.get("role"),
+            )
+        result = results_by_group_id.get(group.get("groupId")) if group else None
+        for field, code in (
+            ("status", "EXPECTED_TRANSLATION_STATUS_MISMATCH"),
+            ("renderMode", "EXPECTED_RENDER_MODE_MISMATCH"),
+        ):
+            expected_value = expected.get(field)
+            if group and expected_value and (not result or result.get(field) != expected_value):
+                add_finding(
+                    findings,
+                    code,
+                    "ERROR",
+                    f"Expected block {expected_id} should have {field} {expected_value}",
+                    expectedBlockId=expected_id,
+                    actualValue=result.get(field) if result else None,
+                )
         bounds = union_bounds(parse_bounds(item["bounds"]) for item in matching)
         if group:
             bounds = parse_bounds(group["bounds"])
@@ -271,7 +316,9 @@ def expected_blocks_from_config(
                     "source": "EXPECTATION",
                     "bounds": bounds,
                     "expectedShape": expected_shape,
-                    "groupIds": [item.get("groupId") for item in matching],
+                    "groupIds": [group.get("groupId")]
+                    if group
+                    else [item.get("groupId") for item in matching],
                 }
             )
     return blocks
@@ -299,7 +346,6 @@ def accessibility_nodes(path: Path, minimum_characters: int) -> list[dict[str, A
             inside
             and class_name == "android.widget.TextView"
             and normalized(text)
-            and not text.lower().startswith(("http://", "https://", "www."))
             and not text.endswith(("...", "…"))
             and node.attrib.get("bounds")
         ):
@@ -367,7 +413,10 @@ def accessibility_fragments_continue(
     second: Bounds = following["bounds"]
     vertical_overlap = min(first.bottom, second.bottom) - max(first.top, second.top)
     gap = second.top - first.bottom
-    if looks_like_accessibility_title(previous["text"]) and following["text"][:1].isupper():
+    following_text = following["text"].lstrip()
+    if looks_like_accessibility_title(previous["text"]) and (
+        following_text[:1].isupper() or following_text.startswith(">")
+    ):
         return False
     if any(
         marker.left < second.left
@@ -955,11 +1004,18 @@ def main() -> int:
     audit = load_json(args.archive / "render-audit.json")
     groups = planned_groups(response)
     groups_by_id = {group.get("groupId"): group for group in groups}
+    results_by_group_id = {
+        result.get("groupId"): result for result in response.get("results", [])
+    }
     findings: list[dict[str, Any]] = []
     blocks: list[dict[str, Any]] = []
 
     if args.expectation:
-        blocks.extend(expected_blocks_from_config(load_json(args.expectation), groups, findings))
+        blocks.extend(
+            expected_blocks_from_config(
+                load_json(args.expectation), groups, results_by_group_id, findings
+            )
+        )
     accessibility_blocks = []
     if args.ui_xml:
         accessibility_blocks = expected_blocks_from_accessibility(
@@ -974,16 +1030,7 @@ def main() -> int:
         blocks.extend(expected_blocks_from_client_advisories(request, groups, findings))
 
     diagnostics = audit.get("layoutDiagnostics", {})
-    if diagnostics.get("translationFailedCount", 0) or diagnostics.get("renderFailedCount", 0):
-        add_finding(
-            findings,
-            "PIPELINE_FAILURE",
-            "BLOCKED",
-            "Translation or rendering failures were reported",
-            translationFailedCount=diagnostics.get("translationFailedCount", 0),
-            renderFailedCount=diagnostics.get("renderFailedCount", 0),
-            renderFailures=diagnostics.get("renderFailures", []),
-        )
+    add_pipeline_failure_finding(diagnostics, findings)
     if diagnostics.get("presentationOutcome") != "PRESENTED":
         add_finding(
             findings,

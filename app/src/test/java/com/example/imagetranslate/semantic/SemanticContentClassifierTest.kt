@@ -61,4 +61,26 @@ class SemanticContentClassifierTest {
         assertFalse(SemanticContentClassifier.shouldPreserve("BODY", "Awarded C$20 million"))
         assertFalse(SemanticContentClassifier.shouldPreserve("BODY", "第3章已经发布"))
     }
+
+    @Test
+    fun preservesStandaloneUrlsButTranslatesNaturalLanguageContainingUrls() {
+        assertTrue(
+            SemanticContentClassifier.shouldPreserve(
+                "BODY",
+                "https://tinyurl.com/7nsf7ycy"
+            )
+        )
+        assertFalse(
+            SemanticContentClassifier.shouldPreserve(
+                "BODY",
+                "Spots are limited, so reserve here: https://tinyurl.com/7nsf7ycy"
+            )
+        )
+        assertFalse(
+            SemanticContentClassifier.shouldPreserve(
+                "BODY",
+                "Questions can be sent to team@example.com before Friday"
+            )
+        )
+    }
 }

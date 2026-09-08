@@ -1124,11 +1124,27 @@ internal class BackgroundTranslatedImageProcessor(
             MAX_IMAGE_TRANSLATION_TEXTS
         }
         val translationStartedAt = SystemClock.elapsedRealtime()
-        val translationGroups = SemanticTextGrouper.group(
+        val allTranslationGroups = SemanticTextGrouper.group(
             preparedSources.sources,
             bitmap.width,
             bitmap.height
-        ).take(maximumTexts)
+        )
+        val groupSelection = LiveTranslationGroupSelectionPolicy.select(
+            groups = allTranslationGroups,
+            maximumGroups = maximumTexts,
+            viewportWidth = bitmap.width,
+            viewportHeight = bitmap.height
+        )
+        if (groupSelection.dropped.isNotEmpty()) {
+            Log.w(
+                TAG,
+                "Translation group budget applied: before=${allTranslationGroups.size}, " +
+                    "selected=${groupSelection.selected.size}, " +
+                    "dropped=${groupSelection.dropped.size}, " +
+                    "droppedIds=${groupSelection.dropped.joinToString(",") { it.groupId }}"
+            )
+        }
+        val translationGroups = groupSelection.selected
         val outcomes = translateRegions(
             translationGroups,
             bitmap,
@@ -2372,6 +2388,7 @@ private fun resolvedSourceCoverSlots(region: BackgroundImageRegion): List<Rect> 
 
 private const val TARGET_GLYPH_SAMPLE_CHARACTERS = 64
 private const val MINIMUM_MERGED_FONT_SCALE_RATIO = 0.78f
+private const val MINIMUM_TITLE_MERGED_FONT_SCALE_RATIO = 0.70f
 
 internal fun denseBodyRectFallback(
     renderSlots: List<Rect>,
@@ -2422,7 +2439,8 @@ internal fun safeFlowUnionRectFallback(
     sourceTextHeightsPx: List<Float> = emptyList()
 ): Rect? {
     val eligibleRole = role == "BODY" ||
-        (role == "TITLE" || role == "LIST_ITEM") && renderSlots.size == 2
+        role == "TITLE" && renderSlots.size in 2..5 ||
+        role == "LIST_ITEM" && renderSlots.size == 2
     if (!eligibleRole || layoutShape != "FLOW_SLOTS" || renderSlots.size < 2 ||
         sourceLineCount < 2
     ) return null
@@ -2441,7 +2459,10 @@ internal fun safeFlowUnionRectFallback(
         slotHeights.first().toFloat() / slotHeights.last().coerceAtLeast(1)
     }
     val unreliableTwoLineTitleTypography = role == "TITLE" && renderSlots.size == 2
+    val stableMultiLineTitle = role == "TITLE" && renderSlots.size in 3..5 &&
+        typographyRatio >= MINIMUM_TITLE_MERGED_FONT_SCALE_RATIO
     if (typographyRatio < MINIMUM_MERGED_FONT_SCALE_RATIO &&
+        !stableMultiLineTitle &&
         !unreliableTwoLineTitleTypography
     ) return null
 
@@ -2451,15 +2472,31 @@ internal fun safeFlowUnionRectFallback(
     val maximumAllowedGap = if (role == "LIST_ITEM") typicalHeight else typicalHeight / 2
     if (maximumGap < 0 || maximumGap > maximumAllowedGap) return null
     val leftRange = renderSlots.maxOf(Rect::left) - renderSlots.minOf(Rect::left)
-    val leftTolerance = maxOf(typicalHeight, union.width() * 8 / 100)
+    val leftTolerance = if (role == "BODY" && renderSlots.size <= 4) {
+        maxOf(typicalHeight * 5 / 2, union.width() * 12 / 100)
+    } else {
+        maxOf(typicalHeight, union.width() * 8 / 100)
+    }
     if (leftRange > leftTolerance) return null
 
     val nonFinal = renderSlots.dropLast(1)
     val wideLineCount = nonFinal.count { slot -> slot.width() >= union.width() * 70 / 100 }
     val hasWideBody = wideLineCount * 2 >= nonFinal.size
-    val maximumTailPercent = if (role == "TITLE") 55 else 40
+    val maximumTailPercent = if (role == "TITLE" && renderSlots.size >= 3) {
+        80
+    } else if (role == "TITLE") {
+        55
+    } else {
+        40
+    }
+    val uniformlyWideBody = role == "BODY" && renderSlots.all { slot ->
+        slot.width() >= union.width() * 70 / 100
+    }
+    val uniformlyWideTitle = role == "TITLE" && renderSlots.size in 3..5 &&
+        renderSlots.all { slot -> slot.width() >= union.width() * 70 / 100 }
     val tailShapeAccepted = role == "LIST_ITEM" ||
-        renderSlots.last().width() <= union.width() * maximumTailPercent / 100
+        renderSlots.last().width() <= union.width() * maximumTailPercent / 100 ||
+        uniformlyWideBody || uniformlyWideTitle
     return union.takeIf { hasWideBody && tailShapeAccepted }
 }
 
@@ -2912,9 +2949,21 @@ private object BackgroundTranslatedImageRenderer {
                     preferredTextSizePx = preferredSize,
                     minimumTextSizePx = maxOf(
                         MINIMUM_TEXT_SIZE_PX,
-                        sourceLineHeight * COMPACT_RECT_MINIMUM_TEXT_SCALE
+                        sourceLineHeight * if (
+                            region.smartAssistDisplayHints?.role == "TITLE"
+                        ) {
+                            COMPACT_TITLE_MINIMUM_TEXT_SCALE
+                        } else {
+                            COMPACT_RECT_MINIMUM_TEXT_SCALE
+                        }
                     ),
-                    maximumLines = 1,
+                    maximumLines = if (
+                        region.smartAssistDisplayHints?.role == "TITLE"
+                    ) {
+                        maxOf(2, maximumLines)
+                    } else {
+                        1
+                    },
                     alignment = alignment,
                     horizontalPadding = horizontalPadding,
                     allowOverflowMore = false,
@@ -3548,7 +3597,8 @@ private object BackgroundTranslatedImageRenderer {
     private const val RECT_FALLBACK_MINIMUM_SOURCE_LINES = 2
     private const val RECT_FALLBACK_MINIMUM_TEXT_SCALE = 0.72f
     private const val COMPACT_RECT_MINIMUM_TEXT_SCALE = 0.60f
-    private const val COMPACT_RECT_MAXIMUM_CHARACTERS = 12
+    private const val COMPACT_TITLE_MINIMUM_TEXT_SCALE = 0.35f
+    private const val COMPACT_RECT_MAXIMUM_CHARACTERS = 20
     private const val RECT_FALLBACK_ADDITIONAL_LINES = 6
     private const val FLOW_UNION_ADDITIONAL_LINES = 2
     private const val FORCED_RECT_MAXIMUM_LINES = 100

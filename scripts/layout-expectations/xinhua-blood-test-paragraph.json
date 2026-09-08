@@ -1,0 +1,13 @@
+{
+  "expectedBlocks": [
+    {
+      "id": "blood-test-paragraph",
+      "sourceContains": [
+        "By leveraging big data and algorithms",
+        "medical intervention"
+      ],
+      "minimumMemberCount": 5,
+      "layoutShape": "RECT"
+    }
+  ]
+}

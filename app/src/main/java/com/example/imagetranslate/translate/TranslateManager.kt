@@ -861,11 +861,8 @@ internal class TranslateManager(context: Context? = null) {
         return trimmed.trim('<', '>', '=', '|', '·', '•')
     }
 
-    private fun identifySourceLanguageByScript(text: String): String? = when {
-        text.any(::isHanCharacter) -> TranslateLanguage.CHINESE
-        text.any { it in 'A'..'Z' || it in 'a'..'z' } -> TranslateLanguage.ENGLISH
-        else -> null
-    }
+    private fun identifySourceLanguageByScript(text: String): String? =
+        TranslationScriptLanguagePolicy.sourceLanguage(text)
 
     private fun translatorFor(sourceLanguage: String, targetLanguage: String): Translator {
         val languagePair = sourceLanguage to targetLanguage

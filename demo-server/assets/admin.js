@@ -101,6 +101,28 @@
   captureToggle?.addEventListener("change", updateCaptureView);
   updateCaptureView();
 
+  const imageLightbox = document.querySelector("#image-lightbox");
+  const imageLightboxImage = document.querySelector("#image-lightbox-image");
+  const imageLightboxCaption = document.querySelector("#image-lightbox-caption");
+  const imageLightboxClose = document.querySelector(".image-lightbox-close");
+  document.querySelectorAll("[data-fullscreen-image]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const image = button.querySelector("img");
+      if (!image || !imageLightbox || !imageLightboxImage) return;
+      imageLightboxImage.src = image.currentSrc || image.src;
+      imageLightboxImage.alt = image.alt;
+      if (imageLightboxCaption) imageLightboxCaption.textContent = image.alt;
+      imageLightbox.showModal();
+    });
+  });
+  imageLightboxClose?.addEventListener("click", () => imageLightbox?.close());
+  imageLightbox?.addEventListener("click", (event) => {
+    if (event.target === imageLightbox) imageLightbox.close();
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && imageLightbox?.open) imageLightbox.close();
+  });
+
   const translationBackgroundToggle = document.querySelector("#translation-background-toggle");
   const translationBackground = document.querySelector("#translation-source-background");
   const translationCanvas = document.querySelector("#translation-layout");

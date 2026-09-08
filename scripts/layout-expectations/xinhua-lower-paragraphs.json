@@ -1,0 +1,22 @@
+{
+  "expectedBlocks": [
+    {
+      "id": "haidong-paragraph",
+      "sourceContains": [
+        "The Haidong Road Community Health",
+        "computing infrastructure"
+      ],
+      "minimumMemberCount": 6,
+      "layoutShape": "RECT"
+    },
+    {
+      "id": "ai-transformation-paragraph",
+      "sourceContains": [
+        "transformation is taking",
+        "personalized learning"
+      ],
+      "minimumMemberCount": 7,
+      "layoutShape": "RECT"
+    }
+  ]
+}

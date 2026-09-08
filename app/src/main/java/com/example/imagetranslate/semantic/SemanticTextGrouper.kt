@@ -30,6 +30,9 @@ internal enum class GroupingEvidence {
     FONT_SCALE_RELAXED_SAME_BLOCK,
     FONT_SCALE_RELAXED_PARAGRAPH,
     PARAGRAPH_CONTINUATION_RECOVERY,
+    ROLE_DRIFT_SAME_BLOCK,
+    DECORATED_CENTERED_CONTINUATION,
+    URL_CONTINUATION,
     TOP_CLIPPED_CONTINUATION,
     BOTTOM_CLIPPED_CONTINUATION
 }
@@ -93,6 +96,7 @@ internal data class SemanticTextGroup(
 
 internal object SemanticTextGrouper {
     private const val MAXIMUM_GROUP_CHARACTERS = 2_000
+    private const val DENSE_SCREEN_MINIMUM_LINES = 12
     private const val MULTI_LINE_BODY_MINIMUM_LINES = 3
     private const val MULTI_LINE_BODY_MINIMUM_CHARACTERS = 24
     private const val TITLE_MAXIMUM_LINES = 2
@@ -113,7 +117,11 @@ internal object SemanticTextGrouper {
         val distinct = selectDistinctLines(recognized, viewportWidth, viewportHeight)
         if (distinct.isEmpty()) return emptyList()
         val medianHeight = distinct.map(::representativeLineHeight).sorted()
-            .let { heights -> heights[(heights.size - 1) / 2].coerceAtLeast(1) }
+            .let { heights ->
+                val percentile = if (heights.size >= DENSE_SCREEN_MINIMUM_LINES) 7 else 5
+                heights[((heights.size - 1) * percentile / 10).coerceIn(0, heights.lastIndex)]
+                    .coerceAtLeast(1)
+            }
         val undecoratedCandidates = distinct.map { item ->
             Candidate(item, roleFor(item, viewportWidth, medianHeight))
         }
@@ -224,24 +232,31 @@ internal object SemanticTextGrouper {
         second: Candidate
     ): Set<GroupingEvidence>? {
         val first = members.last()
-        if (first.role.isStandalone || second.role.isStandalone) return null
+        val urlContinuation = isUrlContinuation(members, second)
+        if ((first.role.isStandalone || second.role.isStandalone) && !urlContinuation) return null
+        val firstBlock = first.source.sourceBlockId
+        val secondBlock = second.source.sourceBlockId
+        val sameBlock = firstBlock != null && firstBlock == secondBlock
+        val sameBlockRoleDriftContinuation =
+            isSameBlockRoleDriftContinuation(members, second)
+        val decoratedCenteredContinuation =
+            isDecoratedCenteredContinuation(members, second)
         val titleContinuation = first.role == SemanticTextRole.TITLE &&
             second.role == SemanticTextRole.BODY &&
             first.source.text.trimEnd().lastOrNull() !in SENTENCE_ENDINGS
         if ((first.role == SemanticTextRole.TITLE || second.role == SemanticTextRole.TITLE) &&
-            !titleContinuation
+            !titleContinuation && !sameBlockRoleDriftContinuation
         ) return null
         if (second.role == SemanticTextRole.LIST_ITEM) return null
 
-        val firstBlock = first.source.sourceBlockId
-        val secondBlock = second.source.sourceBlockId
         val establishedParagraphContinuation =
             isEstablishedParagraphContinuation(members, second)
         val differentKnownBlocks = firstBlock != null && secondBlock != null &&
             firstBlock != secondBlock
-        val sameBlock = firstBlock != null && firstBlock == secondBlock
         val compactCrossBlockTail = isCompactCrossBlockTail(members, second)
-        if (differentKnownBlocks && !establishedParagraphContinuation && !compactCrossBlockTail) {
+        if (differentKnownBlocks && !establishedParagraphContinuation && !compactCrossBlockTail &&
+            !decoratedCenteredContinuation && !urlContinuation
+        ) {
             return null
         }
         if (sameBlock) {
@@ -269,7 +284,8 @@ internal object SemanticTextGrouper {
             establishedParagraphContinuation
         if (fontCompatibility != FontCompatibility.STRONG &&
             !relaxedSameBlockTail && !relaxedSameBlockContinuation &&
-            !relaxedParagraphContinuation && !compactSameBlockTail && !compactCrossBlockTail
+            !relaxedParagraphContinuation && !compactSameBlockTail && !compactCrossBlockTail &&
+            !decoratedCenteredContinuation && !urlContinuation
         ) return null
         val firstLineHeight = representativeLineHeight(first.source)
         val secondLineHeight = representativeLineHeight(second.source)
@@ -305,9 +321,10 @@ internal object SemanticTextGrouper {
         )
         val expandsLeftAfterWrap = secondBounds.left < firstBounds.left - alignmentTolerance &&
             secondBounds.right >= firstBounds.right - maximumHeight * 2
-        if (overlapRatio < MINIMUM_HORIZONTAL_OVERLAP ||
+        if (!decoratedCenteredContinuation && !urlContinuation &&
+            (overlapRatio < MINIMUM_HORIZONTAL_OVERLAP ||
             !(leftAligned || centerAligned || expandsLeftAfterWrap)
-        ) {
+        )) {
             return null
         }
 
@@ -328,10 +345,18 @@ internal object SemanticTextGrouper {
             add(GroupingEvidence.LINE_GAP)
             if (!sentenceBoundary) add(GroupingEvidence.PUNCTUATION_CONTINUATION)
             if (differentKnownBlocks || relaxedParagraphContinuation || compactSameBlockTail ||
-                compactCrossBlockTail
+                compactCrossBlockTail || decoratedCenteredContinuation
+                    || urlContinuation
             ) {
                 add(GroupingEvidence.PARAGRAPH_CONTINUATION_RECOVERY)
             }
+            if (sameBlockRoleDriftContinuation) {
+                add(GroupingEvidence.ROLE_DRIFT_SAME_BLOCK)
+            }
+            if (decoratedCenteredContinuation) {
+                add(GroupingEvidence.DECORATED_CENTERED_CONTINUATION)
+            }
+            if (urlContinuation) add(GroupingEvidence.URL_CONTINUATION)
             add(
                 if (fontCompatibility == FontCompatibility.RELAXED && sameBlock) {
                     GroupingEvidence.FONT_SCALE_RELAXED_SAME_BLOCK
@@ -384,9 +409,12 @@ internal object SemanticTextGrouper {
             )
         val compactCrossBlockTail = groupFontCompatibility == FontCompatibility.RELAXED &&
             isCompactCrossBlockTail(members, next)
+        val decoratedCenteredContinuation = isDecoratedCenteredContinuation(members, next)
+        val urlContinuation = isUrlContinuation(members, next)
         if (groupFontCompatibility != FontCompatibility.STRONG &&
             !relaxedSameBlockTail && !relaxedSameBlockContinuation &&
-            !relaxedParagraphContinuation && !compactSameBlockTail && !compactCrossBlockTail
+            !relaxedParagraphContinuation && !compactSameBlockTail && !compactCrossBlockTail &&
+            !decoratedCenteredContinuation && !urlContinuation
         ) return null
 
         if (members.size == 1) {
@@ -571,6 +599,91 @@ internal object SemanticTextGrouper {
             gap >= 0 && gap <= maxOf(6, maxOf(previousHeight, nextHeight) / 2)
     }
 
+    private fun isSameBlockRoleDriftContinuation(
+        members: List<Candidate>,
+        next: Candidate
+    ): Boolean {
+        val previous = members.last()
+        val startsBodyRoleDrift = previous.role == SemanticTextRole.BODY &&
+            next.role == SemanticTextRole.TITLE
+        val continuesBodyRoleDrift = previous.role == SemanticTextRole.TITLE &&
+            next.role == SemanticTextRole.TITLE &&
+            members.first().role == SemanticTextRole.BODY &&
+            members.drop(1).all { it.role == SemanticTextRole.TITLE }
+        if (!startsBodyRoleDrift && !continuesBodyRoleDrift) {
+            return false
+        }
+        val previousBlock = previous.source.sourceBlockId ?: return false
+        val previousLine = previous.source.sourceLineIndex ?: return false
+        val nextLine = next.source.sourceLineIndex ?: return false
+        return next.source.sourceBlockId == previousBlock &&
+            nextLine == previousLine + memberLineCount(previous.source) &&
+            previous.source.text.trimEnd().lastOrNull() !in SENTENCE_ENDINGS &&
+            fontCompatibility(previous.source, next.source) != FontCompatibility.INCOMPATIBLE
+    }
+
+    private fun isDecoratedCenteredContinuation(
+        members: List<Candidate>,
+        next: Candidate
+    ): Boolean {
+        if (members.size != 1) return false
+        val previous = members.single()
+        val previousBlock = previous.source.sourceBlockId ?: return false
+        val nextBlock = next.source.sourceBlockId ?: return false
+        if (previousBlock == nextBlock || previous.role != SemanticTextRole.BODY ||
+            next.role != SemanticTextRole.BODY || memberLineCount(previous.source) != 1 ||
+            memberLineCount(next.source) != 1
+        ) return false
+        val previousText = previous.source.text.trim()
+        val nextText = next.source.text.trim()
+        val previousCharacters = compactCharacterCount(previousText)
+        val nextCharacters = compactCharacterCount(nextText)
+        if (previousCharacters !in 8..48 || nextCharacters !in 4..32 ||
+            previousCharacters + nextCharacters > 64 ||
+            previousText.lastOrNull() in SENTENCE_ENDINGS ||
+            nextText.lastOrNull() !in SENTENCE_ENDINGS ||
+            nextText.firstOrNull { it.isLetterOrDigit() }?.isLowerCase() != true ||
+            fontCompatibility(previous.source, next.source) == FontCompatibility.INCOMPATIBLE
+        ) return false
+        val previousBounds = previous.source.bounds
+        val nextBounds = next.source.bounds
+        val previousHeight = representativeLineHeight(previous.source)
+        val nextHeight = representativeLineHeight(next.source)
+        val maximumHeight = maxOf(previousHeight, nextHeight)
+        val gap = nextBounds.top - previousBounds.bottom
+        val overlap = minOf(previousBounds.right, nextBounds.right) -
+            maxOf(previousBounds.left, nextBounds.left)
+        val overlapRatio = overlap.coerceAtLeast(0).toFloat() /
+            minOf(rectWidth(previousBounds), rectWidth(nextBounds)).coerceAtLeast(1)
+        return gap in 0..maximumHeight && overlapRatio >= 0.25f &&
+            nextBounds.left < previousBounds.left - minOf(previousHeight, nextHeight) &&
+            rectWidth(nextBounds) <= rectWidth(previousBounds) * 0.8f
+    }
+
+    private fun isUrlContinuation(members: List<Candidate>, next: Candidate): Boolean {
+        val previous = members.last()
+        val attachesStandaloneUrl = previous.role == SemanticTextRole.BODY &&
+            next.role == SemanticTextRole.IDENTIFIER &&
+            STANDALONE_URL_OR_EMAIL.matches(next.source.text.trim()) &&
+            previous.source.text.trimEnd().lastOrNull() !in SENTENCE_ENDINGS
+        val continuesWrappedUrl = previous.role == SemanticTextRole.BODY &&
+            next.role == SemanticTextRole.BODY &&
+            URL_AT_END.containsMatchIn(previous.source.text.trim()) &&
+            next.source.text.trimStart().firstOrNull() in URL_CONTINUATION_PREFIXES
+        if ((!attachesStandaloneUrl && !continuesWrappedUrl) ||
+            fontCompatibility(previous.source, next.source) == FontCompatibility.INCOMPATIBLE
+        ) return false
+        val previousBounds = previous.source.bounds
+        val nextBounds = next.source.bounds
+        val maximumHeight = maxOf(
+            representativeLineHeight(previous.source),
+            representativeLineHeight(next.source)
+        )
+        val gap = nextBounds.top - previousBounds.bottom
+        return gap in 0..maximumHeight &&
+            abs(previousBounds.left - nextBounds.left) <= maximumHeight * 2
+    }
+
     private fun isTextualOrAcronymNumberContinuation(previous: String, next: String): Boolean {
         if (next.firstOrNull { it.isLetterOrDigit() }?.isLowerCase() == true) return true
         val compactNext = next.filter(Char::isLetterOrDigit)
@@ -643,10 +756,12 @@ internal object SemanticTextGrouper {
             looksLikeLowConfidenceImageTextArtifact(item, text) -> SemanticTextRole.CONTROL
             SemanticContentClassifier.isStandaloneTemporalValue(text) ->
                 SemanticTextRole.TIMESTAMP
-            URL_OR_EMAIL.containsMatchIn(text) || PHONE_NUMBER.matches(text) ||
+            STANDALONE_URL_OR_EMAIL.matches(text) || PHONE_NUMBER.matches(text) ||
                 APP_BRAND.matches(text) -> SemanticTextRole.IDENTIFIER
             SemanticContentClassifier.isStandaloneMetadata(text) ->
                 SemanticTextRole.METADATA
+            looksLikeTruncatedNaturalLanguageTitle(item, text, viewportWidth) ->
+                SemanticTextRole.TITLE
             CONTROL_LABEL.containsMatchIn(text) || STATUS_LABEL.matches(text) ||
                 endsWithEllipsis(text) -> SemanticTextRole.CONTROL
             looksLikeCode(text) -> SemanticTextRole.CODE
@@ -699,6 +814,23 @@ internal object SemanticTextGrouper {
         }
         return compactCharacterCount(trimmed) <= TITLE_MAXIMUM_CHARACTERS &&
             interior.none { it in SENTENCE_ENDINGS }
+    }
+
+    private fun looksLikeTruncatedNaturalLanguageTitle(
+        item: RecognizedText,
+        text: String,
+        viewportWidth: Int
+    ): Boolean {
+        if (!endsWithEllipsis(text) || memberLineCount(item) != 1) return false
+        if (rectWidth(item.bounds) > viewportWidth * 0.85f) return false
+        val visiblePrefix = text.trimEnd().removeSuffix("...").removeSuffix("…").trimEnd()
+        val latinWords = LATIN_WORD.findAll(visiblePrefix).map(MatchResult::value).toList()
+        if (latinWords.size < TRUNCATED_TITLE_MINIMUM_LATIN_WORDS) return false
+        val titleLikeWords = latinWords.count { word ->
+            word.length >= 2 && (word.all(Char::isUpperCase) || word.first().isUpperCase())
+        }
+        return visiblePrefix.count(Char::isLetter) >= TRUNCATED_TITLE_MINIMUM_LETTERS &&
+            titleLikeWords >= TRUNCATED_TITLE_MINIMUM_TITLE_CASE_WORDS
     }
 
     private fun memberLineCount(item: RecognizedText): Int = maxOf(
@@ -769,10 +901,12 @@ internal object SemanticTextGrouper {
         INCOMPATIBLE
     }
 
-    private val URL_OR_EMAIL = Regex(
-        "(?i)(?:https?://|www\\.|[\\w.+-]+@[\\w.-]+\\.|" +
-            "(?:[\\p{L}\\p{N}-]+\\.)+(?:com|org|net|io|ai|cn)\\b)"
+    private val STANDALONE_URL_OR_EMAIL = Regex(
+        "(?i)^(?:(?:https?://|www\\.)\\S+|[\\w.+-]+@[\\w.-]+\\.[A-Za-z]{2,}|" +
+            "(?:[\\p{L}\\p{N}-]+\\.)+(?:com|org|net|io|ai|cn)(?:/\\S*)?)$"
     )
+    private val URL_AT_END = Regex("(?i)(?:https?://|www\\.)\\S+$")
+    private val URL_CONTINUATION_PREFIXES = setOf('/', '?', '#', '&')
     private val PHONE_NUMBER = Regex("^\\+?\\d(?:[\\d ()-]{5,}\\d)$")
     private val APP_BRAND = Regex("(?i)^(?:instagram|whatsapp|facebook|telegram)$")
     private val LIST_PREFIX = Regex(
@@ -783,8 +917,9 @@ internal object SemanticTextGrouper {
     )
     private val STATUS_LABEL = Regex(
         "(?i)^(?:\\d{1,2}:\\d{2}\\s*[|·]\\s*[\\d.]+[KMG]?/s|(?:HD\\s*)?[345]G|" +
-            "\\d+\\s*[A-Z]{1,3})$"
+            "\\d+\\s*[A-Z]{1,3}|\\d+\\s*人(?:在线|上線))$"
     )
+    private val LATIN_WORD = Regex("[A-Za-z]+")
     private val SENTENCE_ENDINGS = setOf('.', '!', '?', '。', '！', '？')
     private val PARAGRAPH_EVIDENCE = setOf(
         GroupingEvidence.OCR_BLOCK,
@@ -805,6 +940,9 @@ internal object SemanticTextGrouper {
     private const val MAXIMUM_ACRONYM_NUMBER_CHARACTERS = 6
     private const val WIDE_CONTINUATION_WIDTH_RATIO = 0.70f
     private const val TITLE_MAXIMUM_CHARACTERS = 64
+    private const val TRUNCATED_TITLE_MINIMUM_LATIN_WORDS = 3
+    private const val TRUNCATED_TITLE_MINIMUM_TITLE_CASE_WORDS = 2
+    private const val TRUNCATED_TITLE_MINIMUM_LETTERS = 12
     private const val ICON_GLYPH_MAXIMUM_CHARACTERS = 3
     private const val ICON_GLYPH_MAXIMUM_MODEL_CONFIDENCE = 0.70f
     private const val ICON_GLYPH_MAXIMUM_TYPOGRAPHY_CONFIDENCE = 0.70f

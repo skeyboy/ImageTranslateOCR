@@ -358,6 +358,103 @@ class ScreenshotOverlayLayoutTest {
     }
 
     @Test
+    fun threeLineNaturalLanguageTitleCanUseSafeUnionAfterStrictFlowFails() = runBlocking {
+        val slots = listOf(
+            Rect(228, 1587, 1030, 1650),
+            Rect(228, 1666, 1094, 1724),
+            Rect(219, 1739, 879, 1814)
+        )
+        assertEquals(
+            Rect(219, 1587, 1094, 1814),
+            safeFlowUnionRectFallback(
+                renderSlots = slots,
+                layoutShape = "FLOW_SLOTS",
+                sourceLineCount = 3,
+                role = "TITLE",
+                sourceTextHeightsPx = listOf(57f, 53f, 63f)
+            )
+        )
+
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val bitmap = Bitmap.createBitmap(1_440, 2_000, Bitmap.Config.ARGB_8888)
+        Canvas(bitmap).drawColor(Color.WHITE)
+        val processor = BackgroundTranslatedImageProcessor(context)
+        try {
+            val result = processor.renderDeterministicOverlay(
+                bitmap = bitmap,
+                regions = listOf(
+                    LiveDeterministicTranslationRegion(
+                        sourceText = "2026 night of meaningful\n" +
+                            "conversations, shared moments,\nand genuine connection!",
+                        translation = "2026 个充满意义的对话、分享时刻与真挚连接的夜晚！",
+                        bounds = Rect(219, 1587, 1094, 1814),
+                        sourceLineBounds = slots,
+                        sourceTextHeightsPx = listOf(57f, 53f, 63f),
+                        renderSlots = slots,
+                        sourceCoverSlots = slots,
+                        displayHints = SmartAssistDisplayHints(
+                            preferredMaxLines = 3,
+                            minimumTextScale = 0.70f,
+                            sourceLineCount = 3,
+                            layoutShape = "FLOW_SLOTS",
+                            role = "TITLE",
+                            verticalAlignment = "TOP"
+                        ),
+                        groupId = "festival-title-flow"
+                    )
+                )
+            )
+
+            assertEquals(1, result.renderedRegionCount)
+            assertEquals(0, result.failedRegionCount)
+            assertTrue(result.renderFailures.isEmpty())
+        } finally {
+            processor.close()
+            bitmap.recycle()
+        }
+    }
+
+    @Test
+    fun expandedSingleLineTitleCanReflowToTwoLinesWithoutDisappearing() = runBlocking {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val bitmap = Bitmap.createBitmap(1_200, 500, Bitmap.Config.ARGB_8888)
+        val slot = Rect(200, 120, 600, 248)
+        Canvas(bitmap).drawColor(Color.WHITE)
+        val processor = BackgroundTranslatedImageProcessor(context)
+        try {
+            val result = processor.renderDeterministicOverlay(
+                bitmap = bitmap,
+                regions = listOf(
+                    LiveDeterministicTranslationRegion(
+                        sourceText = "VWellbeing",
+                        translation = "VWellbeing 心理健康",
+                        bounds = slot,
+                        sourceLineBounds = listOf(slot),
+                        sourceTextHeightsPx = listOf(128f),
+                        renderSlots = listOf(slot),
+                        sourceCoverSlots = listOf(slot),
+                        displayHints = SmartAssistDisplayHints(
+                            preferredMaxLines = 1,
+                            minimumTextScale = 0.72f,
+                            sourceLineCount = 1,
+                            layoutShape = "RECT",
+                            role = "TITLE"
+                        ),
+                        groupId = "expanded-poster-title"
+                    )
+                )
+            )
+
+            assertEquals(1, result.renderedRegionCount)
+            assertEquals(0, result.failedRegionCount)
+            assertTrue(result.renderFailures.isEmpty())
+        } finally {
+            processor.close()
+            bitmap.recycle()
+        }
+    }
+
+    @Test
     fun twoLineListItemCanUseSafeUnionWithoutCrossingTheNextBullet() {
         val slots = listOf(
             Rect(154, 2966, 1272, 3024),
@@ -372,6 +469,48 @@ class ScreenshotOverlayLayoutTest {
                 sourceLineCount = 2,
                 role = "LIST_ITEM",
                 sourceTextHeightsPx = listOf(53f, 48f)
+            )
+        )
+    }
+
+    @Test
+    fun fourLineIndentedBodyCanUseSafeUnionWhenTypographyIsStable() {
+        val slots = listOf(
+            Rect(206, 2222, 907, 2291),
+            Rect(310, 2320, 1153, 2379),
+            Rect(207, 2404, 800, 2463),
+            Rect(203, 2478, 522, 2551)
+        )
+
+        assertEquals(
+            Rect(203, 2222, 1153, 2551),
+            safeFlowUnionRectFallback(
+                renderSlots = slots,
+                layoutShape = "FLOW_SLOTS",
+                sourceLineCount = 4,
+                role = "BODY",
+                sourceTextHeightsPx = listOf(55f, 53f, 53f, 60f)
+            )
+        )
+    }
+
+    @Test
+    fun fourLineWideArticleTitleCanUseSafeUnion() {
+        val slots = listOf(
+            Rect(28, 650, 1177, 750),
+            Rect(33, 797, 1074, 907),
+            Rect(33, 930, 1191, 1021),
+            Rect(31, 1058, 1334, 1182)
+        )
+
+        assertEquals(
+            Rect(28, 650, 1334, 1182),
+            safeFlowUnionRectFallback(
+                renderSlots = slots,
+                layoutShape = "FLOW_SLOTS",
+                sourceLineCount = 4,
+                role = "TITLE",
+                sourceTextHeightsPx = listOf(100f, 110f, 91f, 124f)
             )
         )
     }

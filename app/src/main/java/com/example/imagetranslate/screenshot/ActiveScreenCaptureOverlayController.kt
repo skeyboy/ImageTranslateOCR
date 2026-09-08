@@ -68,7 +68,8 @@ internal enum class OverlayPresentationFailure {
     CONTROL_LAYER_ATTACH_FAILED,
     TRANSLATION_LAYER_ATTACH_FAILED,
     INVALID_SOURCE_GEOMETRY,
-    PATCHES_NOT_ACCEPTED
+    PATCHES_NOT_ACCEPTED,
+    PATCHES_NOT_VISIBLE
 }
 
 internal data class OverlayPresentationResult(
@@ -82,7 +83,21 @@ internal data class OverlayPresentationResult(
 ) {
     val presented: Boolean
         get() = failure == null && controlAttached && translationLayerAttached &&
-            (translationVisible.not() || visiblePatchCount == acceptedPatchCount)
+            (acceptedPatchCount == 0 ||
+                (translationVisible && visiblePatchCount == acceptedPatchCount))
+}
+
+internal class OverlayTranslationVisibilityState {
+    var visible: Boolean = true
+        private set
+
+    fun update(visible: Boolean) {
+        this.visible = visible
+    }
+
+    fun resetForCaptureGeneration() {
+        visible = true
+    }
 }
 
 internal fun liveOcrTranslationEngineMenuOptions(
@@ -178,7 +193,7 @@ internal class ActiveScreenCaptureOverlayController(
     private var sessionActive = false
     private var processing = false
     private var collapsed = false
-    private var translationVisible = true
+    private val translationVisibility = OverlayTranslationVisibilityState()
     private var hasTranslationResult = false
     private var frameHeartbeatPhase = false
     private val presentationGenerationGate = OverlayPresentationGenerationGate()
@@ -200,7 +215,7 @@ internal class ActiveScreenCaptureOverlayController(
             showCaptureSettingsMenu()
         }
         binding.btnToggleActiveTranslation.addOnCheckedChangeListener { _, checked ->
-            translationVisible = checked
+            translationVisibility.update(checked)
             translationView.setPatchesVisible(checked)
             listener.onTranslationVisibilityChanged(checked)
         }
@@ -231,6 +246,9 @@ internal class ActiveScreenCaptureOverlayController(
         latestPerformanceSummary = null
         latestCompactPerformance = null
         removeTranslationLayersNow()
+        translationVisibility.resetForCaptureGeneration()
+        binding.btnToggleActiveTranslation.isChecked = true
+        translationView.setPatchesVisible(true, animateChange = false)
         binding.root.visibility = View.INVISIBLE
     }
 
@@ -464,7 +482,7 @@ internal class ActiveScreenCaptureOverlayController(
         binding.btnActiveOverlayMode.isEnabled = true
         binding.btnActiveOverlaySettings.isEnabled = true
         binding.btnToggleActiveTranslation.isEnabled = hasTranslationResult
-        binding.btnToggleActiveTranslation.isChecked = translationVisible
+        binding.btnToggleActiveTranslation.isChecked = translationVisibility.visible
         updateCompactPerformance()
     }
 
@@ -539,7 +557,10 @@ internal class ActiveScreenCaptureOverlayController(
     fun restoreAfterSkippedCapture() = onMainThread {
         processing = false
         binding.root.visibility = View.VISIBLE
-        translationView.setPatchesVisible(translationVisible, animateChange = false)
+        translationView.setPatchesVisible(
+            translationVisibility.visible,
+            animateChange = false
+        )
         binding.activeOverlayProgress.visibility = View.GONE
         binding.btnActiveOverlayMode.isEnabled = true
         binding.btnActiveOverlaySettings.isEnabled = true
@@ -639,7 +660,7 @@ internal class ActiveScreenCaptureOverlayController(
         hasTranslationResult = false
         latestPerformanceSummary = null
         latestCompactPerformance = null
-        translationVisible = true
+        translationVisibility.resetForCaptureGeneration()
         removeTranslationLayersNow()
         if (!ensureControlAttachedNow()) return
         binding.root.visibility = View.VISIBLE
@@ -772,7 +793,10 @@ internal class ActiveScreenCaptureOverlayController(
         }
         removeTranslationLayersNow()
         translationView.replacePatches(patches, sourceWidth, sourceHeight)
-        translationView.setPatchesVisible(translationVisible, animateChange = false)
+        translationView.setPatchesVisible(
+            translationVisibility.visible,
+            animateChange = false
+        )
         val state = translationView.overlayState()
         return OverlayPresentationResult(
             attemptCount = attemptCount,
@@ -781,10 +805,14 @@ internal class ActiveScreenCaptureOverlayController(
             translationVisible = state.translationVisible,
             acceptedPatchCount = state.acceptedPatchCount,
             visiblePatchCount = state.visiblePatchCount,
-            failure = if (patches.isNotEmpty() && state.acceptedPatchCount != patches.size) {
-                OverlayPresentationFailure.PATCHES_NOT_ACCEPTED
-            } else {
-                null
+            failure = when {
+                patches.isNotEmpty() && state.acceptedPatchCount != patches.size ->
+                    OverlayPresentationFailure.PATCHES_NOT_ACCEPTED
+                patches.isNotEmpty() &&
+                    (!state.translationVisible ||
+                        state.visiblePatchCount != state.acceptedPatchCount) ->
+                    OverlayPresentationFailure.PATCHES_NOT_VISIBLE
+                else -> null
             }
         )
     }

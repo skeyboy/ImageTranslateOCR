@@ -11,6 +11,9 @@ from PIL import Image
 from scripts.live_layout_validation import (
     Bounds,
     accessibility_nodes,
+    accessibility_fragments_continue,
+    add_pipeline_failure_finding,
+    expected_blocks_from_config,
     incomplete_archive_report,
     looks_like_accessibility_title,
     performance_analysis,
@@ -67,6 +70,52 @@ class LiveLayoutValidationTest(unittest.TestCase):
         self.assertTrue(result["actualMerged"])
         self.assertTrue(result["mergeConsistent"])
         self.assertEqual([], findings)
+
+    def test_fixed_expectation_requires_translation_role_and_render_mode(self) -> None:
+        group = {
+            "groupId": "title-group",
+            "sourceText": "Al for Humanity Com...",
+            "role": "CONTROL",
+            "layoutShape": "RECT",
+            "memberRegionIds": ["title-region"],
+            "bounds": {"left": 10, "top": 10, "right": 90, "bottom": 30},
+        }
+        expectation = {
+            "expectedBlocks": [
+                {
+                    "id": "chat-title",
+                    "sourceContains": ["Humanity"],
+                    "layoutShape": "RECT",
+                    "role": "TITLE",
+                    "status": "TRANSLATED",
+                    "renderMode": "GROUP",
+                }
+            ]
+        }
+        findings = []
+
+        blocks = expected_blocks_from_config(
+            expectation,
+            [group],
+            {
+                "title-group": {
+                    "groupId": "title-group",
+                    "status": "PRESERVED",
+                    "renderMode": "NONE",
+                }
+            },
+            findings,
+        )
+
+        self.assertEqual(["title-group"], blocks[0]["groupIds"])
+        self.assertEqual(
+            {
+                "EXPECTED_ROLE_MISMATCH",
+                "EXPECTED_TRANSLATION_STATUS_MISMATCH",
+                "EXPECTED_RENDER_MODE_MISMATCH",
+            },
+            {finding["code"] for finding in findings},
+        )
 
     def test_fragmented_rendered_rect_fails_merge_consistency(self) -> None:
         translated = self.source.copy()
@@ -166,6 +215,22 @@ class LiveLayoutValidationTest(unittest.TestCase):
         self.assertEqual("REMOTE_PROVIDER_RATE_LIMIT", finding["code"])
         self.assertIn("do not rerun OCR", finding["analysis"]["suggestedFix"])
 
+    def test_render_failure_is_a_deterministic_error(self) -> None:
+        findings = []
+
+        add_pipeline_failure_finding(
+            {
+                "translationFailedCount": 0,
+                "renderFailedCount": 1,
+                "renderFailures": [{"reason": "TEXT_DOES_NOT_FIT"}],
+            },
+            findings,
+        )
+
+        self.assertEqual(1, len(findings))
+        self.assertEqual("PIPELINE_FAILURE", findings[0]["code"])
+        self.assertEqual("ERROR", findings[0]["severity"])
+
     def test_accessibility_inline_fragments_are_reconstructed_before_mapping(self) -> None:
         xml_path = self.directory / "ui.xml"
         xml_path.write_text(
@@ -186,6 +251,25 @@ class LiveLayoutValidationTest(unittest.TestCase):
         self.assertEqual(3, nodes[0]["fragmentCount"])
         self.assertNotIn("inline link", nodes[0]["text"])
         self.assertEqual(Bounds(10, 10, 90, 85), nodes[0]["bounds"])
+
+    def test_accessibility_url_line_is_attached_to_its_paragraph(self) -> None:
+        xml_path = self.directory / "url-ui.xml"
+        xml_path.write_text(
+            """<hierarchy><node class="android.webkit.WebView" bounds="[0,0][200,240]">
+            <node class="android.widget.TextView" text="Reserve yours here:" bounds="[10,10][190,60]" />
+            <node class="android.view.View" bounds="[10,65][190,105]">
+              <node class="android.widget.TextView" text="https://example.com/event" bounds="[10,65][190,105]" />
+            </node>
+            <node class="android.widget.TextView" text="A separate paragraph." bounds="[10,150][190,190]" />
+            </node></hierarchy>""",
+            encoding="utf-8",
+        )
+
+        nodes = accessibility_nodes(xml_path, minimum_characters=5)
+
+        self.assertEqual(2, len(nodes))
+        self.assertIn("https://example.com/event", nodes[0]["text"])
+        self.assertEqual(2, nodes[0]["fragmentCount"])
 
     def test_accessibility_list_markers_keep_adjacent_items_separate(self) -> None:
         xml_path = self.directory / "list-ui.xml"
@@ -213,6 +297,18 @@ class LiveLayoutValidationTest(unittest.TestCase):
         self.assertFalse(
             looks_like_accessibility_title(
                 "Such an excellently written article with really nice visualizations!"
+            )
+        )
+        self.assertFalse(
+            accessibility_fragments_continue(
+                {
+                    "text": "The Raspberry Pi Interactive Timeline · 2006–2026",
+                    "bounds": Bounds(10, 10, 90, 30),
+                },
+                {
+                    "text": "> You can get a far more capable desktop.",
+                    "bounds": Bounds(10, 35, 90, 65),
+                },
             )
         )
 

@@ -714,7 +714,7 @@ class SemanticTextGrouperTest {
     }
 
     @Test
-    fun separatesTruncatedWideTitleFromCompactSubtitleMetadata() {
+    fun translatesTruncatedNaturalLanguageTitleButPreservesCompactSubtitleMetadata() {
         val groups = SemanticTextGrouper.group(
             listOf(
                 line("AI for Humanity - Com...", 294, 133, 830, 184, null, null),
@@ -725,8 +725,30 @@ class SemanticTextGrouperTest {
         )
 
         assertEquals(2, groups.size)
-        assertEquals(SemanticTextRole.CONTROL, groups[0].role)
+        assertEquals(SemanticTextRole.TITLE, groups[0].role)
         assertEquals(SemanticTextRole.CONTROL, groups[1].role)
+    }
+
+    @Test
+    fun preservesShortEllipsizedControl() {
+        val group = SemanticTextGrouper.group(
+            listOf(line("diversity in...", 20, 100, 220, 140, null, null)),
+            1080,
+            2400
+        ).single()
+
+        assertEquals(SemanticTextRole.CONTROL, group.role)
+    }
+
+    @Test
+    fun preservesChineseOnlineCountAsStatusControl() {
+        val group = SemanticTextGrouper.group(
+            listOf(line("20人在线", 289, 194, 420, 229, null, null)),
+            1080,
+            2400
+        ).single()
+
+        assertEquals(SemanticTextRole.CONTROL, group.role)
     }
 
     @Test
@@ -914,6 +936,214 @@ class SemanticTextGrouperTest {
         assertEquals(SemanticTextRole.BODY, groups.first().role)
         assertEquals(12, groups.first().members.single().text.lineSequence().count())
         assertEquals(SemanticTextRole.TIMESTAMP, groups.last().role)
+    }
+
+    @Test
+    fun mergesSameBlockBodyToTitleRoleDriftInsideOneSentence() {
+        val microText = (0 until 8).map { index ->
+            line(
+                "Poster label $index.",
+                180,
+                300 + index * 55,
+                520,
+                342 + index * 55,
+                "poster-$index",
+                0
+            ).copy(estimatedTextHeightPx = 42f)
+        }
+        val first = line(
+            "Introducing the inaugural SIM\nOTR Wellbeing Festival",
+            221,
+            1437,
+            1009,
+            1571,
+            "mlkit-festival-introduction",
+            0
+        ).copy(
+            componentBounds = listOf(
+                rect(221, 1437, 1009, 1490),
+                rect(256, 1513, 907, 1571)
+            ),
+            estimatedTextHeightPx = 48f,
+            typographyConfidence = 0.82f
+        )
+        val second = line(
+            "2026 night of meaningful\nconversations,shared moments,",
+            228,
+            1587,
+            1094,
+            1724,
+            "mlkit-festival-introduction",
+            2
+        ).copy(
+            componentBounds = listOf(
+                rect(228, 1587, 1030, 1650),
+                rect(228, 1666, 1094, 1724)
+            ),
+            estimatedTextHeightPx = 57f,
+            typographyConfidence = 0.82f
+        )
+        val third = line(
+            "and genuine connection!",
+            219,
+            1739,
+            879,
+            1814,
+            "mlkit-festival-introduction",
+            4
+        ).copy(estimatedTextHeightPx = 63f, typographyConfidence = 0.82f)
+
+        val group = SemanticTextGrouper.group(
+            microText + listOf(first, second, third),
+            1_440,
+            3_200
+        ).first { it.sourceText.startsWith("Introducing") }
+
+        assertEquals(3, group.members.size)
+        assertEquals(5, group.toRecognizedText().textEraseBounds().size)
+        assertEquals(SemanticTextRole.BODY, group.role)
+        assertTrue(GroupingEvidence.ROLE_DRIFT_SAME_BLOCK in group.evidence)
+    }
+
+    @Test
+    fun mergesTwoLineDecoratedSloganAcrossMlKitBlocks() {
+        val first = line(
+            "Your mind deserves",
+            396,
+            1183,
+            933,
+            1240,
+            "mlkit-decorated-line-1",
+            0
+        ).copy(estimatedTextHeightPx = 51f, typographyConfidence = 0.82f)
+        val second = line(
+            "festival too.",
+            204,
+            1276,
+            528,
+            1322,
+            "mlkit-decorated-line-2",
+            0
+        ).copy(estimatedTextHeightPx = 42f, typographyConfidence = 0.82f)
+
+        val groups = SemanticTextGrouper.group(listOf(first, second), 1_440, 3_200)
+
+        assertEquals(1, groups.size)
+        assertEquals(2, groups.single().members.size)
+        assertTrue(
+            GroupingEvidence.DECORATED_CENTERED_CONTINUATION in groups.single().evidence
+        )
+    }
+
+    @Test
+    fun keepsCompletedShortBodySeparateFromFollowingIndentedLine() {
+        val first = line(
+            "Your mind deserves a festival.",
+            396,
+            1183,
+            933,
+            1240,
+            "first-paragraph",
+            0
+        ).copy(estimatedTextHeightPx = 51f)
+        val second = line(
+            "another item.",
+            204,
+            1276,
+            528,
+            1322,
+            "second-paragraph",
+            0
+        ).copy(estimatedTextHeightPx = 42f)
+
+        val groups = SemanticTextGrouper.group(listOf(first, second), 1_440, 3_200)
+
+        assertEquals(2, groups.size)
+    }
+
+    @Test
+    fun keepsNaturalLanguageWithUrlAsTranslatableBody() {
+        val mixed = line(
+            "Spots are limited, reserve here: https://tinyurl.com/7nsf7ycy",
+            120,
+            1400,
+            1300,
+            1470,
+            "mixed-url",
+            0
+        )
+        val standalone = line(
+            "https://tinyurl.com/7nsf7ycy",
+            120,
+            1550,
+            900,
+            1620,
+            "standalone-url",
+            0
+        )
+
+        val groups = SemanticTextGrouper.group(listOf(mixed, standalone), 1_440, 3_200)
+
+        assertEquals(SemanticTextRole.BODY, groups.first { it.sourceText.startsWith("Spots") }.role)
+        assertEquals(
+            SemanticTextRole.IDENTIFIER,
+            groups.first { it.sourceText.startsWith("https://") }.role
+        )
+    }
+
+    @Test
+    fun mergesWrappedUrlPathIntoTheNaturalLanguageParagraph() {
+        val first = line(
+            "Spots are limited, reserve here: https://tinyurl.com",
+            120,
+            1400,
+            1300,
+            1470,
+            "url-line-1",
+            0
+        ).copy(estimatedTextHeightPx = 52f)
+        val second = line(
+            "/7nsf7ycy",
+            122,
+            1490,
+            500,
+            1550,
+            "url-line-2",
+            0
+        ).copy(estimatedTextHeightPx = 50f)
+
+        val group = SemanticTextGrouper.group(listOf(first, second), 1_440, 3_200).single()
+
+        assertEquals(2, group.members.size)
+        assertTrue(GroupingEvidence.URL_CONTINUATION in group.evidence)
+    }
+
+    @Test
+    fun attachesAStandaloneUrlLineToItsNaturalLanguagePrefix() {
+        val prefix = line(
+            "Spots are limited, reserve yours here:",
+            120,
+            1400,
+            1100,
+            1470,
+            "url-prefix",
+            0
+        ).copy(estimatedTextHeightPx = 52f)
+        val url = line(
+            "https://tinyurl.com/7nsf7ycy",
+            122,
+            1490,
+            1050,
+            1550,
+            "url-value",
+            0
+        ).copy(estimatedTextHeightPx = 50f)
+
+        val group = SemanticTextGrouper.group(listOf(prefix, url), 1_440, 3_200).single()
+
+        assertEquals(SemanticTextRole.BODY, group.role)
+        assertEquals(2, group.members.size)
+        assertTrue(GroupingEvidence.URL_CONTINUATION in group.evidence)
     }
 
     private fun line(

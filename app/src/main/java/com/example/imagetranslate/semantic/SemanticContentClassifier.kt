@@ -22,7 +22,7 @@ internal object SemanticContentClassifier {
     fun shouldPreserve(role: String, text: String): Boolean {
         val visible = text.filterNot(Char::isWhitespace)
         if (visible.isEmpty()) return true
-        if (looksLikeCode(visible) || looksLikeBrandGroup(visible)) return true
+        if (looksLikeCode(text.trim()) || looksLikeBrandGroup(visible)) return true
 
         return when (role) {
             "CODE", "IDENTIFIER", "CONTROL" -> true
@@ -38,9 +38,13 @@ internal object SemanticContentClassifier {
         return latinRuns.all { run -> run.length == 1 }
     }
 
-    private fun looksLikeCode(visible: String): Boolean = visible.contains("//") ||
-        visible.contains('_') || visible.contains('@') ||
-        visible.matches(Regex("[A-Za-z]+://.*"))
+    private fun looksLikeCode(text: String): Boolean {
+        val compact = text.trim()
+        if (STANDALONE_URL_OR_EMAIL.matches(compact)) return true
+        if (compact.any(Char::isWhitespace)) return false
+        return compact.contains('_') || compact.contains('@') ||
+            compact.matches(Regex("[A-Za-z]+://.*"))
+    }
 
     private fun looksLikeBrandGroup(visible: String): Boolean =
         visible.any { it in 'A'..'Z' || it in 'a'..'z' } &&
@@ -90,6 +94,9 @@ internal object SemanticContentClassifier {
         RegexOption.IGNORE_CASE
     )
     private val LATIN_RUN = Regex("[A-Za-z]+")
+    private val STANDALONE_URL_OR_EMAIL = Regex(
+        "(?i)^(?:(?:https?://|www\\.)\\S+|[\\w.+-]+@[\\w.-]+\\.[A-Za-z]{2,})$"
+    )
     private val WHITESPACE = Regex("\\s+")
     private val LOWERCASE_NAME_PARTICLES = setOf(
         "and", "bin", "da", "de", "del", "la", "van", "von"

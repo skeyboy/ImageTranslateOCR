@@ -138,7 +138,15 @@ impl RegionGroup {
         advisory: Option<&crate::contract::TranslationGroup>,
     ) -> Self {
         let role = inferred_role(region, advisory);
-        let translation_unit = if is_protected_role(&role) {
+        let restored_truncated_title = role == "TITLE"
+            && advisory.is_some_and(|group| {
+                group.role == "CONTROL"
+                    && group.translation_unit == "PRESERVED"
+                    && looks_like_truncated_natural_language_title(&region.text)
+            });
+        let translation_unit = if restored_truncated_title {
+            "GROUP".to_owned()
+        } else if is_protected_role(&role) {
             "PRESERVED".to_owned()
         } else {
             advisory
@@ -223,6 +231,7 @@ impl RegionGroup {
                     | "COMPACT_SAME_ADVISORY_TAIL"
                     | "RELAXED_SAME_ADVISORY_PARAGRAPH"
                     | "TIGHT_CROSS_BLOCK_CONTINUATION"
+                    | "CLIENT_GROUP_FINAL_LINE"
             )
         });
         let recovered_main_column = recovered_paragraph
@@ -240,21 +249,27 @@ impl RegionGroup {
                         | "RELAXED_SAME_BLOCK_WIDE_CONTINUATION"
                 )
             }) && is_tight_two_line_wrap(&self.render_slots, &self.bounds);
-        let compact_tail_rect = self
-            .evidence
-            .iter()
-            .any(|evidence| {
+        let compact_tail_rect =
+            self.evidence.iter().any(|evidence| {
                 matches!(
                     evidence.as_str(),
                     "COMPACT_PARAGRAPH_TAIL_RECOVERY" | "COMPACT_CROSS_BLOCK_TAIL"
                 )
-            })
-            && (is_natural_wrapped_rect_flow(&self.render_slots, &self.bounds)
+            }) && (is_natural_wrapped_rect_flow(&self.render_slots, &self.bounds)
                 || is_compact_two_line_rect(&self.render_slots, &self.bounds));
+        let decorated_centered_rect = self
+            .evidence
+            .iter()
+            .any(|evidence| evidence == "DECORATED_CENTERED_CONTINUATION");
+        let url_attachment_rect = self.source_text.contains("://")
+            && self.source_group_ids.len() == 1
+            && self.all_advisory_layouts_rect;
         let collapsible_cross_group_rect = recovered_main_column
             || recovered_advisory_rect
             || tight_two_line_continuation
-            || compact_tail_rect;
+            || compact_tail_rect
+            || decorated_centered_rect
+            || url_attachment_rect;
         let render_slots = layout_slots(
             &self.render_slots,
             &self.bounds,
@@ -264,6 +279,7 @@ impl RegionGroup {
                 && !same_ocr_block_flow
                 && !collapsible_cross_group_rect,
             has_multiple_typography_tiers(&self.regions) && !collapsible_cross_group_rect,
+            decorated_centered_rect || url_attachment_rect,
         );
         let mut grouping_evidence = self.evidence;
         if source_line_count > 1 && render_slots.len() == 1 {
@@ -326,6 +342,10 @@ fn merge_decision(
         return None;
     }
     let same_block = same_block_continuation(first, second);
+    let same_block_role_drift = is_same_block_body_title_role_drift(previous, next);
+    let decorated_centered_continuation = is_decorated_centered_continuation(previous, next);
+    let url_continuation = is_url_continuation(previous, next);
+    let date_location_continuation = is_date_location_continuation(previous, next);
     let relaxed_same_block_tail = is_relaxed_same_block_paragraph_tail(previous, next);
     let compact_same_block_tail = is_compact_same_block_tail(previous, next, gap);
     let relaxed_same_block_wide_continuation =
@@ -344,6 +364,7 @@ fn merge_decision(
         .source_group_ids
         .iter()
         .any(|group_id| next.source_group_ids.contains(group_id));
+    let advisory_final_line = is_same_advisory_final_line(previous, next, same_advisory_group);
     let tight_cross_block_continuation = different_client_group
         && different_ocr_block
         && is_tight_cross_block_continuation(first, second, gap);
@@ -353,6 +374,11 @@ fn merge_decision(
     if is_strong_text_boundary(&previous.source_text, &next.source_text)
         && !(same_block && same_advisory_group)
         && !compact_cross_block_tail
+        && !same_block_role_drift
+        && !decorated_centered_continuation
+        && !url_continuation
+        && !advisory_final_line
+        && !date_location_continuation
     {
         return None;
     }
@@ -405,6 +431,11 @@ fn merge_decision(
         && !compact_cross_block_tail
         && !compact_same_advisory_tail
         && !relaxed_same_advisory_paragraph
+        && !same_block_role_drift
+        && !decorated_centered_continuation
+        && !url_continuation
+        && !advisory_final_line
+        && !date_location_continuation
     {
         return None;
     }
@@ -414,6 +445,10 @@ fn merge_decision(
         && !established_paragraph_continuation
         && !tight_cross_block_continuation
         && !compact_cross_block_tail
+        && !decorated_centered_continuation
+        && !url_continuation
+        && !advisory_final_line
+        && !date_location_continuation
     {
         return None;
     }
@@ -439,7 +474,12 @@ fn merge_decision(
             && (relaxed_same_block_tail
                 || relaxed_same_block_wide_continuation
                 || established_paragraph_continuation
-                || relaxed_same_advisory_paragraph))
+                || relaxed_same_advisory_paragraph
+                || same_block_role_drift
+                || decorated_centered_continuation
+                || url_continuation
+                || advisory_final_line
+                || date_location_continuation))
         && !compact_tail_font_recovery
     {
         return None;
@@ -452,10 +492,17 @@ fn merge_decision(
     let wrapped_step = overlap >= 0.25
         && right_delta <= height * 4
         && left_delta <= (viewport_width as f32 * 0.42) as i32;
-    if !same_block && !same_column && !wrapped_step {
+    if !same_block
+        && !same_column
+        && !wrapped_step
+        && !decorated_centered_continuation
+        && !url_continuation
+        && !advisory_final_line
+        && !date_location_continuation
+    {
         return None;
     }
-    if previous.role != next.role {
+    if previous.role != next.role && !same_block_role_drift {
         return None;
     }
     let next_starts_lowercase = next
@@ -464,16 +511,16 @@ fn merge_decision(
         .chars()
         .find(|character| character.is_alphanumeric())
         .is_some_and(char::is_lowercase);
-    let next_continues_text = is_textual_or_acronym_number_continuation(
-        &previous.source_text,
-        &next.source_text,
-    );
+    let next_continues_text =
+        is_textual_or_acronym_number_continuation(&previous.source_text, &next.source_text);
     let cross_block_requires_lowercase = different_client_group
         && different_ocr_block
         && !same_advisory_group
         && !established_paragraph_continuation
         && !tight_cross_block_continuation;
-    let continuation = if cross_block_requires_lowercase {
+    let continuation = if url_continuation || advisory_final_line || date_location_continuation {
+        true
+    } else if cross_block_requires_lowercase {
         next_continues_text
     } else {
         !ends_sentence(&previous.source_text) || next_starts_lowercase || same_block
@@ -498,6 +545,16 @@ fn merge_decision(
             } else {
                 "COMPACT_PARAGRAPH_TAIL_RECOVERY"
             }
+        } else if same_block_role_drift {
+            "SAME_BLOCK_ROLE_DRIFT_CONTINUATION"
+        } else if decorated_centered_continuation {
+            "DECORATED_CENTERED_CONTINUATION"
+        } else if url_continuation {
+            "URL_CONTINUATION"
+        } else if advisory_final_line {
+            "CLIENT_GROUP_FINAL_LINE"
+        } else if date_location_continuation {
+            "DATE_LOCATION_CONTINUATION"
         } else if relaxed_same_block_tail {
             "RELAXED_SAME_BLOCK_PARAGRAPH_TAIL"
         } else if compact_same_advisory_tail {
@@ -520,6 +577,185 @@ fn merge_decision(
             "VISUAL_LINE_CONTINUATION"
         },
     })
+}
+
+fn is_same_block_body_title_role_drift(previous: &RegionGroup, next: &RegionGroup) -> bool {
+    let first = &previous.last_region;
+    let second = &next.first_region;
+    let first_height = region_text_height(first);
+    let second_height = region_text_height(second);
+    let font_ratio = first_height.min(second_height) / first_height.max(second_height).max(1.0);
+    previous.role == "BODY"
+        && next.role == "TITLE"
+        && same_block_continuation(first, second)
+        && !ends_sentence(&previous.source_text)
+        && font_ratio >= 0.80
+}
+
+fn is_decorated_centered_continuation(previous: &RegionGroup, next: &RegionGroup) -> bool {
+    if previous.regions.len() != 1
+        || next.regions.len() != 1
+        || previous.role != "BODY"
+        || next.role != "BODY"
+        || ends_sentence(&previous.source_text)
+        || !ends_sentence(&next.source_text)
+    {
+        return false;
+    }
+    let first = &previous.last_region;
+    let second = &next.first_region;
+    let same_advisory_group = previous
+        .source_group_ids
+        .iter()
+        .any(|group_id| next.source_group_ids.contains(group_id));
+    let has_distinct_blocks =
+        first.block_id.is_some() && second.block_id.is_some() && first.block_id != second.block_id;
+    if (!same_advisory_group && !has_distinct_blocks)
+        || first.block_id.is_some() && first.block_id == second.block_id
+        || !second
+            .text
+            .chars()
+            .find(|character| character.is_alphanumeric())
+            .is_some_and(char::is_lowercase)
+    {
+        return false;
+    }
+    let previous_characters = previous
+        .source_text
+        .chars()
+        .filter(|character| character.is_alphanumeric())
+        .count();
+    let next_characters = next
+        .source_text
+        .chars()
+        .filter(|character| character.is_alphanumeric())
+        .count();
+    if !(8..=48).contains(&previous_characters)
+        || !(4..=32).contains(&next_characters)
+        || previous_characters + next_characters > 64
+    {
+        return false;
+    }
+    let first_height = region_text_height(first);
+    let second_height = region_text_height(second);
+    let font_ratio = first_height.min(second_height) / first_height.max(second_height).max(1.0);
+    let maximum_height = first.bounds.height().max(second.bounds.height()).max(1);
+    let gap = second.bounds.top - first.bounds.bottom;
+    let overlap = first.bounds.horizontal_overlap(&second.bounds).max(0) as f32
+        / first.bounds.width().min(second.bounds.width()).max(1) as f32;
+    gap >= 0
+        && gap <= maximum_height
+        && font_ratio >= 0.80
+        && overlap >= 0.25
+        && second.bounds.left < first.bounds.left - maximum_height.min(first.bounds.height())
+        && second.bounds.width() as f32 <= first.bounds.width() as f32 * 0.80
+}
+
+fn is_url_continuation(previous: &RegionGroup, next: &RegionGroup) -> bool {
+    if previous.role != "BODY"
+        || next.role != "BODY"
+        || previous.regions.is_empty()
+        || next.regions.len() != 1
+    {
+        return false;
+    }
+    let previous_text = previous.source_text.trim_end();
+    let next_text = next.source_text.trim_start();
+    if !(previous_text.rfind("http://").is_some()
+        || previous_text.rfind("https://").is_some()
+        || previous_text.rfind("www.").is_some())
+        || !next_text.starts_with(['/', '?', '#', '&'])
+    {
+        return false;
+    }
+    let first = &previous.last_region;
+    let second = &next.first_region;
+    let maximum_height = first.bounds.height().max(second.bounds.height()).max(1);
+    let gap = second.bounds.top - first.bounds.bottom;
+    gap >= 0
+        && gap <= maximum_height
+        && (first.bounds.left - second.bounds.left).abs() <= maximum_height * 2
+        && font_compatibility(first, second) != FontCompatibility::Incompatible
+}
+
+fn is_same_advisory_final_line(
+    previous: &RegionGroup,
+    next: &RegionGroup,
+    same_advisory_group: bool,
+) -> bool {
+    if !same_advisory_group
+        || previous.role != "BODY"
+        || next.role != "BODY"
+        || previous.regions.len() < 2
+        || next.regions.len() != 1
+        || ends_sentence(&previous.source_text)
+        || !ends_sentence(&next.source_text)
+        || next
+            .source_text
+            .chars()
+            .filter(|character| character.is_alphanumeric())
+            .count()
+            > 24
+    {
+        return false;
+    }
+    let first = &previous.last_region;
+    let second = &next.first_region;
+    let maximum_height = first.bounds.height().max(second.bounds.height()).max(1);
+    let gap = second.bounds.top - first.bounds.bottom;
+    let overlap = first.bounds.horizontal_overlap(&second.bounds).max(0) as f32
+        / first.bounds.width().min(second.bounds.width()).max(1) as f32;
+    gap >= 0
+        && gap <= maximum_height
+        && overlap >= 0.25
+        && font_compatibility(first, second) != FontCompatibility::Incompatible
+}
+
+fn is_date_location_continuation(previous: &RegionGroup, next: &RegionGroup) -> bool {
+    if previous.role != "BODY" || next.role != "BODY" || ends_sentence(&previous.source_text) {
+        return false;
+    }
+    let previous_lower = previous.source_text.to_ascii_lowercase();
+    let has_month = [
+        "january",
+        "february",
+        "march",
+        "april",
+        "may",
+        "june",
+        "july",
+        "august",
+        "september",
+        "october",
+        "november",
+        "december",
+    ]
+    .iter()
+    .any(|month| previous_lower.contains(month));
+    let first_word = next
+        .source_text
+        .split_whitespace()
+        .next()
+        .unwrap_or_default();
+    if !has_month
+        || !(2..=6).contains(&first_word.len())
+        || !first_word
+            .chars()
+            .all(|character| character.is_ascii_uppercase())
+    {
+        return false;
+    }
+    let first = &previous.last_region;
+    let second = &next.first_region;
+    let maximum_height = first.bounds.height().max(second.bounds.height()).max(1);
+    let gap = second.bounds.top - first.bounds.bottom;
+    let overlap = first.bounds.horizontal_overlap(&second.bounds).max(0) as f32
+        / first.bounds.width().min(second.bounds.width()).max(1) as f32;
+    gap >= 0
+        && gap <= maximum_height
+        && overlap >= 0.68
+        && (first.bounds.left - second.bounds.left).abs() <= maximum_height * 2
+        && font_compatibility(first, second) != FontCompatibility::Incompatible
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -679,9 +915,13 @@ fn is_textual_or_acronym_number_continuation(previous: &str, next: &str) -> bool
         .collect::<String>();
     !compact_next.is_empty()
         && compact_next.len() <= 6
-        && compact_next.chars().all(|character| character.is_ascii_digit())
+        && compact_next
+            .chars()
+            .all(|character| character.is_ascii_digit())
         && (2..=8).contains(&previous_token.len())
-        && previous_token.chars().any(|character| character.is_alphabetic())
+        && previous_token
+            .chars()
+            .any(|character| character.is_alphabetic())
         && previous_token
             .chars()
             .all(|character| !character.is_alphabetic() || character.is_uppercase())
@@ -716,10 +956,8 @@ fn is_established_paragraph_continuation(
         .chars()
         .find(|character| character.is_alphanumeric())
         .is_some_and(char::is_lowercase);
-    let next_continues_text = is_textual_or_acronym_number_continuation(
-        &previous.source_text,
-        &next.source_text,
-    );
+    let next_continues_text =
+        is_textual_or_acronym_number_continuation(&previous.source_text, &next.source_text);
     let mature_same_advisory_continuation =
         previous.regions.len() >= 3 && same_block && same_advisory_group && next_starts_lowercase;
     let continues_recovered_paragraph = previous.evidence.iter().any(|evidence| {
@@ -770,10 +1008,7 @@ fn is_relaxed_same_advisory_paragraph(
     same_advisory_group: bool,
     viewport_width: i32,
 ) -> bool {
-    if !same_advisory_group
-        || previous.role != "BODY"
-        || next.role != "BODY"
-    {
+    if !same_advisory_group || previous.role != "BODY" || next.role != "BODY" {
         return false;
     }
     let Some(profile) = previous.source_group_ids.iter().find_map(|group_id| {
@@ -787,8 +1022,7 @@ fn is_relaxed_same_advisory_paragraph(
     if profile.member_count < 3 {
         return false;
     }
-    let boundary_compatibility =
-        font_compatibility(&previous.last_region, &next.first_region);
+    let boundary_compatibility = font_compatibility(&previous.last_region, &next.first_region);
     if boundary_compatibility == FontCompatibility::Relaxed {
         if same_block {
             return true;
@@ -1022,14 +1256,16 @@ fn layout_slots(
     all_advisory_layouts_rect: bool,
     crosses_client_groups: bool,
     has_multiple_typography_tiers: bool,
+    force_natural_language_rect: bool,
 ) -> Vec<Bounds> {
     if crosses_client_groups || has_multiple_typography_tiers {
         return source_slots.to_vec();
     }
-    let is_rect = role == "BODY"
-        && (is_dense_rectangular_text_flow(source_slots, group_bounds)
-            || (all_advisory_layouts_rect
-                && is_natural_wrapped_rect_flow(source_slots, group_bounds)));
+    let is_rect = force_natural_language_rect
+        || role == "BODY"
+            && (is_dense_rectangular_text_flow(source_slots, group_bounds)
+                || (all_advisory_layouts_rect
+                    && is_natural_wrapped_rect_flow(source_slots, group_bounds)));
     if source_slots.len() <= 1 || !is_rect {
         return source_slots.to_vec();
     }
@@ -1179,14 +1415,26 @@ fn inferred_role(
     advisory: Option<&crate::contract::TranslationGroup>,
 ) -> String {
     let text = region.text.trim();
+    let belongs_to_translatable_body = advisory.is_some_and(|group| {
+        group.role == "BODY"
+            && group.translation_unit == "GROUP"
+            && group.member_region_ids.len() > 1
+    });
     if is_standalone_timestamp(text) {
         return "TIMESTAMP".to_owned();
     }
     if looks_like_code(text) {
         return "CODE".to_owned();
     }
-    if looks_like_identifier(text) {
+    if looks_like_identifier(text) && !belongs_to_translatable_body {
         return "IDENTIFIER".to_owned();
+    }
+    if advisory.is_some_and(|group| {
+        group.role == "CONTROL"
+            && group.translation_unit == "PRESERVED"
+            && looks_like_truncated_natural_language_title(text)
+    }) {
+        return "TITLE".to_owned();
     }
     if let Some(protected_role) = advisory.and_then(|group| {
         (group.translation_unit == "PRESERVED"
@@ -1206,6 +1454,39 @@ fn inferred_role(
         .map(|group| group.role.clone())
         .filter(|role| !matches!(role.as_str(), "TIMESTAMP" | "IDENTIFIER" | "CONTROL"))
         .unwrap_or_else(|| "BODY".to_owned())
+}
+
+fn looks_like_truncated_natural_language_title(text: &str) -> bool {
+    let trimmed = text.trim_end();
+    let prefix = trimmed
+        .strip_suffix("...")
+        .or_else(|| trimmed.strip_suffix('…'))
+        .map(str::trim_end);
+    let Some(prefix) = prefix else {
+        return false;
+    };
+    let words = prefix
+        .split(|character: char| !character.is_ascii_alphabetic())
+        .filter(|word| !word.is_empty())
+        .collect::<Vec<_>>();
+    let title_like_words = words
+        .iter()
+        .filter(|word| {
+            word.len() >= 2
+                && (word.chars().all(|character| character.is_ascii_uppercase())
+                    || word
+                        .chars()
+                        .next()
+                        .is_some_and(|character| character.is_ascii_uppercase()))
+        })
+        .count();
+    words.len() >= 3
+        && prefix
+            .chars()
+            .filter(|character| character.is_alphabetic())
+            .count()
+            >= 12
+        && title_like_words >= 2
 }
 
 fn is_protected_role(role: &str) -> bool {
@@ -1244,7 +1525,9 @@ fn starts_list_item(text: &str) -> bool {
         && !marker.is_empty()
         && (marker.chars().all(|character| character.is_ascii_digit())
             || marker.len() == 1
-                && marker.chars().all(|character| character.is_ascii_alphabetic()))
+                && marker
+                    .chars()
+                    .all(|character| character.is_ascii_alphabetic()))
 }
 
 fn looks_like_title_label(text: &str) -> bool {
@@ -1318,8 +1601,10 @@ fn is_standalone_timestamp(text: &str) -> bool {
 
 fn looks_like_identifier(text: &str) -> bool {
     let trimmed = text.trim();
-    trimmed.contains("://")
-        || trimmed.starts_with("www.")
+    (!trimmed.chars().any(char::is_whitespace)
+        && (trimmed.starts_with("http://")
+            || trimmed.starts_with("https://")
+            || trimmed.starts_with("www.")))
         || (trimmed.contains('@') && !trimmed.contains(' '))
 }
 
@@ -1332,7 +1617,7 @@ fn looks_like_code(text: &str) -> bool {
         "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "HEAD" | "OPTIONS"
     ) && second.starts_with('/')
         || text.contains("/api/")
-        || text.contains("//")
+        || text.trim_start().starts_with("//")
         || text.contains("::")
 }
 
@@ -1439,7 +1724,7 @@ mod tests {
         let group_bounds = slots[0].union(&slots[1]).union(&slots[2]);
 
         assert_eq!(
-            layout_slots(&slots, &group_bounds, "TITLE", true, false, false),
+            layout_slots(&slots, &group_bounds, "TITLE", true, false, false, false),
             slots
         );
     }
@@ -1507,26 +1792,28 @@ mod tests {
         let mut regions = specifications
             .into_iter()
             .enumerate()
-            .map(|(reading_order, (id, line_index, top, bottom, height, text))| {
-                let mut region = request.regions[0].clone();
-                region.region_id = id.to_owned();
-                region.group_id = "client-comment".to_owned();
-                region.block_id = Some("mlkit-comment".to_owned());
-                region.line_index = Some(line_index);
-                region.reading_order = reading_order as i32;
-                region.text = text.to_owned();
-                region.raw_text = Some(text.to_owned());
-                region.estimated_text_height_px = Some(height);
-                region.typography_confidence = 0.82;
-                region.bounds = Bounds {
-                    left: 64,
-                    top,
-                    right: if line_index == 3 { 676 } else { 1_247 },
-                    bottom,
-                };
-                region.component_bounds.clear();
-                region
-            })
+            .map(
+                |(reading_order, (id, line_index, top, bottom, height, text))| {
+                    let mut region = request.regions[0].clone();
+                    region.region_id = id.to_owned();
+                    region.group_id = "client-comment".to_owned();
+                    region.block_id = Some("mlkit-comment".to_owned());
+                    region.line_index = Some(line_index);
+                    region.reading_order = reading_order as i32;
+                    region.text = text.to_owned();
+                    region.raw_text = Some(text.to_owned());
+                    region.estimated_text_height_px = Some(height);
+                    region.typography_confidence = 0.82;
+                    region.bounds = Bounds {
+                        left: 64,
+                        top,
+                        right: if line_index == 3 { 676 } else { 1_247 },
+                        bottom,
+                    };
+                    region.component_bounds.clear();
+                    region
+                },
+            )
             .collect::<Vec<_>>();
         regions[2].bounds.left = 63;
         let mut advisory = request.groups[0].clone();
@@ -3120,8 +3407,7 @@ mod tests {
         advisory.render_slots = vec![region.bounds.clone()];
         request.regions = vec![region];
         request.groups = vec![advisory];
-        request.document_context.reading_order_region_ids =
-            vec!["truncated-control".to_owned()];
+        request.document_context.reading_order_region_ids = vec!["truncated-control".to_owned()];
 
         let prepared = crate::engine::prepare_translation(
             &serde_json::to_string(&request).unwrap(),
@@ -3146,6 +3432,38 @@ mod tests {
 
         assert_eq!("IDENTIFIER", identifier_prepared.execution_groups[0].role);
         assert!(identifier_prepared.actionable_groups.is_empty());
+    }
+
+    #[test]
+    fn restores_legacy_truncated_natural_language_title_as_translatable() {
+        let mut request = request();
+        let mut region = request.regions[0].clone();
+        region.region_id = "truncated-title".to_owned();
+        region.group_id = "client-title".to_owned();
+        region.text = "Al for Humanity Com...".to_owned();
+        let mut advisory = request.groups[0].clone();
+        advisory.group_id = region.group_id.clone();
+        advisory.role = "CONTROL".to_owned();
+        advisory.translation_unit = "PRESERVED".to_owned();
+        advisory.source_text = region.text.clone();
+        advisory.member_region_ids = vec![region.region_id.clone()];
+        advisory.bounds = region.bounds.clone();
+        advisory.render_slots = vec![region.bounds.clone()];
+        request.regions = vec![region];
+        request.groups = vec![advisory];
+        request.document_context.reading_order_region_ids = vec!["truncated-title".to_owned()];
+
+        let prepared = crate::engine::prepare_translation(
+            &serde_json::to_string(&request).unwrap(),
+            "openlux",
+            "gemini-test",
+        )
+        .unwrap();
+
+        assert_eq!(1, prepared.execution_groups.len());
+        assert_eq!("TITLE", prepared.execution_groups[0].role);
+        assert_eq!("GROUP", prepared.execution_groups[0].translation_unit);
+        assert_eq!(1, prepared.actionable_groups.len());
     }
 
     #[test]
@@ -3489,5 +3807,394 @@ mod tests {
 
         assert_eq!(plan.groups[0].role, "CODE");
         assert_eq!(plan.groups[0].translation_unit, "PRESERVED");
+    }
+
+    #[test]
+    fn translates_natural_language_containing_a_preserved_url() {
+        let mut request = request();
+        let mut mixed = request.regions[0].clone();
+        mixed.text = "Spots are limited, reserve here: https://tinyurl.com/7nsf7ycy".to_owned();
+        mixed.group_id.clear();
+        mixed.block_id = Some("mixed-url-body".to_owned());
+        request.groups.clear();
+        request.regions = vec![mixed];
+
+        let plan = build_regions_first_plan(&request);
+
+        assert_eq!(plan.groups[0].role, "BODY");
+        assert_eq!(plan.groups[0].translation_unit, "GROUP");
+    }
+
+    #[test]
+    fn keeps_a_standalone_url_line_inside_its_client_body_group() {
+        let mut request = request();
+        let mut first = request.regions[0].clone();
+        first.region_id = "url-prefix-first".to_owned();
+        first.group_id = "client-url-body".to_owned();
+        first.text = "Spots are limited, so reserve".to_owned();
+        first.block_id = Some("url-prefix".to_owned());
+        first.line_index = Some(0);
+        first.reading_order = 0;
+        first.estimated_text_height_px = Some(79.0);
+        first.bounds = Bounds {
+            left: 83,
+            top: 474,
+            right: 1307,
+            bottom: 562,
+        };
+        let mut second = first.clone();
+        second.region_id = "url-prefix-second".to_owned();
+        second.text = "yours here:".to_owned();
+        second.line_index = Some(1);
+        second.reading_order = 1;
+        second.estimated_text_height_px = Some(84.0);
+        second.bounds = Bounds {
+            left: 83,
+            top: 604,
+            right: 557,
+            bottom: 709,
+        };
+        let mut url = first.clone();
+        url.region_id = "url-value".to_owned();
+        url.text = "https://tinyurl.com/7nsf7ycy".to_owned();
+        url.block_id = Some("url-value".to_owned());
+        url.line_index = Some(0);
+        url.reading_order = 2;
+        url.estimated_text_height_px = Some(81.0);
+        url.bounds = Bounds {
+            left: 83,
+            top: 752,
+            right: 1300,
+            bottom: 842,
+        };
+        let mut advisory = request.groups[0].clone();
+        advisory.group_id = "client-url-body".to_owned();
+        advisory.role = "BODY".to_owned();
+        advisory.translation_unit = "GROUP".to_owned();
+        advisory.member_region_ids = vec![
+            first.region_id.clone(),
+            second.region_id.clone(),
+            url.region_id.clone(),
+        ];
+        advisory.source_text = format!("{}\n{}\n{}", first.text, second.text, url.text);
+        advisory.bounds = first.bounds.union(&second.bounds).union(&url.bounds);
+        advisory.render_slots = vec![advisory.bounds.clone()];
+        request.regions = vec![first, second, url];
+        request.groups = vec![advisory];
+
+        let plan = build_regions_first_plan(&request);
+
+        assert_eq!(1, plan.groups.len());
+        assert_eq!("BODY", plan.groups[0].role);
+        assert_eq!("GROUP", plan.groups[0].translation_unit);
+        assert_eq!(3, plan.groups[0].member_region_ids.len());
+        assert_eq!("RECT", plan.groups[0].layout_shape);
+        assert!(
+            plan.groups[0]
+                .source_text
+                .contains("https://tinyurl.com/7nsf7ycy")
+        );
+    }
+
+    #[test]
+    fn merges_a_wrapped_url_path_with_its_natural_language_prefix() {
+        let mut request = request();
+        let mut first = request.regions[0].clone();
+        first.region_id = "url-prefix".to_owned();
+        first.group_id = "url-prefix".to_owned();
+        first.text = "Spots are limited, reserve here: https://tinyurl.com".to_owned();
+        first.block_id = Some("url-line-1".to_owned());
+        first.line_index = Some(0);
+        first.reading_order = 0;
+        first.bounds = Bounds {
+            left: 120,
+            top: 1400,
+            right: 1300,
+            bottom: 1470,
+        };
+        let mut second = first.clone();
+        second.region_id = "url-path".to_owned();
+        second.group_id = "url-path".to_owned();
+        second.text = "/7nsf7ycy".to_owned();
+        second.block_id = Some("url-line-2".to_owned());
+        second.reading_order = 1;
+        second.bounds = Bounds {
+            left: 122,
+            top: 1490,
+            right: 500,
+            bottom: 1550,
+        };
+        request.groups.clear();
+        request.regions = vec![first, second];
+
+        let plan = build_regions_first_plan(&request);
+
+        assert_eq!(1, plan.groups.len());
+        assert_eq!(2, plan.groups[0].member_region_ids.len());
+        assert!(
+            plan.groups[0]
+                .grouping_evidence
+                .contains(&"URL_CONTINUATION".to_owned())
+        );
+    }
+
+    #[test]
+    fn keeps_a_short_terminal_line_inside_its_client_paragraph() {
+        let mut request = request();
+        let specs = [
+            ("Join our AI workshop, 地点在深圳", 87, 1024, 1320, 1121),
+            ("and registration closes", 233, 1162, 1298, 1256),
+            ("Friday.", 90, 1307, 358, 1401),
+        ];
+        let regions = specs
+            .into_iter()
+            .enumerate()
+            .map(|(index, (text, left, top, right, bottom))| {
+                let mut region = request.regions[0].clone();
+                region.region_id = format!("mixed-{index}");
+                region.group_id = "client-mixed-paragraph".to_owned();
+                region.text = text.to_owned();
+                region.block_id = Some(format!("mixed-block-{index}"));
+                region.line_index = Some(if index < 2 { index as i32 } else { 0 });
+                region.reading_order = index as i32;
+                region.estimated_text_height_px = Some(if index == 0 { 87.0 } else { 85.0 });
+                region.bounds = Bounds {
+                    left,
+                    top,
+                    right,
+                    bottom,
+                };
+                region.component_bounds.clear();
+                region
+            })
+            .collect::<Vec<_>>();
+        let mut advisory = request.groups[0].clone();
+        advisory.group_id = "client-mixed-paragraph".to_owned();
+        advisory.role = "BODY".to_owned();
+        advisory.member_region_ids = regions
+            .iter()
+            .map(|region| region.region_id.clone())
+            .collect();
+        advisory.source_text = regions
+            .iter()
+            .map(|region| region.text.as_str())
+            .collect::<Vec<_>>()
+            .join("\n");
+        advisory.bounds = regions
+            .iter()
+            .skip(1)
+            .fold(regions[0].bounds.clone(), |bounds, region| {
+                bounds.union(&region.bounds)
+            });
+        advisory.render_slots = vec![advisory.bounds.clone()];
+        request.regions = regions;
+        request.groups = vec![advisory];
+
+        let plan = build_regions_first_plan(&request);
+
+        assert_eq!(1, plan.groups.len());
+        assert_eq!(3, plan.groups[0].member_region_ids.len());
+        assert_eq!("RECT", plan.groups[0].layout_shape);
+        assert!(
+            plan.groups[0]
+                .grouping_evidence
+                .contains(&"CLIENT_GROUP_FINAL_LINE".to_owned())
+        );
+    }
+
+    #[test]
+    fn merges_an_event_date_with_its_uppercase_location_line() {
+        let mut request = request();
+        let mut date = request.regions[0].clone();
+        date.region_id = "event-date".to_owned();
+        date.group_id = "client-date".to_owned();
+        date.text = "24 10 September(Thurs)".to_owned();
+        date.block_id = Some("date-block".to_owned());
+        date.line_index = Some(0);
+        date.reading_order = 0;
+        date.estimated_text_height_px = Some(55.0);
+        date.bounds = Bounds {
+            left: 206,
+            top: 2222,
+            right: 907,
+            bottom: 2291,
+        };
+        let mut location = date.clone();
+        location.region_id = "event-location".to_owned();
+        location.group_id = "client-location".to_owned();
+        location.text = "SIM Campus(exact location to".to_owned();
+        location.block_id = Some("location-block".to_owned());
+        location.reading_order = 1;
+        location.estimated_text_height_px = Some(53.0);
+        location.bounds = Bounds {
+            left: 310,
+            top: 2320,
+            right: 1153,
+            bottom: 2379,
+        };
+        let mut date_group = request.groups[0].clone();
+        date_group.group_id = "client-date".to_owned();
+        date_group.role = "BODY".to_owned();
+        date_group.member_region_ids = vec![date.region_id.clone()];
+        date_group.source_text = date.text.clone();
+        date_group.bounds = date.bounds.clone();
+        date_group.render_slots = vec![date.bounds.clone()];
+        let mut location_group = date_group.clone();
+        location_group.group_id = "client-location".to_owned();
+        location_group.member_region_ids = vec![location.region_id.clone()];
+        location_group.source_text = location.text.clone();
+        location_group.bounds = location.bounds.clone();
+        location_group.render_slots = vec![location.bounds.clone()];
+        request.regions = vec![date, location];
+        request.groups = vec![date_group, location_group];
+
+        let plan = build_regions_first_plan(&request);
+
+        assert_eq!(1, plan.groups.len());
+        assert!(
+            plan.groups[0]
+                .grouping_evidence
+                .contains(&"DATE_LOCATION_CONTINUATION".to_owned())
+        );
+    }
+
+    #[test]
+    fn merges_same_block_body_title_role_drift_into_one_paragraph() {
+        let mut request = request();
+        let specs = [
+            ("Introducing the inaugural SIM", 1437, 1490, 221, 1009, 48.0),
+            ("OTR Wellbeing Festival", 1513, 1571, 256, 907, 52.0),
+            ("2026 night of meaningful", 1587, 1650, 228, 1030, 57.0),
+            ("conversations,shared moments,", 1666, 1724, 228, 1094, 53.0),
+            ("and genuine connection!", 1739, 1814, 219, 879, 63.0),
+        ];
+        let regions = specs
+            .into_iter()
+            .enumerate()
+            .map(|(index, (text, top, bottom, left, right, height))| {
+                let mut region = request.regions[0].clone();
+                region.region_id = format!("festival-{index}");
+                region.group_id = if index < 2 {
+                    "client-body"
+                } else {
+                    "client-title"
+                }
+                .to_owned();
+                region.text = text.to_owned();
+                region.block_id = Some("mlkit-festival-introduction".to_owned());
+                region.line_index = Some(index as i32);
+                region.reading_order = index as i32;
+                region.estimated_text_height_px = Some(height);
+                region.typography_confidence = 0.82;
+                region.component_bounds.clear();
+                region.bounds = Bounds {
+                    left,
+                    top,
+                    right,
+                    bottom,
+                };
+                region
+            })
+            .collect::<Vec<_>>();
+        let mut body = request.groups[0].clone();
+        body.group_id = "client-body".to_owned();
+        body.role = "BODY".to_owned();
+        body.member_region_ids = regions[..2]
+            .iter()
+            .map(|region| region.region_id.clone())
+            .collect();
+        body.source_text = regions[..2]
+            .iter()
+            .map(|region| region.text.as_str())
+            .collect::<Vec<_>>()
+            .join("\n");
+        body.bounds = regions[0].bounds.union(&regions[1].bounds);
+        body.render_slots = vec![body.bounds.clone()];
+        let mut title = body.clone();
+        title.group_id = "client-title".to_owned();
+        title.role = "TITLE".to_owned();
+        title.member_region_ids = regions[2..]
+            .iter()
+            .map(|region| region.region_id.clone())
+            .collect();
+        title.source_text = regions[2..]
+            .iter()
+            .map(|region| region.text.as_str())
+            .collect::<Vec<_>>()
+            .join("\n");
+        title.bounds = regions[2..]
+            .iter()
+            .skip(1)
+            .fold(regions[2].bounds.clone(), |bounds, region| {
+                bounds.union(&region.bounds)
+            });
+        title.render_slots = regions[2..]
+            .iter()
+            .map(|region| region.bounds.clone())
+            .collect();
+        request.regions = regions;
+        request.groups = vec![body, title];
+
+        let plan = build_regions_first_plan(&request);
+
+        assert_eq!(1, plan.groups.len());
+        assert_eq!(5, plan.groups[0].member_region_ids.len());
+        assert_eq!("BODY", plan.groups[0].role);
+        assert!(
+            plan.groups[0]
+                .grouping_evidence
+                .contains(&"SAME_BLOCK_ROLE_DRIFT_CONTINUATION".to_owned())
+        );
+    }
+
+    #[test]
+    fn merges_decorated_two_line_slogan_but_not_completed_sentences() {
+        let mut request = request();
+        let mut first = request.regions[0].clone();
+        first.region_id = "slogan-1".to_owned();
+        first.group_id = "client-slogan".to_owned();
+        first.text = "Your mind deserves".to_owned();
+        first.block_id = None;
+        first.line_index = Some(0);
+        first.reading_order = 0;
+        first.estimated_text_height_px = Some(51.0);
+        first.bounds = Bounds {
+            left: 396,
+            top: 1183,
+            right: 933,
+            bottom: 1240,
+        };
+        let mut second = first.clone();
+        second.region_id = "slogan-2".to_owned();
+        second.text = "festival too.".to_owned();
+        second.block_id = None;
+        second.reading_order = 1;
+        second.estimated_text_height_px = Some(42.0);
+        second.bounds = Bounds {
+            left: 204,
+            top: 1276,
+            right: 528,
+            bottom: 1322,
+        };
+        let mut advisory = request.groups[0].clone();
+        advisory.group_id = "client-slogan".to_owned();
+        advisory.role = "BODY".to_owned();
+        advisory.member_region_ids = vec![first.region_id.clone(), second.region_id.clone()];
+        advisory.source_text = format!("{}\n{}", first.text, second.text);
+        advisory.bounds = first.bounds.union(&second.bounds);
+        advisory.render_slots = vec![advisory.bounds.clone()];
+        request.regions = vec![first.clone(), second.clone()];
+        request.groups = vec![advisory.clone()];
+
+        let merged = build_regions_first_plan(&request);
+        assert_eq!(1, merged.groups.len());
+        assert_eq!(2, merged.groups[0].member_region_ids.len());
+        assert_eq!("RECT", merged.groups[0].layout_shape);
+        assert_eq!(1, merged.groups[0].render_slots.len());
+
+        request.regions[0].text = "Your mind deserves a festival.".to_owned();
+        request.groups[0].source_text = format!("{}\n{}", request.regions[0].text, second.text);
+        let separated = build_regions_first_plan(&request);
+        assert_eq!(2, separated.groups.len());
     }
 }

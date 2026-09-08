@@ -10,14 +10,14 @@ use crate::{
 
 pub const PROMPT_VERSION: &str = "semantic-translation-core-v5-provider-compact";
 
-pub const SYSTEM_PROMPT: &str = r#"You are a screen OCR translation engine. Input is JSON with mode and ordered groups. Each group has id, text, src, dst, role, box, scale, type, and optional keep. Translate every text independently and completely; use order, role, box, scale, and type only to resolve context. Newlines inside text are OCR lines of one semantic unit: reflow naturally, but never split, merge, omit, summarize, move, or borrow content across IDs. Preserve URLs, identifiers, names, brands, numbers, dates, units, and currencies. Copy every keep value verbatim into the same group's translated text; missing or moving one is invalid. For AUTO_BIDIRECTIONAL, translate Chinese natural language to English and other natural language to Chinese. Return strict JSON matching response_format with every input id exactly once and every translated text non-empty."#;
+pub const SYSTEM_PROMPT: &str = r#"You are a screen OCR translation engine. Input is JSON with mode and ordered groups. Each group has id, text, src, dst, role, box, scale, type, and optional keep. Translate every text independently and completely; use order, role, box, scale, and type only to resolve context. Newlines inside text are OCR lines of one semantic unit: reflow naturally, but never split, merge, omit, summarize, move, or borrow content across IDs. Preserve URLs, identifiers, names, brands, numbers, dates, units, and currencies. Copy every keep value verbatim into the same group's translated text; missing or moving one is invalid. Honor each group's src and dst, including mixed-script groups; translate every ordinary src-language word outside keep while leaving text already written in dst unchanged. Return strict JSON matching response_format with every input id exactly once and every translated text non-empty."#;
 
 const FULL_GEOMETRY_SYSTEM_PROMPT: &str = r#"You are a professional screen OCR translation engine.
 The input is one visible screen reconstructed from OCR geometry. Translate each translateGroups item independently and completely, while using documentOutline and neighboring geometry only to disambiguate meaning.
 Treat newline-separated OCR lines inside sourceText as one semantic block. Never imitate OCR line breaks, split a block back into lines, merge keys, borrow text from another key, summarize, or add notes.
 Preserve URLs, identifiers, names, brands, numbers, dates, units, and currencies. Every requiredLiteralIdentifiers item must remain visible verbatim and in the same semantic role.
 Typography tier and relative scale are context for document hierarchy only. Never use them to split, merge, omit, or rename a groupId.
-For AUTO_BIDIRECTIONAL translate Chinese natural language to English and non-Chinese natural language to Chinese.
+Honor each group's sourceLanguage and targetLanguage, including mixed-script groups. Translate every ordinary source-language word outside requiredLiteralIdentifiers while leaving text already written in targetLanguage unchanged.
 Return only the strict JSON object requested by response_format. Return translations as an array. Every input groupId must occur exactly once and every translatedText must be non-empty."#;
 
 pub const DIRECT_STRUCTURED_OUTPUT_PROMPT: &str = "Skip analysis, reasoning exposition, and preamble. Execute the JSON instructions directly and return only the requested structured translation result.";
@@ -250,14 +250,19 @@ pub fn model_group_bindings(
                 .member_region_ids
                 .iter()
                 .find_map(|id| regions.get(id.as_str()).copied());
+            let dominant_language = (request.translation.mode == "AUTO_BIDIRECTIONAL")
+                .then(|| dominant_script_language(&group.source_text))
+                .flatten();
             ModelGroupBinding {
                 alias_id: format!("g{index}"),
                 group_id: group.group_id.clone(),
-                source_language: first_region
-                    .and_then(|region| region.source_language.clone())
+                source_language: dominant_language
+                    .map(str::to_owned)
+                    .or_else(|| first_region.and_then(|region| region.source_language.clone()))
                     .unwrap_or_else(|| request.translation.source_language.clone()),
-                target_language: first_region
-                    .and_then(|region| region.target_language.clone())
+                target_language: dominant_language
+                    .map(|language| if language == "zh" { "en" } else { "zh" }.to_owned())
+                    .or_else(|| first_region.and_then(|region| region.target_language.clone()))
                     .unwrap_or_else(|| request.translation.target_language.clone()),
             }
         })
@@ -579,8 +584,16 @@ fn compact_preview(text: &str, max_chars: usize) -> String {
 
 pub fn literal_identifiers(text: &str) -> Vec<String> {
     let mut identifiers = HashSet::new();
+    let web = web_literals(text);
+    identifiers.extend(web.iter().cloned());
+    if dominant_script_language(text) == Some("en") && text.chars().any(is_han_character) {
+        identifiers.extend(han_runs(text));
+    }
+    let text_without_web = web.iter().fold(text.to_owned(), |result, literal| {
+        result.replace(literal, " ")
+    });
     let has_lowercase = text.chars().any(|character| character.is_ascii_lowercase());
-    for token in text
+    for token in text_without_web
         .split(|c: char| {
             c.is_whitespace()
                 || matches!(
@@ -590,7 +603,10 @@ pub fn literal_identifiers(text: &str) -> Vec<String> {
         })
         .map(|token| {
             token.trim().trim_matches(|character| {
-                matches!(character, '\'' | '"' | '‘' | '’' | '“' | '”' | '«' | '»')
+                matches!(
+                    character,
+                    '\'' | '"' | '‘' | '’' | '“' | '”' | '«' | '»' | '!' | '?' | '！' | '？'
+                )
             })
         })
         .filter(|token| !token.is_empty())
@@ -614,8 +630,9 @@ pub fn literal_identifiers(text: &str) -> Vec<String> {
             .chars()
             .filter(|c| c.is_ascii_alphabetic())
             .collect::<String>();
-        let uppercase_identifier =
-            alphabetic.len() >= 2 && alphabetic.chars().all(|c| c.is_ascii_uppercase());
+        let uppercase_identifier = alphabetic.len() >= 2
+            && alphabetic.chars().all(|c| c.is_ascii_uppercase())
+            && !is_common_uppercase_word(&alphabetic);
         let uppercase_hyphen_segment = token.contains('-')
             && token.split('-').any(|segment| {
                 segment.len() >= 2 && segment.chars().all(|c| c.is_ascii_uppercase())
@@ -633,6 +650,135 @@ pub fn literal_identifiers(text: &str) -> Vec<String> {
     let mut identifiers = identifiers.into_iter().collect::<Vec<_>>();
     identifiers.sort();
     identifiers
+}
+
+fn dominant_script_language(text: &str) -> Option<&'static str> {
+    let without_web = text
+        .split_whitespace()
+        .map(clean_web_token)
+        .filter(|token| !looks_like_web_literal(token) && !token.starts_with(['/', '?', '#', '&']))
+        .collect::<Vec<_>>()
+        .join(" ");
+    let han_count = without_web
+        .chars()
+        .filter(|character| is_han_character(*character))
+        .count();
+    let latin_word_count = without_web
+        .split(|character: char| !character.is_ascii_alphabetic() && character != '\'')
+        .filter(|word| {
+            word.chars()
+                .any(|character| character.is_ascii_alphabetic())
+        })
+        .count();
+    if han_count > 0 && latin_word_count > han_count {
+        Some("en")
+    } else if han_count > 0 {
+        Some("zh")
+    } else if latin_word_count > 0 || !web_literals(text).is_empty() {
+        Some("en")
+    } else {
+        None
+    }
+}
+
+fn web_literals(text: &str) -> Vec<String> {
+    let tokens = text.split_whitespace().collect::<Vec<_>>();
+    let mut literals = Vec::new();
+    let mut index = 0;
+    while index < tokens.len() {
+        let token = clean_web_token(tokens[index]);
+        if looks_like_web_literal(token) {
+            let mut literal = token.to_owned();
+            while index + 1 < tokens.len() {
+                let continuation = clean_web_token(tokens[index + 1]);
+                if !continuation.starts_with(['/', '?', '#', '&']) {
+                    break;
+                }
+                literal.push_str(continuation);
+                index += 1;
+            }
+            literals.push(literal);
+        }
+        index += 1;
+    }
+    literals.sort();
+    literals.dedup();
+    literals
+}
+
+fn clean_web_token(token: &str) -> &str {
+    token
+        .trim_start_matches(|character| {
+            matches!(character, '(' | '[' | '{' | '<' | '\'' | '"' | '“' | '‘')
+        })
+        .trim_end_matches(|character| {
+            matches!(
+                character,
+                ',' | '.'
+                    | ';'
+                    | ':'
+                    | '!'
+                    | ')'
+                    | ']'
+                    | '}'
+                    | '>'
+                    | '\''
+                    | '"'
+                    | '，'
+                    | '。'
+                    | '；'
+                    | '！'
+                    | '”'
+                    | '’'
+            )
+        })
+}
+
+fn looks_like_web_literal(token: &str) -> bool {
+    let lowercase = token.to_ascii_lowercase();
+    if lowercase.starts_with("http://")
+        || lowercase.starts_with("https://")
+        || lowercase.starts_with("www.")
+    {
+        return true;
+    }
+    let host = token
+        .split_once('@')
+        .map(|(_, domain)| domain)
+        .unwrap_or(token)
+        .split(['/', '?', '#'])
+        .next()
+        .unwrap_or(token);
+    let suffix = host
+        .rsplit_once('.')
+        .map(|(_, suffix)| suffix.to_ascii_lowercase());
+    matches!(
+        suffix.as_deref(),
+        Some("com" | "org" | "net" | "io" | "ai" | "cn" | "dev" | "edu" | "gov")
+    )
+}
+
+fn han_runs(text: &str) -> Vec<String> {
+    let mut runs = Vec::new();
+    let mut current = String::new();
+    for character in text.chars() {
+        if is_han_character(character) {
+            current.push(character);
+        } else if !current.is_empty() {
+            runs.push(std::mem::take(&mut current));
+        }
+    }
+    if !current.is_empty() {
+        runs.push(current);
+    }
+    runs
+}
+
+fn is_han_character(character: char) -> bool {
+    matches!(
+        character as u32,
+        0x3400..=0x4DBF | 0x4E00..=0x9FFF | 0xF900..=0xFAFF | 0x20000..=0x2FA1F
+    )
 }
 
 fn compact_quantity_number(token: &str) -> Option<&str> {
@@ -659,8 +805,32 @@ fn compact_quantity_number(token: &str) -> Option<&str> {
             | "votes"
             | "item"
             | "items"
+            | "am"
+            | "pm"
     )
     .then_some(number)
+}
+
+fn is_common_uppercase_word(token: &str) -> bool {
+    matches!(
+        token,
+        "A" | "AN"
+            | "AND"
+            | "ARE"
+            | "EVENT"
+            | "FOR"
+            | "FREE"
+            | "IN"
+            | "IS"
+            | "OF"
+            | "ON"
+            | "OR"
+            | "THE"
+            | "TO"
+            | "WE"
+            | "WITH"
+            | "YOU"
+    )
 }
 
 #[cfg(test)]
@@ -885,6 +1055,52 @@ mod tests {
         assert!(identifiers.contains("t5"));
         assert!(!identifiers.contains("range-based"));
         assert!(!identifiers.contains("adult-size"));
+    }
+
+    #[test]
+    fn preserves_complete_urls_and_target_language_spans_in_mixed_text() {
+        let identifiers = literal_identifiers(
+            "Join our AI workshop，地点在深圳，reserve here: https://tinyurl.com/7nsf7ycy.",
+        );
+
+        assert!(identifiers.contains(&"AI".to_owned()));
+        assert!(identifiers.contains(&"地点在深圳".to_owned()));
+        assert!(identifiers.contains(&"https://tinyurl.com/7nsf7ycy".to_owned()));
+        assert!(!identifiers.contains(&"https://tinyurl".to_owned()));
+    }
+
+    #[test]
+    fn reconstructs_wrapped_url_paths_as_one_required_literal() {
+        let identifiers =
+            literal_identifiers("Spots are limited, reserve here: https://tinyurl.com\n/7nsf7ycy");
+
+        assert!(identifiers.contains(&"https://tinyurl.com/7nsf7ycy".to_owned()));
+    }
+
+    #[test]
+    fn does_not_treat_time_suffix_or_uppercase_prose_as_identifiers() {
+        assert_eq!(
+            literal_identifiers(
+                "Dinner provided at 6pm! And did we mention? It is a completely FREE EVENT!"
+            ),
+            Vec::<String>::new()
+        );
+    }
+
+    #[test]
+    fn mixed_script_binding_uses_the_dominant_natural_language() {
+        let mut request: SemanticTranslationRequest =
+            serde_json::from_str(include_str!("../examples/v4-minimal-request.json")).unwrap();
+        let mut group = provider_test_group(&mut request);
+        group.source_text =
+            "Join our AI workshop，地点在深圳，registration closes Friday.".to_owned();
+        request.regions[0].text = group.source_text.clone();
+        request.regions[0].source_language = Some("zh".to_owned());
+        request.regions[0].target_language = Some("en".to_owned());
+        let bindings = model_group_bindings(&request, &[group]);
+
+        assert_eq!("en", bindings[0].source_language);
+        assert_eq!("zh", bindings[0].target_language);
     }
 
     #[test]

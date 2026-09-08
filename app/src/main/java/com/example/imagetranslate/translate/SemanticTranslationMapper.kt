@@ -120,17 +120,11 @@ private fun android.graphics.Rect.toTranslationBounds() = TranslationBounds(
     bottom = bottom
 )
 
-private fun languageFor(text: String): String? = when {
-    text.any(::isHanCharacter) -> "zh"
-    text.any { it in 'A'..'Z' || it in 'a'..'z' } -> "en"
-    else -> null
-}
+private fun languageFor(text: String): String? =
+    TranslationScriptLanguagePolicy.sourceLanguage(text)
 
 private fun targetLanguageFor(text: String): String? = when (languageFor(text)) {
     "zh" -> "en"
     "en" -> "zh"
     else -> null
 }
-
-private fun isHanCharacter(character: Char): Boolean =
-    Character.UnicodeScript.of(character.code) == Character.UnicodeScript.HAN

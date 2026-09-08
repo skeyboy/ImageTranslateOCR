@@ -20,6 +20,8 @@ use crate::{
 };
 
 const DEFAULT_HISTORY_PAGE_SIZE: i64 = 20;
+const PASTE_BACK_MISSING_STATUS: &str = "PASTE_BACK_MISSING_ONE";
+const PASTE_BACK_MISSING_MESSAGE: &str = "1 translated region(s) were not pasted back";
 
 pub async fn admin_root() -> Redirect {
     Redirect::temporary("/admin/requests")
@@ -61,10 +63,15 @@ pub async fn request_history(
     if !admin_authorized(&headers, state.config.bearer_token.as_deref()) {
         return unauthorized();
     }
-    let selected_status = filter
-        .status
-        .as_deref()
-        .filter(|status| matches!(*status, "SUCCEEDED" | "PARTIAL" | "FAILED" | "CANCELLED"));
+    let selected_status = filter.status.as_deref().filter(|status| {
+        matches!(
+            *status,
+            "SUCCEEDED" | "PARTIAL" | "FAILED" | "CANCELLED" | PASTE_BACK_MISSING_STATUS
+        )
+    });
+    let audit_status = selected_status.filter(|status| *status != PASTE_BACK_MISSING_STATUS);
+    let render_failure_message =
+        (selected_status == Some(PASTE_BACK_MISSING_STATUS)).then_some(PASTE_BACK_MISSING_MESSAGE);
     let selected_version = filter
         .version
         .as_deref()
@@ -82,8 +89,9 @@ pub async fn request_history(
             state.config.request_history_limit,
             page,
             page_size,
-            selected_status,
+            audit_status,
             selected_version,
+            render_failure_message,
         )
         .await
     {
@@ -577,6 +585,7 @@ fn status_options(selected: Option<&str>) -> String {
         ("PARTIAL", "部分成功"),
         ("FAILED", "失败"),
         ("CANCELLED", "已取消"),
+        (PASTE_BACK_MISSING_STATUS, "回贴缺失（1 个区域）"),
     ]
     .into_iter()
     .map(|(value, label)| {
@@ -768,7 +777,9 @@ fn detail_page(record: RequestRecord, config: &Config) -> String {
             (
                 format!(
                     "<div id=\"source-capture-view\" class=\"capture-view\">\
-                        <img src=\"/admin/requests/{id}/image\" alt=\"本次 OCR 全屏采集原图\">\
+                        <button type=\"button\" class=\"fullscreen-image-button\" data-fullscreen-image aria-label=\"全屏查看本次 OCR 采集原图\">\
+                            <img src=\"/admin/requests/{id}/image\" alt=\"本次 OCR 全屏采集原图\">\
+                        </button>\
                      </div>",
                     id = escape_html(&audit.id),
                 ),
@@ -830,7 +841,9 @@ fn detail_page(record: RequestRecord, config: &Config) -> String {
                 (
                     format!(
                         "<div id=\"rendered-capture-view\" class=\"capture-view\" hidden>\
-                            <img loading=\"lazy\" src=\"/admin/requests/{id}/rendered-image\" alt=\"{capture_label}\">\
+                            <button type=\"button\" class=\"fullscreen-image-button\" data-fullscreen-image aria-label=\"全屏查看{capture_label}\">\
+                                <img loading=\"lazy\" src=\"/admin/requests/{id}/rendered-image\" alt=\"{capture_label}\">\
+                            </button>\
                          </div>",
                         id = escape_html(&audit.id),
                         capture_label = capture_label,
@@ -966,7 +979,12 @@ fn detail_page(record: RequestRecord, config: &Config) -> String {
                         </div>\
                     </details>\
                 </section>\
-            </main>",
+            </main>\
+            <dialog id=\"image-lightbox\" class=\"image-lightbox\" aria-labelledby=\"image-lightbox-caption\">\
+                <button type=\"button\" class=\"image-lightbox-close\" aria-label=\"关闭全屏图片\">&#215;</button>\
+                <img id=\"image-lightbox-image\" alt=\"\">\
+                <p id=\"image-lightbox-caption\"></p>\
+            </dialog>",
             request_id = escape_html(&audit.request_id),
             version_class = version_class,
             version_label = escape_html(&version_label),
@@ -1140,6 +1158,10 @@ mod tests {
             "/admin/requests?page=2&amp;pageSize=50&amp;status=FAILED&amp;version=3"
         );
         assert!(page_size_options(20).contains("value=\"20\" selected"));
+        assert!(
+            status_options(Some(PASTE_BACK_MISSING_STATUS))
+                .contains("value=\"PASTE_BACK_MISSING_ONE\" selected>回贴缺失（1 个区域）")
+        );
     }
 
     #[test]

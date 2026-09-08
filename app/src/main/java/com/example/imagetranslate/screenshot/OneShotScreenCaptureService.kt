@@ -1711,7 +1711,11 @@ class OneShotScreenCaptureService : Service() {
                                         "OCR recognition succeeded: generation=$generation, " +
                                             "recognized=$recognizedCount"
                                     )
-                                    overlayController.showRecognitionSucceeded()
+                                    if (recognizedCount > 0) {
+                                        overlayController.showRecognitionSucceeded()
+                                    } else {
+                                        overlayController.showRecognitionFailed()
+                                    }
                                 }
                             }
                         )
@@ -1735,6 +1739,8 @@ class OneShotScreenCaptureService : Service() {
                     }
                     if (LiveCaptureTimingPolicy.shouldRetryEmptyResult(
                             patchCount = result.patches.size,
+                            recognizedCount = result.recognizedCount,
+                            failedCount = result.failedCount,
                             retryCount = emptyResultRetryCount.get()
                         ) &&
                         emptyResultRetryCount.compareAndSet(0, 1)

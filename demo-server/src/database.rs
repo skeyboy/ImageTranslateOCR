@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use diesel::{
     ExpressionMethods, Insertable, QueryDsl, Queryable, QueryableByName, sql_query,
@@ -470,6 +470,7 @@ impl Database {
         requested_page_size: i64,
         status: Option<&str>,
         schema_version: Option<u32>,
+        render_failure_message: Option<&str>,
     ) -> Result<PaginatedRequestAudits, AppError> {
         let retained_limit = retained_limit.clamp(1, 5_000);
         let page_size = requested_page_size.clamp(1, 100);
@@ -490,7 +491,7 @@ impl Database {
             .collect::<Vec<_>>();
         let mut connection = self.connect().await?;
         let payloads = request_payloads::table
-            .filter(request_payloads::audit_id.eq_any(audit_ids))
+            .filter(request_payloads::audit_id.eq_any(&audit_ids))
             .select((request_payloads::audit_id, request_payloads::request_json))
             .load::<(String, String)>(&mut connection)
             .await
@@ -501,16 +502,30 @@ impl Database {
                 (audit_id, schema_version_from_request_json(&request_json))
             })
             .collect::<HashMap<_, _>>();
+        let render_failure_audit_ids = if let Some(message) = render_failure_message {
+            rendered_request_images::table
+                .filter(rendered_request_images::audit_id.eq_any(&audit_ids))
+                .filter(rendered_request_images::failure_message.eq(message))
+                .select(rendered_request_images::audit_id)
+                .load::<String>(&mut connection)
+                .await
+                .map_err(AppError::database)?
+                .into_iter()
+                .collect::<HashSet<_>>()
+        } else {
+            HashSet::new()
+        };
         let filtered = audits
             .into_iter()
             .filter_map(|audit| {
                 let version = versions.get(&audit.id).copied().flatten();
-                (schema_version.is_none() || version == schema_version).then_some(
-                    VersionedRequestAudit {
+                let matches_render_failure = render_failure_message.is_none()
+                    || render_failure_audit_ids.contains(&audit.id);
+                (matches_render_failure && (schema_version.is_none() || version == schema_version))
+                    .then_some(VersionedRequestAudit {
                         audit,
                         schema_version: version,
-                    },
-                )
+                    })
             })
             .collect::<Vec<_>>();
         let total = filtered.len();
@@ -775,7 +790,7 @@ mod tests {
         }
 
         let first = database
-            .paginate_audits_with_version_filtered(100, 1, 20, None, Some(3))
+            .paginate_audits_with_version_filtered(100, 1, 20, None, Some(3), None)
             .await
             .unwrap();
         assert_eq!(first.total, 23);
@@ -790,14 +805,14 @@ mod tests {
         );
 
         let last = database
-            .paginate_audits_with_version_filtered(100, 99, 20, None, Some(3))
+            .paginate_audits_with_version_filtered(100, 99, 20, None, Some(3), None)
             .await
             .unwrap();
         assert_eq!(last.page, 2);
         assert_eq!(last.items.len(), 3);
 
         let failed = database
-            .paginate_audits_with_version_filtered(100, 1, 20, Some("FAILED"), Some(3))
+            .paginate_audits_with_version_filtered(100, 1, 20, Some("FAILED"), Some(3), None)
             .await
             .unwrap();
         assert_eq!(failed.total, 4);

@@ -97,6 +97,29 @@ class SemanticTranslationMapperTest {
         assertEquals("PRESERVED", pureTime.translationUnit)
     }
 
+    @Test
+    fun usesTheDominantNaturalLanguageForMixedScriptText() {
+        val englishDominant = group(
+            text = "Join our AI workshop，地点在深圳，registration closes Friday.",
+            role = SemanticTextRole.BODY
+        ).toSemanticTranslationSource()
+        val chineseDominant = group(
+            text = "这是中文介绍 with a short phrase",
+            role = SemanticTextRole.BODY
+        ).toSemanticTranslationSource()
+        val chineseWithUrl = group(
+            text = "点击 https://example.com 查看详情",
+            role = SemanticTextRole.BODY
+        ).toSemanticTranslationSource()
+
+        assertEquals("en", englishDominant.regions.single().sourceLanguage)
+        assertEquals("zh", englishDominant.regions.single().targetLanguage)
+        assertEquals("zh", chineseDominant.regions.single().sourceLanguage)
+        assertEquals("en", chineseDominant.regions.single().targetLanguage)
+        assertEquals("zh", chineseWithUrl.regions.single().sourceLanguage)
+        assertEquals("en", chineseWithUrl.regions.single().targetLanguage)
+    }
+
     private fun group(text: String, role: SemanticTextRole): SemanticTextGroup {
         val source = RecognizedText(
             text = text,

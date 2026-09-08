@@ -23,6 +23,8 @@ import com.google.mlkit.vision.text.chinese.ChineseTextRecognizerOptions
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeout
@@ -155,35 +157,49 @@ internal class MlKitOcrEngine(context: Context) : OcrEngine {
                 extraFilter = { true }
             )
             RecognizerScript.FUSED -> {
-                recognizeWith(
-                    bitmap,
-                    latinRecognizer,
-                    RecognizerScript.LATIN,
-                    PASS_ORIGINAL,
-                    0.43f,
-                    candidates,
-                    extraFilter = { true }
-                )
-                if (!hasSufficientLatinCoverage(candidates)) {
-                    val chineseCandidates = mutableListOf<OcrCandidate>()
-                    try {
-                        ensureModels(setOf(OcrModel.CHINESE))
-                        recognizeWith(
-                            bitmap,
-                            chineseRecognizer,
-                            RecognizerScript.CHINESE,
-                            PASS_ORIGINAL,
-                            0.43f,
-                            chineseCandidates,
-                            extraFilter = { true }
-                        )
-                        if (chineseCandidates.isNotEmpty()) {
-                            candidates.clear()
-                            candidates += chineseCandidates
+                val fusedCandidates = coroutineScope {
+                    val latin = async {
+                        mutableListOf<OcrCandidate>().also { output ->
+                            recognizeWith(
+                                bitmap,
+                                latinRecognizer,
+                                RecognizerScript.LATIN,
+                                PASS_ORIGINAL,
+                                0.43f,
+                                output,
+                                extraFilter = { true }
+                            )
                         }
-                    } catch (error: Exception) {
-                        if (candidates.isEmpty()) throw error
                     }
+                    val chinese = async {
+                        mutableListOf<OcrCandidate>().also { output ->
+                            runCatching { ensureModels(setOf(OcrModel.CHINESE)) }
+                                .onSuccess {
+                                    recognizeWith(
+                                        bitmap,
+                                        chineseRecognizer,
+                                        RecognizerScript.CHINESE,
+                                        PASS_ORIGINAL,
+                                        0.43f,
+                                        output,
+                                        extraFilter = { true }
+                                    )
+                                }
+                        }
+                    }
+                    latin.await() + chinese.await()
+                }
+                candidates += fusedCandidates
+                if (candidates.isEmpty()) {
+                    recognizeWith(
+                        bitmap,
+                        latinRecognizer,
+                        RecognizerScript.LATIN,
+                        PASS_ORIGINAL,
+                        0.43f,
+                        candidates,
+                        extraFilter = { true }
+                    )
                 }
             }
         }
@@ -285,15 +301,6 @@ internal class MlKitOcrEngine(context: Context) : OcrEngine {
     private fun recognizerFor(model: OcrModel): TextRecognizer = when (model) {
         OcrModel.CHINESE -> chineseRecognizer
         OcrModel.ENGLISH -> latinRecognizer
-    }
-
-    private fun hasSufficientLatinCoverage(candidates: List<OcrCandidate>): Boolean {
-        val text = candidates.joinToString(" ") { it.result.text }
-        val latinCount = text.count { it in 'A'..'Z' || it in 'a'..'z' }
-        val hanCount = text.count(::isHanCharacter)
-        return candidates.size >= MINIMUM_AUTO_LATIN_RESULTS &&
-            latinCount >= MINIMUM_AUTO_LATIN_CHARACTERS &&
-            latinCount >= hanCount * MINIMUM_AUTO_LATIN_DOMINANCE
     }
 
     private fun hasSufficientLatinCoverage(results: Collection<RecognizedText>): Boolean {
@@ -762,9 +769,19 @@ internal class MlKitOcrEngine(context: Context) : OcrEngine {
                 val completeness = meaningfulCharacterCount(candidate.result.text).toFloat() /
                     maximumMeaningfulCharacters
                 val widthCoverage = candidate.result.bounds.width().toFloat() / maximumWidth
+                val hanCount = candidate.result.text.count(::isHanCharacter)
+                val mixedScriptCoverageBonus = if (
+                    candidate.script == RecognizerScript.CHINESE &&
+                    hanCount >= 2 &&
+                    completeness >= 0.5f && widthCoverage >= 0.5f
+                ) {
+                    0.5f
+                } else {
+                    0f
+                }
                 textQuality(candidate.result.text) + candidate.reliability + agreement * 0.3f
                     + candidate.result.modelConfidence.coerceIn(0f, 1f) * 0.25f +
-                    completeness * 0.25f + widthCoverage * 0.2f
+                    completeness * 0.25f + widthCoverage * 0.2f + mixedScriptCoverageBonus
             } ?: return@mapNotNull null
             val passCount = cluster.map { it.script to it.pass }.distinct().size
             val otherCandidates = cluster.filterNot { it === selected }
@@ -783,8 +800,6 @@ internal class MlKitOcrEngine(context: Context) : OcrEngine {
                 else -> 0.46f
             }
             val quality = textQuality(selected.result.text).coerceIn(0f, 1f)
-            val sourceBlockIds = cluster.mapNotNull { it.result.sourceBlockId }.distinct()
-            val sourceLineIndices = cluster.mapNotNull { it.result.sourceLineIndex }.distinct()
             selected.result.copy(
                 consensusScore = (evidence + averageAgreement * 0.16f + quality * 0.08f)
                     .coerceIn(0f, 1f),
@@ -794,8 +809,8 @@ internal class MlKitOcrEngine(context: Context) : OcrEngine {
                 } else {
                     selected.script
                 },
-                sourceBlockId = sourceBlockIds.singleOrNull(),
-                sourceLineIndex = sourceLineIndices.singleOrNull()
+                sourceBlockId = selected.result.sourceBlockId,
+                sourceLineIndex = selected.result.sourceLineIndex
             )
         }
     }
