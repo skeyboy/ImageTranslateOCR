@@ -31,6 +31,8 @@ import com.example.imagetranslate.ocr.OcrModelState
 import com.example.imagetranslate.ocr.OcrRecognitionMode
 import com.example.imagetranslate.translate.TranslationBackend
 import com.example.imagetranslate.translate.TranslationBackendSettings
+import com.example.imagetranslate.translate.TranslationExperience
+import com.example.imagetranslate.translate.TranslationExperienceSettings
 import com.example.imagetranslate.translate.TranslationMode
 import com.example.experimentaltranslation.ExperimentalTranslationEngine
 import kotlin.math.abs
@@ -127,6 +129,7 @@ internal class ActiveScreenCaptureOverlayController(
     initialBackgroundExperienceMode: LivePatchBackgroundExperienceMode,
     initialExperimentalTranslationEngine: ExperimentalTranslationEngine,
     initialTranslationBackend: TranslationBackend,
+    initialTranslationExperience: TranslationExperience,
     private val networkTranslationConfigured: Boolean,
     private val selfHostedTranslationConfigured: Boolean,
     initialLiveOcrTranslationEngine: LiveOcrTranslationEngineType,
@@ -139,6 +142,7 @@ internal class ActiveScreenCaptureOverlayController(
         fun onCancelPreview()
         fun onTranslationModeChanged(mode: TranslationMode)
         fun onTranslationBackendChanged(backend: TranslationBackend)
+        fun onTranslationExperienceChanged(experience: TranslationExperience)
         fun onLiveOcrTranslationEngineChanged(engine: LiveOcrTranslationEngineType)
         fun onTranslationVisibilityChanged(visible: Boolean)
         fun onOverflowDetailsRequested(item: TranslationOverflowItem): Boolean
@@ -195,6 +199,7 @@ internal class ActiveScreenCaptureOverlayController(
     private var backgroundExperienceMode = initialBackgroundExperienceMode
     private var experimentalTranslationEngine = initialExperimentalTranslationEngine
     private var translationBackend = initialTranslationBackend
+    private var translationExperience = initialTranslationExperience
     private var liveOcrTranslationEngine = initialLiveOcrTranslationEngine
     private var paddleNetworkConfigured = initialPaddleNetworkConfigured
     private val ocrModelStates = OcrModel.entries.associateWith {
@@ -248,6 +253,7 @@ internal class ActiveScreenCaptureOverlayController(
         binding.collapsedCaptureHandle.setOnClickListener { expandNow() }
         attachDragGestures()
         updateModeLabel()
+        updateTranslationExperienceLabel()
     }
 
     fun showReadyExpanded() = onMainThread(::showReadyNow)
@@ -406,6 +412,11 @@ internal class ActiveScreenCaptureOverlayController(
 
     fun setTranslationBackend(backend: TranslationBackend) = onMainThread {
         translationBackend = backend
+    }
+
+    fun setTranslationExperience(experience: TranslationExperience) = onMainThread {
+        translationExperience = experience
+        updateTranslationExperienceLabel()
     }
 
     fun setLiveOcrTranslationEngine(
@@ -1169,6 +1180,11 @@ internal class ActiveScreenCaptureOverlayController(
         )
     }
 
+    private fun updateTranslationExperienceLabel() {
+        binding.tvActiveOverlayTranslationExperience.text =
+            TranslationExperienceSettings.label(translationExperience)
+    }
+
     private fun showOverlayMenu() {
         PopupMenu(themedContext, binding.btnActiveOverlayMode).apply {
             menu.add(
@@ -1199,26 +1215,52 @@ internal class ActiveScreenCaptureOverlayController(
             ).isChecked = true
             menu.add(
                 MENU_HEADER_GROUP,
-                MENU_HEADER_EXPERIMENTAL_TRANSLATION,
+                MENU_HEADER_TRANSLATION_EXPERIENCE,
                 3,
+                R.string.translation_experience_group
+            ).isEnabled = false
+            menu.add(
+                TRANSLATION_EXPERIENCE_MENU_GROUP,
+                TRANSLATION_EXPERIENCE_MENU_MACHINE,
+                4,
+                R.string.translation_experience_machine
+            )
+            menu.add(
+                TRANSLATION_EXPERIENCE_MENU_GROUP,
+                TRANSLATION_EXPERIENCE_MENU_AI,
+                5,
+                R.string.translation_experience_ai
+            )
+            menu.setGroupCheckable(TRANSLATION_EXPERIENCE_MENU_GROUP, true, true)
+            menu.findItem(
+                if (translationExperience == TranslationExperience.MACHINE) {
+                    TRANSLATION_EXPERIENCE_MENU_MACHINE
+                } else {
+                    TRANSLATION_EXPERIENCE_MENU_AI
+                }
+            ).isChecked = true
+            menu.add(
+                MENU_HEADER_GROUP,
+                MENU_HEADER_EXPERIMENTAL_TRANSLATION,
+                6,
                 R.string.active_screenshot_experimental_translation_group
             ).isEnabled = false
             menu.add(
                 EXPERIMENTAL_TRANSLATION_MENU_GROUP,
                 EXPERIMENTAL_TRANSLATION_DISABLED,
-                4,
+                7,
                 R.string.active_screenshot_experimental_translation_disabled
             )
             menu.add(
                 EXPERIMENTAL_TRANSLATION_MENU_GROUP,
                 EXPERIMENTAL_TRANSLATION_MARIAN,
-                5,
+                8,
                 R.string.active_screenshot_experimental_translation_marian
             )
             menu.add(
                 EXPERIMENTAL_TRANSLATION_MENU_GROUP,
                 EXPERIMENTAL_TRANSLATION_GEMMA,
-                6,
+                9,
                 R.string.active_screenshot_experimental_translation_gemma
             )
             menu.setGroupCheckable(EXPERIMENTAL_TRANSLATION_MENU_GROUP, true, true)
@@ -1232,7 +1274,7 @@ internal class ActiveScreenCaptureOverlayController(
             menu.add(
                 EXPERIMENTAL_TRANSLATION_ACTION_GROUP,
                 EXPERIMENTAL_TRANSLATION_MANAGE,
-                7,
+                10,
                 R.string.active_screenshot_experimental_translation_manage
             )
             menu.add(
@@ -1268,6 +1310,19 @@ internal class ActiveScreenCaptureOverlayController(
                 R.string.active_screenshot_capture_settings
             )
             setOnMenuItemClickListener { item ->
+                val selectedTranslationExperience = when (item.itemId) {
+                    TRANSLATION_EXPERIENCE_MENU_MACHINE -> TranslationExperience.MACHINE
+                    TRANSLATION_EXPERIENCE_MENU_AI -> TranslationExperience.AI
+                    else -> null
+                }
+                if (selectedTranslationExperience != null) {
+                    if (selectedTranslationExperience != translationExperience) {
+                        translationExperience = selectedTranslationExperience
+                        updateTranslationExperienceLabel()
+                        listener.onTranslationExperienceChanged(selectedTranslationExperience)
+                    }
+                    return@setOnMenuItemClickListener true
+                }
                 if (item.itemId == EXPERIMENTAL_TRANSLATION_MANAGE) {
                     listener.onExperimentalModelManagerRequested(experimentalTranslationEngine)
                     return@setOnMenuItemClickListener true
@@ -1830,14 +1885,22 @@ internal class ActiveScreenCaptureOverlayController(
     )
 
     private fun updateCompactStatus(textRes: Int, showProgress: Boolean) {
-        binding.tvCollapsedOverlayStatus.setText(textRes)
+        binding.tvCollapsedOverlayStatus.text = appContext.getString(
+            R.string.active_screenshot_translation_experience,
+            "${TranslationExperienceSettings.label(translationExperience)} · " +
+                appContext.getString(textRes)
+        )
         binding.collapsedOverlayProgress.visibility =
             if (showProgress) View.VISIBLE else View.INVISIBLE
     }
 
     private fun updateCompactPerformance() {
-        binding.tvCollapsedOverlayStatus.text = latestCompactPerformance
-            ?: appContext.getString(R.string.active_screenshot_compact_translated)
+        binding.tvCollapsedOverlayStatus.text = appContext.getString(
+            R.string.active_screenshot_translation_experience,
+            "${TranslationExperienceSettings.label(translationExperience)} · " +
+                (latestCompactPerformance
+                    ?: appContext.getString(R.string.active_screenshot_compact_translated))
+        )
         binding.collapsedOverlayProgress.visibility = View.INVISIBLE
     }
 
@@ -2040,6 +2103,7 @@ internal class ActiveScreenCaptureOverlayController(
         const val MENU_HEADER_GROUP = 2
         const val MENU_HEADER_EXPERIENCE = 200
         const val MENU_HEADER_EXPERIMENTAL_TRANSLATION = 201
+        const val MENU_HEADER_TRANSLATION_EXPERIENCE = 202
         const val EXPERIENCE_MENU_GROUP = 3
         const val EXPERIENCE_MENU_DEFAULT = 301
         const val EXPERIENCE_MENU_ENHANCED = 302
@@ -2084,5 +2148,8 @@ internal class ActiveScreenCaptureOverlayController(
         const val OCR_ENGINE_MENU_ID_BASE = 1600
         const val LIVE_ENGINE_MENU_GROUP = 17
         const val LIVE_ENGINE_MENU_ID_BASE = 1700
+        const val TRANSLATION_EXPERIENCE_MENU_GROUP = 18
+        const val TRANSLATION_EXPERIENCE_MENU_MACHINE = 1801
+        const val TRANSLATION_EXPERIENCE_MENU_AI = 1802
     }
 }

@@ -357,6 +357,32 @@
             android:visibility="gone">
 
             <com.google.android.material.button.MaterialButtonToggleGroup
+                android:id="@+id/translationExperienceGroup"
+                android:layout_width="match_parent"
+                android:layout_height="44dp"
+                android:layout_marginBottom="6dp"
+                app:checkedButton="@id/btnTranslationExperienceAi"
+                app:selectionRequired="true"
+                app:singleSelection="true">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnTranslationExperienceMachine"
+                    style="@style/Widget.ImageTranslate.SegmentedButton"
+                    android:layout_width="0dp"
+                    android:layout_height="44dp"
+                    android:layout_weight="1"
+                    android:text="@string/translation_experience_machine" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnTranslationExperienceAi"
+                    style="@style/Widget.ImageTranslate.SegmentedButton"
+                    android:layout_width="0dp"
+                    android:layout_height="44dp"
+                    android:layout_weight="1"
+                    android:text="@string/translation_experience_ai" />
+            </com.google.android.material.button.MaterialButtonToggleGroup>
+
+            <com.google.android.material.button.MaterialButtonToggleGroup
                 android:id="@+id/translationModeGroup"
                 android:layout_width="match_parent"
                 android:layout_height="44dp"

@@ -5,6 +5,8 @@ import com.example.imagetranslate.BuildConfig
 import java.net.URI
 
 private const val NETWORK_REGIONS_PATH = "/api/v1/translate/regions"
+internal const val DEFAULT_MACHINE_TRANSLATION_ENDPOINT =
+    "https://instant-dev.pnuts.ai/api/volc-translate/translate"
 internal const val SELF_HOSTED_LAYOUT_PLAN_PATH = "/api/v3/translate/layout-plan"
 internal const val SELF_HOSTED_REGIONS_FIRST_PATH = "/api/v4/translate/layout-plan"
 internal const val SERVER_GEMINI_REGIONS_FIRST_PATH =
@@ -59,6 +61,8 @@ object TranslationBackendSettings {
     private const val OPENAI_OXIDE_BASE_URL = "openai_oxide_base_url"
     private const val OPENAI_OXIDE_API_KEY = "openai_oxide_api_key"
     private const val OPENAI_OXIDE_MODEL = "openai_oxide_model"
+    private const val MACHINE_TRANSLATION_ENDPOINT = "machine_translation_endpoint"
+    private const val MACHINE_TRANSLATION_TOKEN = "machine_translation_token"
     @Volatile private var sessionEdgeProvider = BuildConfig.EDGE_AI_PROVIDER
         .trim().lowercase().takeIf { it in edgeProviders } ?: PRIMARY_EDGE_PROVIDER
     @Volatile private var sessionEdgeModel = PRIMARY_EDGE_MODEL
@@ -123,6 +127,40 @@ object TranslationBackendSettings {
         ?.takeIf(String::isNotEmpty)
 
     fun isSelfHostedConfigured(context: Context): Boolean = selfHostedBaseUrl(context).isNotBlank()
+
+    fun machineTranslationEndpoint(context: Context): String = context
+        .getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
+        .getString(MACHINE_TRANSLATION_ENDPOINT, null)
+        ?.trim()
+        ?.takeIf(String::isNotBlank)
+        ?: DEFAULT_MACHINE_TRANSLATION_ENDPOINT
+
+    fun machineTranslationToken(context: Context): String? = context
+        .getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
+        .getString(MACHINE_TRANSLATION_TOKEN, null)
+        ?.trim()
+        ?.takeIf(String::isNotBlank)
+        ?: BuildConfig.MACHINE_TRANSLATION_TOKEN.trim().takeIf(String::isNotBlank)
+
+    fun isMachineConfigured(context: Context): Boolean =
+        machineTranslationEndpoint(context).isNotBlank() &&
+            !machineTranslationToken(context).isNullOrBlank()
+
+    fun setMachineTranslation(
+        context: Context,
+        endpoint: String,
+        token: String
+    ) {
+        require(endpoint.startsWith("https://")) {
+            "Machine translation endpoint must use HTTPS"
+        }
+        require(token.isNotBlank()) { "Machine translation token cannot be empty" }
+        context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
+            .edit()
+            .putString(MACHINE_TRANSLATION_ENDPOINT, endpoint.trim().trimEnd('/'))
+            .putString(MACHINE_TRANSLATION_TOKEN, token.trim())
+            .apply()
+    }
 
     fun isServerGeminiEnabled(context: Context): Boolean = context
         .getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)

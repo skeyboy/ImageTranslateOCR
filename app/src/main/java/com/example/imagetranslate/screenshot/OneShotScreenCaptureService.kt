@@ -44,6 +44,8 @@ import com.google.android.gms.common.moduleinstall.ModuleInstallStatusCodes
 import com.example.imagetranslate.ui.ImageTranslateActivity
 import com.example.imagetranslate.translate.TranslationBackend
 import com.example.imagetranslate.translate.TranslationBackendSettings
+import com.example.imagetranslate.translate.TranslationExperience
+import com.example.imagetranslate.translate.TranslationExperienceSettings
 import com.example.imagetranslate.translate.TranslationMode
 import com.example.imagetranslate.translate.ExperimentalTranslationSettings
 import com.example.imagetranslate.translate.SelfHostedRenderedCaptureUploader
@@ -215,6 +217,8 @@ class OneShotScreenCaptureService : Service() {
     private var experimentalTranslationEngine = ExperimentalTranslationEngine.DISABLED
     @Volatile
     private var translationBackend = TranslationBackend.LOCAL
+    @Volatile
+    private var translationExperience = TranslationExperience.AI
     private val liveProcessorDelegate = lazy {
         BackgroundTranslatedImageProcessor(applicationContext, reuseResources = true).also {
             it.setExperimentalTranslationEngine(experimentalTranslationEngine)
@@ -261,6 +265,7 @@ class OneShotScreenCaptureService : Service() {
         backgroundExperienceMode = LivePatchBackgroundExperiencePreferences.get(this)
         experimentalTranslationEngine = ExperimentalTranslationSettings.get(this)
         translationBackend = TranslationBackendSettings.get(this)
+        translationExperience = TranslationExperienceSettings.get(this)
         overlayController = ActiveScreenCaptureOverlayController(
             this,
             experienceMode,
@@ -271,6 +276,7 @@ class OneShotScreenCaptureService : Service() {
             backgroundExperienceMode,
             experimentalTranslationEngine,
             translationBackend,
+            translationExperience,
             TranslationBackendSettings.isNetworkConfigured(this),
             TranslationBackendSettings.isSelfHostedConfigured(this),
             liveOcrTranslationEngine,
@@ -298,6 +304,10 @@ class OneShotScreenCaptureService : Service() {
 
                 override fun onTranslationBackendChanged(backend: TranslationBackend) {
                     applyTranslationBackend(backend)
+                }
+
+                override fun onTranslationExperienceChanged(experience: TranslationExperience) {
+                    applyTranslationExperience(experience)
                 }
 
                 override fun onLiveOcrTranslationEngineChanged(
@@ -360,6 +370,9 @@ class OneShotScreenCaptureService : Service() {
                 override fun onOcrSettingsOpened() {
                     overlayController.setTranslationBackend(
                         TranslationBackendSettings.get(this@OneShotScreenCaptureService)
+                    )
+                    overlayController.setTranslationExperience(
+                        TranslationExperienceSettings.get(this@OneShotScreenCaptureService)
                     )
                     refreshOcrModelStates()
                 }
@@ -2644,6 +2657,17 @@ class OneShotScreenCaptureService : Service() {
         TranslationBackendSettings.set(this, backend)
         translationBackend = backend
         Log.i(TAG, "Translation backend changed: ${backend.name}")
+        if (liveProcessorDelegate.isInitialized()) liveProcessor.clearLiveOverlaySnapshot()
+        if (projection == null || !continuousTranslationEnabled.get()) return
+        cancelActiveCapture(keepContinuousMode = true)
+        requestScreenshot()
+    }
+
+    private fun applyTranslationExperience(experience: TranslationExperience) {
+        if (translationExperience == experience) return
+        translationExperience = experience
+        TranslationExperienceSettings.set(this, experience)
+        Log.i(TAG, "Translation experience changed: ${experience.name}")
         if (liveProcessorDelegate.isInitialized()) liveProcessor.clearLiveOverlaySnapshot()
         if (projection == null || !continuousTranslationEnabled.get()) return
         cancelActiveCapture(keepContinuousMode = true)

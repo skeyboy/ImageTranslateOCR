@@ -66,6 +66,9 @@ val packagedGeminiProxyUrl = providers.gradleProperty("EDGE_AI_PROXY_URL").orNul
 val configuredDemoServerBaseUrl = providers.gradleProperty("DEMO_SERVER_BASE_URL").orNull
     ?.trim().orEmpty()
     .ifBlank { localSecret("DEMO_SERVER_BASE_URL") }
+val configuredMachineTranslationToken = providers.gradleProperty("MACHINE_TRANSLATION_TOKEN").orNull
+    ?.trim().orEmpty()
+    .ifBlank { localSecret("MACHINE_TRANSLATION_TOKEN") }
 
 android {
     namespace = "com.example.imagetranslate"
@@ -120,6 +123,7 @@ android {
             buildConfigField("String", "EDGE_AI_THINKING_LEVEL", buildConfigString(packagedGeminiThinkingLevel))
             buildConfigField("String", "EDGE_AI_PROXY_URL", buildConfigString(packagedGeminiProxyUrl))
             buildConfigField("String", "DEMO_SERVER_BASE_URL", buildConfigString(configuredDemoServerBaseUrl))
+            buildConfigField("String", "MACHINE_TRANSLATION_TOKEN", buildConfigString(configuredMachineTranslationToken))
         }
         getByName("release") {
             buildConfigField(
@@ -139,6 +143,7 @@ android {
             buildConfigField("String", "EDGE_AI_THINKING_LEVEL", buildConfigString(packagedGeminiThinkingLevel))
             buildConfigField("String", "EDGE_AI_PROXY_URL", buildConfigString(packagedGeminiProxyUrl))
             buildConfigField("String", "DEMO_SERVER_BASE_URL", buildConfigString(configuredDemoServerBaseUrl))
+            buildConfigField("String", "MACHINE_TRANSLATION_TOKEN", buildConfigString(configuredMachineTranslationToken))
         }
     }
 

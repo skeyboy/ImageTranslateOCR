@@ -11,6 +11,12 @@
     <string name="mode_chinese_english">中译英</string>
     <string name="mode_english_chinese">英译中</string>
     <string name="mode_bidirectional">自动识别</string>
+    <string name="translation_experience_group">翻译模式</string>
+    <string name="translation_experience_machine">机翻</string>
+    <string name="translation_experience_ai">AI 智能翻译</string>
+    <string name="active_screenshot_translation_experience">当前：%1$s</string>
+    <string name="active_screenshot_translation_experience_machine">机翻</string>
+    <string name="active_screenshot_translation_experience_ai">AI 智能翻译</string>
     <string name="setting_precise_mask">精确遮罩</string>
     <string name="setting_show_markers">显示标号</string>
     <string name="setting_review_before_translation">翻译前复核识别文字</string>

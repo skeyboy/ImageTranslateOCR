@@ -49,6 +49,8 @@ import com.example.imagetranslate.semantic.SemanticTextRole
 import com.example.imagetranslate.semantic.StaticImageTextFilter
 import com.example.imagetranslate.ocr.RecognizerScript
 import com.example.imagetranslate.screenshot.OneShotScreenCaptureService
+import com.example.imagetranslate.screenshot.MachineOcrTextProcessingProvider
+import com.example.imagetranslate.screenshot.MachinePasteBackProvider
 import com.example.imagetranslate.screenshot.LiveOcrTranslationEngineSettings
 import com.example.imagetranslate.screenshot.LiveOcrTranslationEngineType
 import com.example.imagetranslate.screenshot.ScreenshotMonitorPreferences
@@ -59,7 +61,11 @@ import com.example.imagetranslate.translate.ProviderThinkingControlMode
 import com.example.imagetranslate.translate.SemanticLayoutHint
 import com.example.imagetranslate.translate.TranslationBackend
 import com.example.imagetranslate.translate.TranslationBackendSettings
+import com.example.imagetranslate.translate.TranslationExperience
+import com.example.imagetranslate.translate.TranslationExperienceSettings
 import com.example.imagetranslate.translate.TranslationMode
+import com.example.imagetranslate.translate.MachineTranslationParagraph
+import com.example.imagetranslate.translate.VolcMachineTranslationProvider
 import com.example.imagetranslate.translate.toSemanticTranslationSource
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.Dispatchers
@@ -102,6 +108,7 @@ class ImageTranslateActivity : AppCompatActivity() {
     private var workflowBusy = false
     private var updatingScreenshotMonitorControl = false
     private var updatingTranslationBackendControl = false
+    private var updatingTranslationExperienceControl = false
     private var modelDownloadJob: Job? = null
 
     private var originalBitmap: Bitmap? = null
@@ -250,6 +257,7 @@ class ImageTranslateActivity : AppCompatActivity() {
         binding = ActivityImageTranslateBinding.inflate(layoutInflater)
         setContentView(binding.root)
         TranslationBackendSettings.migratePrimaryConfiguration(this)
+        restoreTranslationExperienceControl()
 
         val uiPreferences = getSharedPreferences(UI_PREFERENCES, MODE_PRIVATE)
         binding.switchReviewBeforeTranslation.isChecked = uiPreferences.getBoolean(
@@ -297,6 +305,7 @@ class ImageTranslateActivity : AppCompatActivity() {
         if (::binding.isInitialized) {
             restoreConfiguredScreenshotMonitor()
             restoreTranslationBackendControl()
+            restoreTranslationExperienceControl()
             restorePaddleNetworkControl()
         }
     }
@@ -396,6 +405,15 @@ class ImageTranslateActivity : AppCompatActivity() {
         }
         binding.switchCompactProviderPrompt.setOnCheckedChangeListener { _, checked ->
             TranslationBackendSettings.setCompactProviderPromptEnabled(this, checked)
+        }
+        binding.translationExperienceGroup.addOnButtonCheckedListener { _, checkedId, isChecked ->
+            if (!isChecked || updatingTranslationExperienceControl) return@addOnButtonCheckedListener
+            val experience = if (checkedId == binding.btnTranslationExperienceMachine.id) {
+                TranslationExperience.MACHINE
+            } else {
+                TranslationExperience.AI
+            }
+            TranslationExperienceSettings.set(this, experience)
         }
         binding.translationBackendGroup.addOnButtonCheckedListener { _, checkedId, isChecked ->
             if (!isChecked || updatingTranslationBackendControl) {
@@ -617,7 +635,9 @@ class ImageTranslateActivity : AppCompatActivity() {
                     autoTranslate = !binding.switchReviewBeforeTranslation.isChecked
                 )
                 WorkflowStage.REVIEW -> {
-                    if (!translateManager.areModelsReady) {
+                    if (TranslationExperienceSettings.get(this@ImageTranslateActivity) ==
+                        TranslationExperience.AI && !translateManager.areModelsReady
+                    ) {
                         downloadModel()
                         Toast.makeText(
                             this,
@@ -803,6 +823,19 @@ class ImageTranslateActivity : AppCompatActivity() {
         } else {
             getString(R.string.network_translation_not_configured)
         }
+    }
+
+    private fun restoreTranslationExperienceControl() {
+        val experience = TranslationExperienceSettings.get(this)
+        updatingTranslationExperienceControl = true
+        binding.translationExperienceGroup.check(
+            if (experience == TranslationExperience.MACHINE) {
+                binding.btnTranslationExperienceMachine.id
+            } else {
+                binding.btnTranslationExperienceAi.id
+            }
+        )
+        updatingTranslationExperienceControl = false
     }
 
     private fun savePrimaryTranslationConfiguration(showConfirmation: Boolean): Boolean {
@@ -1536,18 +1569,23 @@ class ImageTranslateActivity : AppCompatActivity() {
 
                 binding.tvStatus.text = "翻译 ${texts.size} 段文字..."
                 val regions = withTimeout(TRANSLATION_WORKFLOW_TIMEOUT_MS) {
-                    val semanticSources = groups.map { it.toSemanticTranslationSource() }
-                    val translations = translateManager.translateSemanticGroups(
-                        sources = semanticSources,
-                        viewportWidth = bitmap.width,
-                        viewportHeight = bitmap.height,
-                        mode = activeMode,
-                        scene = "STATIC_IMAGE"
-                    )
+                    if (TranslationExperienceSettings.get(this@ImageTranslateActivity) ==
+                        TranslationExperience.MACHINE
+                    ) {
+                        translateMachineReviewedImage(includedTexts, bitmap, activeMode)
+                    } else {
+                        val semanticSources = groups.map { it.toSemanticTranslationSource() }
+                        val translations = translateManager.translateSemanticGroups(
+                            sources = semanticSources,
+                            viewportWidth = bitmap.width,
+                            viewportHeight = bitmap.height,
+                            mode = activeMode,
+                            scene = "STATIC_IMAGE"
+                        )
                     val groupsById = groups.associateBy { it.groupId }
                     val regionsById = semanticSources.flatMap { it.regions }
                         .associateBy { it.regionId }
-                    translations.mapNotNull { translation ->
+                        translations.mapNotNull { translation ->
                         val group = translation.sourceGroupIds.firstNotNullOfOrNull(groupsById::get)
                             ?: return@mapNotNull null
                         val atomicRegions = translation.memberRegionIds.mapNotNull(regionsById::get)
@@ -1586,6 +1624,7 @@ class ImageTranslateActivity : AppCompatActivity() {
                             translationFailed = !translation.succeeded,
                             layoutHint = translation.layoutHint
                         )
+                        }
                     }
                 }
 
@@ -1666,6 +1705,60 @@ class ImageTranslateActivity : AppCompatActivity() {
                 binding.progressBar.visibility = View.GONE
                 setWorkflowBusy(false)
             }
+        }
+    }
+
+    private suspend fun translateMachineReviewedImage(
+        recognized: List<RecognizedText>,
+        bitmap: Bitmap,
+        mode: TranslationMode
+    ): List<TranslatedRegion> {
+        val paragraphs = MachineOcrTextProcessingProvider().processParagraphs(
+            recognized = recognized,
+            viewportWidth = bitmap.width,
+            viewportHeight = bitmap.height
+        )
+        if (!TranslationBackendSettings.isMachineConfigured(this)) {
+            throw IllegalStateException("机翻未配置，请设置 MACHINE_TRANSLATION_TOKEN")
+        }
+        val requests = paragraphs.mapNotNull { paragraph ->
+            val source = com.example.imagetranslate.translate.TranslationScriptLanguagePolicy
+                .sourceLanguage(paragraph.sourceText)
+            val target = source?.let { machineTargetLanguage(it, mode) }
+            if (source == null || target == null) null else MachineTranslationParagraph(
+                paragraphId = paragraph.paragraphId,
+                text = paragraph.sourceText,
+                sourceLanguage = source,
+                targetLanguage = target
+            )
+        }
+        val provider = VolcMachineTranslationProvider(
+            endpoint = TranslationBackendSettings.machineTranslationEndpoint(this),
+            bearerToken = checkNotNull(TranslationBackendSettings.machineTranslationToken(this))
+        )
+        val regions = MachinePasteBackProvider().createRegions(paragraphs, provider.translate(requests))
+        val regionsById = regions.associateBy { it.groupId }
+        return paragraphs.map { paragraph ->
+            val region = regionsById[paragraph.paragraphId]
+            val changed = region != null
+            TranslatedRegion(
+                source = region?.source ?: paragraph.asRecognizedText(),
+                role = SemanticTextRole.BODY,
+                translation = region?.translation ?: paragraph.sourceText,
+                translated = changed,
+                translationFailed = !changed,
+                layoutHint = null
+            )
+        }
+    }
+
+    private fun machineTargetLanguage(source: String, mode: TranslationMode): String? = when (mode) {
+        TranslationMode.ENGLISH_TO_CHINESE -> if (source == "en") "zh" else null
+        TranslationMode.CHINESE_TO_ENGLISH -> if (source == "zh") "en" else null
+        TranslationMode.AUTO_BIDIRECTIONAL -> when (source) {
+            "en" -> "zh"
+            "zh" -> "en"
+            else -> null
         }
     }
 

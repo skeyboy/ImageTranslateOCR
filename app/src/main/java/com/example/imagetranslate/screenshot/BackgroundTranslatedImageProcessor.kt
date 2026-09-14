@@ -34,7 +34,11 @@ import com.example.imagetranslate.translate.SemanticDebugCaptureUploadPolicy
 import com.example.imagetranslate.translate.SemanticTranslationTrace
 import com.example.imagetranslate.translate.TranslationBackend
 import com.example.imagetranslate.translate.TranslationBackendSettings
+import com.example.imagetranslate.translate.TranslationExperience
+import com.example.imagetranslate.translate.TranslationExperienceSettings
 import com.example.imagetranslate.translate.TranslationMode
+import com.example.imagetranslate.translate.MachineTranslationParagraph
+import com.example.imagetranslate.translate.VolcMachineTranslationProvider
 import com.example.imagetranslate.translate.toSemanticTranslationSource
 import com.example.imagetranslate.ui.ShapeAwareTextLayout
 import com.example.imagetranslate.ui.ShapeAwareTextOutcome
@@ -1128,6 +1132,29 @@ internal class BackgroundTranslatedImageProcessor(
                 "obscuredBounds=${contentViewport.obscuredBounds}"
         )
         val ocrMs = SystemClock.elapsedRealtime() - ocrStartedAt
+        if (TranslationExperienceSettings.get(appContext) == TranslationExperience.MACHINE) {
+            val machineStartedAt = SystemClock.elapsedRealtime()
+            val machineRegions = translateMachineParagraphs(
+                paragraphs = MachineOcrTextProcessingProvider().processParagraphs(
+                    recognized = rawRecognized,
+                    viewportWidth = bitmap.width,
+                    viewportHeight = bitmap.height
+                ),
+                mode = mode
+            )
+            val machineMs = SystemClock.elapsedRealtime() - machineStartedAt
+            return BackgroundTranslationBatch(
+                recognizedCount = rawRecognized.size,
+                rawRecognizedCount = initialRawRecognized.size,
+                edgeFilteredCount = initialGrouping.edgeFilteredCount,
+                edgeRecoveredCount = edgeRecovered.size,
+                continuationCount = initialGrouping.continuationCount,
+                regions = machineRegions,
+                failedCount = (rawRecognized.size - machineRegions.size).coerceAtLeast(0),
+                ocrMs = ocrMs,
+                translationMs = machineMs
+            )
+        }
         val smartAssistStartedAt = SystemClock.elapsedRealtime()
         val preparedSources = if (fastOcr && smartAssistEnabled) {
             prepareContextualTranslationSources(
@@ -1198,6 +1225,52 @@ internal class BackgroundTranslatedImageProcessor(
             smartAssistMs = smartAssistMs,
             translationTraces = outcomes.mapNotNull(TranslationOutcome::semanticTrace).distinct()
         )
+    }
+
+    private suspend fun translateMachineParagraphs(
+        paragraphs: List<MachineParagraph>,
+        mode: TranslationMode
+    ): List<BackgroundImageRegion> {
+        if (paragraphs.isEmpty() || !TranslationExperienceSettings.isMachineConfigured(appContext)) {
+            Log.w(TAG, "Machine translation is not configured; preserving source text")
+            return emptyList()
+        }
+        val requests = paragraphs.mapNotNull { paragraph ->
+            val sourceLanguage = com.example.imagetranslate.translate.TranslationScriptLanguagePolicy
+                .sourceLanguage(paragraph.sourceText)
+            val targetLanguage = sourceLanguage?.let { machineTargetLanguage(it, mode) }
+            if (sourceLanguage == null || targetLanguage == null) null else {
+                MachineTranslationParagraph(
+                    paragraphId = paragraph.paragraphId,
+                    text = paragraph.sourceText,
+                    sourceLanguage = sourceLanguage,
+                    targetLanguage = targetLanguage
+                )
+            }
+        }
+        val provider = VolcMachineTranslationProvider(
+            endpoint = TranslationExperienceSettings.machineTranslationEndpoint(appContext),
+            bearerToken = checkNotNull(
+                TranslationExperienceSettings.machineTranslationToken(appContext)
+            )
+        )
+        val results = provider.translate(requests)
+        return MachinePasteBackProvider().createRegions(paragraphs, results)
+    }
+
+    private fun machineTargetLanguage(
+        sourceLanguage: String,
+        mode: TranslationMode
+    ): String? = when (mode) {
+        TranslationMode.ENGLISH_TO_CHINESE ->
+            if (sourceLanguage == "en") "zh" else null
+        TranslationMode.CHINESE_TO_ENGLISH ->
+            if (sourceLanguage == "zh") "en" else null
+        TranslationMode.AUTO_BIDIRECTIONAL -> when (sourceLanguage) {
+            "en" -> "zh"
+            "zh" -> "en"
+            else -> null
+        }
     }
 
     private suspend fun recoverMissingLiveEdgeText(

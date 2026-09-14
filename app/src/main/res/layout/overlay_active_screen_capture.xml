@@ -52,6 +52,17 @@
                 android:textColor="#FFFFFF"
                 android:textSize="11sp" />
 
+            <TextView
+                android:id="@+id/tvActiveOverlayTranslationExperience"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:gravity="center"
+                android:maxLines="1"
+                android:paddingStart="3dp"
+                android:paddingEnd="6dp"
+                android:textColor="#B8FFFFFF"
+                android:textSize="9sp" />
+
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnToggleActiveTranslation"
                 style="@style/Widget.Material3.Button.TextButton"
