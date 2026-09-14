@@ -26,6 +26,8 @@ pub fn build_regions_first_plan(request: &SemanticTranslationRequest) -> Documen
         })
         .collect::<HashMap<_, _>>();
     let client_group_profiles = build_client_group_profiles(request);
+    let shared_body_container_membership =
+        build_shared_body_container_membership(request, &client_group_profiles);
     let mut ordered = request.regions.iter().collect::<Vec<_>>();
     ordered.sort_by_key(|region| (region.reading_order, region.bounds.top, region.bounds.left));
 
@@ -39,6 +41,7 @@ pub fn build_regions_first_plan(request: &SemanticTranslationRequest) -> Documen
                 &next,
                 request.viewport.width,
                 &client_group_profiles,
+                &shared_body_container_membership,
             )
         {
             previous.merge(next, decision);
@@ -76,6 +79,7 @@ pub fn build_regions_first_plan(request: &SemanticTranslationRequest) -> Documen
 #[derive(Clone, Copy, Debug, Default)]
 struct ClientGroupProfile {
     median_internal_gap: Option<i32>,
+    median_text_height: f32,
     member_count: usize,
     sustained_typography_transition_reading_order: Option<i32>,
 }
@@ -105,6 +109,7 @@ fn build_client_group_profiles(
                 group.group_id.clone(),
                 ClientGroupProfile {
                     median_internal_gap: median_internal_gap(&regions),
+                    median_text_height: median_region_text_height(&regions),
                     member_count: regions.len(),
                     sustained_typography_transition_reading_order:
                         sustained_typography_transition_reading_order(&regions),
@@ -112,6 +117,139 @@ fn build_client_group_profiles(
             )
         })
         .collect()
+}
+
+fn build_shared_body_container_membership(
+    request: &SemanticTranslationRequest,
+    profiles: &HashMap<String, ClientGroupProfile>,
+) -> HashMap<String, usize> {
+    let mut groups = request.groups.iter().collect::<Vec<_>>();
+    groups.sort_by_key(|group| (group.reading_order, group.bounds.top, group.bounds.left));
+    let candidates = groups
+        .windows(2)
+        .map(|pair| {
+            is_shared_body_container_pair(pair[0], pair[1], request.viewport.width, profiles, true)
+        })
+        .collect::<Vec<_>>();
+    let mut membership = HashMap::new();
+    let mut container_id = 0;
+    let mut index = 0;
+    while index < candidates.len() {
+        if !candidates[index] {
+            index += 1;
+            continue;
+        }
+        let start = index;
+        while index < candidates.len() && candidates[index] {
+            index += 1;
+        }
+        // Requiring three substantial blocks prevents an isolated pair of
+        // neighboring paragraphs from being treated as a shared container.
+        if index - start >= 2 {
+            let mut container_start = start;
+            let mut container_end = index;
+            while container_start > 0
+                && is_shared_body_container_pair(
+                    groups[container_start - 1],
+                    groups[container_start],
+                    request.viewport.width,
+                    profiles,
+                    false,
+                )
+            {
+                container_start -= 1;
+            }
+            while container_end + 1 < groups.len()
+                && is_shared_body_container_pair(
+                    groups[container_end],
+                    groups[container_end + 1],
+                    request.viewport.width,
+                    profiles,
+                    false,
+                )
+            {
+                container_end += 1;
+            }
+            for group in &groups[container_start..=container_end] {
+                membership.insert(group.group_id.clone(), container_id);
+            }
+            container_id += 1;
+            index = index.max(container_end);
+        }
+    }
+    membership
+}
+
+fn is_shared_body_container_pair(
+    first: &crate::contract::TranslationGroup,
+    second: &crate::contract::TranslationGroup,
+    viewport_width: i32,
+    profiles: &HashMap<String, ClientGroupProfile>,
+    require_substantial_blocks: bool,
+) -> bool {
+    if first.role != "BODY"
+        || second.role != "BODY"
+        || first.translation_unit != "GROUP"
+        || second.translation_unit != "GROUP"
+    {
+        return false;
+    }
+    let Some(first_profile) = profiles.get(&first.group_id) else {
+        return false;
+    };
+    let Some(second_profile) = profiles.get(&second.group_id) else {
+        return false;
+    };
+    if require_substantial_blocks
+        && (first_profile.member_count < 3 || second_profile.member_count < 3)
+    {
+        return false;
+    }
+    let minimum_characters = if require_substantial_blocks { 40 } else { 20 };
+    if first
+        .source_text
+        .chars()
+        .filter(|character| character.is_alphanumeric())
+        .count()
+        < minimum_characters
+        || second
+            .source_text
+            .chars()
+            .filter(|character| character.is_alphanumeric())
+            .count()
+            < minimum_characters
+    {
+        return false;
+    }
+    let first_width = first.bounds.width().max(1);
+    let second_width = second.bounds.width().max(1);
+    let minimum_width = first_width.min(second_width);
+    let maximum_width = first_width.max(second_width);
+    if minimum_width < viewport_width * 11 / 20
+        || minimum_width as f32 / (maximum_width as f32) < 0.78
+    {
+        return false;
+    }
+    let overlap =
+        first.bounds.horizontal_overlap(&second.bounds).max(0) as f32 / minimum_width as f32;
+    if overlap < 0.85 {
+        return false;
+    }
+    let typical_height = first_profile
+        .median_text_height
+        .max(second_profile.median_text_height)
+        .max(1.0);
+    let font_ratio = first_profile
+        .median_text_height
+        .min(second_profile.median_text_height)
+        / typical_height;
+    let gap = second.bounds.top - first.bounds.bottom;
+    font_ratio >= TYPOGRAPHY_TIER_RATIO
+        && gap >= 0
+        && gap as f32 <= typical_height * 2.1
+        && (first.bounds.left - second.bounds.left).abs() <= (typical_height * 2.0) as i32
+        && (first.bounds.right - second.bounds.right).abs()
+            <= (typical_height * 3.0).max(viewport_width as f32 * 0.08) as i32
 }
 
 #[derive(Clone, Debug)]
@@ -232,6 +370,7 @@ impl RegionGroup {
                     | "RELAXED_SAME_ADVISORY_PARAGRAPH"
                     | "TIGHT_CROSS_BLOCK_CONTINUATION"
                     | "CLIENT_GROUP_FINAL_LINE"
+                    | "SHARED_BODY_CONTAINER_CHAIN"
             )
         });
         let recovered_main_column = recovered_paragraph
@@ -264,12 +403,17 @@ impl RegionGroup {
         let url_attachment_rect = self.source_text.contains("://")
             && self.source_group_ids.len() == 1
             && self.all_advisory_layouts_rect;
+        let shared_body_container_rect = self
+            .evidence
+            .iter()
+            .any(|evidence| evidence == "SHARED_BODY_CONTAINER_CHAIN");
         let collapsible_cross_group_rect = recovered_main_column
             || recovered_advisory_rect
             || tight_two_line_continuation
             || compact_tail_rect
             || decorated_centered_rect
-            || url_attachment_rect;
+            || url_attachment_rect
+            || shared_body_container_rect;
         let render_slots = layout_slots(
             &self.render_slots,
             &self.bounds,
@@ -279,7 +423,7 @@ impl RegionGroup {
                 && !same_ocr_block_flow
                 && !collapsible_cross_group_rect,
             has_multiple_typography_tiers(&self.regions) && !collapsible_cross_group_rect,
-            decorated_centered_rect || url_attachment_rect,
+            decorated_centered_rect || url_attachment_rect || shared_body_container_rect,
         );
         let mut grouping_evidence = self.evidence;
         if source_line_count > 1 && render_slots.len() == 1 {
@@ -321,6 +465,7 @@ fn merge_decision(
     next: &RegionGroup,
     viewport_width: i32,
     client_group_profiles: &HashMap<String, ClientGroupProfile>,
+    shared_body_container_membership: &HashMap<String, usize>,
 ) -> Option<MergeDecision> {
     if previous.translation_unit == "PRESERVED"
         || next.translation_unit == "PRESERVED"
@@ -331,9 +476,18 @@ fn merge_decision(
     }
     let first = &previous.last_region;
     let second = &next.first_region;
+    let shared_body_container = previous.source_group_ids.iter().any(|first_group| {
+        shared_body_container_membership
+            .get(first_group)
+            .is_some_and(|container_id| {
+                next.source_group_ids.iter().any(|second_group| {
+                    shared_body_container_membership.get(second_group) == Some(container_id)
+                })
+            })
+    });
     let height = first.bounds.height().max(second.bounds.height()).max(1);
     let gap = second.bounds.top - first.bounds.bottom;
-    if gap < -(height / 3) || gap > (height as f32 * 1.25) as i32 {
+    if !shared_body_container && (gap < -(height / 3) || gap > (height as f32 * 1.25) as i32) {
         return None;
     }
     let height_ratio = first.bounds.height().max(second.bounds.height()) as f32
@@ -379,6 +533,7 @@ fn merge_decision(
         && !url_continuation
         && !advisory_final_line
         && !date_location_continuation
+        && !shared_body_container
     {
         return None;
     }
@@ -436,6 +591,7 @@ fn merge_decision(
         && !url_continuation
         && !advisory_final_line
         && !date_location_continuation
+        && !shared_body_container
     {
         return None;
     }
@@ -449,6 +605,7 @@ fn merge_decision(
         && !url_continuation
         && !advisory_final_line
         && !date_location_continuation
+        && !shared_body_container
     {
         return None;
     }
@@ -481,6 +638,7 @@ fn merge_decision(
                 || advisory_final_line
                 || date_location_continuation))
         && !compact_tail_font_recovery
+        && !shared_body_container
     {
         return None;
     }
@@ -499,6 +657,7 @@ fn merge_decision(
         && !url_continuation
         && !advisory_final_line
         && !date_location_continuation
+        && !shared_body_container
     {
         return None;
     }
@@ -518,7 +677,11 @@ fn merge_decision(
         && !same_advisory_group
         && !established_paragraph_continuation
         && !tight_cross_block_continuation;
-    let continuation = if url_continuation || advisory_final_line || date_location_continuation {
+    let continuation = if shared_body_container
+        || url_continuation
+        || advisory_final_line
+        || date_location_continuation
+    {
         true
     } else if cross_block_requires_lowercase {
         next_continues_text
@@ -528,7 +691,9 @@ fn merge_decision(
     if !continuation {
         return None;
     }
-    let confidence = if same_block {
+    let confidence = if shared_body_container {
+        0.95
+    } else if same_block {
         0.98
     } else if same_advisory_group {
         0.96
@@ -539,7 +704,9 @@ fn merge_decision(
     };
     (confidence >= AUTHORITATIVE_CONFIDENCE).then_some(MergeDecision {
         confidence,
-        evidence: if compact_tail_font_recovery {
+        evidence: if shared_body_container {
+            "SHARED_BODY_CONTAINER_CHAIN"
+        } else if compact_tail_font_recovery {
             if compact_cross_block_tail {
                 "COMPACT_CROSS_BLOCK_TAIL"
             } else {
@@ -1235,6 +1402,14 @@ fn is_single_ocr_block_flow(regions: &[OcrRegion]) -> bool {
 }
 
 fn crosses_typography_tier(previous: &RegionGroup, next: &RegionGroup) -> bool {
+    if previous
+        .regions
+        .iter()
+        .chain(&next.regions)
+        .all(|region| region.typography_confidence < RELIABLE_TYPOGRAPHY_CONFIDENCE)
+    {
+        return false;
+    }
     let mut minimum = f32::MAX;
     let mut maximum = 0.0_f32;
     for height in previous
@@ -1745,11 +1920,21 @@ mod tests {
             .collect::<Vec<_>>();
 
         assert!(!has_multiple_typography_tiers(&regions));
+        let mut previous = RegionGroup::from_region(&regions[0], None);
+        previous.regions = regions[..2].to_vec();
+        previous.last_region = regions[1].clone();
+        let next = RegionGroup::from_region(&regions[2], None);
+        assert!(!crosses_typography_tier(&previous, &next));
 
         for region in &mut regions {
             region.typography_confidence = 0.9;
         }
         assert!(has_multiple_typography_tiers(&regions));
+        let mut previous = RegionGroup::from_region(&regions[0], None);
+        previous.regions = regions[..2].to_vec();
+        previous.last_region = regions[1].clone();
+        let next = RegionGroup::from_region(&regions[2], None);
+        assert!(crosses_typography_tier(&previous, &next));
     }
 
     #[test]
@@ -4196,5 +4381,156 @@ mod tests {
         request.groups[0].source_text = format!("{}\n{}", request.regions[0].text, second.text);
         let separated = build_regions_first_plan(&request);
         assert_eq!(2, separated.groups.len());
+    }
+
+    fn shared_body_container_request(group_count: usize) -> SemanticTranslationRequest {
+        let mut request = request();
+        let source_region = request.regions[0].clone();
+        let source_group = request.groups[0].clone();
+        let mut regions = Vec::new();
+        let mut groups = Vec::new();
+        for group_index in 0..group_count {
+            let group_id = format!("container-body-{group_index}");
+            let top = 100 + group_index as i32 * 240;
+            let mut members = Vec::new();
+            for line_index in 0..3 {
+                let mut region = source_region.clone();
+                region.region_id = format!("container-{group_index}-{line_index}");
+                region.group_id = group_id.clone();
+                region.block_id = Some(format!("block-{group_index}"));
+                region.line_index = Some(line_index as i32);
+                region.reading_order = (group_index * 100 + line_index) as i32;
+                region.text = format!(
+                    "Substantial body section {} line {} continues within the shared panel",
+                    group_index + 1,
+                    line_index + 1
+                );
+                region.estimated_text_height_px = Some(50.0);
+                region.typography_confidence = 0.9;
+                region.bounds = Bounds {
+                    left: 200 + line_index as i32,
+                    top: top + line_index as i32 * 60,
+                    right: 1_180 - line_index as i32 * 8,
+                    bottom: top + line_index as i32 * 60 + 50,
+                };
+                members.push(region.region_id.clone());
+                regions.push(region);
+            }
+            let group_regions = &regions[regions.len() - 3..];
+            let mut group = source_group.clone();
+            group.group_id = group_id;
+            group.role = "BODY".to_owned();
+            group.translation_unit = "GROUP".to_owned();
+            group.member_region_ids = members;
+            group.reading_order = (group_index * 100) as i32;
+            group.source_line_count = Some(3);
+            group.source_text = group_regions
+                .iter()
+                .map(|region| region.text.as_str())
+                .collect::<Vec<_>>()
+                .join("\n");
+            group.bounds = group_regions[0]
+                .bounds
+                .union(&group_regions[1].bounds)
+                .union(&group_regions[2].bounds);
+            group.render_slots = vec![group.bounds.clone()];
+            group.layout_shape = "RECT".to_owned();
+            groups.push(group);
+        }
+        request.document_context.text = groups
+            .iter()
+            .map(|group| group.source_text.as_str())
+            .collect::<Vec<_>>()
+            .join("\n");
+        request.document_context.reading_order_region_ids = regions
+            .iter()
+            .map(|region| region.region_id.clone())
+            .collect();
+        request.regions = regions;
+        request.groups = groups;
+        request
+    }
+
+    #[test]
+    fn merges_a_generic_chain_of_multiline_body_blocks_in_one_visual_container() {
+        let request = shared_body_container_request(4);
+
+        let plan = build_regions_first_plan(&request);
+
+        assert_eq!(1, plan.groups.len());
+        assert_eq!(4, plan.groups[0].source_group_ids.len());
+        assert_eq!(12, plan.groups[0].member_region_ids.len());
+        assert_eq!("RECT", plan.groups[0].layout_shape);
+        assert_eq!(1, plan.groups[0].render_slots.len());
+        assert!(
+            plan.groups[0]
+                .grouping_evidence
+                .contains(&"SHARED_BODY_CONTAINER_CHAIN".to_owned())
+        );
+    }
+
+    #[test]
+    fn does_not_infer_a_shared_container_from_only_two_neighboring_blocks() {
+        let request = shared_body_container_request(2);
+
+        let plan = build_regions_first_plan(&request);
+
+        assert!(
+            plan.groups
+                .iter()
+                .all(|group| group.source_group_ids.len() == 1)
+        );
+    }
+
+    #[test]
+    fn absorbs_an_aligned_short_tail_only_after_a_container_core_is_established() {
+        let mut request = shared_body_container_request(4);
+        let removed_region_id = request.groups[3].member_region_ids.pop().unwrap();
+        request
+            .regions
+            .retain(|region| region.region_id != removed_region_id);
+        let tail_regions = request
+            .regions
+            .iter()
+            .filter(|region| region.group_id == request.groups[3].group_id)
+            .collect::<Vec<_>>();
+        request.groups[3].source_line_count = Some(2);
+        request.groups[3].source_text = tail_regions
+            .iter()
+            .map(|region| region.text.as_str())
+            .collect::<Vec<_>>()
+            .join("\n");
+        request.groups[3].bounds = tail_regions[0].bounds.union(&tail_regions[1].bounds);
+        request.groups[3].render_slots = vec![request.groups[3].bounds.clone()];
+
+        let plan = build_regions_first_plan(&request);
+
+        assert_eq!(1, plan.groups.len());
+        assert_eq!(4, plan.groups[0].source_group_ids.len());
+        assert_eq!(11, plan.groups[0].member_region_ids.len());
+        assert_eq!("RECT", plan.groups[0].layout_shape);
+    }
+
+    #[test]
+    fn protected_or_structurally_different_groups_break_shared_container_chains() {
+        let mut protected = shared_body_container_request(4);
+        protected.groups[2].role = "TITLE".to_owned();
+        let protected_plan = build_regions_first_plan(&protected);
+        assert!(
+            protected_plan
+                .groups
+                .iter()
+                .all(|group| group.source_group_ids.len() == 1)
+        );
+
+        let mut narrow = shared_body_container_request(4);
+        narrow.groups[2].bounds.right = 650;
+        let narrow_plan = build_regions_first_plan(&narrow);
+        assert!(
+            narrow_plan
+                .groups
+                .iter()
+                .all(|group| group.source_group_ids.len() == 1)
+        );
     }
 }

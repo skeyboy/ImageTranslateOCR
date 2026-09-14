@@ -13,9 +13,17 @@ edge_provider="${SCROLL_EDGE_PROVIDER:-}"
 edge_audit_base_url="${SCROLL_EDGE_AUDIT_BASE_URL:-}"
 package_name="com.example.imagetranslate"
 component="$package_name/.debug.LiveScrollBenchmarkLauncherActivity"
-fixture_root="docs/validation/live-scroll-atomic-2026-07-29"
+fixture_root="${SCROLL_FIXTURE_ROOT:-docs/validation/live-scroll-atomic-2026-07-29}"
 output_directory="${SCROLL_OUTPUT_DIR:-$fixture_root/run}"
-page_url="http://127.0.0.1:${port}/fixtures/continuous-scroll.html?theme=${theme}"
+page_path="${SCROLL_PAGE_PATH:-fixtures/continuous-scroll.html}"
+page_query="${SCROLL_PAGE_QUERY:-}"
+capture_every_run="${SCROLL_CAPTURE_EVERY_RUN:-false}"
+server_probe_only="${SCROLL_SERVER_PROBE_ONLY:-false}"
+probe_x_override="${SCROLL_PROBE_X:-}"
+probe_y_override="${SCROLL_PROBE_Y:-}"
+marker_bounds_override="${SCROLL_MARKER_BOUNDS:-}"
+translation_wait_attempts="${SCROLL_TRANSLATION_WAIT_ATTEMPTS:-180}"
+page_url="http://127.0.0.1:${port}/${page_path}?theme=${theme}${page_query:+&$page_query}"
 
 if [[ -z "$serial" ]]; then
     echo "ANDROID_SERIAL is required" >&2
@@ -207,7 +215,7 @@ wait_for_server_probe() {
 }
 
 current_probe_state() {
-    if [[ "$experience_mode" == "ENHANCED" ]]; then
+    if [[ "$experience_mode" == "ENHANCED" || "$server_probe_only" == true ]]; then
         wait_for_server_probe "${1:-0}"
     else
         local xml
@@ -233,7 +241,7 @@ wait_for_accessibility_service() {
 }
 
 wait_for_enhanced_translation() {
-    for attempt in $(seq 1 120); do
+    for attempt in $(seq 1 "$translation_wait_attempts"); do
         local session_lines lines enhanced_window
         session_lines=$(
             "${adb_command[@]}" logcat -d -v raw -s ScreenCaptureSession:I \
@@ -300,7 +308,7 @@ metrics_lines() {
 
 wait_for_initial_translation() {
     local warmup_triggered=false
-    for attempt in $(seq 1 120); do
+    for attempt in $(seq 1 "$translation_wait_attempts"); do
         local lines completion presented
         lines=$(metrics_lines)
         completion=$(jq -c 'select(.event == "overlay_translation_completed")' \
@@ -329,7 +337,7 @@ wait_for_initial_translation() {
 wait_for_scroll_translation() {
     local stable_signature=""
     local stable_samples=0
-    for attempt in $(seq 1 120); do
+    for attempt in $(seq 1 "$translation_wait_attempts"); do
         local lines
         lines=$(metrics_lines)
         local hidden completion presented
@@ -366,6 +374,23 @@ wait_for_scroll_translation() {
     done
     echo "Timed out waiting for a settled scroll translation" >&2
     metrics_lines >&2
+    return 1
+}
+
+wait_for_translation_hidden() {
+    for attempt in $(seq 1 80); do
+        local lines hidden
+        lines=$(metrics_lines)
+        hidden=$(jq -c \
+            'select(.event == "overlay_translation_hidden_for_movement")' \
+            <<< "$lines" | tail -n 1)
+        if [[ -n "$hidden" ]] &&
+            [[ "$(jq -r '.translation_layer_cleared' <<< "$hidden")" == "true" ]]; then
+            return 0
+        fi
+        sleep 0.1
+    done
+    echo "Timed out waiting for translation layer to clear after movement" >&2
     return 1
 }
 
@@ -518,7 +543,7 @@ python3 scripts/serve-scroll-fixture.py \
     > "$temporary_directory/http.log" 2>&1 &
 server_pid=$!
 for attempt in $(seq 1 20); do
-    if curl -fsS "http://127.0.0.1:$port/fixtures/continuous-scroll.html" \
+    if curl -fsS "http://127.0.0.1:$port/$page_path" \
         2>/dev/null \
         >/dev/null; then
         break
@@ -536,8 +561,13 @@ done
 escaped_url="${page_url//&/\\&}"
 "${adb_command[@]}" shell am start -a android.intent.action.VIEW \
     -d "$escaped_url" -p "$page_package" >/dev/null
-initial_probe_xml=$(wait_for_probe)
-wait_for_server_probe >/dev/null
+if [[ "$server_probe_only" == true ]]; then
+    initial_probe_xml=""
+    wait_for_server_probe >/dev/null
+else
+    initial_probe_xml=$(wait_for_probe)
+    wait_for_server_probe >/dev/null
+fi
 close_browser_translation_prompt
 
 "${adb_command[@]}" logcat -c
@@ -567,6 +597,10 @@ else
     close_browser_translation_prompt
 fi
 sleep 0.8
+if [[ "$capture_every_run" == true ]]; then
+    "${adb_command[@]}" exec-out screencap -p \
+        > "$output_directory/checkpoints/translated-00.png"
+fi
 
 overlay_windows_before_interaction=$(package_overlay_window_count)
 if [[ "$experience_mode" == "ENHANCED" ]]; then
@@ -586,10 +620,15 @@ else
     resolved_experience="DEFAULT"
 fi
 read -r current_touch current_scroll <<< "$(wait_for_server_probe)"
-probe_bounds=$(xmllint --xpath \
-    'string((//node[starts-with(@text,"Touch probe count")])[1]/@bounds)' \
-    "$initial_probe_xml")
-read -r probe_x probe_y <<< "$(center_from_bounds "$probe_bounds")"
+if [[ "$server_probe_only" == true ]]; then
+    probe_x="${probe_x_override:?SCROLL_PROBE_X is required with server-only probe}"
+    probe_y="${probe_y_override:?SCROLL_PROBE_Y is required with server-only probe}"
+else
+    probe_bounds=$(xmllint --xpath \
+        'string((//node[starts-with(@text,"Touch probe count")])[1]/@bounds)' \
+        "$initial_probe_xml")
+    read -r probe_x probe_y <<< "$(center_from_bounds "$probe_bounds")"
+fi
 video_split_run=$(((scroll_runs + 1) / 2))
 start_video_segment 1
 
@@ -674,8 +713,18 @@ for run in $(seq 1 "$scroll_runs"); do
         perform_swipe 720 2400 1050 550
     fi
     wait_for_motion_capture
+    if [[ "$capture_every_run" == true ]]; then
+        wait_for_translation_hidden
+        "${adb_command[@]}" exec-out screencap -p \
+            > "$output_directory/checkpoints/source-$(printf '%02d' "$run").png"
+    fi
     wait_for_scroll_translation
     sleep 0.65
+
+    if [[ "$capture_every_run" == true ]]; then
+        "${adb_command[@]}" exec-out screencap -p \
+            > "$output_directory/checkpoints/translated-$(printf '%02d' "$run").png"
+    fi
 
     lines=$(metrics_lines)
     hidden=$(jq -c 'select(.event == "overlay_translation_hidden_for_movement")' \
@@ -695,11 +744,15 @@ for run in $(seq 1 "$scroll_runs"); do
         'map(select(.event == "overlay_translation_stale_presentation_dropped")) | length' \
         <<< "$lines")
 
-    "${adb_command[@]}" shell input tap "$probe_x" "$probe_y"
-    sleep 0.2
-    read -r touch_after scroll_after_touch <<< "$(
-        wait_for_server_probe "$((touch_before + 1))"
-    )"
+    if [[ "$server_probe_only" == true ]]; then
+        read -r touch_after scroll_after_touch <<< "$(wait_for_server_probe 0)"
+    else
+        "${adb_command[@]}" shell input tap "$probe_x" "$probe_y"
+        sleep 0.2
+        read -r touch_after scroll_after_touch <<< "$(
+            wait_for_server_probe "$((touch_before + 1))"
+        )"
+    fi
     scroll_after=$scroll_after_touch
     current_touch=$touch_after
     current_scroll=$scroll_after
@@ -714,6 +767,7 @@ for run in $(seq 1 "$scroll_runs"); do
         --argjson touch_before "$touch_before" \
         --argjson touch_after "$touch_after" \
         --argjson touch_delta "$touch_delta" \
+        --argjson touch_required "$([[ "$server_probe_only" == true ]] && echo false || echo true)" \
         --arg gesture_variant "$gesture_variant" \
         --argjson swipes_performed "$swipes_performed" \
         --argjson completion_count "$completion_count" \
@@ -726,7 +780,9 @@ for run in $(seq 1 "$scroll_runs"); do
         '{run:$run, scroll_before:$scroll_before, scroll_after:$scroll_after,
           scroll_delta:$scroll_delta, scroll_pass:($scroll_delta >= 200),
           touch_before:$touch_before, touch_after:$touch_after,
-          touch_delta:$touch_delta, touch_pass:($touch_delta == 1),
+          touch_delta:$touch_delta,
+          touch_required:$touch_required,
+          touch_pass:($touch_required == false or $touch_delta == 1),
           gesture_variant:$gesture_variant, swipes_performed:$swipes_performed,
           completion_count:$completion_count, hidden_count:$hidden_count,
           presented_count:$presented_count,
@@ -765,9 +821,13 @@ idle_restoration_count=$(jq -s \
     'map(select(.event == "settled_viewport_restored")) | length' <<< "$idle_lines")
 
 read -r _ anchor_before <<< "$(wait_for_server_probe "$current_touch")"
-marker_bounds=$(xmllint --xpath \
-    'string((//node[@text="Protected visual marker"])[1]/@bounds)' \
-    "$initial_probe_xml")
+if [[ "$server_probe_only" == true ]]; then
+    marker_bounds="${marker_bounds_override:?SCROLL_MARKER_BOUNDS is required with server-only probe}"
+else
+    marker_bounds=$(xmllint --xpath \
+        'string((//node[@text="Protected visual marker"])[1]/@bounds)' \
+        "$initial_probe_xml")
+fi
 wait_for_metrics_quiet
 toggle_point=$(expand_control_and_toggle_point)
 read -r toggle_x toggle_y <<< "$toggle_point"

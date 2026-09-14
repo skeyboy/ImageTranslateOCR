@@ -20,6 +20,8 @@ import com.example.imagetranslate.screenshot.OneShotScreenCaptureService
 import com.example.imagetranslate.translate.ExperimentalTranslationSettings
 import com.example.imagetranslate.translate.TranslationBackend
 import com.example.imagetranslate.translate.TranslationBackendSettings
+import com.example.imagetranslate.translate.TranslationExperience
+import com.example.imagetranslate.translate.TranslationExperienceSettings
 import com.example.experimentaltranslation.ExperimentalTranslationEngine
 
 class LiveScrollBenchmarkLauncherActivity : ComponentActivity() {
@@ -70,6 +72,7 @@ class LiveScrollBenchmarkLauncherActivity : ComponentActivity() {
         )
         LiveSmartAssistPreferences.setEnabled(this, false)
         ExperimentalTranslationSettings.set(this, ExperimentalTranslationEngine.DISABLED)
+        TranslationExperienceSettings.set(this, TranslationExperience.AI)
         intent.getStringExtra(EXTRA_EDGE_AUDIT_BASE_URL)?.takeIf(String::isNotBlank)?.let {
             TranslationBackendSettings.setEdgeAuditBaseUrl(this, it)
         }
