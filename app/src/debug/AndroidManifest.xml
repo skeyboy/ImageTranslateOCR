@@ -16,5 +16,10 @@
             android:exported="true"
             android:noHistory="true"
             android:taskAffinity="" />
+        <activity
+            android:name=".debug.WebValidationActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:taskAffinity="" />
     </application>
 </manifest>
