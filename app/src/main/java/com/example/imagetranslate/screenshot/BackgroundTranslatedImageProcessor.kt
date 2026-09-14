@@ -16,6 +16,7 @@ import android.text.TextPaint
 import android.util.Log
 import com.example.imagetranslate.App
 import com.example.imagetranslate.BuildConfig
+import com.example.imagetranslate.R
 import com.example.imagetranslate.inpaint.ImageInpainter
 import com.example.imagetranslate.ocr.OCRManager
 import com.example.imagetranslate.ocr.OcrModel
@@ -72,6 +73,7 @@ internal object PostTranslationSmartAssistPolicy {
 
 internal data class BackgroundTranslatedOverlayResult(
     val patches: List<ScreenTranslationPatch>,
+    val overflowItems: List<TranslationOverflowItem> = emptyList(),
     val sourceWidth: Int,
     val sourceHeight: Int,
     val recognizedCount: Int,
@@ -211,11 +213,15 @@ internal data class SmartAssistDisplayHints(
     val lineSpacingMultiplier: Float = 1f,
     val alignment: String = "START",
     val allowMore: Boolean = false,
+    val overflowAction: String = if (allowMore) "EXPAND" else "NONE",
     val sourceLineCount: Int = 1,
     val layoutShape: String = "RECT",
     val role: String? = null,
     val verticalAlignment: String = "AUTO"
 )
+
+private val SmartAssistDisplayHints.allowsInteractiveOverflow: Boolean
+    get() = allowMore && overflowAction == "EXPAND"
 
 private data class BackgroundTranslationBatch(
     val recognizedCount: Int,
@@ -292,7 +298,18 @@ private data class RenderedOverlayPatch(
     val patch: ScreenTranslationPatch,
     val backgroundDetailRetentionRatio: Float,
     val cacheHit: Boolean,
-    val backgroundMode: LivePatchBackgroundMode
+    val backgroundMode: LivePatchBackgroundMode,
+    val overflowItem: TranslationOverflowItem? = null
+)
+
+internal data class TranslationOverflowItem(
+    val generation: Int,
+    val groupId: String?,
+    val patchIndex: Int = -1,
+    val sourceText: String,
+    val translatedText: String,
+    val displayedText: String,
+    val moreBounds: List<Rect>
 )
 
 internal data class LiveDeterministicTranslationRegion(
@@ -318,7 +335,10 @@ internal data class LiveRenderedTextEvidence(
     val layoutHeightPx: Int,
     val availableHeightPx: Int,
     val clipped: Boolean,
-    val contrastRatio: Float
+    val contrastRatio: Float,
+    val outcome: ShapeAwareTextOutcome = ShapeAwareTextOutcome.FULL,
+    val displayedText: String = "",
+    val overflowActionBounds: List<Rect> = emptyList()
 )
 
 internal data class LiveRenderFailureDiagnostic(
@@ -366,7 +386,10 @@ private data class CachedRenderedTrack(
     val materialFingerprint: IntArray,
     val bitmap: Bitmap,
     val backgroundDetailRetentionRatio: Float,
-    val backgroundMode: LivePatchBackgroundMode
+    val backgroundMode: LivePatchBackgroundMode,
+    val outcome: ShapeAwareTextOutcome,
+    val displayedText: String,
+    val overflowActionBounds: List<Rect>
 )
 
 internal object LiveRenderedTrackReusePolicy {
@@ -643,6 +666,9 @@ internal class BackgroundTranslatedImageProcessor(
                 failureSink = renderFailures::add
             )
             val patches = mergeOverlappingPatches(renderedPatches.map(RenderedOverlayPatch::patch))
+            val overflowItems = renderedPatches.mapIndexedNotNull { index, rendered ->
+                rendered.overflowItem?.copy(generation = generation, patchIndex = index)
+            }
             val renderedArea = renderedPatches.sumOf { rendered ->
                 rendered.patch.bounds.width().toLong() * rendered.patch.bounds.height()
             }.coerceAtLeast(1L)
@@ -668,6 +694,7 @@ internal class BackgroundTranslatedImageProcessor(
             val renderFailedCount = (displayRegions.size - renderedPatches.size).coerceAtLeast(0)
             BackgroundTranslatedOverlayResult(
                 patches = patches,
+                overflowItems = overflowItems,
                 sourceWidth = bitmap.width,
                 sourceHeight = bitmap.height,
                 recognizedCount = batch.recognizedCount,
@@ -1374,6 +1401,7 @@ internal class BackgroundTranslatedImageProcessor(
                         lineSpacingMultiplier = hint.lineSpacingMultiplier,
                         alignment = hint.alignment,
                         allowMore = hint.allowMore,
+                        overflowAction = hint.overflowAction,
                         sourceLineCount = hint.sourceLineCount,
                         layoutShape = hint.layoutShape,
                         role = execution.role,
@@ -1990,11 +2018,27 @@ internal class BackgroundTranslatedImageProcessor(
         if (cached != null) {
             val cachedBitmap = cached.bitmap.copy(Bitmap.Config.ARGB_8888, false)
             crop.recycle()
+            val overflowItem = cached.takeIf {
+                it.outcome == ShapeAwareTextOutcome.OVERFLOW_MORE &&
+                    it.overflowActionBounds.isNotEmpty()
+            }?.let {
+                TranslationOverflowItem(
+                    generation = 0,
+                    groupId = region.groupId,
+                    sourceText = region.source.text,
+                    translatedText = region.translation,
+                    displayedText = it.displayedText,
+                    moreBounds = it.overflowActionBounds.map { bounds ->
+                        Rect(bounds).apply { offset(cropBounds.left, cropBounds.top) }
+                    }
+                )
+            }
             return RenderedOverlayPatch(
                 patch = ScreenTranslationPatch(Rect(cropBounds), cachedBitmap, region.groupId),
                 backgroundDetailRetentionRatio = cached.backgroundDetailRetentionRatio,
                 cacheHit = true,
-                backgroundMode = cached.backgroundMode
+                backgroundMode = cached.backgroundMode,
+                overflowItem = overflowItem
             )
         }
         val localBounds = Rect(
@@ -2008,6 +2052,7 @@ internal class BackgroundTranslatedImageProcessor(
         var output: Bitmap? = null
         var preparedBackground: LivePatchBackground? = null
         var hasPreparedBackground = false
+        var renderedEvidence: LiveRenderedTextEvidence? = null
         return try {
             val patchBitmap = Bitmap.createBitmap(
                 cropBounds.width(),
@@ -2084,11 +2129,16 @@ internal class BackgroundTranslatedImageProcessor(
                 overlayAlpha = overlayAlpha,
                 overlayMaterialBounds = localMaterialBounds,
                 drawOverlayBackground = drawPatchBackground && !hasPreparedBackground,
+                overflowActionText = appContext.getString(R.string.translation_overflow_more),
                 evidenceSink = { evidence ->
+                    renderedEvidence = evidence
                     evidenceSink?.invoke(
                         evidence.copy(
                             bounds = Rect(evidence.bounds).apply {
                                 offset(cropBounds.left, cropBounds.top)
+                            },
+                            overflowActionBounds = evidence.overflowActionBounds.map { bounds ->
+                                Rect(bounds).apply { offset(cropBounds.left, cropBounds.top) }
                             }
                         )
                     )
@@ -2111,12 +2161,29 @@ internal class BackgroundTranslatedImageProcessor(
                 output = null
                 null
             } else {
+                val evidence = renderedEvidence
+                val overflowItem = evidence?.takeIf {
+                    it.outcome == ShapeAwareTextOutcome.OVERFLOW_MORE &&
+                        it.overflowActionBounds.isNotEmpty()
+                }?.let {
+                    TranslationOverflowItem(
+                        generation = 0,
+                        groupId = region.groupId,
+                        sourceText = region.source.text,
+                        translatedText = region.translation,
+                        displayedText = it.displayedText,
+                        moreBounds = it.overflowActionBounds.map { bounds ->
+                            Rect(bounds).apply { offset(cropBounds.left, cropBounds.top) }
+                        }
+                    )
+                }
                 RenderedOverlayPatch(
                     patch = ScreenTranslationPatch(Rect(cropBounds), patchBitmap, region.groupId),
                     backgroundDetailRetentionRatio =
                         preparedBackground?.detailRetentionRatio ?: 0f,
                     cacheHit = false,
-                    backgroundMode = resolvedBackgroundMode
+                    backgroundMode = resolvedBackgroundMode,
+                    overflowItem = overflowItem
                 ).also { renderedPatch ->
                     output = null
                     region.trackId?.let { trackId ->
@@ -2130,7 +2197,11 @@ internal class BackgroundTranslatedImageProcessor(
                                     bitmap = cachedBitmap,
                                     backgroundDetailRetentionRatio =
                                         renderedPatch.backgroundDetailRetentionRatio,
-                                    backgroundMode = resolvedBackgroundMode
+                                    backgroundMode = resolvedBackgroundMode,
+                                    outcome = evidence?.outcome ?: ShapeAwareTextOutcome.FULL,
+                                    displayedText = evidence?.displayedText.orEmpty(),
+                                    overflowActionBounds = evidence?.overflowActionBounds
+                                        ?.map(::Rect).orEmpty()
                                 )
                             )?.bitmap?.takeIf { !it.isRecycled }?.recycle()
                         }
@@ -2172,7 +2243,7 @@ internal class BackgroundTranslatedImageProcessor(
         lastAttemptedTextSizePx = 0f,
         maximumLines = region.smartAssistDisplayHints?.preferredMaxLines ?: 0,
         requireAllSlots = false,
-        allowMore = region.smartAssistDisplayHints?.allowMore == true,
+        allowMore = region.smartAssistDisplayHints?.allowsInteractiveOverflow == true,
         attemptedLineSpacingMultipliers = listOf(1f)
     )
 
@@ -2728,6 +2799,7 @@ private object BackgroundTranslatedImageRenderer {
         overlayAlpha: Float = ScreenThemeColorEstimator.DEFAULT_OVERLAY_ALPHA,
         overlayMaterialBounds: Rect? = null,
         drawOverlayBackground: Boolean = true,
+        overflowActionText: String = ShapeAwareTextLayout.DEFAULT_OVERFLOW_ACTION_TEXT,
         evidenceSink: ((LiveRenderedTextEvidence) -> Unit)? = null,
         failureSink: ((LiveRenderFailureDiagnostic) -> Unit)? = null
     ): List<Rect> {
@@ -2832,10 +2904,11 @@ private object BackgroundTranslatedImageRenderer {
                 maximumLines = maximumLines,
                 alignment = alignment,
                 horizontalPadding = horizontalPadding,
-                allowOverflowMore = region.smartAssistDisplayHints?.allowMore == true,
+                allowOverflowMore = region.smartAssistDisplayHints?.allowsInteractiveOverflow == true,
                 lineSpacingMultipliers = region.smartAssistDisplayHints?.lineSpacingMultiplier
                     ?.let { preferred -> listOf(preferred, 1f, 0.92f, 0.86f).distinct() },
-                requireAllSlots = preserveFlowShape
+                requireAllSlots = preserveFlowShape,
+                overflowActionText = overflowActionText
             )
             val leadingSlotRetry = initialLayout?.takeIf { layout ->
                 renderSlots.size > 1 &&
@@ -2875,16 +2948,18 @@ private object BackgroundTranslatedImageRenderer {
                             MINIMUM_TEXT_SIZE_PX,
                             minimumSize * DECLARATIVE_LAYOUT_RETRY_SCALE
                         ),
-                        maximumLines = if (hints.allowMore) {
+                        maximumLines = if (hints.allowsInteractiveOverflow) {
                             maxOf(maximumLines, hints.sourceLineCount + 2)
                         } else {
                             maximumLines
                         },
                         alignment = alignment,
                         horizontalPadding = horizontalPadding,
-                        allowOverflowMore = hints.allowMore && safeHorizontalExpansionSlot == null,
+                        allowOverflowMore = hints.allowsInteractiveOverflow &&
+                            safeHorizontalExpansionSlot == null,
                         lineSpacingMultipliers = listOf(1f),
-                        requireAllSlots = preserveFlowShape
+                        requireAllSlots = preserveFlowShape,
+                        overflowActionText = overflowActionText
                     )
                 }
             val safeHorizontalExpansionRetry = if (
@@ -2905,7 +2980,8 @@ private object BackgroundTranslatedImageRenderer {
                     horizontalPadding = horizontalPadding,
                     allowOverflowMore = false,
                     lineSpacingMultipliers = listOf(1f),
-                    requireAllSlots = false
+                    requireAllSlots = false,
+                    overflowActionText = overflowActionText
                 )?.takeIf { layout ->
                     layout.displayedText == region.translation &&
                         layout.lineSpacingMultiplier >=
@@ -2917,7 +2993,7 @@ private object BackgroundTranslatedImageRenderer {
             val safeHorizontalOverflowRetry = if (
                 standardRetry == null && safeHorizontalExpansionRetry == null &&
                 safeHorizontalExpansionSlot != null &&
-                region.smartAssistDisplayHints?.allowMore == true
+                region.smartAssistDisplayHints?.allowsInteractiveOverflow == true
             ) {
                 ShapeAwareTextLayout.layout(
                     text = region.translation,
@@ -2933,7 +3009,8 @@ private object BackgroundTranslatedImageRenderer {
                     horizontalPadding = horizontalPadding,
                     allowOverflowMore = true,
                     lineSpacingMultipliers = listOf(1f),
-                    requireAllSlots = false
+                    requireAllSlots = false,
+                    overflowActionText = overflowActionText
                 )
             } else {
                 null
@@ -3163,7 +3240,7 @@ private object BackgroundTranslatedImageRenderer {
                         lastAttemptedTextSizePx = paint.textSize,
                         maximumLines = maximumLines,
                         requireAllSlots = preserveFlowShape,
-                        allowMore = region.smartAssistDisplayHints?.allowMore == true,
+                        allowMore = region.smartAssistDisplayHints?.allowsInteractiveOverflow == true,
                         attemptedLineSpacingMultipliers = listOf(1f)
                     )
                 )
@@ -3201,6 +3278,23 @@ private object BackgroundTranslatedImageRenderer {
             } else {
                 Color.WHITE
             }
+            val segmentOrigins = shapedLayout.segments.map { segment ->
+                val x = segment.bounds.left + segment.horizontalPadding
+                val y = segment.bounds.top + resolvedVerticalTextOffset(
+                    availableHeightPx = segment.bounds.height(),
+                    layoutHeightPx = segment.layout.height,
+                    verticalAlignment = region.smartAssistDisplayHints?.verticalAlignment ?: "AUTO",
+                    role = region.smartAssistDisplayHints?.role,
+                    sourceLineCount = sourceLineCount,
+                    sourceLineHeightPx = sourceLineHeight,
+                    sourceGlyphHeightPx = style.sourceGlyphHeightPx
+                ).toInt()
+                x to y
+            }
+            val overflowActionBounds = shapedLayout.overflowActionBounds.mapNotNull { action ->
+                val origin = segmentOrigins.getOrNull(action.segmentIndex) ?: return@mapNotNull null
+                Rect(action.bounds).apply { offset(origin.first, origin.second) }
+            }
             evidenceSink?.invoke(
                 LiveRenderedTextEvidence(
                     bounds = Rect(bounds),
@@ -3213,26 +3307,18 @@ private object BackgroundTranslatedImageRenderer {
                     layoutHeightPx = shapedLayout.segments.sumOf { it.layout.height },
                     availableHeightPx = shapedLayout.segments.sumOf { it.bounds.height() },
                     clipped = false,
-                    contrastRatio = contrastRatio(style.foregroundColor, evidenceBackground)
+                    contrastRatio = contrastRatio(style.foregroundColor, evidenceBackground),
+                    outcome = shapedLayout.outcome,
+                    displayedText = shapedLayout.displayedText,
+                    overflowActionBounds = overflowActionBounds
                 )
             )
             paint.textSize = shapedLayout.textSizePx
-            shapedLayout.segments.forEach { segment ->
+            shapedLayout.segments.forEachIndexed { index, segment ->
+                val origin = segmentOrigins[index]
                 canvas.save()
                 canvas.clipRect(segment.bounds)
-                canvas.translate(
-                    segment.bounds.left + segment.horizontalPadding.toFloat(),
-                    segment.bounds.top + resolvedVerticalTextOffset(
-                        availableHeightPx = segment.bounds.height(),
-                        layoutHeightPx = segment.layout.height,
-                        verticalAlignment = region.smartAssistDisplayHints?.verticalAlignment
-                            ?: "AUTO",
-                        role = region.smartAssistDisplayHints?.role,
-                        sourceLineCount = sourceLineCount,
-                        sourceLineHeightPx = sourceLineHeight,
-                        sourceGlyphHeightPx = style.sourceGlyphHeightPx
-                    )
-                )
+                canvas.translate(origin.first.toFloat(), origin.second.toFloat())
                 segment.layout.draw(canvas)
                 canvas.restore()
             }

@@ -130,6 +130,11 @@ class ShapeAwareTextLayoutInstrumentedTest {
 
         assertEquals(ShapeAwareTextOutcome.OVERFLOW_MORE, overflow?.outcome)
         assertTrue(overflow!!.displayedText.endsWith("更多"))
+        assertTrue(overflow.overflowActionBounds.isNotEmpty())
+        assertTrue(overflow.overflowActionBounds.all { action ->
+            action.segmentIndex in overflow.segments.indices &&
+                action.bounds.width() > 0 && action.bounds.height() > 0
+        })
         assertEquals(null, preserved)
     }
 

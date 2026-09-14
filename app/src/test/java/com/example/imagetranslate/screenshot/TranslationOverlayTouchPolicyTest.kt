@@ -101,4 +101,46 @@ class TranslationOverlayTouchPolicyTest {
             )
         )
     }
+
+    @Test
+    fun expandsACompactActionToATouchTargetAndClampsItToTheScreen() {
+        assertEquals(
+            TranslationOverlayTouchPolicy.WindowBounds(0, 0, 48, 48),
+            TranslationOverlayTouchPolicy.expandTouchBounds(
+                bounds = TranslationOverlayTouchPolicy.WindowBounds(0, 2, 20, 12),
+                minimumSize = 48,
+                screenWidth = 320,
+                screenHeight = 640
+            )
+        )
+        assertEquals(
+            TranslationOverlayTouchPolicy.WindowBounds(272, 592, 48, 48),
+            TranslationOverlayTouchPolicy.expandTouchBounds(
+                bounds = TranslationOverlayTouchPolicy.WindowBounds(304, 620, 16, 20),
+                minimumSize = 48,
+                screenWidth = 320,
+                screenHeight = 640
+            )
+        )
+    }
+
+    @Test
+    fun refreshRateOnlyDisplayCallbacksDoNotResetOverflowInteraction() {
+        assertTrue(
+            !TranslationOverlayTouchPolicy.hasDisplayGeometryChanged(
+                currentWidth = 1440,
+                currentHeight = 3200,
+                newWidth = 1440,
+                newHeight = 3200
+            )
+        )
+        assertTrue(
+            TranslationOverlayTouchPolicy.hasDisplayGeometryChanged(
+                currentWidth = 1440,
+                currentHeight = 3200,
+                newWidth = 3200,
+                newHeight = 1440
+            )
+        )
+    }
 }

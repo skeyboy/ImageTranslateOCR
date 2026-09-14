@@ -94,6 +94,7 @@ internal data class SemanticLayoutHint(
     val alignment: String,
     val overflowStrategy: String,
     val allowMore: Boolean = false,
+    val overflowAction: String = if (allowMore) "EXPAND" else "NONE",
     val sourceLineCount: Int = 1,
     val layoutShape: String = "RECT",
     val renderSlots: List<TranslationBounds> = emptyList(),

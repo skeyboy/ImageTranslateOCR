@@ -1802,7 +1802,8 @@ class ImageTranslateActivity : AppCompatActivity() {
                 maximumLines = layoutMetrics.maximumLines,
                 alignment = alignment,
                 horizontalPadding = horizontalPadding,
-                allowOverflowMore = allowOverflowMore
+                allowOverflowMore = allowOverflowMore,
+                overflowActionText = getString(R.string.translation_overflow_more)
             )
             if (shapedLayout == null) {
                 region.source.textEraseBounds().forEach { sourceBounds ->

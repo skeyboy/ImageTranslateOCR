@@ -182,6 +182,7 @@ class SelfHostedLayoutPlanContractTest {
         assertEquals(listOf("a-line", "b-line"), result.memberRegionIds)
         assertEquals(2, result.layoutHint?.sourceLineCount)
         assertEquals(true, result.layoutHint?.allowMore)
+        assertEquals("EXPAND", result.layoutHint?.overflowAction)
         assertEquals(
             listOf(
                 TranslationBounds(10, 20, 210, 50),

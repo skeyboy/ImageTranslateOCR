@@ -44,6 +44,20 @@ internal object LiveRecognitionTelemetry {
         .put("visible", visible)
         .toString()
 
+    fun overflowDetailsOpened(generation: Int, translatedLength: Int): String = JSONObject()
+        .put("schema", SCHEMA_VERSION)
+        .put("event", "overlay_translation_overflow_opened")
+        .put("generation", generation)
+        .put("translated_length", translatedLength)
+        .toString()
+
+    fun overflowDetailsClosed(generation: Int, reason: String): String = JSONObject()
+        .put("schema", SCHEMA_VERSION)
+        .put("event", "overlay_translation_overflow_closed")
+        .put("generation", generation)
+        .put("reason", reason)
+        .toString()
+
     fun completion(
         generation: Int,
         totalMs: Long,
@@ -175,7 +189,7 @@ internal object LiveRecognitionTelemetry {
         .put("suspicious_joins", metrics.suspiciousJoinCount)
         .put("largest_patch_area_ratio", metrics.largestPatchAreaRatio.toDouble())
 
-    private const val SCHEMA_VERSION = 8
+    private const val SCHEMA_VERSION = 9
 }
 
 internal data class LiveInteractionTimingMetrics(

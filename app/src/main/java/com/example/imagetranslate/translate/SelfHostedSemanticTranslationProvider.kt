@@ -692,6 +692,14 @@ internal class SelfHostedSemanticTranslationProvider(
                 "REFLOW_THEN_SCALE_THEN_MORE"
             ),
             allowMore = optBoolean("allowMore", false),
+            overflowAction = optString(
+                "overflowAction",
+                if (optBoolean("allowMore", false)) "EXPAND" else "NONE"
+            ).also { action ->
+                require(action in OVERFLOW_ACTIONS) {
+                    "Self-hosted result overflowAction is invalid"
+                }
+            },
             sourceLineCount = optInt("sourceLineCount", source.regions.size).coerceAtLeast(1),
             layoutShape = optString("layoutShape", source.layoutShape),
             renderSlots = returnedSlots,
@@ -753,6 +761,7 @@ internal class SelfHostedSemanticTranslationProvider(
         const val MINIMUM_FONT_SCALE_RATIO = 0.65f
         val AUTHORITATIVE_MERGE_ROLES = setOf("BODY", "LIST_ITEM", "TITLE")
         val VERTICAL_ALIGNMENTS = setOf("AUTO", "TOP", "CENTER")
+        val OVERFLOW_ACTIONS = setOf("NONE", "EXPAND")
     }
 
     private enum class FontCompatibility {

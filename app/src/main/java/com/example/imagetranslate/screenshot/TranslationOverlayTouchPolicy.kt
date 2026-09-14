@@ -68,4 +68,30 @@ internal object TranslationOverlayTouchPolicy {
             height = scaledBottom - scaledTop
         )
     }
+
+    fun expandTouchBounds(
+        bounds: WindowBounds,
+        minimumSize: Int,
+        screenWidth: Int,
+        screenHeight: Int
+    ): WindowBounds? {
+        if (minimumSize <= 0 || screenWidth <= 0 || screenHeight <= 0 ||
+            bounds.width <= 0 || bounds.height <= 0
+        ) return null
+        val targetWidth = maxOf(bounds.width, minimumSize).coerceAtMost(screenWidth)
+        val targetHeight = maxOf(bounds.height, minimumSize).coerceAtMost(screenHeight)
+        val centerX = bounds.x + bounds.width / 2
+        val centerY = bounds.y + bounds.height / 2
+        val x = (centerX - targetWidth / 2).coerceIn(0, screenWidth - targetWidth)
+        val y = (centerY - targetHeight / 2).coerceIn(0, screenHeight - targetHeight)
+        return WindowBounds(x, y, targetWidth, targetHeight)
+    }
+
+    fun hasDisplayGeometryChanged(
+        currentWidth: Int,
+        currentHeight: Int,
+        newWidth: Int,
+        newHeight: Int
+    ): Boolean = currentWidth > 0 && currentHeight > 0 &&
+        (currentWidth != newWidth || currentHeight != newHeight)
 }

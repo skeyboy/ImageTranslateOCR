@@ -16,6 +16,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.example.imagetranslate.R
 import com.example.imagetranslate.databinding.OverlayActiveScreenCaptureBinding
 import com.example.imagetranslate.databinding.OverlayScreenshotActionsBinding
+import com.example.imagetranslate.databinding.OverlayTranslationDetailsBinding
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -1023,6 +1024,19 @@ class ScreenshotOverlayLayoutTest {
         assertEquals("翻译并查看", binding.btnOverlayView.text.toString())
         assertEquals("翻译并保存", binding.btnOverlaySave.text.toString())
         assertTrue(binding.btnOverlayDismiss.isClickable)
+    }
+
+    @Test
+    fun translationDetailsAreScrollableAndExposeExplicitActions() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val themedContext = ContextThemeWrapper(context, R.style.Theme_ImageTranslate)
+        val binding = OverlayTranslationDetailsBinding.inflate(LayoutInflater.from(themedContext))
+
+        assertTrue(binding.btnCopyTranslation.isClickable)
+        assertTrue(binding.btnCloseTranslationDetails.isClickable)
+        assertTrue(binding.btnToggleTranslationSource.isClickable)
+        assertEquals(View.GONE, binding.translationSourceGroup.visibility)
+        assertEquals("完整译文", binding.root.resources.getString(R.string.translation_overflow_title))
     }
 
     @Test

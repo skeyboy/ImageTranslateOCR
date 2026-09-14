@@ -87,6 +87,7 @@ class OneShotScreenCaptureService : Service() {
     private val canRestoreLastResult = AtomicBoolean(false)
     private val emptyResultRetryCount = AtomicInteger(0)
     private val continuousTranslationEnabled = AtomicBoolean(false)
+    private val detailReading = AtomicBoolean(false)
     private val sessionState = AtomicReference(ScreenCaptureSessionState.IDLE)
     private val projectionStopRequested = AtomicBoolean(false)
     private val projectionSessionId = AtomicLong(0L)
@@ -138,7 +139,7 @@ class OneShotScreenCaptureService : Service() {
     private var captureDensityDpi = 0
     private var lastSignatureSampleAt = Long.MIN_VALUE
     private val movementSettleFallback = Runnable {
-        if (!continuousTranslationEnabled.get() || projection == null ||
+        if (detailReading.get() || !continuousTranslationEnabled.get() || projection == null ||
             captureInProgress.get() || initialCapturePending.get() ||
             accessibilityScrollPending.get()
         ) {
@@ -164,7 +165,8 @@ class OneShotScreenCaptureService : Service() {
     private val accessibilityScrollPending = AtomicBoolean(false)
     private val accessibilityScrollActive = AtomicBoolean(false)
     private val accessibilityScrollSettle = Runnable {
-        if (!accessibilityScrollPending.compareAndSet(true, false) ||
+        if (detailReading.get() ||
+            !accessibilityScrollPending.compareAndSet(true, false) ||
             !continuousTranslationEnabled.get() || projection == null
         ) {
             return@Runnable
@@ -312,6 +314,39 @@ class OneShotScreenCaptureService : Service() {
                     captureHandler?.post {
                         changeDetector.onTranslationRendered(SystemClock.elapsedRealtime())
                     }
+                }
+
+                override fun onOverflowDetailsRequested(
+                    item: TranslationOverflowItem
+                ): Boolean {
+                    if (item.generation != captureGeneration.get() ||
+                        !continuousTranslationEnabled.get() ||
+                        !translationLayerPresented.get() ||
+                        captureInProgress.get() ||
+                        !detailReading.compareAndSet(false, true)
+                    ) return false
+                    stopFrameHeartbeat()
+                    scrollFrameProbeEpoch.incrementAndGet()
+                    captureHandler?.post {
+                        presentationInProgress.set(false)
+                        pendingRenderedCapture.set(null)
+                        captureHandler?.removeCallbacks(movementSettleFallback)
+                        captureHandler?.removeCallbacks(accessibilityScrollSettle)
+                        accessibilityScrollPending.set(false)
+                        accessibilityScrollActive.set(false)
+                    }
+                    Log.i(
+                        METRICS_TAG,
+                        LiveRecognitionTelemetry.overflowDetailsOpened(
+                            generation = item.generation,
+                            translatedLength = item.translatedText.length
+                        )
+                    )
+                    return true
+                }
+
+                override fun onOverflowDetailsClosed(reason: String) {
+                    closeOverflowDetailsAndResume(reason)
                 }
 
                 override fun onExperienceModeRequested(mode: LiveOverlayExperienceMode) {
@@ -1058,7 +1093,7 @@ class OneShotScreenCaptureService : Service() {
     }
 
     private fun awaitStableViewportOnCaptureThread(reason: String, handler: Handler) {
-        if (!continuousTranslationEnabled.get() || projection == null) return
+        if (!continuousTranslationEnabled.get() || projection == null || detailReading.get()) return
         val stabilityGeneration = initialStabilityGeneration.incrementAndGet()
         initialCapturePending.set(true)
         pendingInitialFrame.getAndSet(null)?.image?.close()
@@ -1276,6 +1311,10 @@ class OneShotScreenCaptureService : Service() {
     private fun onImageAvailable(reader: ImageReader) {
         frameSequence.incrementAndGet()
         lastFrameReceivedAtMs.set(SystemClock.elapsedRealtime())
+        if (detailReading.get()) {
+            reader.acquireLatestImage()?.close()
+            return
+        }
         val renderedCapture = pendingRenderedCapture.get()
         if (renderedCapture != null) {
             val image = reader.acquireLatestImage() ?: return
@@ -1446,7 +1485,8 @@ class OneShotScreenCaptureService : Service() {
         sourcePackage: String?,
         sourceWindowId: Int
     ) {
-        if (!ProjectionScrollGuardPolicy.shouldForwardScroll(sourcePackage, packageName) ||
+        if (detailReading.get() ||
+            !ProjectionScrollGuardPolicy.shouldForwardScroll(sourcePackage, packageName) ||
             !continuousTranslationEnabled.get() || projection == null
         ) {
             return
@@ -1810,6 +1850,7 @@ class OneShotScreenCaptureService : Service() {
     }
 
     private fun requestScreenshot(capturePlan: ScrollCapturePlan? = null) {
+        if (detailReading.get()) return
         if (projection == null) {
             stopSelf()
             return
@@ -1840,7 +1881,9 @@ class OneShotScreenCaptureService : Service() {
         timeoutJob?.cancel()
         timeoutJob = serviceScope.launch {
             kotlinx.coroutines.delay(CAPTURE_ACTION_SETTLE_MS)
-            if (generation != captureGeneration.get() || !continuousTranslationEnabled.get()) {
+            if (generation != captureGeneration.get() || !continuousTranslationEnabled.get() ||
+                detailReading.get()
+            ) {
                 return@launch
             }
             captureRequested.set(true)
@@ -1970,7 +2013,7 @@ class OneShotScreenCaptureService : Service() {
         handler: Handler
     ) {
         val currentGeneration = captureGeneration.get()
-        if (!LiveCaptureTimingPolicy.shouldPresentResult(
+        if (detailReading.get() || !LiveCaptureTimingPolicy.shouldPresentResult(
                 resultGeneration = generation,
                 currentGeneration = currentGeneration,
                 continuousTranslationEnabled = continuousTranslationEnabled.get()
@@ -2015,6 +2058,7 @@ class OneShotScreenCaptureService : Service() {
         overlayController.showResult(
             generation = generation,
             patches = result.patches,
+            overflowItems = result.overflowItems,
             sourceWidth = result.sourceWidth,
             sourceHeight = result.sourceHeight,
             recognizedCount = result.recognizedCount,
@@ -2318,10 +2362,36 @@ class OneShotScreenCaptureService : Service() {
         )
     }
 
+    private fun closeOverflowDetailsAndResume(reason: String) {
+        if (!detailReading.get()) return
+        val handler = captureHandler
+        if (handler == null) {
+            detailReading.set(false)
+            return
+        }
+        handler.post {
+            if (!detailReading.compareAndSet(true, false)) return@post
+            translationLayerPresented.set(false)
+            stopFrameHeartbeat()
+            scrollFrameProbeEpoch.incrementAndGet()
+            Log.i(
+                METRICS_TAG,
+                LiveRecognitionTelemetry.overflowDetailsClosed(
+                    captureGeneration.get(),
+                    reason
+                )
+            )
+            if (continuousTranslationEnabled.get() && projection != null) {
+                awaitStableViewportOnCaptureThread("overflow details closed", handler)
+            }
+        }
+    }
+
     private fun cancelActiveCapture(
         keepContinuousMode: Boolean,
         showCancellationStatus: Boolean = true
     ) {
+        detailReading.set(false)
         val invalidatedGeneration = captureGeneration.incrementAndGet()
         captureRequested.set(false)
         captureInProgress.set(false)
@@ -2394,6 +2464,7 @@ class OneShotScreenCaptureService : Service() {
             kotlinx.coroutines.delay(EMPTY_RESULT_RETRY_DELAY_MS)
             if (generation != captureGeneration.get() ||
                 !continuousTranslationEnabled.get() ||
+                detailReading.get() ||
                 !captureInProgress.get()
             ) {
                 return@launch
@@ -2462,7 +2533,7 @@ class OneShotScreenCaptureService : Service() {
             return
         }
         handler.post {
-            if (generation != captureGeneration.get() ||
+            if (detailReading.get() || generation != captureGeneration.get() ||
                 !presentationInProgress.compareAndSet(true, false)
             ) {
                 return@post
@@ -2664,6 +2735,8 @@ class OneShotScreenCaptureService : Service() {
         )
 
     private fun pauseForUnavailableEnhancedExperience() {
+        detailReading.set(false)
+        stopFrameHeartbeat()
         timeoutJob?.cancel()
         timeoutJob = null
         captureRequested.set(false)

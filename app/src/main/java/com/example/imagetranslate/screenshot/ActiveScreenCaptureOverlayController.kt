@@ -1,6 +1,8 @@
 package com.example.imagetranslate.screenshot
 
 import android.content.Context
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.graphics.PixelFormat
 import android.graphics.Rect
 import android.hardware.input.InputManager
@@ -19,8 +21,10 @@ import android.view.ViewConfiguration
 import android.view.WindowManager
 import android.view.animation.DecelerateInterpolator
 import android.widget.PopupMenu
+import android.widget.Toast
 import com.example.imagetranslate.R
 import com.example.imagetranslate.databinding.OverlayActiveScreenCaptureBinding
+import com.example.imagetranslate.databinding.OverlayTranslationDetailsBinding
 import com.example.imagetranslate.ocr.OcrEngineType
 import com.example.imagetranslate.ocr.OcrModel
 import com.example.imagetranslate.ocr.OcrModelState
@@ -137,6 +141,8 @@ internal class ActiveScreenCaptureOverlayController(
         fun onTranslationBackendChanged(backend: TranslationBackend)
         fun onLiveOcrTranslationEngineChanged(engine: LiveOcrTranslationEngineType)
         fun onTranslationVisibilityChanged(visible: Boolean)
+        fun onOverflowDetailsRequested(item: TranslationOverflowItem): Boolean
+        fun onOverflowDetailsClosed(reason: String)
         fun onExperienceModeRequested(mode: LiveOverlayExperienceMode)
         fun onCaptureSettingsChanged(settings: LiveCaptureSettings)
         fun onOcrSettingsOpened()
@@ -175,6 +181,11 @@ internal class ActiveScreenCaptureOverlayController(
     private val collapsedHeight = dp(42)
     private var controlParams: WindowManager.LayoutParams? = null
     private var translationParams: WindowManager.LayoutParams? = null
+    private val overflowHotspotViews = mutableListOf<View>()
+    private var translationDetailsView: View? = null
+    private var currentOverflowItems = emptyList<TranslationOverflowItem>()
+    private var currentSourceWidth = 0
+    private var currentSourceHeight = 0
     private var translationMode = TranslationMode.AUTO_BIDIRECTIONAL
     private var experienceMode = initialExperienceMode
     private var captureSettings = initialCaptureSettings
@@ -217,6 +228,19 @@ internal class ActiveScreenCaptureOverlayController(
         binding.btnToggleActiveTranslation.addOnCheckedChangeListener { _, checked ->
             translationVisibility.update(checked)
             translationView.setPatchesVisible(checked)
+            if (checked) {
+                attachOverflowHotspots(
+                    currentOverflowItems,
+                    currentSourceWidth,
+                    currentSourceHeight
+                )
+            } else {
+                dismissOverflowDetailsNow(
+                    notifyListener = true,
+                    reason = "translation_hidden"
+                )
+                removeOverflowHotspotsNow()
+            }
             listener.onTranslationVisibilityChanged(checked)
         }
         binding.btnCollapseActiveOverlay.setOnClickListener { collapseNow() }
@@ -236,6 +260,7 @@ internal class ActiveScreenCaptureOverlayController(
     }
 
     fun hideForCapture() = onMainThread {
+        removeOverflowInteractionWindowsNow()
         binding.root.visibility = View.INVISIBLE
         translationView.setPatchesVisible(false, animateChange = false)
     }
@@ -392,6 +417,10 @@ internal class ActiveScreenCaptureOverlayController(
     }
 
     fun showWaitingForStable(onHidden: ((Boolean) -> Unit)? = null) = onMainThread {
+        removeOverflowInteractionWindowsNow()
+        currentOverflowItems = emptyList()
+        currentSourceWidth = 0
+        currentSourceHeight = 0
         val translationLayerCleared = translationView.clearForViewportMovement()
         hasTranslationResult = false
         sessionActive = true
@@ -410,6 +439,7 @@ internal class ActiveScreenCaptureOverlayController(
     fun showResult(
         generation: Int,
         patches: List<ScreenTranslationPatch>,
+        overflowItems: List<TranslationOverflowItem>,
         sourceWidth: Int,
         sourceHeight: Int,
         recognizedCount: Int,
@@ -427,6 +457,7 @@ internal class ActiveScreenCaptureOverlayController(
         presentResultWithRetry(
             generation = generation,
             patches = patches,
+            overflowItems = overflowItems,
             sourceWidth = sourceWidth,
             sourceHeight = sourceHeight,
             shouldPresent = shouldPresent,
@@ -489,6 +520,7 @@ internal class ActiveScreenCaptureOverlayController(
     private fun presentResultWithRetry(
         generation: Int,
         patches: List<ScreenTranslationPatch>,
+        overflowItems: List<TranslationOverflowItem>,
         sourceWidth: Int,
         sourceHeight: Int,
         shouldPresent: () -> Boolean,
@@ -502,6 +534,7 @@ internal class ActiveScreenCaptureOverlayController(
         }
         val presentation = showTranslationPatchesNow(
             patches = patches,
+            overflowItems = overflowItems,
             sourceWidth = sourceWidth,
             sourceHeight = sourceHeight,
             attemptCount = attempt
@@ -520,6 +553,7 @@ internal class ActiveScreenCaptureOverlayController(
                     presentResultWithRetry(
                         generation = generation,
                         patches = patches,
+                        overflowItems = overflowItems,
                         sourceWidth = sourceWidth,
                         sourceHeight = sourceHeight,
                         shouldPresent = shouldPresent,
@@ -575,6 +609,11 @@ internal class ActiveScreenCaptureOverlayController(
         clearTranslationsNow()
     }
 
+    fun closeOverflowDetails() = onMainThread {
+        dismissOverflowDetailsNow(notifyListener = false)
+        removeOverflowHotspotsNow()
+    }
+
     private fun clearTranslationsNow() {
         hasTranslationResult = false
         latestPerformanceSummary = null
@@ -627,6 +666,23 @@ internal class ActiveScreenCaptureOverlayController(
 
     fun onDisplayGeometryChanged(clearTranslations: Boolean) = onMainThread {
         val bounds = windowBounds()
+        val geometryChanged = translationParams?.let { params ->
+            TranslationOverlayTouchPolicy.hasDisplayGeometryChanged(
+                params.width,
+                params.height,
+                bounds.first,
+                bounds.second
+            )
+        } ?: false
+        val shouldResetOverflowInteraction = clearTranslations || geometryChanged
+        val detailsWereOpen = translationDetailsView != null
+        if (shouldResetOverflowInteraction) {
+            dismissOverflowDetailsNow(
+                notifyListener = true,
+                reason = "display_geometry"
+            )
+            removeOverflowHotspotsNow()
+        }
         translationParams?.let { params ->
             params.width = bounds.first
             params.height = bounds.second
@@ -647,7 +703,18 @@ internal class ActiveScreenCaptureOverlayController(
             )
             updateControlWindow(params.width, params.height, position.x, position.y)
         }
-        if (clearTranslations) translationView.clearPatches()
+        if (clearTranslations) {
+            translationView.clearPatches()
+            currentOverflowItems = emptyList()
+            currentSourceWidth = 0
+            currentSourceHeight = 0
+        } else if (geometryChanged && !detailsWereOpen) {
+            attachOverflowHotspots(
+                currentOverflowItems,
+                currentSourceWidth,
+                currentSourceHeight
+            )
+        }
     }
 
     private fun showReadyNow() {
@@ -773,6 +840,7 @@ internal class ActiveScreenCaptureOverlayController(
 
     private fun showTranslationPatchesNow(
         patches: List<ScreenTranslationPatch>,
+        overflowItems: List<TranslationOverflowItem>,
         sourceWidth: Int,
         sourceHeight: Int,
         attemptCount: Int
@@ -797,6 +865,10 @@ internal class ActiveScreenCaptureOverlayController(
             translationVisibility.visible,
             animateChange = false
         )
+        currentOverflowItems = overflowItems
+        currentSourceWidth = sourceWidth
+        currentSourceHeight = sourceHeight
+        attachOverflowHotspots(overflowItems, sourceWidth, sourceHeight)
         val state = translationView.overlayState()
         return OverlayPresentationResult(
             attemptCount = attemptCount,
@@ -868,6 +940,162 @@ internal class ActiveScreenCaptureOverlayController(
         }.getOrDefault(false)
     }
 
+    private fun attachOverflowHotspots(
+        items: List<TranslationOverflowItem>,
+        sourceWidth: Int,
+        sourceHeight: Int
+    ) {
+        removeOverflowHotspotsNow()
+        if (!translationVisibility.visible || items.isEmpty()) return
+        val manager = activeWindowManager() ?: return
+        val screen = windowBounds()
+        val controlBounds = controlParams?.let { params ->
+            TranslationOverlayTouchPolicy.WindowBounds(
+                params.x,
+                params.y,
+                params.width,
+                params.height
+            )
+        }
+        items.sortedByDescending { item ->
+            item.moreBounds.sumOf { bounds -> bounds.width().toLong() * bounds.height() }
+        }.forEach { item ->
+            if (!presentationGenerationGate.accepts(item.generation) || item.moreBounds.isEmpty()) {
+                return@forEach
+            }
+            val sourceBounds = Rect(item.moreBounds.first())
+            item.moreBounds.drop(1).forEach(sourceBounds::union)
+            val scaled = TranslationOverlayTouchPolicy.scalePatchBounds(
+                sourceBounds.left,
+                sourceBounds.top,
+                sourceBounds.right,
+                sourceBounds.bottom,
+                sourceWidth,
+                sourceHeight,
+                screen.first,
+                screen.second
+            ) ?: return@forEach
+            val touchBounds = TranslationOverlayTouchPolicy.expandTouchBounds(
+                scaled,
+                dp(MINIMUM_OVERFLOW_TOUCH_TARGET_DP),
+                screen.first,
+                screen.second
+            ) ?: return@forEach
+            if (controlBounds != null &&
+                TranslationOverlayTouchPolicy.overlaps(touchBounds, controlBounds)
+            ) return@forEach
+            val hotspot = View(themedContext).apply {
+                contentDescription = appContext.getString(R.string.translation_overflow_open)
+                isClickable = true
+                isFocusable = false
+                importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES
+                setBackgroundColor(android.graphics.Color.TRANSPARENT)
+                setOnClickListener {
+                    performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+                    showOverflowDetailsNow(item)
+                }
+            }
+            val params = createLayoutParams(
+                width = touchBounds.width,
+                height = touchBounds.height,
+                flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                    WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
+                    WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+                x = touchBounds.x,
+                y = touchBounds.y
+            )
+            if (runCatching { manager.addView(hotspot, params) }.isSuccess) {
+                overflowHotspotViews += hotspot
+            }
+        }
+        if (overflowHotspotViews.isNotEmpty() && binding.root.parent != null) {
+            reattachControlAboveTranslationNow(manager)
+        }
+    }
+
+    private fun showOverflowDetailsNow(item: TranslationOverflowItem) {
+        if (!presentationGenerationGate.accepts(item.generation) ||
+            !listener.onOverflowDetailsRequested(item)
+        ) return
+        removeOverflowHotspotsNow()
+        dismissOverflowDetailsNow(notifyListener = false)
+        val details = OverlayTranslationDetailsBinding.inflate(LayoutInflater.from(themedContext))
+        details.tvFullTranslation.text = item.translatedText
+        details.tvTranslationSource.text = item.sourceText
+        details.btnToggleTranslationSource.setOnClickListener {
+            val show = details.translationSourceGroup.visibility != View.VISIBLE
+            details.translationSourceGroup.visibility = if (show) View.VISIBLE else View.GONE
+            details.btnToggleTranslationSource.setText(
+                if (show) R.string.translation_overflow_hide_source
+                else R.string.translation_overflow_show_source
+            )
+            details.btnToggleTranslationSource.setIconResource(
+                if (show) R.drawable.ic_expand_less else R.drawable.ic_expand_more
+            )
+        }
+        details.btnCopyTranslation.setOnClickListener {
+            appContext.getSystemService(ClipboardManager::class.java)?.setPrimaryClip(
+                ClipData.newPlainText(
+                    appContext.getString(R.string.translation_overflow_title),
+                    item.translatedText
+                )
+            )
+            Toast.makeText(
+                appContext,
+                R.string.translation_overflow_copied,
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+        details.btnCloseTranslationDetails.setOnClickListener {
+            dismissOverflowDetailsNow(
+                notifyListener = true,
+                reason = "close_button"
+            )
+        }
+        val screen = windowBounds()
+        val width = minOf(dp(DETAILS_MAXIMUM_WIDTH_DP), screen.first - edgeMargin * 2)
+        val height = minOf(dp(DETAILS_MAXIMUM_HEIGHT_DP), (screen.second * 0.6f).toInt())
+        val params = createLayoutParams(
+            width = width,
+            height = height,
+            flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
+                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+            x = ((screen.first - width) / 2).coerceAtLeast(0),
+            y = (screen.second - height - dp(DETAILS_BOTTOM_MARGIN_DP)).coerceAtLeast(0)
+        )
+        val manager = activeWindowManager()
+        if (manager == null || runCatching { manager.addView(details.root, params) }.isFailure) {
+            listener.onOverflowDetailsClosed("attach_failed")
+            return
+        }
+        translationDetailsView = details.root
+    }
+
+    private fun dismissOverflowDetailsNow(
+        notifyListener: Boolean,
+        reason: String = "internal"
+    ) {
+        val view = translationDetailsView ?: return
+        val manager = attachedWindowManager ?: activeWindowManager() ?: applicationWindowManager
+        runCatching { manager.removeViewImmediate(view) }
+        translationDetailsView = null
+        if (notifyListener) listener.onOverflowDetailsClosed(reason)
+    }
+
+    private fun removeOverflowHotspotsNow() {
+        val manager = attachedWindowManager ?: activeWindowManager() ?: applicationWindowManager
+        overflowHotspotViews.forEach { view ->
+            if (view.parent != null) runCatching { manager.removeViewImmediate(view) }
+        }
+        overflowHotspotViews.clear()
+    }
+
+    private fun removeOverflowInteractionWindowsNow() {
+        dismissOverflowDetailsNow(notifyListener = false)
+        removeOverflowHotspotsNow()
+    }
+
     private fun dismissNow() {
         removeTranslationLayersNow()
         val windowManager = attachedWindowManager ?: applicationWindowManager
@@ -886,6 +1114,10 @@ internal class ActiveScreenCaptureOverlayController(
     }
 
     private fun removeTranslationLayersNow() {
+        removeOverflowInteractionWindowsNow()
+        currentOverflowItems = emptyList()
+        currentSourceWidth = 0
+        currentSourceHeight = 0
         translationView.clearPatches()
     }
 
@@ -1793,6 +2025,10 @@ internal class ActiveScreenCaptureOverlayController(
         const val CONTROL_PRESS_DURATION_MS = 90L
         const val CONTROL_MATERIALIZE_DURATION_MS = 150L
         const val TERMINAL_STATUS_DURATION_MS = 1_800L
+        const val MINIMUM_OVERFLOW_TOUCH_TARGET_DP = 48
+        const val DETAILS_MAXIMUM_WIDTH_DP = 420
+        const val DETAILS_MAXIMUM_HEIGHT_DP = 520
+        const val DETAILS_BOTTOM_MARGIN_DP = 24
         const val CONTROL_PRESSED_ALPHA = 0.92f
         const val CONTROL_MATERIALIZE_ALPHA = 0.82f
         const val CONTROL_PRESSED_SCALE = 0.985f

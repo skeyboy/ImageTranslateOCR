@@ -868,6 +868,10 @@ async fn v3_returns_authoritative_layout_plan_and_declarative_rendering_fields()
     assert!(body["results"][0]["layoutHint"]["maximumTextScale"].is_number());
     assert!(body["results"][0]["layoutHint"]["lineSpacingMultiplier"].is_number());
     assert!(body["results"][0]["layoutHint"]["allowMore"].is_boolean());
+    assert!(matches!(
+        body["results"][0]["layoutHint"]["overflowAction"].as_str(),
+        Some("NONE" | "EXPAND")
+    ));
     assert_eq!(
         body["results"][0]["layoutHint"]["sourceCoverSlots"]
             .as_array()

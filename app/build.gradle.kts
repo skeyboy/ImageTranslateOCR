@@ -70,6 +70,7 @@ val configuredDemoServerBaseUrl = providers.gradleProperty("DEMO_SERVER_BASE_URL
 android {
     namespace = "com.example.imagetranslate"
     compileSdk = 35
+    ndkVersion = "28.2.13676358"
 
     defaultConfig {
         applicationId = "com.example.imagetranslate"

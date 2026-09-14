@@ -204,6 +204,7 @@ pub struct LayoutHint {
     pub alignment: String,
     pub overflow_strategy: String,
     pub allow_more: bool,
+    pub overflow_action: String,
     pub source_line_count: i32,
     pub layout_shape: String,
     pub render_slots: Vec<Bounds>,
@@ -560,6 +561,11 @@ pub fn layout_hint(
             "REFLOW_THEN_SCALE".to_owned()
         },
         allow_more: group.role == "BODY" && source_lines >= 4,
+        overflow_action: if group.role == "BODY" && source_lines >= 4 {
+            "EXPAND".to_owned()
+        } else {
+            "NONE".to_owned()
+        },
         source_line_count: source_lines,
         layout_shape: if render_slots.len() > 1 {
             "FLOW_SLOTS".to_owned()
@@ -778,6 +784,41 @@ mod tests {
 
         assert_eq!(hint.vertical_alignment, "TOP");
         assert_eq!(hint.line_spacing_multiplier, 1.0);
+    }
+
+    #[test]
+    fn long_body_exposes_an_expand_overflow_action() {
+        let bounds = Bounds {
+            left: 0,
+            top: 0,
+            right: 400,
+            bottom: 240,
+        };
+        let group = TranslationGroup {
+            group_id: "body".to_owned(),
+            role: "BODY".to_owned(),
+            translation_unit: "GROUP".to_owned(),
+            source_text: "one\ntwo\nthree\nfour".to_owned(),
+            member_region_ids: vec![
+                "r1".to_owned(),
+                "r2".to_owned(),
+                "r3".to_owned(),
+                "r4".to_owned(),
+            ],
+            reading_order: 0,
+            grouping_confidence: 1.0,
+            grouping_evidence: vec![],
+            source_line_count: Some(4),
+            bounds: bounds.clone(),
+            render_slots: vec![bounds.clone()],
+            layout_shape: "RECT".to_owned(),
+        };
+
+        let hint = layout_hint(&group, "一\n二\n三\n四", vec![bounds.clone()], vec![bounds]);
+
+        assert!(hint.allow_more);
+        assert_eq!(hint.overflow_strategy, "REFLOW_THEN_SCALE_THEN_MORE");
+        assert_eq!(hint.overflow_action, "EXPAND");
     }
 
     #[test]

@@ -145,6 +145,14 @@
     <string name="live_overlay_enhanced_accessibility_description">为屏幕译文提供更清晰的不透明背景，同时保持点击和滑动传递给下层页面；识别仍使用本地 OCR，不读取页面辅助功能文字。</string>
     <string name="active_screenshot_show_translation">译文</string>
     <string name="active_screenshot_show_translation_description">显示或隐藏屏幕译文</string>
+    <string name="translation_overflow_more">更多</string>
+    <string name="translation_overflow_open">查看完整译文</string>
+    <string name="translation_overflow_title">完整译文</string>
+    <string name="translation_overflow_copy">复制译文</string>
+    <string name="translation_overflow_copied">译文已复制</string>
+    <string name="translation_overflow_show_source">查看原文</string>
+    <string name="translation_overflow_hide_source">收起原文</string>
+    <string name="translation_overflow_source_title">OCR 原文</string>
     <string name="active_screenshot_capture_settings">识别策略设置</string>
     <string name="active_screenshot_capture_settings_current">当前：%1$s · %2$s / %3$s / %4$s</string>
     <string name="active_screenshot_translation_provider_current">翻译 Provider：%1$s</string>

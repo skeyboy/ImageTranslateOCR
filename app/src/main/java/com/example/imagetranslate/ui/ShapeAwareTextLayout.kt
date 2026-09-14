@@ -4,6 +4,7 @@ import android.graphics.Rect
 import android.text.Layout
 import android.text.StaticLayout
 import android.text.TextPaint
+import kotlin.math.ceil
 import kotlin.math.floor
 
 internal enum class ShapeAwareTextOutcome {
@@ -15,7 +16,14 @@ internal enum class ShapeAwareTextOutcome {
 internal data class ShapeAwareTextSegment(
     val bounds: Rect,
     val layout: StaticLayout,
-    val horizontalPadding: Int
+    val horizontalPadding: Int,
+    val textStart: Int,
+    val textEnd: Int
+)
+
+internal data class ShapeAwareTextActionBounds(
+    val segmentIndex: Int,
+    val bounds: Rect
 )
 
 internal data class ShapeAwareTextResult(
@@ -23,7 +31,8 @@ internal data class ShapeAwareTextResult(
     val outcome: ShapeAwareTextOutcome,
     val displayedText: String,
     val textSizePx: Float,
-    val lineSpacingMultiplier: Float
+    val lineSpacingMultiplier: Float,
+    val overflowActionBounds: List<ShapeAwareTextActionBounds> = emptyList()
 )
 
 internal object ShapeAwareTextLayout {
@@ -38,7 +47,8 @@ internal object ShapeAwareTextLayout {
         horizontalPadding: Int,
         allowOverflowMore: Boolean,
         lineSpacingMultipliers: List<Float>? = null,
-        requireAllSlots: Boolean = false
+        requireAllSlots: Boolean = false,
+        overflowActionText: String = DEFAULT_OVERFLOW_ACTION_TEXT
     ): ShapeAwareTextResult? {
         val slots = renderSlots.filter { it.right > it.left && it.bottom > it.top }
         if (text.isBlank() || slots.isEmpty()) return null
@@ -117,7 +127,7 @@ internal object ShapeAwareTextLayout {
             if (low > high) return@repeat
             val midpoint = (low + high) / 2
             val prefix = wordBoundaryPrefix(text, midpoint)
-            val displayed = prefix.trimEnd() + OVERFLOW_SUFFIX
+            val displayed = prefix.trimEnd() + "… " + overflowActionText
             val candidate = flow(
                 displayed,
                 paint,
@@ -144,7 +154,12 @@ internal object ShapeAwareTextLayout {
             outcome = ShapeAwareTextOutcome.OVERFLOW_MORE,
             displayedText = checkNotNull(bestText),
             textSizePx = overflow.textSizePx,
-            lineSpacingMultiplier = lineSpacing
+            lineSpacingMultiplier = lineSpacing,
+            overflowActionBounds = overflowActionBounds(
+                overflow,
+                checkNotNull(bestText),
+                overflowActionText
+            )
         )
     }
 
@@ -206,7 +221,13 @@ internal object ShapeAwareTextLayout {
             if (accepted.lineCount <= 0) return null
             val end = cursor + fitted.consumedCharacters
             if (end <= cursor) return null
-            segments += ShapeAwareTextSegment(copyRect(slot), accepted, horizontalPadding)
+            segments += ShapeAwareTextSegment(
+                bounds = copyRect(slot),
+                layout = accepted,
+                horizontalPadding = horizontalPadding,
+                textStart = cursor,
+                textEnd = end
+            )
             if (firstUsedSlotIndex == null) firstUsedSlotIndex = slotIndex
             cursor = skipWhitespace(text, end)
             remainingLines -= accepted.lineCount
@@ -299,6 +320,42 @@ internal object ShapeAwareTextLayout {
         } ?: end
     }
 
+    private fun overflowActionBounds(
+        candidate: FlowCandidate,
+        displayedText: String,
+        actionText: String
+    ): List<ShapeAwareTextActionBounds> {
+        val actionStart = displayedText.lastIndexOf(actionText)
+        if (actionStart < 0) return emptyList()
+        val actionEnd = actionStart + actionText.length
+        return candidate.segments.flatMapIndexed { segmentIndex, segment ->
+            val intersectionStart = maxOf(actionStart, segment.textStart)
+            val intersectionEnd = minOf(actionEnd, segment.textEnd)
+            if (intersectionStart >= intersectionEnd) return@flatMapIndexed emptyList()
+            val localStart = intersectionStart - segment.textStart
+            val localEnd = intersectionEnd - segment.textStart
+            val firstLine = segment.layout.getLineForOffset(localStart)
+            val lastLine = segment.layout.getLineForOffset((localEnd - 1).coerceAtLeast(localStart))
+            (firstLine..lastLine).mapNotNull { line ->
+                val fragmentStart = maxOf(localStart, segment.layout.getLineStart(line))
+                val fragmentEnd = minOf(localEnd, segment.layout.getLineEnd(line))
+                if (fragmentStart >= fragmentEnd) return@mapNotNull null
+                val startX = segment.layout.getPrimaryHorizontal(fragmentStart)
+                val endX = segment.layout.getPrimaryHorizontal(fragmentEnd)
+                val left = floor(minOf(startX, endX)).toInt()
+                ShapeAwareTextActionBounds(
+                    segmentIndex = segmentIndex,
+                    bounds = Rect(
+                        left,
+                        segment.layout.getLineTop(line),
+                        ceil(maxOf(startX, endX)).toInt().coerceAtLeast(left + 1),
+                        segment.layout.getLineBottom(line)
+                    )
+                )
+            }
+        }
+    }
+
     private fun copyRect(bounds: Rect) = Rect().apply {
         this.left = bounds.left
         this.top = bounds.top
@@ -324,6 +381,6 @@ internal object ShapeAwareTextLayout {
     private const val OVERFLOW_SEARCH_STEPS = 12
     internal const val MINIMUM_SAFE_LINE_SPACING_MULTIPLIER = 1f
     private const val WORD_BOUNDARY_SEARCH = 24
-    private const val OVERFLOW_SUFFIX = "… 更多"
+    internal const val DEFAULT_OVERFLOW_ACTION_TEXT = "更多"
     private val WORD_BOUNDARY_PUNCTUATION = setOf(',', '.', ';', ':', '，', '。', '；', '：')
 }
