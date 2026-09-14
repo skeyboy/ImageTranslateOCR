@@ -38,6 +38,23 @@ internal interface MachineTranslationProvider : AutoCloseable {
     override fun close() = Unit
 }
 
+internal suspend fun <T, R> translateMachineParagraphsInParallel(
+    paragraphs: List<T>,
+    maxConcurrency: Int,
+    translateOne: suspend (T) -> R
+): List<R> {
+    require(maxConcurrency > 0) { "Machine translation concurrency must be positive" }
+    if (paragraphs.isEmpty()) return emptyList()
+    val limiter = Semaphore(maxConcurrency)
+    return coroutineScope {
+        paragraphs.map { paragraph ->
+            async {
+                limiter.withPermit { translateOne(paragraph) }
+            }
+        }.awaitAll()
+    }
+}
+
 internal class VolcMachineTranslationProvider(
     private val endpoint: String,
     private val bearerToken: String,
@@ -54,16 +71,7 @@ internal class VolcMachineTranslationProvider(
         paragraphs: List<MachineTranslationParagraph>
     ): List<MachineTranslationParagraphResult> {
         if (paragraphs.isEmpty()) return emptyList()
-        val limiter = Semaphore(maxConcurrency)
-        return coroutineScope {
-            paragraphs.map { paragraph ->
-                async {
-                    limiter.withPermit {
-                        translateOne(paragraph)
-                    }
-                }
-            }.awaitAll()
-        }.sortedBy { result -> paragraphs.indexOfFirst { it.paragraphId == result.paragraph.paragraphId } }
+        return translateMachineParagraphsInParallel(paragraphs, maxConcurrency, ::translateOne)
     }
 
     private suspend fun translateOne(

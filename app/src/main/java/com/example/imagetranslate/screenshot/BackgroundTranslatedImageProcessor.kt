@@ -25,6 +25,7 @@ import com.example.imagetranslate.ocr.OcrRecognitionMode
 import com.example.imagetranslate.ocr.RecognizedText
 import com.example.imagetranslate.ocr.RecognizerScript
 import com.example.imagetranslate.semantic.SemanticTextGrouper
+import com.example.imagetranslate.semantic.SemanticContentClassifier
 import com.example.imagetranslate.semantic.SemanticTextGroup
 import com.example.imagetranslate.semantic.SemanticRenderShape
 import com.example.imagetranslate.semantic.StaticImageTextFilter
@@ -1231,11 +1232,14 @@ internal class BackgroundTranslatedImageProcessor(
         paragraphs: List<MachineParagraph>,
         mode: TranslationMode
     ): List<BackgroundImageRegion> {
-        if (paragraphs.isEmpty() || !TranslationExperienceSettings.isMachineConfigured(appContext)) {
+        if (paragraphs.isEmpty() || !TranslationBackendSettings.isMachineConfigured(appContext)) {
             Log.w(TAG, "Machine translation is not configured; preserving source text")
             return emptyList()
         }
         val requests = paragraphs.mapNotNull { paragraph ->
+            if (SemanticContentClassifier.shouldPreserve("BODY", paragraph.sourceText)) {
+                return@mapNotNull null
+            }
             val sourceLanguage = com.example.imagetranslate.translate.TranslationScriptLanguagePolicy
                 .sourceLanguage(paragraph.sourceText)
             val targetLanguage = sourceLanguage?.let { machineTargetLanguage(it, mode) }
@@ -1249,9 +1253,9 @@ internal class BackgroundTranslatedImageProcessor(
             }
         }
         val provider = VolcMachineTranslationProvider(
-            endpoint = TranslationExperienceSettings.machineTranslationEndpoint(appContext),
+            endpoint = TranslationBackendSettings.machineTranslationEndpoint(appContext),
             bearerToken = checkNotNull(
-                TranslationExperienceSettings.machineTranslationToken(appContext)
+                TranslationBackendSettings.machineTranslationToken(appContext)
             )
         )
         val results = provider.translate(requests)

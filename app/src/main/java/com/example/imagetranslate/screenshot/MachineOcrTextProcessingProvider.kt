@@ -5,6 +5,97 @@ import com.example.imagetranslate.ocr.RecognizedText
 import kotlin.math.abs
 import kotlin.math.max
 
+internal data class MachineTextLine(
+    val text: String,
+    val left: Int,
+    val top: Int,
+    val right: Int,
+    val bottom: Int,
+    val blockId: String? = null,
+    val lineIndex: Int? = null
+)
+
+internal object MachineParagraphGroupingPolicy {
+    fun group(
+        lines: List<MachineTextLine>,
+        viewportWidth: Int,
+        viewportHeight: Int
+    ): List<List<Int>> {
+        if (lines.isEmpty() || viewportWidth <= 0 || viewportHeight <= 0) return emptyList()
+        val selected = mutableListOf<IndexedValue<MachineTextLine>>()
+        lines.withIndex()
+            .filter { (_, line) ->
+                line.text.isNotBlank() && width(line) > 0 && height(line) > 0 &&
+                    line.left < viewportWidth && line.top < viewportHeight &&
+                    line.right > 0 && line.bottom > 0
+            }
+            .sortedWith(compareBy({ it.value.top }, { it.value.left }))
+            .forEach { candidate ->
+                if (selected.none { existing -> duplicate(existing.value, candidate.value) }) {
+                    selected += candidate
+                }
+            }
+        val paragraphs = mutableListOf<MutableList<IndexedValue<MachineTextLine>>>()
+        selected.forEach { candidate ->
+            val current = paragraphs.lastOrNull()
+            if (current != null && canAppend(current, candidate.value)) {
+                current += candidate
+            } else {
+                paragraphs += mutableListOf(candidate)
+            }
+        }
+        return paragraphs.map { paragraph -> paragraph.map(IndexedValue<MachineTextLine>::index) }
+    }
+
+    private fun canAppend(
+        members: List<IndexedValue<MachineTextLine>>,
+        candidate: MachineTextLine
+    ): Boolean {
+        if (members.sumOf { it.value.text.length } + candidate.text.length > 2_000) return false
+        if (isProtected(candidate.text) || members.any { isProtected(it.value.text) }) return false
+        val previous = members.last().value
+        if (previous.blockId != null && candidate.blockId != null &&
+            previous.blockId != candidate.blockId
+        ) return false
+        val lineHeight = max(height(previous), height(candidate)).coerceAtLeast(1)
+        val verticalGap = candidate.top - previous.bottom
+        if (verticalGap < -lineHeight / 4 || verticalGap > max(4, (lineHeight * 1.2f).toInt())) {
+            return false
+        }
+        val leftDelta = abs(previous.left - candidate.left)
+        val overlap = (minOf(previous.right, candidate.right) -
+            maxOf(previous.left, candidate.left)).coerceAtLeast(0)
+        val overlapRatio = overlap.toFloat() / minOf(width(previous), width(candidate)).coerceAtLeast(1)
+        val sameBlock = previous.blockId != null && previous.blockId == candidate.blockId
+        return sameBlock || leftDelta <= max(6, lineHeight) || overlapRatio >= 0.25f
+    }
+
+    private fun duplicate(first: MachineTextLine, second: MachineTextLine): Boolean {
+        if (first.text.trim() != second.text.trim()) return false
+        val intersectionWidth = (minOf(first.right, second.right) -
+            maxOf(first.left, second.left)).coerceAtLeast(0)
+        val intersectionHeight = (minOf(first.bottom, second.bottom) -
+            maxOf(first.top, second.top)).coerceAtLeast(0)
+        val smallerArea = minOf(width(first) * height(first), width(second) * height(second))
+            .coerceAtLeast(1)
+        return intersectionWidth * intersectionHeight / smallerArea.toFloat() >= 0.7f
+    }
+
+    private fun isProtected(text: String): Boolean =
+        text.trim().matches(PROTECTED_TEXT) || text.trim().matches(URL_OR_EMAIL)
+
+    private fun width(line: MachineTextLine): Int = line.right - line.left
+    private fun height(line: MachineTextLine): Int = line.bottom - line.top
+
+    private val URL_OR_EMAIL = Regex(
+        "(?i)(?:https?://|www\\.)\\S+|[\\w.+-]+@[\\w.-]+\\.[A-Za-z]{2,}"
+    )
+    private val PROTECTED_TEXT = Regex(
+        "(?i)(?:\\d{1,2}:\\d{2}(?::\\d{2})?|[A-F0-9]{8,}|" +
+            "[\\w.-]+\\.(?:java|kt|json|xml|py|rs|js))"
+    )
+}
+
 internal data class MachineParagraph(
     val paragraphId: String,
     val members: List<RecognizedText>,
@@ -16,10 +107,10 @@ internal data class MachineParagraph(
 ) {
     fun asRecognizedText(): RecognizedText = members.first().copy(
         text = sourceText,
-        bounds = Rect(bounds),
+        bounds = copyBounds(bounds),
         sourceBlockId = members.mapNotNull(RecognizedText::sourceBlockId).distinct().singleOrNull(),
         sourceLineIndex = members.mapNotNull(RecognizedText::sourceLineIndex).minOrNull(),
-        componentBounds = sourceCoverSlots.map(::Rect),
+        componentBounds = sourceCoverSlots.map(::copyBounds),
         estimatedTextHeightPx = members.mapNotNull(RecognizedText::estimatedTextHeightPx)
             .average()
             .toFloat()
@@ -43,38 +134,27 @@ internal class MachineOcrTextProcessingProvider : OcrTextProcessingProvider {
         viewportWidth: Int,
         viewportHeight: Int
     ): List<MachineParagraph> {
-        if (recognized.isEmpty() || viewportWidth <= 0 || viewportHeight <= 0) return emptyList()
-        val selected = mutableListOf<RecognizedText>()
-        val candidates = recognized
-            .asSequence()
-            .filter { item ->
-                item.text.isNotBlank() && item.bounds.width() > 0 && item.bounds.height() > 0 &&
-                    item.bounds.left < viewportWidth && item.bounds.top < viewportHeight &&
-                    item.bounds.right > 0 && item.bounds.bottom > 0
-            }
-            .sortedWith(compareBy({ it.bounds.top }, { it.bounds.left }))
-            .filter { candidate ->
-                candidatesAreDistinct(candidate, selected).also { distinct ->
-                    if (distinct) selected += candidate
-                }
-            }
-            .toList()
-        if (candidates.isEmpty()) return emptyList()
-
-        val paragraphs = mutableListOf<MutableList<RecognizedText>>()
-        candidates.forEach { candidate ->
-            val current = paragraphs.lastOrNull()
-            if (current != null && canAppend(current, candidate)) {
-                current += candidate
-            } else {
-                paragraphs += mutableListOf(candidate)
-            }
-        }
-        return paragraphs.mapIndexed { index, members ->
+        val lineGroups = MachineParagraphGroupingPolicy.group(
+            lines = recognized.map { item ->
+                MachineTextLine(
+                    text = item.text,
+                    left = item.bounds.left,
+                    top = item.bounds.top,
+                    right = item.bounds.right,
+                    bottom = item.bounds.bottom,
+                    blockId = item.sourceBlockId,
+                    lineIndex = item.sourceLineIndex
+                )
+            },
+            viewportWidth = viewportWidth,
+            viewportHeight = viewportHeight
+        )
+        return lineGroups.mapIndexed { index, memberIndices ->
+            val members = memberIndices.map(recognized::get)
             val ordered = members.sortedWith(compareBy({ it.bounds.top }, { it.bounds.left }))
-            val slots = ordered.flatMap(RecognizedText::textEraseBounds).map(::Rect)
-            val bounds = slots.drop(1).fold(Rect(slots.first())) { result, slot ->
-                result.apply { union(slot) }
+            val slots = ordered.flatMap(RecognizedText::textEraseBounds).map(::copyBounds)
+            val bounds = slots.drop(1).fold(copyBounds(slots.first())) { result, slot ->
+                unionBounds(result, slot)
             }
             MachineParagraph(
                 paragraphId = "machine-paragraph-$index",
@@ -88,60 +168,18 @@ internal class MachineOcrTextProcessingProvider : OcrTextProcessingProvider {
         }
     }
 
-    private fun candidatesAreDistinct(
-        candidate: RecognizedText,
-        selected: List<RecognizedText>
-    ): Boolean = selected.asSequence()
-        .none { existing ->
-            existing.text.trim() == candidate.text.trim() &&
-                intersectionRatio(existing.bounds, candidate.bounds) >= DUPLICATE_OVERLAP
-        }
+}
 
-    private fun canAppend(
-        members: List<RecognizedText>,
-        candidate: RecognizedText
-    ): Boolean {
-        if (members.sumOf { it.text.length } + candidate.text.length > MAX_PARAGRAPH_CHARACTERS) {
-            return false
-        }
-        if (isProtected(candidate.text) || members.any { isProtected(it.text) }) return false
-        val previous = members.last()
-        val previousHeight = previous.bounds.height().coerceAtLeast(1)
-        val candidateHeight = candidate.bounds.height().coerceAtLeast(1)
-        val lineHeight = max(previousHeight, candidateHeight)
-        val verticalGap = candidate.bounds.top - previous.bounds.bottom
-        if (verticalGap < -lineHeight / 4 || verticalGap > max(4, (lineHeight * 1.2f).toInt())) {
-            return false
-        }
-        val leftDelta = abs(previous.bounds.left - candidate.bounds.left)
-        val overlap = horizontalOverlap(previous.bounds, candidate.bounds)
-        val overlapRatio = overlap.toFloat() / minOf(previous.bounds.width(), candidate.bounds.width())
-            .coerceAtLeast(1)
-        val aligned = leftDelta <= max(6, lineHeight)
-        val sameBlock = previous.sourceBlockId != null &&
-            previous.sourceBlockId == candidate.sourceBlockId
-        return sameBlock || aligned || overlapRatio >= MIN_HORIZONTAL_OVERLAP
-    }
+private fun rectWidth(bounds: Rect): Int = bounds.right - bounds.left
 
-    private fun isProtected(text: String): Boolean =
-        text.trim().matches(PROTECTED_TEXT) || text.trim().matches(URL_OR_EMAIL)
+private fun rectHeight(bounds: Rect): Int = bounds.bottom - bounds.top
 
-    private fun horizontalOverlap(first: Rect, second: Rect): Int =
-        (minOf(first.right, second.right) - maxOf(first.left, second.left)).coerceAtLeast(0)
+private fun copyBounds(bounds: Rect): Rect =
+    Rect(bounds.left, bounds.top, bounds.right, bounds.bottom)
 
-    private fun intersectionRatio(first: Rect, second: Rect): Float {
-        val intersection = Rect(first)
-        if (!intersection.intersect(second)) return 0f
-        val smallerArea = minOf(first.width() * first.height(), second.width() * second.height())
-            .coerceAtLeast(1)
-        return intersection.width() * intersection.height() / smallerArea.toFloat()
-    }
-
-    private companion object {
-        const val MAX_PARAGRAPH_CHARACTERS = 2_000
-        const val MIN_HORIZONTAL_OVERLAP = 0.25f
-        const val DUPLICATE_OVERLAP = 0.7f
-        val URL_OR_EMAIL = Regex("(?i)(?:https?://|www\\.)\\S+|[\\w.+-]+@[\\w.-]+\\.[A-Za-z]{2,}")
-        val PROTECTED_TEXT = Regex("(?i)(?:\\d{1,2}:\\d{2}(?::\\d{2})?|[A-F0-9]{8,}|[\\w.-]+\\.(?:java|kt|json|xml|py|rs|js))")
-    }
+private fun unionBounds(target: Rect, other: Rect): Rect = target.apply {
+    left = minOf(left, other.left)
+    top = minOf(top, other.top)
+    right = maxOf(right, other.right)
+    bottom = maxOf(bottom, other.bottom)
 }

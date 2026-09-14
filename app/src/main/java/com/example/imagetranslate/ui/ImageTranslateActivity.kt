@@ -44,6 +44,7 @@ import com.example.imagetranslate.ocr.OCRManager
 import com.example.imagetranslate.ocr.PaddleNetworkSettings
 import com.example.imagetranslate.ocr.RecognizedText
 import com.example.imagetranslate.semantic.SemanticTextGrouper
+import com.example.imagetranslate.semantic.SemanticContentClassifier
 import com.example.imagetranslate.semantic.SemanticRenderShape
 import com.example.imagetranslate.semantic.SemanticTextRole
 import com.example.imagetranslate.semantic.StaticImageTextFilter
@@ -1722,6 +1723,9 @@ class ImageTranslateActivity : AppCompatActivity() {
             throw IllegalStateException("机翻未配置，请设置 MACHINE_TRANSLATION_TOKEN")
         }
         val requests = paragraphs.mapNotNull { paragraph ->
+            if (SemanticContentClassifier.shouldPreserve("BODY", paragraph.sourceText)) {
+                return@mapNotNull null
+            }
             val source = com.example.imagetranslate.translate.TranslationScriptLanguagePolicy
                 .sourceLanguage(paragraph.sourceText)
             val target = source?.let { machineTargetLanguage(it, mode) }
