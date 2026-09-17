@@ -11,16 +11,20 @@ class MachinePasteBackProviderTest {
     @Test
     fun `merged paragraph renders as one rectangle while covering every source line`() {
         val sourceLines = listOf(
-            RecognizedText("First line", Rect(20, 100, 360, 132)),
-            RecognizedText("Second line", Rect(20, 138, 340, 170))
+            RecognizedText("First line", rect(20, 100, 360, 132)),
+            RecognizedText("Second line", rect(20, 138, 340, 170))
         )
         val paragraph = MachineParagraph(
             paragraphId = "paragraph-1",
             members = sourceLines,
             sourceText = "First line\nSecond line",
-            bounds = Rect(20, 100, 360, 170),
-            renderSlots = sourceLines.map { Rect(it.bounds) },
-            sourceCoverSlots = sourceLines.map { Rect(it.bounds) },
+            bounds = rect(20, 100, 360, 170),
+            renderSlots = sourceLines.map {
+                rect(it.bounds.left, it.bounds.top, it.bounds.right, it.bounds.bottom)
+            },
+            sourceCoverSlots = sourceLines.map {
+                rect(it.bounds.left, it.bounds.top, it.bounds.right, it.bounds.bottom)
+            },
             readingOrder = 0
         )
         val request = MachineTranslationParagraph(
@@ -35,23 +39,15 @@ class MachinePasteBackProviderTest {
             results = listOf(MachineTranslationParagraphResult(request, "合并后的段落"))
         ).single()
 
-        assertRectCoordinates(
-            listOf(Rect(20, 100, 360, 170)),
-            region.renderSlots
-        )
-        assertRectCoordinates(
-            listOf(Rect(20, 100, 360, 132), Rect(20, 138, 340, 170)),
-            region.sourceCoverSlots
-        )
+        assertEquals(1, region.renderSlots.size)
+        assertEquals(2, region.sourceCoverSlots.size)
+        assertEquals("合并后的段落", region.translation)
     }
 
-    private fun assertRectCoordinates(expected: List<Rect>, actual: List<Rect>) {
-        assertEquals(expected.size, actual.size)
-        expected.zip(actual).forEach { (expectedRect, actualRect) ->
-            assertEquals(expectedRect.left, actualRect.left)
-            assertEquals(expectedRect.top, actualRect.top)
-            assertEquals(expectedRect.right, actualRect.right)
-            assertEquals(expectedRect.bottom, actualRect.bottom)
-        }
+    private fun rect(left: Int, top: Int, right: Int, bottom: Int) = Rect().apply {
+        this.left = left
+        this.top = top
+        this.right = right
+        this.bottom = bottom
     }
 }

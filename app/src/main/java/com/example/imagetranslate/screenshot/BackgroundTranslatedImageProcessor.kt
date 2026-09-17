@@ -41,6 +41,7 @@ import com.example.imagetranslate.translate.TranslationMode
 import com.example.imagetranslate.translate.MachineTranslationParagraph
 import com.example.imagetranslate.translate.MachineTranslationParagraphResult
 import com.example.imagetranslate.translate.VolcMachineTranslationProvider
+import com.example.imagetranslate.translate.machineScreenRequestDurationMs
 import com.example.imagetranslate.translate.toSemanticTranslationSource
 import com.example.imagetranslate.ui.ShapeAwareTextLayout
 import com.example.imagetranslate.ui.ShapeAwareTextOutcome
@@ -77,7 +78,8 @@ internal data class MachineTranslationResponseMetric(
 
 internal data class MachineTranslationRunMetrics(
     val groupingMs: Long,
-    val requestMs: Long,
+    val maxResponseMs: Long,
+    val requestWallMs: Long,
     val requestCount: Int,
     val successCount: Int,
     val failureCount: Int,
@@ -179,7 +181,8 @@ internal data class BackgroundTranslatedOverlayResult(
         ocrMs = ocrMs,
         translationMs = translationMs,
         machineGroupingMs = machineMetrics?.groupingMs ?: 0L,
-        machineRequestMs = machineMetrics?.requestMs ?: 0L,
+        machineRequestMs = machineMetrics?.maxResponseMs ?: 0L,
+        machineRequestWallMs = machineMetrics?.requestWallMs ?: 0L,
         machineRequestCount = machineMetrics?.requestCount ?: 0,
         machineSuccessCount = machineMetrics?.successCount ?: 0,
         machineFailureCount = machineMetrics?.failureCount ?: 0,
@@ -1185,7 +1188,7 @@ internal class BackgroundTranslatedImageProcessor(
                 regions = machineExecution.regions,
                 failedCount = machineExecution.metrics.failureCount,
                 ocrMs = ocrMs,
-                translationMs = machineExecution.metrics.requestMs,
+                translationMs = machineExecution.metrics.maxResponseMs,
                 machineMetrics = machineExecution.metrics
             )
         }
@@ -1272,7 +1275,8 @@ internal class BackgroundTranslatedImageProcessor(
                 regions = emptyList(),
                 metrics = MachineTranslationRunMetrics(
                     groupingMs = groupingMs,
-                    requestMs = 0L,
+                    maxResponseMs = 0L,
+                    requestWallMs = 0L,
                     requestCount = 0,
                     successCount = 0,
                     failureCount = paragraphs.size,
@@ -1304,14 +1308,16 @@ internal class BackgroundTranslatedImageProcessor(
         )
         val requestStartedAt = SystemClock.elapsedRealtime()
         val results = provider.translate(requests)
-        val requestMs = SystemClock.elapsedRealtime() - requestStartedAt
+        val requestWallMs = SystemClock.elapsedRealtime() - requestStartedAt
+        val maxResponseMs = machineScreenRequestDurationMs(results)
         val regions = MachinePasteBackProvider().createRegions(paragraphs, results)
         val responseMetrics = results.map { it.toResponseMetric() }
         return MachineTranslationExecution(
             regions = regions,
             metrics = MachineTranslationRunMetrics(
                 groupingMs = groupingMs,
-                requestMs = requestMs,
+                maxResponseMs = maxResponseMs,
+                requestWallMs = requestWallMs,
                 requestCount = results.size,
                 successCount = results.count(MachineTranslationParagraphResult::succeeded),
                 failureCount = results.count { !it.succeeded },
@@ -1336,8 +1342,16 @@ internal class BackgroundTranslatedImageProcessor(
         return MachineTranslationRunMetrics(
             groupingMs = if (sumWallTime) metrics.sumOf(MachineTranslationRunMetrics::groupingMs)
             else metrics.maxOf(MachineTranslationRunMetrics::groupingMs),
-            requestMs = if (sumWallTime) metrics.sumOf(MachineTranslationRunMetrics::requestMs)
-            else metrics.maxOf(MachineTranslationRunMetrics::requestMs),
+            maxResponseMs = if (sumWallTime) {
+                metrics.sumOf(MachineTranslationRunMetrics::maxResponseMs)
+            } else {
+                metrics.maxOf(MachineTranslationRunMetrics::maxResponseMs)
+            },
+            requestWallMs = if (sumWallTime) {
+                metrics.sumOf(MachineTranslationRunMetrics::requestWallMs)
+            } else {
+                metrics.maxOf(MachineTranslationRunMetrics::requestWallMs)
+            },
             requestCount = metrics.sumOf(MachineTranslationRunMetrics::requestCount),
             successCount = metrics.sumOf(MachineTranslationRunMetrics::successCount),
             failureCount = metrics.sumOf(MachineTranslationRunMetrics::failureCount),

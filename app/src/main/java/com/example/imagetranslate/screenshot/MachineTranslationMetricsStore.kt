@@ -15,15 +15,19 @@ internal object MachineTranslationMetricsStore {
         totalMs: Long
     ): File? {
         val metrics = result.machineMetrics ?: return null
+        val effectiveTotalMs = result.ocrMs + metrics.groupingMs +
+            metrics.maxResponseMs + result.renderingMs
         val payload = JSONObject()
             .put("schema", SCHEMA_VERSION)
             .put("timestampEpochMs", System.currentTimeMillis())
             .put("generation", generation)
             .put("ocrMs", result.ocrMs)
             .put("groupingMs", metrics.groupingMs)
-            .put("requestMs", metrics.requestMs)
+            .put("maxResponseMs", metrics.maxResponseMs)
+            .put("requestWallMs", metrics.requestWallMs)
             .put("renderMs", result.renderingMs)
-            .put("totalMs", totalMs)
+            .put("totalMs", effectiveTotalMs)
+            .put("wallTotalMs", totalMs)
             .put("requestCount", metrics.requestCount)
             .put("successCount", metrics.successCount)
             .put("failureCount", metrics.failureCount)
@@ -52,7 +56,7 @@ internal object MachineTranslationMetricsStore {
         }
     }
 
-    private const val SCHEMA_VERSION = 1
+    private const val SCHEMA_VERSION = 2
     private const val DIRECTORY = "metrics"
     private const val FILE_NAME = "machine-translation.jsonl"
     private const val PREVIOUS_FILE_NAME = "machine-translation.previous.jsonl"

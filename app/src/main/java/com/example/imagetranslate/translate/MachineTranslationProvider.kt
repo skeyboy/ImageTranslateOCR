@@ -72,13 +72,16 @@ internal class VolcMachineTranslationProvider(
         paragraphs: List<MachineTranslationParagraph>
     ): List<MachineTranslationParagraphResult> {
         if (paragraphs.isEmpty()) return emptyList()
-        return translateMachineParagraphsInParallel(paragraphs, maxConcurrency, ::translateOne)
+        val batchStartedAt = System.nanoTime()
+        return translateMachineParagraphsInParallel(paragraphs, maxConcurrency) { paragraph ->
+            translateOne(paragraph, batchStartedAt)
+        }
     }
 
     private suspend fun translateOne(
-        paragraph: MachineTranslationParagraph
+        paragraph: MachineTranslationParagraph,
+        batchStartedAt: Long
     ): MachineTranslationParagraphResult {
-        val startedAt = System.nanoTime()
         return try {
             val translated = withTimeout(timeoutMs) {
                 withContext(Dispatchers.IO) {
@@ -88,7 +91,7 @@ internal class VolcMachineTranslationProvider(
             MachineTranslationParagraphResult(
                 paragraph = paragraph,
                 translatedText = translated,
-                durationMs = elapsedMs(startedAt)
+                durationMs = elapsedMs(batchStartedAt)
             )
         } catch (error: CancellationException) {
             throw error
@@ -98,7 +101,7 @@ internal class VolcMachineTranslationProvider(
                 translatedText = null,
                 errorCode = "MACHINE_TRANSLATION_FAILED",
                 errorMessage = error.message ?: "Machine translation failed",
-                durationMs = elapsedMs(startedAt)
+                durationMs = elapsedMs(batchStartedAt)
             )
         }
     }
@@ -149,6 +152,10 @@ internal class VolcMachineTranslationProvider(
         const val DEFAULT_MAX_CONCURRENCY = 4
     }
 }
+
+internal fun machineScreenRequestDurationMs(
+    results: List<MachineTranslationParagraphResult>
+): Long = results.maxOfOrNull(MachineTranslationParagraphResult::durationMs) ?: 0L
 
 internal fun parseMachineTranslationResponse(response: String): String {
     val normalized = response.trim()

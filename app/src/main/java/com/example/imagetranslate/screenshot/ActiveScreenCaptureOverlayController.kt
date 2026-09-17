@@ -526,7 +526,7 @@ internal class ActiveScreenCaptureOverlayController(
                 R.string.active_screenshot_machine_performance_metrics,
                 ocrMs,
                 metrics.groupingMs,
-                metrics.requestMs,
+                metrics.maxResponseMs,
                 metrics.successCount,
                 metrics.requestCount,
                 renderingMs,

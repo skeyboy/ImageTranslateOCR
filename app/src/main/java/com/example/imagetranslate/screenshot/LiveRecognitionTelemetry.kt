@@ -77,9 +77,19 @@ internal object LiveRecognitionTelemetry {
         .put("render_ms", metrics.renderingMs)
         .put("machine_grouping_ms", metrics.machineGroupingMs)
         .put("machine_request_ms", metrics.machineRequestMs)
+        .put("machine_request_wall_ms", metrics.machineRequestWallMs)
         .put("machine_request_count", metrics.machineRequestCount)
         .put("machine_success_count", metrics.machineSuccessCount)
         .put("machine_failure_count", metrics.machineFailureCount)
+        .put(
+            "machine_effective_total_ms",
+            if (metrics.machineRequestCount > 0) {
+                metrics.ocrMs + metrics.machineGroupingMs +
+                    metrics.machineRequestMs + metrics.renderingMs
+            } else {
+                0L
+            }
+        )
         .put("shift_y", capturePlan?.contentShiftY ?: 0)
         .put("registration_confidence", capturePlan?.confidence?.toDouble())
         .put("registration_error", capturePlan?.registrationError?.toDouble())
@@ -162,6 +172,7 @@ internal object LiveRecognitionTelemetry {
         .put("render_ms", metrics.renderingMs)
         .put("machine_grouping_ms", metrics.machineGroupingMs)
         .put("machine_request_ms", metrics.machineRequestMs)
+        .put("machine_request_wall_ms", metrics.machineRequestWallMs)
         .put("machine_request_count", metrics.machineRequestCount)
         .put("machine_success_count", metrics.machineSuccessCount)
         .put("machine_failure_count", metrics.machineFailureCount)

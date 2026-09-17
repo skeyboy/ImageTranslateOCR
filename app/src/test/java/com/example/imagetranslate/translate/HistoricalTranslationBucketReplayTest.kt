@@ -1,6 +1,11 @@
 package com.example.imagetranslate.translate
 
+import android.graphics.Rect
+import com.example.imagetranslate.ocr.RecognizedText
+import com.example.imagetranslate.ocr.RecognizerScript
+import com.example.imagetranslate.screenshot.MachineOcrTextProcessingProvider
 import com.example.imagetranslate.screenshot.MachineParagraphGroupingPolicy
+import com.example.imagetranslate.screenshot.MachinePasteBackProvider
 import com.example.imagetranslate.screenshot.MachineTextLine
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -83,6 +88,54 @@ class HistoricalTranslationBucketReplayTest {
             assertTrue(results.all(MachineTranslationParagraphResult::succeeded))
         }
 
+    @Test
+    fun `AI history samples remain complete through machine OCR grouping and paste back`() {
+        cases.forEachIndexed { caseIndex, item ->
+            val recognized = item.source.lines().mapIndexed { lineIndex, text ->
+                RecognizedText(
+                    text = text,
+                    bounds = rect(20, 100 + lineIndex * 42, 1_000, 134 + lineIndex * 42),
+                    recognizerScript = RecognizerScript.LATIN,
+                    sourceBlockId = "history-$caseIndex",
+                    sourceLineIndex = lineIndex
+                )
+            }
+            val paragraphs = MachineOcrTextProcessingProvider()
+                .processParagraphs(recognized, 1_440, 3_200)
+            assertEquals(
+                "request=${item.requestId}, bucket=${item.bucket}, lines=${recognized.size}",
+                1,
+                paragraphs.size
+            )
+            val paragraph = paragraphs.single()
+            val request = MachineTranslationParagraph(
+                paragraphId = paragraph.paragraphId,
+                text = paragraph.sourceText,
+                sourceLanguage = item.sourceLanguage,
+                targetLanguage = item.targetLanguage
+            )
+            val region = MachinePasteBackProvider().createRegions(
+                paragraphs = listOf(paragraph),
+                results = listOf(
+                    MachineTranslationParagraphResult(request, item.aiTranslation)
+                )
+            ).single()
+
+            assertEquals(item.source, paragraph.sourceText)
+            assertEquals(item.aiTranslation, region.translation)
+            assertEquals(recognized.size, region.sourceCoverSlots.size)
+            assertEquals(1, region.renderSlots.size)
+            assertTrue(region.translation.any(::isHanCharacter))
+        }
+    }
+
     private fun isHanCharacter(character: Char): Boolean =
         Character.UnicodeScript.of(character.code) == Character.UnicodeScript.HAN
+
+    private fun rect(left: Int, top: Int, right: Int, bottom: Int) = Rect().apply {
+        this.left = left
+        this.top = top
+        this.right = right
+        this.bottom = bottom
+    }
 }

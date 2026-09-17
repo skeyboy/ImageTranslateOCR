@@ -10,6 +10,21 @@ import org.junit.Test
 
 class MachineTranslationBatchExecutorTest {
     @Test
+    fun `screen request duration uses the slowest paragraph response`() {
+        val paragraph = MachineTranslationParagraph("p", "text", "en", "zh")
+        val results = listOf(120L, 350L, 200L).mapIndexed { index, durationMs ->
+            MachineTranslationParagraphResult(
+                paragraph = paragraph.copy(paragraphId = "p-$index"),
+                translatedText = "译文-$index",
+                durationMs = durationMs
+            )
+        }
+
+        assertEquals(350L, machineScreenRequestDurationMs(results))
+        assertEquals(0L, machineScreenRequestDurationMs(emptyList()))
+    }
+
+    @Test
     fun `extracts translation from wrapped backend response`() {
         val response = """
             {

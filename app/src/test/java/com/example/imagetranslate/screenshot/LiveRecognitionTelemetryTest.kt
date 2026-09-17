@@ -24,6 +24,7 @@ class LiveRecognitionTelemetryTest {
             translationMs = 80L,
             machineGroupingMs = 10L,
             machineRequestMs = 80L,
+            machineRequestWallMs = 84L,
             machineRequestCount = 4,
             machineSuccessCount = 3,
             machineFailureCount = 1
@@ -40,6 +41,8 @@ class LiveRecognitionTelemetryTest {
 
         assertEquals(10L, payload.getLong("machine_grouping_ms"))
         assertEquals(80L, payload.getLong("machine_request_ms"))
+        assertEquals(84L, payload.getLong("machine_request_wall_ms"))
+        assertEquals(170L, payload.getLong("machine_effective_total_ms"))
         assertEquals(4, payload.getInt("machine_request_count"))
         assertEquals(3, payload.getInt("machine_success_count"))
         assertEquals(1, payload.getInt("machine_failure_count"))

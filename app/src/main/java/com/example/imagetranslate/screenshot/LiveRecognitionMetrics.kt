@@ -70,6 +70,7 @@ internal data class LiveRecognitionRunMetrics(
     val translationMs: Long = 0L,
     val machineGroupingMs: Long = 0L,
     val machineRequestMs: Long = 0L,
+    val machineRequestWallMs: Long = 0L,
     val machineRequestCount: Int = 0,
     val machineSuccessCount: Int = 0,
     val machineFailureCount: Int = 0,
