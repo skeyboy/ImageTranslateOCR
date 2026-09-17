@@ -48,6 +48,89 @@ class MachineOcrTextProcessingProviderTest {
     }
 
     @Test
+    fun `tightly stacked multiline blocks merge as one visual paragraph`() {
+        val rows = listOf(
+            line(
+                "First established body line.\nSecond body line.\nThird body line.",
+                20, 100, 380, 196, blockId = "block-a"
+            ),
+            line(
+                "The continuation starts without extra paragraph spacing.\nAnd keeps flowing.",
+                21, 202, 378, 266, blockId = "block-b"
+            )
+        )
+
+        val groups = MachineParagraphGroupingPolicy.group(rows, 400, 400)
+
+        assertEquals(1, groups.size)
+        assertEquals(listOf(0, 1), groups.single())
+    }
+
+    @Test
+    fun `visible paragraph spacing keeps multiline blocks separate`() {
+        val rows = listOf(
+            line(
+                "First established body line.\nSecond body line.\nThird body line.",
+                20, 100, 380, 196, blockId = "block-a"
+            ),
+            line(
+                "A visually separate paragraph starts here.\nIt has its own spacing.",
+                20, 230, 380, 294, blockId = "block-b"
+            )
+        )
+
+        val groups = MachineParagraphGroupingPolicy.group(rows, 400, 400)
+
+        assertEquals(2, groups.size)
+    }
+
+    @Test
+    fun `short completed neighboring blocks remain independent`() {
+        val rows = listOf(
+            line("Independent status.", 20, 100, 360, 132, blockId = "block-a"),
+            line("Another status.", 20, 138, 360, 170, blockId = "block-b")
+        )
+
+        val groups = MachineParagraphGroupingPolicy.group(rows, 400, 300)
+
+        assertEquals(2, groups.size)
+    }
+
+    @Test
+    fun `unfinished wrapped text can continue across an OCR block boundary`() {
+        val rows = listOf(
+            line(
+                "A sentence that clearly continues onto",
+                20, 100, 380, 132, blockId = "block-a"
+            ),
+            line("the next tightly aligned line.", 20, 138, 370, 170, blockId = "block-b")
+        )
+
+        val groups = MachineParagraphGroupingPolicy.group(rows, 400, 300)
+
+        assertEquals(1, groups.size)
+    }
+
+    @Test
+    fun `a structural value between bodies prevents cross container merging`() {
+        val rows = listOf(
+            line(
+                "First established body line.\nSecond body line.\nThird body line.",
+                20, 100, 380, 196, blockId = "block-a"
+            ),
+            line("12:30", 20, 202, 90, 234, blockId = "metadata"),
+            line(
+                "A different body begins after the boundary.",
+                20, 240, 380, 272, blockId = "block-b"
+            )
+        )
+
+        val groups = MachineParagraphGroupingPolicy.group(rows, 400, 400)
+
+        assertEquals(3, groups.size)
+    }
+
+    @Test
     fun `archived whatsapp rows preserve OCR block paragraph boundaries`() {
         val rows = ArchivedWhatsAppMachineFixture.rows
         val groups = MachineParagraphGroupingPolicy.group(
@@ -59,7 +142,7 @@ class MachineOcrTextProcessingProviderTest {
             group.joinToString("\n") { rows[it].text }
         }
 
-        assertEquals(18, groups.size)
+        assertEquals(paragraphTexts.joinToString(" || "), 18, groups.size)
         assertEquals(listOf(2, 2, 2, 3, 6, 3), groups.map { it.size }.filter { it > 1 })
         assertEquals("Vero Tonti", paragraphTexts[2])
         assertEquals(
@@ -91,6 +174,7 @@ class MachineOcrTextProcessingProviderTest {
         left: Int,
         top: Int,
         right: Int,
-        bottom: Int
-    ) = MachineTextLine(text, left, top, right, bottom)
+        bottom: Int,
+        blockId: String? = null
+    ) = MachineTextLine(text, left, top, right, bottom, blockId = blockId)
 }

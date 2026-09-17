@@ -2,6 +2,7 @@ package com.example.imagetranslate.screenshot
 
 import android.graphics.Rect
 import com.example.imagetranslate.ocr.RecognizedText
+import com.example.imagetranslate.semantic.SemanticContentClassifier
 import kotlin.math.abs
 import kotlin.math.max
 
@@ -12,7 +13,8 @@ internal data class MachineTextLine(
     val right: Int,
     val bottom: Int,
     val blockId: String? = null,
-    val lineIndex: Int? = null
+    val lineIndex: Int? = null,
+    val estimatedTextHeightPx: Float? = null
 )
 
 internal object MachineParagraphGroupingPolicy {
@@ -54,20 +56,61 @@ internal object MachineParagraphGroupingPolicy {
         if (members.sumOf { it.value.text.length } + candidate.text.length > 2_000) return false
         if (isProtected(candidate.text) || members.any { isProtected(it.value.text) }) return false
         val previous = members.last().value
-        if (previous.blockId != null && candidate.blockId != null &&
-            previous.blockId != candidate.blockId
-        ) return false
-        val lineHeight = max(height(previous), height(candidate)).coerceAtLeast(1)
+        val previousLineHeight = representativeLineHeight(previous)
+        val candidateLineHeight = representativeLineHeight(candidate)
+        val lineHeight = max(previousLineHeight, candidateLineHeight).coerceAtLeast(1)
         val verticalGap = candidate.top - previous.bottom
-        if (verticalGap < -lineHeight / 4 || verticalGap > max(4, (lineHeight * 1.2f).toInt())) {
-            return false
-        }
         val leftDelta = abs(previous.left - candidate.left)
         val overlap = (minOf(previous.right, candidate.right) -
             maxOf(previous.left, candidate.left)).coerceAtLeast(0)
         val overlapRatio = overlap.toFloat() / minOf(width(previous), width(candidate)).coerceAtLeast(1)
         val sameBlock = previous.blockId != null && previous.blockId == candidate.blockId
+        if (!sameBlock && previous.blockId != null && candidate.blockId != null) {
+            return tightCrossBlockContinuation(
+                members = members,
+                previous = previous,
+                candidate = candidate,
+                verticalGap = verticalGap,
+                lineHeight = lineHeight,
+                previousLineHeight = previousLineHeight,
+                candidateLineHeight = candidateLineHeight,
+                leftDelta = leftDelta,
+                overlapRatio = overlapRatio
+            )
+        }
+        if (verticalGap < -lineHeight / 4 ||
+            verticalGap > max(4, (lineHeight * SAME_BLOCK_GAP_RATIO).toInt())
+        ) return false
         return sameBlock || leftDelta <= max(6, lineHeight) || overlapRatio >= 0.25f
+    }
+
+    private fun tightCrossBlockContinuation(
+        members: List<IndexedValue<MachineTextLine>>,
+        previous: MachineTextLine,
+        candidate: MachineTextLine,
+        verticalGap: Int,
+        lineHeight: Int,
+        previousLineHeight: Int,
+        candidateLineHeight: Int,
+        leftDelta: Int,
+        overlapRatio: Float
+    ): Boolean {
+        if (isStructuralBoundary(previous.text) || isStructuralBoundary(candidate.text)) return false
+        if (verticalGap < -lineHeight / 4 ||
+            verticalGap > max(3, (lineHeight * CROSS_BLOCK_GAP_RATIO).toInt())
+        ) return false
+        val heightRatio = minOf(previousLineHeight, candidateLineHeight).toFloat() /
+            maxOf(previousLineHeight, candidateLineHeight).coerceAtLeast(1)
+        if (heightRatio < MINIMUM_TEXT_HEIGHT_RATIO) return false
+        val aligned = leftDelta <= max(6, (lineHeight * CROSS_BLOCK_LEFT_RATIO).toInt())
+        if (!aligned || overlapRatio < MINIMUM_CROSS_BLOCK_OVERLAP) return false
+
+        val establishedBody = members.sumOf { visualLineCount(it.value) } >=
+            MINIMUM_ESTABLISHED_BODY_LINES ||
+            members.sumOf { compactLength(it.value.text) } >= MINIMUM_ESTABLISHED_BODY_CHARACTERS
+        val unfinishedContinuation = compactLength(previous.text) >=
+            MINIMUM_CONTINUATION_CHARACTERS && !endsSentence(previous.text)
+        return establishedBody || unfinishedContinuation
     }
 
     private fun duplicate(first: MachineTextLine, second: MachineTextLine): Boolean {
@@ -84,6 +127,38 @@ internal object MachineParagraphGroupingPolicy {
     private fun isProtected(text: String): Boolean =
         text.trim().matches(PROTECTED_TEXT) || text.trim().matches(URL_OR_EMAIL)
 
+    private fun isStructuralBoundary(text: String): Boolean =
+        isProtected(text) || SemanticContentClassifier.isStandaloneMetadata(text) ||
+            looksLikeCompactLabel(text)
+
+    private fun looksLikeCompactLabel(text: String): Boolean {
+        if (visualLineCount(text) != 1 || compactLength(text) > MAXIMUM_COMPACT_LABEL_CHARACTERS) {
+            return false
+        }
+        val tokens = text.trim().split(WHITESPACE).filter(String::isNotBlank)
+        if (tokens.size !in 1..MAXIMUM_COMPACT_LABEL_TOKENS) return false
+        return tokens.all { token ->
+            val letters = token.filter(Char::isLetter)
+            letters.length >= 2 && letters.first().isUpperCase() &&
+                letters.drop(1).all { it.isLowerCase() }
+        }
+    }
+
+    private fun representativeLineHeight(line: MachineTextLine): Int =
+        line.estimatedTextHeightPx?.takeIf { it > 0f }?.toInt()
+            ?: (height(line) / visualLineCount(line)).coerceAtLeast(1)
+
+    private fun visualLineCount(line: MachineTextLine): Int =
+        visualLineCount(line.text)
+
+    private fun visualLineCount(text: String): Int =
+        text.lineSequence().count().coerceAtLeast(1)
+
+    private fun compactLength(text: String): Int = text.count { !it.isWhitespace() }
+
+    private fun endsSentence(text: String): Boolean =
+        text.trimEnd().lastOrNull() in SENTENCE_ENDINGS
+
     private fun width(line: MachineTextLine): Int = line.right - line.left
     private fun height(line: MachineTextLine): Int = line.bottom - line.top
 
@@ -94,6 +169,18 @@ internal object MachineParagraphGroupingPolicy {
         "(?i)(?:\\d{1,2}:\\d{2}(?::\\d{2})?|[A-F0-9]{8,}|" +
             "[\\w.-]+\\.(?:java|kt|json|xml|py|rs|js))"
     )
+    private val SENTENCE_ENDINGS = setOf('.', '!', '?', '。', '！', '？', '…')
+    private val WHITESPACE = Regex("\\s+")
+    private const val SAME_BLOCK_GAP_RATIO = 1.2f
+    private const val CROSS_BLOCK_GAP_RATIO = 0.45f
+    private const val CROSS_BLOCK_LEFT_RATIO = 0.6f
+    private const val MINIMUM_CROSS_BLOCK_OVERLAP = 0.7f
+    private const val MINIMUM_TEXT_HEIGHT_RATIO = 0.72f
+    private const val MINIMUM_ESTABLISHED_BODY_LINES = 3
+    private const val MINIMUM_ESTABLISHED_BODY_CHARACTERS = 72
+    private const val MINIMUM_CONTINUATION_CHARACTERS = 12
+    private const val MAXIMUM_COMPACT_LABEL_CHARACTERS = 40
+    private const val MAXIMUM_COMPACT_LABEL_TOKENS = 4
 }
 
 internal data class MachineParagraph(
@@ -143,7 +230,8 @@ internal class MachineOcrTextProcessingProvider : OcrTextProcessingProvider {
                     right = item.bounds.right,
                     bottom = item.bounds.bottom,
                     blockId = item.sourceBlockId,
-                    lineIndex = item.sourceLineIndex
+                    lineIndex = item.sourceLineIndex,
+                    estimatedTextHeightPx = item.estimatedTextHeightPx
                 )
             },
             viewportWidth = viewportWidth,
