@@ -1135,12 +1135,13 @@ internal class BackgroundTranslatedImageProcessor(
         val ocrMs = SystemClock.elapsedRealtime() - ocrStartedAt
         if (TranslationExperienceSettings.get(appContext) == TranslationExperience.MACHINE) {
             val machineStartedAt = SystemClock.elapsedRealtime()
+            val machineParagraphs = MachineOcrTextProcessingProvider().processParagraphs(
+                recognized = rawRecognized,
+                viewportWidth = bitmap.width,
+                viewportHeight = bitmap.height
+            )
             val machineRegions = translateMachineParagraphs(
-                paragraphs = MachineOcrTextProcessingProvider().processParagraphs(
-                    recognized = rawRecognized,
-                    viewportWidth = bitmap.width,
-                    viewportHeight = bitmap.height
-                ),
+                paragraphs = machineParagraphs,
                 mode = mode
             )
             val machineMs = SystemClock.elapsedRealtime() - machineStartedAt
@@ -1151,7 +1152,7 @@ internal class BackgroundTranslatedImageProcessor(
                 edgeRecoveredCount = edgeRecovered.size,
                 continuationCount = initialGrouping.continuationCount,
                 regions = machineRegions,
-                failedCount = (rawRecognized.size - machineRegions.size).coerceAtLeast(0),
+                failedCount = (machineParagraphs.size - machineRegions.size).coerceAtLeast(0),
                 ocrMs = ocrMs,
                 translationMs = machineMs
             )

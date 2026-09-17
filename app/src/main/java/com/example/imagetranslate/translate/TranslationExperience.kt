@@ -14,8 +14,7 @@ internal object TranslationExperienceSettings {
     fun get(context: Context): TranslationExperience {
         val stored = context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
             .getString(EXPERIENCE, null)
-        return runCatching { TranslationExperience.valueOf(stored.orEmpty()) }
-            .getOrDefault(TranslationExperience.AI)
+        return resolveTranslationExperience(stored)
     }
 
     fun set(context: Context, experience: TranslationExperience) {
@@ -30,3 +29,7 @@ internal object TranslationExperienceSettings {
         TranslationExperience.AI -> "AI 智能翻译"
     }
 }
+
+internal fun resolveTranslationExperience(value: String?): TranslationExperience =
+    runCatching { TranslationExperience.valueOf(value.orEmpty().trim().uppercase()) }
+        .getOrDefault(TranslationExperience.AI)

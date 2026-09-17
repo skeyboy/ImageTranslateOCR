@@ -1694,6 +1694,7 @@ class OneShotScreenCaptureService : Service() {
                 val activeRecognitionMode = recognitionMode
                 val activeLiveOcrTranslationEngine = liveOcrTranslationEngine
                 val activeTranslationBackend = translationBackend
+                val activeTranslationExperience = translationExperience
                 val activeExperienceMode = experienceMode
                 val activeSmartAssistEnabled = smartAssistEnabled
                 val requestedExperienceMode =
@@ -1722,6 +1723,7 @@ class OneShotScreenCaptureService : Service() {
                     TAG,
                     "Overlay translation started: generation=$generation, " +
                         "backend=${activeTranslationBackend.name}, " +
+                        "translationExperience=${activeTranslationExperience.name}, " +
                         "engine=${activeLiveOcrTranslationEngine.name}, " +
                         "timeoutMs=$translationTimeoutMs"
                 )
