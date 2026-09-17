@@ -18,7 +18,7 @@ internal class MachinePasteBackProvider {
                 source = paragraph.asRecognizedText(),
                 translation = translated,
                 groupId = paragraph.paragraphId,
-                renderSlots = paragraph.renderSlots.map(::Rect),
+                renderSlots = listOf(Rect(paragraph.bounds)),
                 sourceCoverSlots = paragraph.sourceCoverSlots.map(::Rect)
             )
         }

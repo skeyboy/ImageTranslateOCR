@@ -122,8 +122,7 @@ internal class VolcMachineTranslationProvider(
                     "Machine translation HTTP ${http.responseCode}: ${detail.orEmpty().take(300)}"
                 )
             }
-            response.trim().takeIf { it.isNotEmpty() }
-                ?: throw IllegalStateException("Machine translation returned an empty response")
+            parseMachineTranslationResponse(response)
         }
     }
 
@@ -137,4 +136,23 @@ internal class VolcMachineTranslationProvider(
         const val DEFAULT_TIMEOUT_MS = 15_000L
         const val DEFAULT_MAX_CONCURRENCY = 4
     }
+}
+
+internal fun parseMachineTranslationResponse(response: String): String {
+    val normalized = response.trim()
+    require(normalized.isNotEmpty()) { "Machine translation returned an empty response" }
+    if (!normalized.startsWith('{')) return normalized
+
+    val payload = runCatching { JSONObject(normalized) }.getOrElse { return normalized }
+    val code = payload.optInt("code", 0)
+    if (code != 0) {
+        val message = payload.optString("message").trim().ifEmpty { "Unknown backend error" }
+        throw IllegalStateException("Machine translation backend error $code: $message")
+    }
+    val translation = payload.optJSONObject("result")
+        ?.optString("translation")
+        ?.trim()
+        .orEmpty()
+    return translation.takeIf(String::isNotEmpty)
+        ?: throw IllegalStateException("Machine translation response has no result.translation")
 }

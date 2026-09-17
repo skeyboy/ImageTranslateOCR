@@ -4,10 +4,42 @@ import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class MachineTranslationBatchExecutorTest {
+    @Test
+    fun `extracts translation from wrapped backend response`() {
+        val response = """
+            {
+              "code": 0,
+              "type": "success",
+              "message": "",
+              "result": {"translation": "翻译后的段落"},
+              "extras": null
+            }
+        """.trimIndent()
+
+        assertEquals("翻译后的段落", parseMachineTranslationResponse(response))
+    }
+
+    @Test
+    fun `keeps direct text backend response compatible`() {
+        assertEquals("翻译后的段落", parseMachineTranslationResponse("  翻译后的段落  "))
+    }
+
+    @Test
+    fun `rejects wrapped backend errors`() {
+        val error = assertThrows(IllegalStateException::class.java) {
+            parseMachineTranslationResponse(
+                """{"code":401,"message":"token expired","result":null}"""
+            )
+        }
+
+        assertTrue(error.message.orEmpty().contains("token expired"))
+    }
+
     @Test
     fun `archived paragraphs run concurrently and return in source order`() = runBlocking {
         val paragraphs = (0 until ARCHIVED_TRANSLATABLE_PARAGRAPH_COUNT).map { "paragraph-$it" }
