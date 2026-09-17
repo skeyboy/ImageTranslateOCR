@@ -39,6 +39,7 @@ import com.example.imagetranslate.translate.TranslationExperience
 import com.example.imagetranslate.translate.TranslationExperienceSettings
 import com.example.imagetranslate.translate.TranslationMode
 import com.example.imagetranslate.translate.MachineTranslationParagraph
+import com.example.imagetranslate.translate.MachineTranslationParagraphResult
 import com.example.imagetranslate.translate.VolcMachineTranslationProvider
 import com.example.imagetranslate.translate.toSemanticTranslationSource
 import com.example.imagetranslate.ui.ShapeAwareTextLayout
@@ -65,6 +66,22 @@ internal data class BackgroundTranslatedImageResult(
     val replacedCount: Int,
     val failedCount: Int,
     val renderedRegions: List<Rect> = emptyList()
+)
+
+internal data class MachineTranslationResponseMetric(
+    val paragraphId: String,
+    val succeeded: Boolean,
+    val durationMs: Long,
+    val errorCode: String?
+)
+
+internal data class MachineTranslationRunMetrics(
+    val groupingMs: Long,
+    val requestMs: Long,
+    val requestCount: Int,
+    val successCount: Int,
+    val failureCount: Int,
+    val responses: List<MachineTranslationResponseMetric>
 )
 
 internal object PostTranslationSmartAssistPolicy {
@@ -128,7 +145,8 @@ internal data class BackgroundTranslatedOverlayResult(
     val translationFailedCount: Int = 0,
     val renderFailedCount: Int = 0,
     val renderFailures: List<LiveRenderFailureDiagnostic> = emptyList(),
-    val translationTraces: List<SemanticTranslationTrace> = emptyList()
+    val translationTraces: List<SemanticTranslationTrace> = emptyList(),
+    val machineMetrics: MachineTranslationRunMetrics? = null
 ) {
     fun metrics(): LiveRecognitionRunMetrics = LiveRecognitionRunMetrics(
         requestedSegmentation = requestedSegmentation,
@@ -160,6 +178,11 @@ internal data class BackgroundTranslatedOverlayResult(
         renderingMs = renderingMs,
         ocrMs = ocrMs,
         translationMs = translationMs,
+        machineGroupingMs = machineMetrics?.groupingMs ?: 0L,
+        machineRequestMs = machineMetrics?.requestMs ?: 0L,
+        machineRequestCount = machineMetrics?.requestCount ?: 0,
+        machineSuccessCount = machineMetrics?.successCount ?: 0,
+        machineFailureCount = machineMetrics?.failureCount ?: 0,
         renderedTrackCacheHitCount = renderedTrackCacheHitCount,
         renderedTrackCacheMissCount = renderedTrackCacheMissCount,
         themeSurfacePatchCount = themeSurfacePatchCount,
@@ -243,7 +266,13 @@ private data class BackgroundTranslationBatch(
     val smartAssistGroupCount: Int = 0,
     val smartAssistProtectedCount: Int = 0,
     val smartAssistMs: Long = 0L,
-    val translationTraces: List<SemanticTranslationTrace> = emptyList()
+    val translationTraces: List<SemanticTranslationTrace> = emptyList(),
+    val machineMetrics: MachineTranslationRunMetrics? = null
+)
+
+private data class MachineTranslationExecution(
+    val regions: List<BackgroundImageRegion>,
+    val metrics: MachineTranslationRunMetrics
 )
 
 private data class SemanticGroupingResult(
@@ -780,7 +809,8 @@ internal class BackgroundTranslatedImageProcessor(
                 suspiciousJoinCount = textQuality.suspiciousJoinCount,
                 largestPatchAreaRatio = largestPatchAreaRatio,
                 renderFailures = renderFailures.toList(),
-                translationTraces = batch.translationTraces
+                translationTraces = batch.translationTraces,
+                machineMetrics = batch.machineMetrics
             ).also { result ->
                 if (!usesIntegratedNetworkEngine &&
                     LiveCaptureTimingPolicy.shouldUpdateLiveSnapshot(
@@ -1134,27 +1164,29 @@ internal class BackgroundTranslatedImageProcessor(
         )
         val ocrMs = SystemClock.elapsedRealtime() - ocrStartedAt
         if (TranslationExperienceSettings.get(appContext) == TranslationExperience.MACHINE) {
-            val machineStartedAt = SystemClock.elapsedRealtime()
+            val groupingStartedAt = SystemClock.elapsedRealtime()
             val machineParagraphs = MachineOcrTextProcessingProvider().processParagraphs(
                 recognized = rawRecognized,
                 viewportWidth = bitmap.width,
                 viewportHeight = bitmap.height
             )
-            val machineRegions = translateMachineParagraphs(
+            val groupingMs = SystemClock.elapsedRealtime() - groupingStartedAt
+            val machineExecution = translateMachineParagraphs(
                 paragraphs = machineParagraphs,
-                mode = mode
+                mode = mode,
+                groupingMs = groupingMs
             )
-            val machineMs = SystemClock.elapsedRealtime() - machineStartedAt
             return BackgroundTranslationBatch(
                 recognizedCount = rawRecognized.size,
                 rawRecognizedCount = initialRawRecognized.size,
                 edgeFilteredCount = initialGrouping.edgeFilteredCount,
                 edgeRecoveredCount = edgeRecovered.size,
                 continuationCount = initialGrouping.continuationCount,
-                regions = machineRegions,
-                failedCount = (machineParagraphs.size - machineRegions.size).coerceAtLeast(0),
+                regions = machineExecution.regions,
+                failedCount = machineExecution.metrics.failureCount,
                 ocrMs = ocrMs,
-                translationMs = machineMs
+                translationMs = machineExecution.metrics.requestMs,
+                machineMetrics = machineExecution.metrics
             )
         }
         val smartAssistStartedAt = SystemClock.elapsedRealtime()
@@ -1231,11 +1263,22 @@ internal class BackgroundTranslatedImageProcessor(
 
     private suspend fun translateMachineParagraphs(
         paragraphs: List<MachineParagraph>,
-        mode: TranslationMode
-    ): List<BackgroundImageRegion> {
+        mode: TranslationMode,
+        groupingMs: Long
+    ): MachineTranslationExecution {
         if (paragraphs.isEmpty() || !TranslationBackendSettings.isMachineConfigured(appContext)) {
             Log.w(TAG, "Machine translation is not configured; preserving source text")
-            return emptyList()
+            return MachineTranslationExecution(
+                regions = emptyList(),
+                metrics = MachineTranslationRunMetrics(
+                    groupingMs = groupingMs,
+                    requestMs = 0L,
+                    requestCount = 0,
+                    successCount = 0,
+                    failureCount = paragraphs.size,
+                    responses = emptyList()
+                )
+            )
         }
         val requests = paragraphs.mapNotNull { paragraph ->
             if (SemanticContentClassifier.shouldPreserve("BODY", paragraph.sourceText)) {
@@ -1259,8 +1302,47 @@ internal class BackgroundTranslatedImageProcessor(
                 TranslationBackendSettings.machineTranslationToken(appContext)
             )
         )
+        val requestStartedAt = SystemClock.elapsedRealtime()
         val results = provider.translate(requests)
-        return MachinePasteBackProvider().createRegions(paragraphs, results)
+        val requestMs = SystemClock.elapsedRealtime() - requestStartedAt
+        val regions = MachinePasteBackProvider().createRegions(paragraphs, results)
+        val responseMetrics = results.map { it.toResponseMetric() }
+        return MachineTranslationExecution(
+            regions = regions,
+            metrics = MachineTranslationRunMetrics(
+                groupingMs = groupingMs,
+                requestMs = requestMs,
+                requestCount = results.size,
+                successCount = results.count(MachineTranslationParagraphResult::succeeded),
+                failureCount = results.count { !it.succeeded },
+                responses = responseMetrics
+            )
+        )
+    }
+
+    private fun MachineTranslationParagraphResult.toResponseMetric() =
+        MachineTranslationResponseMetric(
+            paragraphId = paragraph.paragraphId,
+            succeeded = succeeded,
+            durationMs = durationMs,
+            errorCode = errorCode
+        )
+
+    private fun List<BackgroundTranslationBatch>.mergeMachineMetrics(
+        sumWallTime: Boolean
+    ): MachineTranslationRunMetrics? {
+        val metrics = mapNotNull(BackgroundTranslationBatch::machineMetrics)
+        if (metrics.isEmpty()) return null
+        return MachineTranslationRunMetrics(
+            groupingMs = if (sumWallTime) metrics.sumOf(MachineTranslationRunMetrics::groupingMs)
+            else metrics.maxOf(MachineTranslationRunMetrics::groupingMs),
+            requestMs = if (sumWallTime) metrics.sumOf(MachineTranslationRunMetrics::requestMs)
+            else metrics.maxOf(MachineTranslationRunMetrics::requestMs),
+            requestCount = metrics.sumOf(MachineTranslationRunMetrics::requestCount),
+            successCount = metrics.sumOf(MachineTranslationRunMetrics::successCount),
+            failureCount = metrics.sumOf(MachineTranslationRunMetrics::failureCount),
+            responses = metrics.flatMap(MachineTranslationRunMetrics::responses)
+        )
     }
 
     private fun machineTargetLanguage(
@@ -1543,7 +1625,8 @@ internal class BackgroundTranslatedImageProcessor(
             smartAssistMs = batches.sumOf(BackgroundTranslationBatch::smartAssistMs),
             translationTraces = batches
                 .flatMap(BackgroundTranslationBatch::translationTraces)
-                .distinct()
+                .distinct(),
+            machineMetrics = batches.mergeMachineMetrics(sumWallTime = true)
         )
     }
 
@@ -1783,7 +1866,8 @@ internal class BackgroundTranslatedImageProcessor(
                 smartAssistMs = recognitionBatches.sumOf(BackgroundTranslationBatch::smartAssistMs),
                 translationTraces = recognitionBatches
                     .flatMap(BackgroundTranslationBatch::translationTraces)
-                    .distinct()
+                    .distinct(),
+                machineMetrics = recognitionBatches.mergeMachineMetrics(sumWallTime = false)
             ),
             reusedRegionCount = reused.size + restoredBoundary.size,
             recognitionRegionCount = recognitionBounds.size,

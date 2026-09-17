@@ -24,7 +24,8 @@ internal data class MachineTranslationParagraphResult(
     val paragraph: MachineTranslationParagraph,
     val translatedText: String?,
     val errorCode: String? = null,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val durationMs: Long = 0L
 ) {
     val succeeded: Boolean
         get() = !translatedText.isNullOrBlank()
@@ -76,23 +77,34 @@ internal class VolcMachineTranslationProvider(
 
     private suspend fun translateOne(
         paragraph: MachineTranslationParagraph
-    ): MachineTranslationParagraphResult = try {
-        val translated = withTimeout(timeoutMs) {
-            withContext(Dispatchers.IO) {
-                executeRequest(paragraph)
+    ): MachineTranslationParagraphResult {
+        val startedAt = System.nanoTime()
+        return try {
+            val translated = withTimeout(timeoutMs) {
+                withContext(Dispatchers.IO) {
+                    executeRequest(paragraph)
+                }
             }
+            MachineTranslationParagraphResult(
+                paragraph = paragraph,
+                translatedText = translated,
+                durationMs = elapsedMs(startedAt)
+            )
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Exception) {
+            MachineTranslationParagraphResult(
+                paragraph = paragraph,
+                translatedText = null,
+                errorCode = "MACHINE_TRANSLATION_FAILED",
+                errorMessage = error.message ?: "Machine translation failed",
+                durationMs = elapsedMs(startedAt)
+            )
         }
-        MachineTranslationParagraphResult(paragraph, translated)
-    } catch (error: CancellationException) {
-        throw error
-    } catch (error: Exception) {
-        MachineTranslationParagraphResult(
-            paragraph = paragraph,
-            translatedText = null,
-            errorCode = "MACHINE_TRANSLATION_FAILED",
-            errorMessage = error.message ?: "Machine translation failed"
-        )
     }
+
+    private fun elapsedMs(startedAt: Long): Long =
+        ((System.nanoTime() - startedAt) / 1_000_000L).coerceAtLeast(0L)
 
     private fun executeRequest(paragraph: MachineTranslationParagraph): String {
         val connection = (URL(endpoint).openConnection() as HttpURLConnection).apply {

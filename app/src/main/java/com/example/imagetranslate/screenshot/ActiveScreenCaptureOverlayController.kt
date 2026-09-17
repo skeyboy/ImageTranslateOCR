@@ -143,6 +143,7 @@ internal class ActiveScreenCaptureOverlayController(
         fun onTranslationModeChanged(mode: TranslationMode)
         fun onTranslationBackendChanged(backend: TranslationBackend)
         fun onTranslationExperienceChanged(experience: TranslationExperience)
+        fun onOverlayControlGeometryChanged()
         fun onLiveOcrTranslationEngineChanged(engine: LiveOcrTranslationEngineType)
         fun onTranslationVisibilityChanged(visible: Boolean)
         fun onOverflowDetailsRequested(item: TranslationOverflowItem): Boolean
@@ -248,9 +249,18 @@ internal class ActiveScreenCaptureOverlayController(
             }
             listener.onTranslationVisibilityChanged(checked)
         }
-        binding.btnCollapseActiveOverlay.setOnClickListener { collapseNow() }
-        binding.btnExpandActiveOverlay.setOnClickListener { expandNow() }
-        binding.collapsedCaptureHandle.setOnClickListener { expandNow() }
+        binding.btnCollapseActiveOverlay.setOnClickListener {
+            collapseNow()
+            listener.onOverlayControlGeometryChanged()
+        }
+        binding.btnExpandActiveOverlay.setOnClickListener {
+            expandNow()
+            listener.onOverlayControlGeometryChanged()
+        }
+        binding.collapsedCaptureHandle.setOnClickListener {
+            expandNow()
+            listener.onOverlayControlGeometryChanged()
+        }
         attachDragGestures()
         updateModeLabel()
         updateTranslationExperienceLabel()
@@ -457,6 +467,7 @@ internal class ActiveScreenCaptureOverlayController(
         ocrMs: Long,
         translationMs: Long,
         renderingMs: Long,
+        machineMetrics: MachineTranslationRunMetrics? = null,
         shouldPresent: () -> Boolean = { true },
         onPresented: (OverlayPresentationResult) -> Unit,
         onPresentationFailed: (OverlayPresentationResult) -> Unit = {}
@@ -478,7 +489,8 @@ internal class ActiveScreenCaptureOverlayController(
                     recognizedCount = recognizedCount,
                     ocrMs = ocrMs,
                     translationMs = translationMs,
-                    renderingMs = renderingMs
+                    renderingMs = renderingMs,
+                    machineMetrics = machineMetrics
                 )
                 binding.root.postOnAnimation { onPresented(presentation) }
             },
@@ -491,7 +503,8 @@ internal class ActiveScreenCaptureOverlayController(
         recognizedCount: Int,
         ocrMs: Long,
         translationMs: Long,
-        renderingMs: Long
+        renderingMs: Long,
+        machineMetrics: MachineTranslationRunMetrics?
     ) {
         processing = false
         sessionActive = true
@@ -506,8 +519,20 @@ internal class ActiveScreenCaptureOverlayController(
             appContext.getString(R.string.active_screenshot_live_result, recognizedCount)
         }
         binding.tvActiveOverlayStatus.text = resultText
-        val totalMs = ocrMs + translationMs + renderingMs
-        latestPerformanceSummary = appContext.getString(
+        val totalMs = ocrMs + (machineMetrics?.groupingMs ?: 0L) +
+            translationMs + renderingMs
+        latestPerformanceSummary = machineMetrics?.let { metrics ->
+            appContext.getString(
+                R.string.active_screenshot_machine_performance_metrics,
+                ocrMs,
+                metrics.groupingMs,
+                metrics.requestMs,
+                metrics.successCount,
+                metrics.requestCount,
+                renderingMs,
+                totalMs
+            )
+        } ?: appContext.getString(
             R.string.active_screenshot_performance_metrics,
             ocrMs,
             translationMs,

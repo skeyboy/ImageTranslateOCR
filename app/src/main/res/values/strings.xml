@@ -185,6 +185,7 @@
     <string name="active_screenshot_live_engine_paddle_network">PaddleOCR 局域网 OCR+翻译</string>
     <string name="active_screenshot_live_engine_paddle_network_unavailable">PaddleOCR 局域网 OCR+翻译（未配置）</string>
     <string name="active_screenshot_performance_metrics">OCR %1$dms · 翻译 %2$dms · 渲染 %3$dms · 总计 %4$dms</string>
+    <string name="active_screenshot_machine_performance_metrics">OCR %1$dms · 分组 %2$dms · 请求 %3$dms（%4$d/%5$d）· 回贴 %6$dms · 总计 %7$dms</string>
     <string name="active_screenshot_performance_compact">总耗时 %1$dms</string>
     <string name="active_screenshot_ocr_mode_group">OCR 识别语言</string>
     <string name="active_screenshot_ocr_mode_auto">自动识别中英文</string>

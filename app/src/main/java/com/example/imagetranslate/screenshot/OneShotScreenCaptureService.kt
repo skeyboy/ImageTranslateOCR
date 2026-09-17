@@ -97,6 +97,7 @@ class OneShotScreenCaptureService : Service() {
     private val lastFrameReceivedAtMs = AtomicLong(0L)
     private val frameHeartbeatEpoch = AtomicLong(0L)
     private val frameHeartbeatMisses = AtomicInteger(0)
+    private val overlayControlTransitionUntilMs = AtomicLong(0L)
     private val scrollFrameProbeEpoch = AtomicLong(0L)
     private val translationLayerPresented = AtomicBoolean(false)
     private val projectionStopReason = AtomicReference<String?>(null)
@@ -308,6 +309,15 @@ class OneShotScreenCaptureService : Service() {
 
                 override fun onTranslationExperienceChanged(experience: TranslationExperience) {
                     applyTranslationExperience(experience)
+                }
+
+                override fun onOverlayControlGeometryChanged() {
+                    val nowMs = SystemClock.elapsedRealtime()
+                    overlayControlTransitionUntilMs.set(nowMs + OVERLAY_CONTROL_SETTLE_MS)
+                    captureHandler?.post {
+                        captureHandler?.removeCallbacks(movementSettleFallback)
+                        changeDetector.onTranslationRendered(nowMs)
+                    }
                 }
 
                 override fun onLiveOcrTranslationEngineChanged(
@@ -1203,29 +1213,23 @@ class OneShotScreenCaptureService : Service() {
                         maximumMisses = MAX_FRAME_HEARTBEAT_MISSES
                     )
                     frameHeartbeatMisses.set(heartbeatOutcome.missedCount)
-                    if (!heartbeatOutcome.streamInvalid &&
-                        heartbeatOutcome.missedCount > 0
-                    ) {
-                        // A stale translation surface is visually harmful as soon as the page
-                        // moves. Hide it on the first miss, while still requiring the second miss
-                        // before declaring the projection unusable.
-                        if (heartbeatOutcome.missedCount == 1) {
-                            canRestoreLastResult.set(false)
-                            if (liveProcessorDelegate.isInitialized()) {
-                                liveProcessor.clearLiveOverlaySnapshot()
-                            }
-                            overlayController.clearTranslations()
-                            Log.i(
-                                METRICS_TAG,
-                                JSONObject()
-                                    .put("schema", 1)
-                                    .put("event", "heartbeat_translation_guard_cleared")
-                                    .put("session_id", sessionId)
-                                    .put("generation", captureGeneration.get())
-                                    .put("last_frame_age_ms", lastFrameAgeMs())
-                                    .toString()
-                            )
-                        }
+                    if (heartbeatOutcome.missedCount > 0) {
+                        // MediaProjection may exclude this app's overlay, so a control-surface
+                        // pulse is not guaranteed to produce a frame. Preserve the last valid
+                        // translation. MediaProjection.Callback.onStop and actual frame
+                        // processing remain the authoritative failure signals.
+                        Log.i(
+                            METRICS_TAG,
+                            JSONObject()
+                                .put("schema", 1)
+                                .put("event", "heartbeat_frame_missed")
+                                .put("session_id", sessionId)
+                                .put("generation", captureGeneration.get())
+                                .put("missed_count", heartbeatOutcome.missedCount)
+                                .put("translation_preserved", true)
+                                .put("last_frame_age_ms", lastFrameAgeMs())
+                                .toString()
+                        )
                         Log.w(
                             TAG,
                             "Capture frame heartbeat missed ${heartbeatOutcome.missedCount}/" +
@@ -1233,13 +1237,7 @@ class OneShotScreenCaptureService : Service() {
                         )
                     }
                     if (heartbeatOutcome.streamInvalid) {
-                        recoverFromProjectionFailure(
-                            sessionId,
-                            CaptureFrameUnavailableException(
-                                "Capture frame stream stopped responding to overlay heartbeat"
-                            )
-                        )
-                        return@postDelayed
+                        frameHeartbeatMisses.set(0)
                     }
                     activeHandler.postDelayed(
                         { runFrameHeartbeat(epoch, sessionId) },
@@ -1342,6 +1340,10 @@ class OneShotScreenCaptureService : Service() {
                 return
             }
             processRenderedCapture(image, renderedCapture)
+            return
+        }
+        if (SystemClock.elapsedRealtime() < overlayControlTransitionUntilMs.get()) {
+            reader.acquireLatestImage()?.close()
             return
         }
         if (LiveCaptureTimingPolicy.shouldHoldImageQueue(
@@ -1842,6 +1844,20 @@ class OneShotScreenCaptureService : Service() {
                             interaction = interactionTiming(completedAt)
                         )
                     )
+                    runCatching {
+                        MachineTranslationMetricsStore.record(
+                            context = this@OneShotScreenCaptureService,
+                            generation = generation,
+                            result = result,
+                            totalMs = totalMs
+                        )
+                    }.onSuccess { metricsFile ->
+                        metricsFile?.let {
+                            Log.i(TAG, "Machine translation metrics appended: ${it.path}")
+                        }
+                    }.onFailure { error ->
+                        Log.w(TAG, "Unable to persist machine translation metrics", error)
+                    }
                     finishScreenshot(result, generation, captureSignature)
                     translatedResult = null
                 }
@@ -2080,6 +2096,7 @@ class OneShotScreenCaptureService : Service() {
             ocrMs = result.ocrMs,
             translationMs = result.translationMs,
             renderingMs = result.renderingMs,
+            machineMetrics = result.machineMetrics,
             shouldPresent = {
                 val currentGeneration = captureGeneration.get()
                 val shouldPresent = LiveCaptureTimingPolicy.shouldPresentResult(
@@ -2958,6 +2975,7 @@ class OneShotScreenCaptureService : Service() {
         private const val FRAME_HEARTBEAT_INTERVAL_MS = 350L
         private const val FRAME_HEARTBEAT_RESPONSE_TIMEOUT_MS = 300L
         private const val MAX_FRAME_HEARTBEAT_MISSES = 2
+        private const val OVERLAY_CONTROL_SETTLE_MS = 750L
         private const val EXTERNAL_DISPLAY_CONFLICT_WINDOW_MS = 5_000L
         private const val CAPTURE_DISPLAY_NAME = "ImageTranslateScreenCaptureSession"
         private const val SCROLL_FRAME_PROBE_TIMEOUT_MS = 500L
