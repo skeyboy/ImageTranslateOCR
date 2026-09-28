@@ -112,6 +112,52 @@ class MachineOcrTextProcessingProviderTest {
     }
 
     @Test
+    fun `slightly overlapping OCR blocks remain one continuous paragraph`() {
+        val rows = listOf(
+            line(
+                "First body line.\nSecond body line.\nThird body line.",
+                20, 100, 380, 196, blockId = "block-a"
+            ),
+            line(
+                "The OCR boundary overlaps even though the text continues.",
+                20, 180, 380, 212, blockId = "block-b"
+            )
+        )
+
+        val groups = MachineParagraphGroupingPolicy.group(rows, 400, 300)
+
+        assertEquals(1, groups.size)
+    }
+
+    @Test
+    fun `moderate OCR text height drift does not split continuous blocks`() {
+        val rows = listOf(
+            MachineTextLine(
+                text = "First body line.\nSecond body line.\nThird body line.",
+                left = 20,
+                top = 100,
+                right = 380,
+                bottom = 196,
+                blockId = "block-a",
+                estimatedTextHeightPx = 32f
+            ),
+            MachineTextLine(
+                text = "The same visual paragraph continues here.",
+                left = 20,
+                top = 202,
+                right = 380,
+                bottom = 224,
+                blockId = "block-b",
+                estimatedTextHeightPx = 20f
+            )
+        )
+
+        val groups = MachineParagraphGroupingPolicy.group(rows, 400, 300)
+
+        assertEquals(1, groups.size)
+    }
+
+    @Test
     fun `a structural value between bodies prevents cross container merging`() {
         val rows = listOf(
             line(

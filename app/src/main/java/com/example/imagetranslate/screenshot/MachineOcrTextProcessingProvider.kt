@@ -96,7 +96,7 @@ internal object MachineParagraphGroupingPolicy {
         overlapRatio: Float
     ): Boolean {
         if (isStructuralBoundary(previous.text) || isStructuralBoundary(candidate.text)) return false
-        if (verticalGap < -lineHeight / 4 ||
+        if (verticalGap < -(lineHeight * MAXIMUM_CROSS_BLOCK_OVERLAP_RATIO).toInt() ||
             verticalGap > max(3, (lineHeight * CROSS_BLOCK_GAP_RATIO).toInt())
         ) return false
         val heightRatio = minOf(previousLineHeight, candidateLineHeight).toFloat() /
@@ -172,10 +172,11 @@ internal object MachineParagraphGroupingPolicy {
     private val SENTENCE_ENDINGS = setOf('.', '!', '?', '。', '！', '？', '…')
     private val WHITESPACE = Regex("\\s+")
     private const val SAME_BLOCK_GAP_RATIO = 1.2f
-    private const val CROSS_BLOCK_GAP_RATIO = 0.45f
+    private const val CROSS_BLOCK_GAP_RATIO = 0.5f
+    private const val MAXIMUM_CROSS_BLOCK_OVERLAP_RATIO = 0.6f
     private const val CROSS_BLOCK_LEFT_RATIO = 0.6f
     private const val MINIMUM_CROSS_BLOCK_OVERLAP = 0.7f
-    private const val MINIMUM_TEXT_HEIGHT_RATIO = 0.72f
+    private const val MINIMUM_TEXT_HEIGHT_RATIO = 0.6f
     private const val MINIMUM_ESTABLISHED_BODY_LINES = 3
     private const val MINIMUM_ESTABLISHED_BODY_CHARACTERS = 72
     private const val MINIMUM_CONTINUATION_CHARACTERS = 12
