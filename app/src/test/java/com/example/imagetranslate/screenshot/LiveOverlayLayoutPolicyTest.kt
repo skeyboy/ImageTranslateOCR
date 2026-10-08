@@ -26,6 +26,47 @@ class LiveOverlayLayoutPolicyTest {
             resolvedVerticalTextOffset(120, 40, "AUTO", "CODE", 6, 20f, 14f),
             0.01f
         )
+        assertEquals(
+            3f,
+            resolvedVerticalTextOffset(120, 40, "AUTO", null, 6, 20f, 14f),
+            0.01f
+        )
+    }
+
+    @Test
+    fun expandsLongMachineBodyWhenMostVerticalSpaceIsUnused() {
+        assertEquals(
+            28f,
+            expandedBodyTextSizeCeiling(
+                currentTextSizePx = 20f,
+                availableHeightPx = 1_000,
+                layoutHeightPx = 300,
+                sourceLineCount = 12,
+                translatedCharacterCount = 260,
+                renderSlotCount = 1,
+                hasDeclarativeHints = false
+            ),
+            0.01f
+        )
+    }
+
+    @Test
+    fun keepsCurrentSizeForOccupiedShortOrDeclarativeLayouts() {
+        assertEquals(
+            20f,
+            expandedBodyTextSizeCeiling(20f, 1_000, 800, 12, 260, 1, false),
+            0.01f
+        )
+        assertEquals(
+            20f,
+            expandedBodyTextSizeCeiling(20f, 1_000, 300, 12, 40, 1, false),
+            0.01f
+        )
+        assertEquals(
+            20f,
+            expandedBodyTextSizeCeiling(20f, 1_000, 300, 12, 260, 1, true),
+            0.01f
+        )
     }
 
     @Test

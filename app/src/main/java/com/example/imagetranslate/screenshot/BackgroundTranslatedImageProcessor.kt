@@ -3002,7 +3002,9 @@ internal fun resolvedVerticalTextOffset(
     val resolved = when (verticalAlignment.uppercase()) {
         "TOP" -> "TOP"
         "CENTER" -> "CENTER"
-        else -> if (sourceLineCount >= 3 && role in setOf("BODY", "CODE", "LIST_ITEM")) {
+        else -> if (sourceLineCount >= 3 &&
+            (role == null || role in setOf("BODY", "CODE", "LIST_ITEM"))
+        ) {
             "TOP"
         } else {
             "CENTER"
@@ -3012,6 +3014,29 @@ internal fun resolvedVerticalTextOffset(
     val sourceLeading = ((sourceLineHeightPx - sourceGlyphHeightPx.coerceAtLeast(0f)) / 2f)
         .coerceIn(0f, sourceLineHeightPx.coerceAtLeast(0f) / 3f)
     return minOf(centered, sourceLeading)
+}
+
+internal fun expandedBodyTextSizeCeiling(
+    currentTextSizePx: Float,
+    availableHeightPx: Int,
+    layoutHeightPx: Int,
+    sourceLineCount: Int,
+    translatedCharacterCount: Int,
+    renderSlotCount: Int,
+    hasDeclarativeHints: Boolean
+): Float {
+    if (currentTextSizePx <= 0f || availableHeightPx <= 0 || layoutHeightPx <= 0 ||
+        sourceLineCount < SPACIOUS_BODY_MINIMUM_SOURCE_LINES ||
+        translatedCharacterCount < SPACIOUS_BODY_MINIMUM_CHARACTERS ||
+        renderSlotCount != 1 || hasDeclarativeHints
+    ) {
+        return currentTextSizePx
+    }
+    val utilization = layoutHeightPx.toFloat() / availableHeightPx
+    if (utilization >= SPACIOUS_BODY_TARGET_HEIGHT_UTILIZATION) return currentTextSizePx
+    val scale = sqrt(SPACIOUS_BODY_TARGET_HEIGHT_UTILIZATION / utilization)
+        .coerceIn(1f, SPACIOUS_BODY_MAXIMUM_TEXT_SCALE)
+    return currentTextSizePx * scale
 }
 
 private object BackgroundTranslatedImageRenderer {
@@ -3187,7 +3212,40 @@ private object BackgroundTranslatedImageRenderer {
                 sourceLineCount == 1 &&
                 translatedCharacterCount <= COMPACT_RECT_MAXIMUM_CHARACTERS
             val safeHorizontalExpansionSlot = region.safeHorizontalExpansionSlot
-            val initialLayout = primaryLayout ?: originalSlotFallback
+            val baseLayout = primaryLayout ?: originalSlotFallback
+            val expandedTextSizeCeiling = baseLayout?.let { layout ->
+                expandedBodyTextSizeCeiling(
+                    currentTextSizePx = layout.textSizePx,
+                    availableHeightPx = layout.segments.sumOf { it.bounds.height() },
+                    layoutHeightPx = layout.segments.sumOf { it.layout.height },
+                    sourceLineCount = sourceLineCount,
+                    translatedCharacterCount = translatedCharacterCount,
+                    renderSlotCount = renderSlots.size,
+                    hasDeclarativeHints = region.smartAssistDisplayHints != null
+                )
+            } ?: preferredSize
+            val spaciousBodyLayout = baseLayout?.takeIf {
+                expandedTextSizeCeiling >= it.textSizePx * SPACIOUS_BODY_MINIMUM_GROWTH
+            }?.let { layout ->
+                ShapeAwareTextLayout.layout(
+                    text = region.translation,
+                    paint = paint,
+                    renderSlots = renderSlots,
+                    preferredTextSizePx = expandedTextSizeCeiling,
+                    minimumTextSizePx = layout.textSizePx,
+                    maximumLines = maximumLines,
+                    alignment = alignment,
+                    horizontalPadding = horizontalPadding,
+                    allowOverflowMore = false,
+                    lineSpacingMultipliers = listOf(layout.lineSpacingMultiplier, 1f).distinct(),
+                    requireAllSlots = preserveFlowShape,
+                    overflowActionText = overflowActionText
+                )?.takeIf { expanded ->
+                    expanded.displayedText == region.translation &&
+                        expanded.textSizePx >= layout.textSizePx * SPACIOUS_BODY_MINIMUM_GROWTH
+                }
+            }
+            val initialLayout = spaciousBodyLayout ?: baseLayout
             val leadingSlotRetry = initialLayout?.takeIf { layout ->
                 renderSlots.size > 1 &&
                     layout.segments.firstOrNull()?.bounds != renderSlots.first() &&
@@ -3446,6 +3504,15 @@ private object BackgroundTranslatedImageRenderer {
                     TAG,
                     "Reflowed translated group into leading render slot " +
                         "id=${region.groupId ?: "unknown"}, slots=${renderSlots.size}"
+                )
+            }
+            if (spaciousBodyLayout != null) {
+                Log.i(
+                    TAG,
+                    "Expanded spacious translated body id=${region.groupId ?: "unknown"}, " +
+                        "textSize=${baseLayout?.textSizePx}->${spaciousBodyLayout.textSizePx}, " +
+                        "height=${spaciousBodyLayout.segments.sumOf { it.layout.height }}/" +
+                        "${spaciousBodyLayout.segments.sumOf { it.bounds.height() }}"
                 )
             }
             if (flowSlotPrefixRetry != null) {
@@ -3979,3 +4046,9 @@ private object BackgroundTranslatedImageRenderer {
     private const val OVERLAY_MINIMUM_PADDING_PX = 3
     private const val OVERLAY_MAXIMUM_PADDING_PX = 5
 }
+
+private const val SPACIOUS_BODY_MINIMUM_SOURCE_LINES = 3
+private const val SPACIOUS_BODY_MINIMUM_CHARACTERS = 80
+private const val SPACIOUS_BODY_TARGET_HEIGHT_UTILIZATION = 0.72f
+private const val SPACIOUS_BODY_MAXIMUM_TEXT_SCALE = 1.4f
+private const val SPACIOUS_BODY_MINIMUM_GROWTH = 1.05f
