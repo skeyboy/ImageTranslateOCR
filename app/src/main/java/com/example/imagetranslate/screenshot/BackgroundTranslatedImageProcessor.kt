@@ -336,7 +336,8 @@ private data class RenderedOverlayPatch(
     val backgroundDetailRetentionRatio: Float,
     val cacheHit: Boolean,
     val backgroundMode: LivePatchBackgroundMode,
-    val overflowItem: TranslationOverflowItem? = null
+    val overflowItem: TranslationOverflowItem? = null,
+    val coveredRegionCount: Int = 1
 )
 
 internal data class TranslationOverflowItem(
@@ -728,7 +729,8 @@ internal class BackgroundTranslatedImageProcessor(
                 }?.toFloat()?.div(viewportArea) ?: 0f
             }
             val translationFailedCount = batch.failedCount
-            val renderFailedCount = (displayRegions.size - renderedPatches.size).coerceAtLeast(0)
+            val renderFailedCount = (displayRegions.size -
+                renderedPatches.sumOf(RenderedOverlayPatch::coveredRegionCount)).coerceAtLeast(0)
             BackgroundTranslatedOverlayResult(
                 patches = patches,
                 overflowItems = overflowItems,
@@ -1916,18 +1918,19 @@ internal class BackgroundTranslatedImageProcessor(
         evidenceSink: ((LiveRenderedTextEvidence) -> Unit)? = null,
         failureSink: ((LiveRenderFailureDiagnostic) -> Unit)? = null
     ): List<RenderedOverlayPatch> {
-        val occupiedBoundsByRegion = regions.indices.map { currentIndex ->
-            regions.asSequence()
+        val candidates = PasteBackRegionMergePolicy.plan(regions)
+        val occupiedBoundsByRegion = candidates.indices.map { currentIndex ->
+            candidates.asSequence()
                 .filterIndexed { index, _ -> index != currentIndex }
-                .flatMap { other -> resolvedSourceCoverSlots(other).asSequence() }
+                .flatMap { other -> resolvedSourceCoverSlots(other.region).asSequence() }
                 .map(::Rect)
                 .toList()
         }
         return when (renderingMode) {
-        LivePatchRenderingMode.SEQUENTIAL -> regions.mapIndexedNotNull { index, region ->
-            createOverlayPatch(
+        LivePatchRenderingMode.SEQUENTIAL -> candidates.flatMapIndexed { index, candidate ->
+            renderCandidate(
                 bitmap,
-                region,
+                candidate,
                 occupiedBoundsByRegion[index],
                 fallbackSurface,
                 overlayAlpha,
@@ -1938,11 +1941,11 @@ internal class BackgroundTranslatedImageProcessor(
             )
         }
         LivePatchRenderingMode.PARALLEL -> coroutineScope {
-            regions.mapIndexed { index, region ->
+            candidates.mapIndexed { index, candidate ->
                 async(Dispatchers.Default) {
-                    createOverlayPatch(
+                    renderCandidate(
                         bitmap,
-                        region,
+                        candidate,
                         occupiedBoundsByRegion[index],
                         fallbackSurface,
                         overlayAlpha,
@@ -1952,8 +1955,55 @@ internal class BackgroundTranslatedImageProcessor(
                         failureSink
                     )
                 }
-            }.awaitAll().filterNotNull()
+            }.awaitAll().flatten()
         }
+        }
+    }
+
+    private fun renderCandidate(
+        bitmap: Bitmap,
+        candidate: PasteBackRenderCandidate,
+        occupiedBounds: List<Rect>,
+        fallbackSurface: Int,
+        overlayAlpha: Float,
+        backgroundMode: LivePatchBackgroundMode,
+        drawPatchBackground: Boolean,
+        evidenceSink: ((LiveRenderedTextEvidence) -> Unit)?,
+        failureSink: ((LiveRenderFailureDiagnostic) -> Unit)?
+    ): List<RenderedOverlayPatch> {
+        if (candidate.sourceRegionCount == 1) {
+            return listOfNotNull(
+                createOverlayPatch(
+                    bitmap, candidate.region, occupiedBounds, fallbackSurface, overlayAlpha,
+                    backgroundMode, drawPatchBackground, evidenceSink, failureSink
+                )
+            )
+        }
+        val primaryEvidence = mutableListOf<LiveRenderedTextEvidence>()
+        val primaryFailures = mutableListOf<LiveRenderFailureDiagnostic>()
+        val primary = createOverlayPatch(
+            bitmap, candidate.region, occupiedBounds, fallbackSurface, overlayAlpha,
+            backgroundMode, drawPatchBackground, primaryEvidence::add, primaryFailures::add
+        )
+        if (primary != null) {
+            primaryEvidence.forEach { evidenceSink?.invoke(it) }
+            return listOf(primary.copy(coveredRegionCount = candidate.sourceRegionCount))
+        }
+        return candidate.fallbackRegions.mapIndexedNotNull { index, fallback ->
+            val fallbackOccupiedBounds = occupiedBounds + candidate.fallbackRegions
+                .filterIndexed { otherIndex, _ -> otherIndex != index }
+                .flatMap(::resolvedSourceCoverSlots)
+            createOverlayPatch(
+                bitmap = bitmap,
+                region = fallback,
+                occupiedBounds = fallbackOccupiedBounds,
+                fallbackSurface = fallbackSurface,
+                overlayAlpha = overlayAlpha,
+                backgroundMode = backgroundMode,
+                drawPatchBackground = drawPatchBackground,
+                evidenceSink = evidenceSink,
+                failureSink = failureSink
+            )
         }
     }
 
@@ -3010,16 +3060,6 @@ private object BackgroundTranslatedImageRenderer {
                 region.source.text.filterNot(Char::isWhitespace).length <= 20
             val sourceLineCount = region.smartAssistDisplayHints?.sourceLineCount
                 ?.coerceAtLeast(1) ?: region.source.textEraseBounds().size.coerceAtLeast(1)
-            val mergedBodyRect = denseBodyRectFallback(
-                renderSlots = requestedRenderSlots,
-                layoutShape = region.smartAssistDisplayHints?.layoutShape,
-                sourceLineCount = sourceLineCount,
-                role = region.smartAssistDisplayHints?.role,
-                sourceTextHeightsPx = region.source.componentTextHeightsPx.ifEmpty {
-                    listOfNotNull(region.source.estimatedTextHeightPx)
-                }
-            )
-            val renderSlots = mergedBodyRect?.let(::listOf) ?: requestedRenderSlots
             val layoutMetrics = StaticImageTextLayoutPolicy.resolve(
                 groupBounds = bounds,
                 componentBounds = region.source.textEraseBounds(),
@@ -3029,6 +3069,30 @@ private object BackgroundTranslatedImageRenderer {
                 sourceLineCount = sourceLineCount
             )
             val sourceLineHeight = layoutMetrics.sourceLineHeightPx
+            val initialBackgroundMerge = BackgroundRegionMergePolicy.merge(
+                source = sourceCoverSlots + requestedRenderSlots,
+                representativeLineHeightPx = sourceLineHeight
+            )
+            val backgroundPreferredSlots = BackgroundRegionMergePolicy.preferredTextSlots(
+                mergeResult = initialBackgroundMerge,
+                originalRenderSlots = requestedRenderSlots,
+                role = region.smartAssistDisplayHints?.role,
+                layoutShape = region.smartAssistDisplayHints?.layoutShape
+            )
+            val mergedBodyRect = denseBodyRectFallback(
+                renderSlots = requestedRenderSlots,
+                layoutShape = region.smartAssistDisplayHints?.layoutShape,
+                sourceLineCount = sourceLineCount,
+                role = region.smartAssistDisplayHints?.role,
+                sourceTextHeightsPx = region.source.componentTextHeightsPx.ifEmpty {
+                    listOfNotNull(region.source.estimatedTextHeightPx)
+                }
+            )
+            val primaryRenderSlots = when {
+                backgroundPreferredSlots != requestedRenderSlots -> backgroundPreferredSlots
+                mergedBodyRect != null -> listOf(mergedBodyRect)
+                else -> requestedRenderSlots
+            }
             val horizontalPadding = if (isControlLabel) {
                 0
             } else {
@@ -3058,10 +3122,62 @@ private object BackgroundTranslatedImageRenderer {
             val translatedCharacterCount = region.translation.count { character ->
                 !character.isWhitespace()
             }
-            val preserveFlowShape = region.smartAssistDisplayHints?.layoutShape == "FLOW_SLOTS" &&
+            val preservePrimaryFlowShape = region.smartAssistDisplayHints?.layoutShape == "FLOW_SLOTS" &&
                 mergedBodyRect == null &&
-                renderSlots.size > 1 &&
-                translatedCharacterCount >= renderSlots.size * MINIMUM_CHARACTERS_PER_FLOW_SLOT
+                primaryRenderSlots.size > 1 &&
+                translatedCharacterCount >=
+                primaryRenderSlots.size * MINIMUM_CHARACTERS_PER_FLOW_SLOT
+            val primaryLayout = ShapeAwareTextLayout.layout(
+                text = region.translation,
+                paint = paint,
+                renderSlots = primaryRenderSlots,
+                preferredTextSizePx = preferredSize,
+                minimumTextSizePx = minimumSize,
+                maximumLines = maximumLines,
+                alignment = alignment,
+                horizontalPadding = horizontalPadding,
+                allowOverflowMore = region.smartAssistDisplayHints?.allowsInteractiveOverflow == true,
+                lineSpacingMultipliers = region.smartAssistDisplayHints?.lineSpacingMultiplier
+                    ?.let { preferred -> listOf(preferred, 1f, 0.92f, 0.86f).distinct() },
+                requireAllSlots = preservePrimaryFlowShape,
+                overflowActionText = overflowActionText
+            )
+            val originalSlotFallback = if (
+                primaryLayout == null && primaryRenderSlots != requestedRenderSlots
+            ) {
+                ShapeAwareTextLayout.layout(
+                    text = region.translation,
+                    paint = paint,
+                    renderSlots = requestedRenderSlots,
+                    preferredTextSizePx = preferredSize,
+                    minimumTextSizePx = minimumSize,
+                    maximumLines = maximumLines,
+                    alignment = alignment,
+                    horizontalPadding = horizontalPadding,
+                    allowOverflowMore =
+                        region.smartAssistDisplayHints?.allowsInteractiveOverflow == true,
+                    lineSpacingMultipliers = region.smartAssistDisplayHints?.lineSpacingMultiplier
+                        ?.let { preferred -> listOf(preferred, 1f, 0.92f, 0.86f).distinct() },
+                    requireAllSlots = translatedCharacterCount >=
+                        requestedRenderSlots.size * MINIMUM_CHARACTERS_PER_FLOW_SLOT,
+                    overflowActionText = overflowActionText
+                )
+            } else {
+                null
+            }
+            val renderSlots = if (primaryLayout != null || originalSlotFallback == null) {
+                primaryRenderSlots
+            } else {
+                requestedRenderSlots
+            }
+            val preserveFlowShape = if (renderSlots === primaryRenderSlots) {
+                preservePrimaryFlowShape
+            } else {
+                region.smartAssistDisplayHints?.layoutShape == "FLOW_SLOTS" &&
+                    renderSlots.size > 1 &&
+                    translatedCharacterCount >=
+                    renderSlots.size * MINIMUM_CHARACTERS_PER_FLOW_SLOT
+            }
             val isMultiLineRect = renderSlots.size == 1 &&
                 (region.smartAssistDisplayHints?.layoutShape == null ||
                     region.smartAssistDisplayHints.layoutShape == "RECT") &&
@@ -3071,21 +3187,7 @@ private object BackgroundTranslatedImageRenderer {
                 sourceLineCount == 1 &&
                 translatedCharacterCount <= COMPACT_RECT_MAXIMUM_CHARACTERS
             val safeHorizontalExpansionSlot = region.safeHorizontalExpansionSlot
-            val initialLayout = ShapeAwareTextLayout.layout(
-                text = region.translation,
-                paint = paint,
-                renderSlots = renderSlots,
-                preferredTextSizePx = preferredSize,
-                minimumTextSizePx = minimumSize,
-                maximumLines = maximumLines,
-                alignment = alignment,
-                horizontalPadding = horizontalPadding,
-                allowOverflowMore = region.smartAssistDisplayHints?.allowsInteractiveOverflow == true,
-                lineSpacingMultipliers = region.smartAssistDisplayHints?.lineSpacingMultiplier
-                    ?.let { preferred -> listOf(preferred, 1f, 0.92f, 0.86f).distinct() },
-                requireAllSlots = preserveFlowShape,
-                overflowActionText = overflowActionText
-            )
+            val initialLayout = primaryLayout ?: originalSlotFallback
             val leadingSlotRetry = initialLayout?.takeIf { layout ->
                 renderSlots.size > 1 &&
                     layout.segments.firstOrNull()?.bounds != renderSlots.first() &&
@@ -3296,7 +3398,6 @@ private object BackgroundTranslatedImageRenderer {
                 }
             }
             val rectRetry = if (standardRetry == null && isMultiLineRect) {
-                val hints = checkNotNull(region.smartAssistDisplayHints)
                 ShapeAwareTextLayout.layout(
                     text = region.translation,
                     paint = paint,
@@ -3436,7 +3537,10 @@ private object BackgroundTranslatedImageRenderer {
             }
             if (overlayBackgroundColor != null && drawOverlayBackground) {
                 val usedRenderSlots = shapedLayout.segments.map { segment -> segment.bounds }
-                val backgroundSlots = (sourceCoverSlots + usedRenderSlots).distinct()
+                val backgroundSlots = BackgroundRegionMergePolicy.merge(
+                    source = initialBackgroundMerge.regions + usedRenderSlots,
+                    representativeLineHeightPx = sourceLineHeight
+                ).regions
                 backgroundSlots.forEach { slot ->
                     drawCompensatedBackground(
                         canvas,
