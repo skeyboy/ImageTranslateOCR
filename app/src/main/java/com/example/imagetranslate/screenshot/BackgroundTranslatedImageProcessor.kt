@@ -431,6 +431,8 @@ private data class CachedRenderedTrack(
 )
 
 internal object LiveRenderedTrackReusePolicy {
+    fun canReuseRenderedBitmap(drawBackground: Boolean): Boolean = !drawBackground
+
     fun hasMatchingVisualFingerprint(
         cached: IntArray,
         current: IntArray,
@@ -2194,9 +2196,13 @@ internal class BackgroundTranslatedImageProcessor(
             },
             blurAvailable = App.isOpenCVReady
         )
-        val usesVisualFingerprint =
-            resolvedBackgroundMode == LivePatchBackgroundMode.BLUR_TINT ||
-            resolvedBackgroundMode == LivePatchBackgroundMode.FEATHERED_BLUR_TINT
+        val canReuseRenderedBitmap =
+            LiveRenderedTrackReusePolicy.canReuseRenderedBitmap(drawPatchBackground)
+        val usesVisualFingerprint = canReuseRenderedBitmap && when (resolvedBackgroundMode) {
+            LivePatchBackgroundMode.BLUR_TINT,
+            LivePatchBackgroundMode.FEATHERED_BLUR_TINT -> true
+            else -> false
+        }
         val materialFingerprint = if (usesVisualFingerprint) {
             fingerprint(bitmap, cropBounds)
         } else {
@@ -2229,7 +2235,7 @@ internal class BackgroundTranslatedImageProcessor(
                 )
             }
         )
-        val cached = region.trackId?.let { trackId ->
+        val cached = region.trackId?.takeIf { canReuseRenderedBitmap }?.let { trackId ->
             synchronized(renderedTrackCache) {
                 renderedTrackCache[trackId]?.takeIf { candidate ->
                     candidate.key == cacheKey && !candidate.bitmap.isRecycled &&
@@ -2412,7 +2418,7 @@ internal class BackgroundTranslatedImageProcessor(
                     overflowItem = overflowItem
                 ).also { renderedPatch ->
                     output = null
-                    region.trackId?.let { trackId ->
+                    region.trackId?.takeIf { canReuseRenderedBitmap }?.let { trackId ->
                         val cachedBitmap = patchBitmap.copy(Bitmap.Config.ARGB_8888, false)
                         synchronized(renderedTrackCache) {
                             renderedTrackCache.put(

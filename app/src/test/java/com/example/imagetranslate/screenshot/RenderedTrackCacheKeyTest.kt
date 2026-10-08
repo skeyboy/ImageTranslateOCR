@@ -6,6 +6,12 @@ import org.junit.Test
 
 class RenderedTrackCacheKeyTest {
     @Test
+    fun compensatedBackgroundPatchesAreAlwaysRenderedFromTheCurrentFrame() {
+        assertEquals(false, LiveRenderedTrackReusePolicy.canReuseRenderedBitmap(true))
+        assertEquals(true, LiveRenderedTrackReusePolicy.canReuseRenderedBitmap(false))
+    }
+
+    @Test
     fun reuseRequiresSemanticVisualAndRenderingIdentity() {
         val baseline = key()
 
