@@ -54,7 +54,6 @@ internal object MachineParagraphGroupingPolicy {
         candidate: MachineTextLine
     ): Boolean {
         if (members.sumOf { it.value.text.length } + candidate.text.length > 2_000) return false
-        if (isProtected(candidate.text) || members.any { isProtected(it.value.text) }) return false
         val previous = members.last().value
         val previousLineHeight = representativeLineHeight(previous)
         val candidateLineHeight = representativeLineHeight(candidate)
@@ -65,6 +64,19 @@ internal object MachineParagraphGroupingPolicy {
             maxOf(previous.left, candidate.left)).coerceAtLeast(0)
         val overlapRatio = overlap.toFloat() / minOf(width(previous), width(candidate)).coerceAtLeast(1)
         val sameBlock = previous.blockId != null && previous.blockId == candidate.blockId
+        if (isWrappedUrlContinuation(
+                members = members,
+                candidate = candidate,
+                verticalGap = verticalGap,
+                lineHeight = lineHeight,
+                previousLineHeight = previousLineHeight,
+                candidateLineHeight = candidateLineHeight,
+                leftDelta = leftDelta
+            )
+        ) {
+            return true
+        }
+        if (isProtected(candidate.text) || members.any { isProtected(it.value.text) }) return false
         if (!sameBlock && previous.blockId != null && candidate.blockId != null) {
             return tightCrossBlockContinuation(
                 members = members,
@@ -82,6 +94,34 @@ internal object MachineParagraphGroupingPolicy {
             verticalGap > max(4, (lineHeight * SAME_BLOCK_GAP_RATIO).toInt())
         ) return false
         return sameBlock || leftDelta <= max(6, lineHeight) || overlapRatio >= 0.25f
+    }
+
+    private fun isWrappedUrlContinuation(
+        members: List<IndexedValue<MachineTextLine>>,
+        candidate: MachineTextLine,
+        verticalGap: Int,
+        lineHeight: Int,
+        previousLineHeight: Int,
+        candidateLineHeight: Int,
+        leftDelta: Int
+    ): Boolean {
+        val existingParts = members.map { it.value.text }
+        val existingUrl = SemanticContentClassifier.reconstructedStandaloneUrlOrEmail(existingParts)
+            ?: return false
+        if (existingUrl.length < MINIMUM_WRAPPED_URL_PREFIX_CHARACTERS) return false
+        val continuation = candidate.text.trim()
+        if (!URL_CONTINUATION_PART.matches(continuation)) return false
+        if (SemanticContentClassifier.reconstructedStandaloneUrlOrEmail(
+                existingParts + continuation
+            ) == null
+        ) return false
+        if (verticalGap < -(lineHeight * MAXIMUM_URL_OVERLAP_RATIO).toInt() ||
+            verticalGap > max(3, (lineHeight * URL_CONTINUATION_GAP_RATIO).toInt()) ||
+            leftDelta > max(6, (lineHeight * URL_CONTINUATION_LEFT_RATIO).toInt())
+        ) return false
+        val heightRatio = minOf(previousLineHeight, candidateLineHeight).toFloat() /
+            maxOf(previousLineHeight, candidateLineHeight).coerceAtLeast(1)
+        return heightRatio >= MINIMUM_TEXT_HEIGHT_RATIO
     }
 
     private fun tightCrossBlockContinuation(
@@ -125,7 +165,8 @@ internal object MachineParagraphGroupingPolicy {
     }
 
     private fun isProtected(text: String): Boolean =
-        text.trim().matches(PROTECTED_TEXT) || text.trim().matches(URL_OR_EMAIL)
+        text.trim().matches(PROTECTED_TEXT) ||
+            SemanticContentClassifier.isStandaloneUrlOrEmail(text)
 
     private fun isStructuralBoundary(text: String): Boolean =
         isProtected(text) || SemanticContentClassifier.isStandaloneMetadata(text) ||
@@ -162,8 +203,8 @@ internal object MachineParagraphGroupingPolicy {
     private fun width(line: MachineTextLine): Int = line.right - line.left
     private fun height(line: MachineTextLine): Int = line.bottom - line.top
 
-    private val URL_OR_EMAIL = Regex(
-        "(?i)(?:https?://|www\\.)\\S+|[\\w.+-]+@[\\w.-]+\\.[A-Za-z]{2,}"
+    private val URL_CONTINUATION_PART = Regex(
+        "[A-Za-z0-9._~:/?#\\[\\]@!$&'()*+,;=%-]{1,160}"
     )
     private val PROTECTED_TEXT = Regex(
         "(?i)(?:\\d{1,2}:\\d{2}(?::\\d{2})?|[A-F0-9]{8,}|" +
@@ -182,6 +223,10 @@ internal object MachineParagraphGroupingPolicy {
     private const val MINIMUM_CONTINUATION_CHARACTERS = 12
     private const val MAXIMUM_COMPACT_LABEL_CHARACTERS = 40
     private const val MAXIMUM_COMPACT_LABEL_TOKENS = 4
+    private const val MINIMUM_WRAPPED_URL_PREFIX_CHARACTERS = 24
+    private const val URL_CONTINUATION_GAP_RATIO = 0.55f
+    private const val URL_CONTINUATION_LEFT_RATIO = 0.75f
+    private const val MAXIMUM_URL_OVERLAP_RATIO = 0.35f
 }
 
 internal data class MachineParagraph(
@@ -245,10 +290,13 @@ internal class MachineOcrTextProcessingProvider : OcrTextProcessingProvider {
             val bounds = slots.drop(1).fold(copyBounds(slots.first())) { result, slot ->
                 unionBounds(result, slot)
             }
+            val sourceText = SemanticContentClassifier.reconstructedStandaloneUrlOrEmail(
+                ordered.map(RecognizedText::text)
+            ) ?: ordered.joinToString("\n") { it.text.trim() }
             MachineParagraph(
                 paragraphId = "machine-paragraph-$index",
                 members = ordered,
-                sourceText = ordered.joinToString("\n") { it.text.trim() },
+                sourceText = sourceText,
                 bounds = bounds,
                 renderSlots = slots,
                 sourceCoverSlots = slots.map(::Rect),

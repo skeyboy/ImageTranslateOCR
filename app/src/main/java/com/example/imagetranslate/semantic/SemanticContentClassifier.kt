@@ -1,6 +1,19 @@
 package com.example.imagetranslate.semantic
 
 internal object SemanticContentClassifier {
+    fun reconstructedStandaloneUrlOrEmail(parts: List<String>): String? {
+        val visualLines = parts.flatMap { part ->
+            part.lineSequence().map(String::trim).filter(String::isNotEmpty).toList()
+        }
+        if (visualLines.isEmpty() || visualLines.any { line -> line.any(Char::isWhitespace) }) {
+            return null
+        }
+        return visualLines.joinToString("").takeIf(STANDALONE_URL_OR_EMAIL::matches)
+    }
+
+    fun isStandaloneUrlOrEmail(text: String): Boolean =
+        reconstructedStandaloneUrlOrEmail(listOf(text)) != null
+
     fun isStandaloneTemporalValue(text: String): Boolean =
         STANDALONE_TEMPORAL.matches(normalize(text))
 
@@ -40,7 +53,7 @@ internal object SemanticContentClassifier {
 
     private fun looksLikeCode(text: String): Boolean {
         val compact = text.trim()
-        if (STANDALONE_URL_OR_EMAIL.matches(compact)) return true
+        if (isStandaloneUrlOrEmail(compact)) return true
         if (compact.any(Char::isWhitespace)) return false
         return compact.contains('_') || compact.contains('@') ||
             compact.matches(Regex("[A-Za-z]+://.*"))

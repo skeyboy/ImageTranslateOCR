@@ -1,5 +1,7 @@
 package com.example.imagetranslate.screenshot
 
+import android.graphics.Rect
+import com.example.imagetranslate.ocr.RecognizedText
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Test
@@ -177,6 +179,46 @@ class MachineOcrTextProcessingProviderTest {
     }
 
     @Test
+    fun `wrapped url continuation is grouped and reconstructed without translation whitespace`() {
+        val recognized = listOf(
+            recognized(
+                "https://ourworldindata.org/grapher/augmented-human-",
+                20, 100, 380, 132, "url-a"
+            ),
+            recognized("development", 20, 135, 145, 167, "url-b")
+        )
+
+        val paragraphs = MachineOcrTextProcessingProvider().processParagraphs(
+            recognized,
+            viewportWidth = 400,
+            viewportHeight = 300
+        )
+
+        assertEquals(1, paragraphs.size)
+        assertEquals(
+            "https://ourworldindata.org/grapher/augmented-human-development",
+            paragraphs.single().sourceText
+        )
+        assertEquals(2, paragraphs.single().sourceCoverSlots.size)
+    }
+
+    @Test
+    fun `wrapped numeric url suffix is preserved but a separated word is not attached`() {
+        val rows = listOf(
+            line(
+                "https://x.com/Osinttechnical/status/2108023322156098",
+                20, 100, 380, 132, blockId = "url-a"
+            ),
+            line("034", 20, 135, 70, 167, blockId = "url-b"),
+            line("development", 20, 230, 180, 262, blockId = "body")
+        )
+
+        val groups = MachineParagraphGroupingPolicy.group(rows, 400, 300)
+
+        assertEquals(listOf(listOf(0, 1), listOf(2)), groups)
+    }
+
+    @Test
     fun `archived whatsapp rows preserve OCR block paragraph boundaries`() {
         val rows = ArchivedWhatsAppMachineFixture.rows
         val groups = MachineParagraphGroupingPolicy.group(
@@ -223,4 +265,26 @@ class MachineOcrTextProcessingProviderTest {
         bottom: Int,
         blockId: String? = null
     ) = MachineTextLine(text, left, top, right, bottom, blockId = blockId)
+
+    private fun recognized(
+        text: String,
+        left: Int,
+        top: Int,
+        right: Int,
+        bottom: Int,
+        blockId: String
+    ) = RecognizedText(
+        text = text,
+        bounds = rect(left, top, right, bottom),
+        sourceBlockId = blockId,
+        componentBounds = listOf(rect(left, top, right, bottom)),
+        estimatedTextHeightPx = (bottom - top).toFloat()
+    )
+
+    private fun rect(left: Int, top: Int, right: Int, bottom: Int) = Rect().apply {
+        this.left = left
+        this.top = top
+        this.right = right
+        this.bottom = bottom
+    }
 }

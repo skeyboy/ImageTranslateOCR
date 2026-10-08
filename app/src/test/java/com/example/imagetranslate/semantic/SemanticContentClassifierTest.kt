@@ -1,5 +1,6 @@
 package com.example.imagetranslate.semantic
 
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -80,6 +81,25 @@ class SemanticContentClassifierTest {
             SemanticContentClassifier.shouldPreserve(
                 "BODY",
                 "Questions can be sent to team@example.com before Friday"
+            )
+        )
+    }
+
+    @Test
+    fun preservesUrlsSplitByVisualLineWrapping() {
+        assertTrue(
+            SemanticContentClassifier.shouldPreserve(
+                "BODY",
+                "https://ourworldindata.org/grapher/augmented-human-\ndevelopment"
+            )
+        )
+        assertEquals(
+            "https://x.com/Osinttechnical/status/2108023322156098034",
+            SemanticContentClassifier.reconstructedStandaloneUrlOrEmail(
+                listOf(
+                    "https://x.com/Osinttechnical/status/2108023322156098",
+                    "034"
+                )
             )
         )
     }
