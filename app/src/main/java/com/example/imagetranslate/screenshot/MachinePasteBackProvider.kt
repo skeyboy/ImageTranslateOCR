@@ -16,10 +16,16 @@ internal class MachinePasteBackProvider {
                 ?: return@mapNotNull null
             BackgroundImageRegion(
                 source = paragraph.asRecognizedText(),
-                translation = translated,
+                translation = paragraph.displayTranslation(translated),
                 groupId = paragraph.paragraphId,
                 renderSlots = listOf(Rect(paragraph.bounds)),
-                sourceCoverSlots = paragraph.sourceCoverSlots.map(::Rect)
+                sourceCoverSlots = paragraph.sourceCoverSlots.map(::Rect),
+                layoutRole = if (paragraph.kind == MachineParagraphKind.LIST_ITEM) {
+                    "LIST_ITEM"
+                } else {
+                    null
+                },
+                preservePasteBackBoundary = paragraph.kind == MachineParagraphKind.LIST_ITEM
             )
         }
     }

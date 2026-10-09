@@ -4,6 +4,8 @@ import android.graphics.Rect
 import com.example.imagetranslate.ocr.RecognizedText
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class MachineOcrTextProcessingProviderTest {
@@ -216,6 +218,94 @@ class MachineOcrTextProcessingProviderTest {
         val groups = MachineParagraphGroupingPolicy.group(rows, 400, 300)
 
         assertEquals(listOf(listOf(0, 1), listOf(2)), groups)
+    }
+
+    @Test
+    fun `repeated external bullets create independent list item paragraphs`() {
+        val recognized = listOf(
+            recognized("•", 20, 100, 32, 132, "marker-1"),
+            recognized("First item begins here", 52, 96, 360, 128, "list"),
+            recognized("and continues on the next line.", 52, 137, 350, 169, "list"),
+            recognized("•", 20, 180, 32, 212, "marker-2"),
+            recognized("Second item stays independent.", 52, 180, 365, 212, "list")
+        )
+
+        val paragraphs = MachineOcrTextProcessingProvider().processParagraphs(
+            recognized,
+            viewportWidth = 400,
+            viewportHeight = 400
+        )
+        val detected = MachineListStructurePolicy.detect(recognized, 400)
+
+        assertEquals(
+            "detected=${detected.map { it.memberIndices }}; " +
+                paragraphs.joinToString(" || ") { "${it.kind}:${it.sourceText}" },
+            2,
+            paragraphs.size
+        )
+        assertTrue(paragraphs.all { it.kind == MachineParagraphKind.LIST_ITEM })
+        assertTrue(paragraphs.all(MachineParagraph::listMarkerIsExternal))
+        assertEquals("•", paragraphs.first().listMarker)
+        assertEquals(
+            "First item begins here\nand continues on the next line.",
+            paragraphs.first().sourceText
+        )
+        assertFalse(paragraphs.any { "•" in it.sourceText })
+    }
+
+    @Test
+    fun `repeated inline bullets retain markers outside translation text`() {
+        val recognized = listOf(
+            recognized("• First item", 20, 100, 360, 132, "list"),
+            recognized("continues here.", 48, 137, 350, 169, "list"),
+            recognized("• Second item", 20, 180, 360, 212, "list")
+        )
+
+        val paragraphs = MachineOcrTextProcessingProvider().processParagraphs(
+            recognized,
+            viewportWidth = 400,
+            viewportHeight = 400
+        )
+        val detected = MachineListStructurePolicy.detect(recognized, 400)
+
+        assertEquals(
+            "detected=${detected.map { it.memberIndices }}; " +
+                paragraphs.joinToString(" || ") { "${it.kind}:${it.sourceText}" },
+            2,
+            paragraphs.size
+        )
+        assertTrue(paragraphs.all { it.kind == MachineParagraphKind.LIST_ITEM })
+        assertTrue(paragraphs.none(MachineParagraph::listMarkerIsExternal))
+        assertEquals("First item\ncontinues here.", paragraphs.first().sourceText)
+        assertEquals("• 译文", paragraphs.first().displayTranslation("译文"))
+    }
+
+    @Test
+    fun `a single dash paragraph uses the existing body fallback`() {
+        val paragraphs = MachineOcrTextProcessingProvider().processParagraphs(
+            listOf(recognized("- One isolated thought", 20, 100, 360, 132, "body")),
+            viewportWidth = 400,
+            viewportHeight = 300
+        )
+
+        assertEquals(1, paragraphs.size)
+        assertEquals(MachineParagraphKind.BODY, paragraphs.single().kind)
+        assertEquals("- One isolated thought", paragraphs.single().sourceText)
+    }
+
+    @Test
+    fun `distant dash labels from different blocks are not treated as one list`() {
+        val paragraphs = MachineOcrTextProcessingProvider().processParagraphs(
+            listOf(
+                recognized("- Alice", 20, 100, 180, 132, "sender-1"),
+                recognized("- Bob", 20, 500, 180, 532, "sender-2")
+            ),
+            viewportWidth = 400,
+            viewportHeight = 800
+        )
+
+        assertEquals(2, paragraphs.size)
+        assertTrue(paragraphs.all { it.kind == MachineParagraphKind.BODY })
     }
 
     @Test

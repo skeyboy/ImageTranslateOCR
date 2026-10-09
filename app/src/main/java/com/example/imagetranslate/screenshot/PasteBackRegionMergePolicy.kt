@@ -96,6 +96,7 @@ internal object PasteBackRegionMergePolicy {
     }
 
     private fun eligible(region: BackgroundImageRegion): Boolean {
+        if (region.preservePasteBackBoundary) return false
         if (region.smartAssistDisplayHints != null) return false
         val text = region.source.text.trim()
         if (text.isEmpty() || SemanticContentClassifier.isStandaloneMetadata(text)) return false

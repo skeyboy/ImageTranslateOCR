@@ -62,6 +62,29 @@ data class RecognizedText(
     fun textEraseBounds(): List<Rect> = componentBounds.ifEmpty { listOf(bounds) }
 }
 
+internal object OcrListMarkerPolicy {
+    fun markerToken(text: String): String? = text.trim().takeIf { marker ->
+        (marker.length == 1 && marker.single() in BULLET_MARKERS) ||
+            NUMBERED_MARKER.matches(marker)
+    }
+
+    fun leadingMarker(text: String): String? {
+        val compact = text.trimStart()
+        INLINE_BULLET.find(compact)?.let { return it.groupValues[1] }
+        return INLINE_NUMBERED.find(compact)?.groupValues?.get(1)
+    }
+
+    fun restore(rawText: String, refinedText: String): String {
+        val marker = leadingMarker(rawText) ?: return refinedText
+        return if (leadingMarker(refinedText) != null) refinedText else "$marker $refinedText"
+    }
+
+    private val INLINE_BULLET = Regex("^([•·‣◦▪▫])\\s*(\\S.*)$")
+    private val INLINE_NUMBERED = Regex("^((?:\\d+|[A-Za-z])[.)]|[-*])\\s+(\\S.*)$")
+    private val BULLET_MARKERS = setOf('•', '·', '‣', '◦', '▪', '▫', '-', '*')
+    private val NUMBERED_MARKER = Regex("^(?:\\d+|[A-Za-z])[.)]$")
+}
+
 internal object OcrWordSpacingPolicy {
     fun shouldInsertSeparator(
         previousText: String,
@@ -873,6 +896,15 @@ internal class MlKitOcrEngine(context: Context) : OcrEngine {
             estimatedTextHeightPx = estimatedTextHeightPx,
             typographyConfidence = typographyConfidence
         )
+        val orderedRawElements = line.elements.mapNotNull { element ->
+            element.boundingBox?.let { bounds -> element.text.trim() to bounds }
+        }.sortedBy { (_, bounds) -> bounds.left }
+        val elementListMarker = orderedRawElements.firstOrNull()?.first
+            ?.let(OcrListMarkerPolicy::markerToken)
+            ?.takeIf {
+                orderedRawElements.drop(1).any { (text, _) -> text.any(Char::isLetterOrDigit) }
+            }
+        val listMarker = OcrListMarkerPolicy.leadingMarker(line.text) ?: elementListMarker
         val elements = line.elements.mapNotNull { element ->
             val bounds = element.boundingBox ?: return@mapNotNull null
             val compact = element.text.filterNot(Char::isWhitespace)
@@ -915,8 +947,12 @@ internal class MlKitOcrEngine(context: Context) : OcrEngine {
         val selectedElements = selectedGroups.flatten()
         val bounds = Rect(selectedElements.first().bounds)
         selectedElements.drop(1).forEach { bounds.union(it.bounds) }
-        val explicitSeparator = line.text.firstOrNull { it in EXPLICIT_GROUP_SEPARATORS }
-        val text = buildString {
+        val explicitSeparator = if (listMarker == null) {
+            line.text.firstOrNull { it in EXPLICIT_GROUP_SEPARATORS }
+        } else {
+            null
+        }
+        val refinedText = buildString {
             selectedGroups.forEachIndexed { groupIndex, group ->
                 if (groupIndex > 0) {
                     val previousGroup = selectedGroups[groupIndex - 1]
@@ -942,6 +978,12 @@ internal class MlKitOcrEngine(context: Context) : OcrEngine {
                 }
             }
         }
+        val text = if (listMarker != null && OcrListMarkerPolicy.leadingMarker(refinedText) == null) {
+            "$listMarker $refinedText"
+        } else {
+            OcrListMarkerPolicy.restore(line.text, refinedText)
+        }
+        if (listMarker != null) bounds.left = minOf(bounds.left, lineBounds.left)
         val elementHeights = selectedElements.map { it.bounds.height() }
             .filter { it > 0 }
             .sorted()

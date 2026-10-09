@@ -206,7 +206,9 @@ internal data class BackgroundImageRegion(
     val smartAssistDisplayHints: SmartAssistDisplayHints? = null,
     val renderSlots: List<Rect> = emptyList(),
     val sourceCoverSlots: List<Rect> = emptyList(),
-    val safeHorizontalExpansionSlot: Rect? = null
+    val safeHorizontalExpansionSlot: Rect? = null,
+    val layoutRole: String? = null,
+    val preservePasteBackBoundary: Boolean = false
 )
 
 internal fun BackgroundImageRegion.shiftedToMatchedBounds(
@@ -415,6 +417,8 @@ internal data class RenderedTrackCacheKey(
     val overlayAlphaPercent: Int,
     val drawBackground: Boolean,
     val displayHints: SmartAssistDisplayHints?,
+    val layoutRole: String? = null,
+    val preservePasteBackBoundary: Boolean = false,
     val renderSlotSignature: List<Int> = emptyList(),
     val sourceCoverSlotSignature: List<Int> = emptyList()
 )
@@ -2218,6 +2222,8 @@ internal class BackgroundTranslatedImageProcessor(
             overlayAlphaPercent = (overlayAlpha.coerceIn(0f, 1f) * 1_000).toInt(),
             drawBackground = drawPatchBackground,
             displayHints = region.smartAssistDisplayHints,
+            layoutRole = region.layoutRole,
+            preservePasteBackBoundary = region.preservePasteBackBoundary,
             renderSlotSignature = resolvedRenderSlots(region, sourceBounds).flatMap { slot ->
                 listOf(
                     slot.left - cropBounds.left,
@@ -3100,6 +3106,7 @@ private object BackgroundTranslatedImageRenderer {
                 sourceLineCount = sourceLineCount
             )
             val sourceLineHeight = layoutMetrics.sourceLineHeightPx
+            val layoutRole = region.smartAssistDisplayHints?.role ?: region.layoutRole
             val initialBackgroundMerge = BackgroundRegionMergePolicy.merge(
                 source = sourceCoverSlots + requestedRenderSlots,
                 representativeLineHeightPx = sourceLineHeight
@@ -3107,14 +3114,14 @@ private object BackgroundTranslatedImageRenderer {
             val backgroundPreferredSlots = BackgroundRegionMergePolicy.preferredTextSlots(
                 mergeResult = initialBackgroundMerge,
                 originalRenderSlots = requestedRenderSlots,
-                role = region.smartAssistDisplayHints?.role,
+                role = layoutRole,
                 layoutShape = region.smartAssistDisplayHints?.layoutShape
             )
             val mergedBodyRect = denseBodyRectFallback(
                 renderSlots = requestedRenderSlots,
                 layoutShape = region.smartAssistDisplayHints?.layoutShape,
                 sourceLineCount = sourceLineCount,
-                role = region.smartAssistDisplayHints?.role,
+                role = layoutRole,
                 sourceTextHeightsPx = region.source.componentTextHeightsPx.ifEmpty {
                     listOfNotNull(region.source.estimatedTextHeightPx)
                 }
@@ -3369,7 +3376,7 @@ private object BackgroundTranslatedImageRenderer {
                     minimumTextSizePx = maxOf(
                         MINIMUM_TEXT_SIZE_PX,
                         sourceLineHeight * if (
-                            region.smartAssistDisplayHints?.role == "TITLE"
+                            layoutRole == "TITLE"
                         ) {
                             COMPACT_TITLE_MINIMUM_TEXT_SCALE
                         } else {
@@ -3377,7 +3384,7 @@ private object BackgroundTranslatedImageRenderer {
                         }
                     ),
                     maximumLines = if (
-                        region.smartAssistDisplayHints?.role == "TITLE"
+                        layoutRole == "TITLE"
                     ) {
                         maxOf(2, maximumLines)
                     } else {
@@ -3395,7 +3402,7 @@ private object BackgroundTranslatedImageRenderer {
             val flowSlotPrefixRetry = if (
                 standardRetry == null &&
                 preserveFlowShape &&
-                region.smartAssistDisplayHints?.role == "BODY"
+                layoutRole == "BODY"
             ) {
                 ShapeAwareTextLayout.layout(
                     text = region.translation,
@@ -3428,7 +3435,7 @@ private object BackgroundTranslatedImageRenderer {
                     renderSlots = renderSlots,
                     layoutShape = region.smartAssistDisplayHints?.layoutShape,
                     sourceLineCount = sourceLineCount,
-                    role = region.smartAssistDisplayHints?.role,
+                    role = layoutRole,
                     sourceTextHeightsPx = region.source.componentTextHeightsPx.ifEmpty {
                         listOfNotNull(region.source.estimatedTextHeightPx)
                     }
@@ -3637,7 +3644,7 @@ private object BackgroundTranslatedImageRenderer {
                     availableHeightPx = segment.bounds.height(),
                     layoutHeightPx = segment.layout.height,
                     verticalAlignment = region.smartAssistDisplayHints?.verticalAlignment ?: "AUTO",
-                    role = region.smartAssistDisplayHints?.role,
+                    role = layoutRole,
                     sourceLineCount = sourceLineCount,
                     sourceLineHeightPx = sourceLineHeight,
                     sourceGlyphHeightPx = style.sourceGlyphHeightPx

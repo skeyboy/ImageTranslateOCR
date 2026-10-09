@@ -44,6 +44,44 @@ class MachinePasteBackProviderTest {
         assertEquals("合并后的段落", region.translation)
     }
 
+    @Test
+    fun `list item restores inline marker and keeps its paste back boundary`() {
+        val source = RecognizedText("• First item", rect(20, 100, 360, 132))
+        val paragraph = MachineParagraph(
+            paragraphId = "list-1",
+            members = listOf(source),
+            sourceText = "First item",
+            bounds = rect(20, 100, 360, 132),
+            renderSlots = listOf(rect(20, 100, 360, 132)),
+            sourceCoverSlots = listOf(rect(20, 100, 360, 132)),
+            readingOrder = 0,
+            kind = MachineParagraphKind.LIST_ITEM,
+            listMarker = "•"
+        )
+        val request = MachineTranslationParagraph(
+            paragraphId = paragraph.paragraphId,
+            text = paragraph.sourceText,
+            sourceLanguage = "en",
+            targetLanguage = "zh"
+        )
+
+        val region = MachinePasteBackProvider().createRegions(
+            listOf(paragraph),
+            listOf(MachineTranslationParagraphResult(request, "第一项"))
+        ).single()
+
+        assertEquals("• 第一项", region.translation)
+        assertEquals("LIST_ITEM", region.layoutRole)
+        assertEquals(true, region.preservePasteBackBoundary)
+        val adjacent = region.copy(
+            source = region.source.copy(bounds = rect(20, 138, 360, 170)),
+            groupId = "list-2",
+            renderSlots = listOf(rect(20, 138, 360, 170)),
+            sourceCoverSlots = listOf(rect(20, 138, 360, 170))
+        )
+        assertEquals(2, PasteBackRegionMergePolicy.plan(listOf(region, adjacent)).size)
+    }
+
     private fun rect(left: Int, top: Int, right: Int, bottom: Int) = Rect().apply {
         this.left = left
         this.top = top
